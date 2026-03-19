@@ -61,10 +61,10 @@ VSCODE_EXTENSIONS=(
   "ms-python.vscode-pylance"
   "ms-toolsai.jupyter"
   "ms-vscode.cpptools"
-  "anthropics.claude-code"
   "continue.continue"
   "eamodio.gitlens"
 )
+# Note: Claude Code is a CLI tool (npm), not a VSCode marketplace extension
 
 if is_installed code; then
   for ext in "${VSCODE_EXTENSIONS[@]}"; do

@@ -1,77 +1,109 @@
 #!/usr/bin/env bash
 # Component: AI Applications via Docker
-# UCC + Basic
+# UCC + Basic — bash 3.2 compatible (no declare -A)
 
 docker info &>/dev/null || log_error "Docker must be running first (run 03-docker.sh)"
 
-# Each app: name, image, port mapping, volumes, env
-declare -A APP_IMAGE=(
-  ["open-webui"]="ghcr.io/open-webui/open-webui:main"
-  ["n8n"]="docker.n8n.io/n8nio/n8n"
-  ["qdrant"]="qdrant/qdrant"
-  ["flowise"]="flowiseai/flowise"
-)
+# ============================================================
+# open-webui — chat UI for Ollama (port 3000)
+# ============================================================
+_observe_open_webui() {
+  docker_is_running 'open-webui' && echo 'running' \
+    || (docker_exists 'open-webui' && echo 'stopped' || echo 'absent')
+}
+_install_open_webui() {
+  docker_exists 'open-webui' && docker rm 'open-webui' 2>/dev/null || true
+  ucc_run docker run -d \
+    --name open-webui --restart always \
+    -p 3000:8080 \
+    -v open-webui:/app/backend/data \
+    -e OLLAMA_BASE_URL=http://host.docker.internal:11434 \
+    ghcr.io/open-webui/open-webui:main
+}
+_update_open_webui() {
+  ucc_run docker pull ghcr.io/open-webui/open-webui:main
+  docker stop open-webui 2>/dev/null || true
+  docker rm   open-webui 2>/dev/null || true
+  _install_open_webui
+}
+ucc_target --name "docker-open-webui" \
+  --observe _observe_open_webui --desired "running" \
+  --install _install_open_webui --update _update_open_webui
 
-declare -A APP_PORTS=(
-  ["open-webui"]="3000:8080"
-  ["n8n"]="5678:5678"
-  ["qdrant"]="6333:6333"
-  ["flowise"]="3001:3000"
-)
+# ============================================================
+# n8n — workflow automation (port 5678)
+# ============================================================
+_observe_n8n() {
+  docker_is_running 'n8n' && echo 'running' \
+    || (docker_exists 'n8n' && echo 'stopped' || echo 'absent')
+}
+_install_n8n() {
+  docker_exists 'n8n' && docker rm 'n8n' 2>/dev/null || true
+  ucc_run docker run -d \
+    --name n8n --restart always \
+    -p 5678:5678 \
+    -v n8n_data:/home/node/.n8n \
+    docker.n8n.io/n8nio/n8n
+}
+_update_n8n() {
+  ucc_run docker pull docker.n8n.io/n8nio/n8n
+  docker stop n8n 2>/dev/null || true
+  docker rm   n8n 2>/dev/null || true
+  _install_n8n
+}
+ucc_target --name "docker-n8n" \
+  --observe _observe_n8n --desired "running" \
+  --install _install_n8n --update _update_n8n
 
-declare -A APP_VOLUMES=(
-  ["open-webui"]="open-webui:/app/backend/data"
-  ["n8n"]="n8n_data:/home/node/.n8n"
-  ["qdrant"]="qdrant_storage:/qdrant/storage"
-  ["flowise"]="flowise_data:/root/.flowise"
-)
+# ============================================================
+# qdrant — vector database (port 6333)
+# ============================================================
+_observe_qdrant() {
+  docker_is_running 'qdrant' && echo 'running' \
+    || (docker_exists 'qdrant' && echo 'stopped' || echo 'absent')
+}
+_install_qdrant() {
+  docker_exists 'qdrant' && docker rm 'qdrant' 2>/dev/null || true
+  ucc_run docker run -d \
+    --name qdrant --restart always \
+    -p 6333:6333 \
+    -v qdrant_storage:/qdrant/storage \
+    qdrant/qdrant
+}
+_update_qdrant() {
+  ucc_run docker pull qdrant/qdrant
+  docker stop qdrant 2>/dev/null || true
+  docker rm   qdrant 2>/dev/null || true
+  _install_qdrant
+}
+ucc_target --name "docker-qdrant" \
+  --observe _observe_qdrant --desired "running" \
+  --install _install_qdrant --update _update_qdrant
 
-declare -A APP_ENV=(
-  ["open-webui"]="-e OLLAMA_BASE_URL=http://host.docker.internal:11434"
-  ["n8n"]=""
-  ["qdrant"]=""
-  ["flowise"]=""
-)
-
-for app in open-webui n8n qdrant flowise; do
-  _app="$app"  # capture for closure
-
-  eval "_observe_${app//-/_}() {
-    docker_is_running '$_app' && echo 'running' \
-    || (docker_exists '$_app' && echo 'stopped' || echo 'absent')
-  }"
-
-  eval "_install_${app//-/_}() {
-    local img='${APP_IMAGE[$_app]}'
-    local port='${APP_PORTS[$_app]}'
-    local vol='${APP_VOLUMES[$_app]}'
-    local env='${APP_ENV[$_app]}'
-    # Remove stopped container if it exists
-    docker_exists '$_app' && docker rm '$_app' 2>/dev/null || true
-    ucc_run docker run -d \
-      --name '$_app' \
-      --restart always \
-      -p \"\$port\" \
-      -v \"\$vol\" \
-      \$env \
-      \"\$img\"
-  }"
-
-  eval "_update_${app//-/_}() {
-    local img='${APP_IMAGE[$_app]}'
-    ucc_run docker pull \"\$img\"
-    ucc_run docker stop '$_app' 2>/dev/null || true
-    ucc_run docker rm   '$_app' 2>/dev/null || true
-    _install_${app//-/_}
-  }"
-
-  ucc_target \
-    --name    "docker-$app" \
-    --observe "_observe_${app//-/_}" \
-    --desired "running" \
-    --install "_install_${app//-/_}" \
-    --update  "_update_${app//-/_}"
-done
+# ============================================================
+# flowise — LLM flow builder (port 3001)
+# ============================================================
+_observe_flowise() {
+  docker_is_running 'flowise' && echo 'running' \
+    || (docker_exists 'flowise' && echo 'stopped' || echo 'absent')
+}
+_install_flowise() {
+  docker_exists 'flowise' && docker rm 'flowise' 2>/dev/null || true
+  ucc_run docker run -d \
+    --name flowise --restart always \
+    -p 3001:3000 \
+    -v flowise_data:/root/.flowise \
+    flowiseai/flowise
+}
+_update_flowise() {
+  ucc_run docker pull flowiseai/flowise
+  docker stop flowise 2>/dev/null || true
+  docker rm   flowise 2>/dev/null || true
+  _install_flowise
+}
+ucc_target --name "docker-flowise" \
+  --observe _observe_flowise --desired "running" \
+  --install _install_flowise --update _update_flowise
 
 echo ""
 log_info "Open WebUI (Ollama chat) → http://localhost:3000"

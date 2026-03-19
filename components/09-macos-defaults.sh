@@ -59,7 +59,7 @@ ucc_target \
 _observe_transparency() {
   defaults read com.apple.universalaccess reduceTransparency 2>/dev/null || echo "0"
 }
-_reduce_transparency() { ucc_run defaults write com.apple.universalaccess reduceTransparency -bool true; }
+_reduce_transparency() { ucc_run sudo defaults write com.apple.universalaccess reduceTransparency -bool true; }
 
 ucc_target \
   --name    "reduce-transparency=1" \
