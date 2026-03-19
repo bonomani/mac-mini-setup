@@ -92,6 +92,20 @@ log_info "RAM          : ${TOTAL_GB} GB"
   && log_info "RAM sufficient for large models (70B+)" \
   || log_warn "Less than 32 GB RAM — large models may be slow"
 
+# --- Ensure brew is in PATH (re-checked after each component) ---
+_refresh_brew_path() {
+  command -v brew &>/dev/null && return
+  for _bp in /opt/homebrew/bin/brew /usr/local/bin/brew; do
+    if [[ -x "$_bp" ]]; then
+      eval "$("$_bp" shellenv)"
+      export PATH
+      log_debug "brew PATH refreshed from $_bp"
+      return
+    fi
+  done
+}
+_refresh_brew_path
+
 # --- Run components -----------------------------------------
 TOTAL_OBSERVED=0; TOTAL_APPLIED=0; TOTAL_CHANGED=0; TOTAL_FAILED=0; TOTAL_SKIPPED=0
 FAILED_COMPONENTS=()
@@ -118,6 +132,8 @@ for comp in "${TO_RUN[@]}"; do
     log_warn "Component failed: $comp"
     FAILED_COMPONENTS+=("$comp")
   fi
+  # Refresh brew PATH in case it was just installed by this component
+  _refresh_brew_path
 done
 
 # --- Final summary ------------------------------------------

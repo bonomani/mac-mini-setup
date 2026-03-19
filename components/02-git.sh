@@ -23,7 +23,7 @@ ucc_target \
 
 # --- Git global config (interactive, skipped in dry-run) ----
 _observe_git_user() {
-  git config --global user.name 2>/dev/null || echo "absent"
+  git config --global user.name &>/dev/null && echo "configured" || echo "absent"
 }
 
 _configure_git() {
@@ -40,10 +40,8 @@ if [[ "$UCC_DRY_RUN" != "1" ]]; then
   ucc_target \
     --name    "git-global-config" \
     --observe _observe_git_user \
-    --desired "absent" \
+    --desired "configured" \
     --install _configure_git
-  # Note: desired="absent" means: if no username yet → run configure
-  # (inverted logic: we install when observed=absent=no config yet)
 fi
 
 ucc_summary "02-git"

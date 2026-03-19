@@ -50,7 +50,7 @@ _observe_ollama_service() {
 }
 
 _start_ollama_service() {
-  if have_cmd brew && brew list ollama &>/dev/null 2>&1; then
+  if is_installed brew && brew list ollama &>/dev/null 2>&1; then
     brew services start ollama
   else
     # Fallback: start in background
