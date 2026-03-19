@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Component: Dev tools (Node, VSCode, CLI tools, Oh My Zsh)
+# Component: Dev tools (Node, VSCode, CLI tools, Oh My Zsh, healthcheck)
 # UCC + Basic
 
 # --- CLI tools (brew) ---------------------------------------
-CLI_TOOLS=(jq wget htop tmux fzf ripgrep tree)
+CLI_TOOLS=(jq wget curl htop tmux fzf ripgrep fd tree uv pnpm)
 
 for tool in "${CLI_TOOLS[@]}"; do
   eval "_observe_${tool}() { brew_is_installed '$tool' && echo 'installed' || echo 'absent'; }"
@@ -32,61 +32,112 @@ ucc_target \
   --install _install_vscode \
   --update  _update_vscode
 
+# Ensure 'code' CLI is available in PATH
+_observe_code_cmd() {
+  is_installed code && echo "present" || echo "absent"
+}
+_fix_code_symlink() {
+  local vscode_bin="/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code"
+  if [[ -x "$vscode_bin" ]]; then
+    sudo mkdir -p /usr/local/bin
+    sudo ln -sf "$vscode_bin" /usr/local/bin/code
+    export PATH="/usr/local/bin:$PATH"
+    log_warn "Symlink created. If 'code' is still missing in new shells, run: Cmd+Shift+P → 'Shell Command: Install code command in PATH'"
+  else
+    log_warn "VS Code binary not found. Open VS Code manually first."
+    return 1
+  fi
+}
+
+ucc_target \
+  --name    "vscode-code-cmd" \
+  --observe _observe_code_cmd \
+  --desired "present" \
+  --install _fix_code_symlink
+
 # --- VSCode extensions --------------------------------------
 VSCODE_EXTENSIONS=(
   "ms-python.python"
+  "ms-python.vscode-pylance"
   "ms-toolsai.jupyter"
+  "ms-vscode.cpptools"
   "anthropics.claude-code"
   "continue.continue"
+  "eamodio.gitlens"
 )
 
 if is_installed code; then
   for ext in "${VSCODE_EXTENSIONS[@]}"; do
     _ext_id="${ext//./-}"
-    eval "_observe_ext_${_ext_id}() {
-      code --list-extensions 2>/dev/null | grep -q '^${ext}$' && echo 'installed' || echo 'absent'
+    eval "_observe_ext_${_ext_id//-/_}() {
+      code --list-extensions 2>/dev/null | grep -qi '^${ext}$' && echo 'installed' || echo 'absent'
     }"
-    eval "_install_ext_${_ext_id}() { ucc_run code --install-extension '$ext'; }"
+    eval "_install_ext_${_ext_id//-/_}() { ucc_run code --install-extension '${ext}' --force; }"
 
     ucc_target \
       --name    "vscode-ext-$ext" \
-      --observe "_observe_ext_${_ext_id}" \
+      --observe "_observe_ext_${_ext_id//-/_}" \
       --desired "installed" \
-      --install "_install_ext_${_ext_id}" \
-      --update  "_install_ext_${_ext_id}"
+      --install "_install_ext_${_ext_id//-/_}" \
+      --update  "_install_ext_${_ext_id//-/_}"
   done
 fi
 
-# --- nvm + Node.js ------------------------------------------
-_observe_nvm() {
-  [[ -d "$HOME/.nvm" ]] && echo "installed" || echo "absent"
+# --- VSCode settings.json (merge, not overwrite) ------------
+_observe_vscode_settings() {
+  local f="$HOME/Library/Application Support/Code/User/settings.json"
+  [[ -f "$f" ]] || { echo "absent"; return; }
+  # Check if our key is already present
+  jq -e '."terminal.integrated.defaultProfile.osx"' "$f" >/dev/null 2>&1 && echo "configured" || echo "needs-update"
 }
-_install_nvm() {
-  curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+
+_apply_vscode_settings() {
+  local f="$HOME/Library/Application Support/Code/User/settings.json"
+  mkdir -p "$(dirname "$f")"
+  local tmp
+  tmp="$(mktemp)"
+  local patch='{
+    "editor.inlineSuggest.enabled": true,
+    "extensions.autoUpdate": true,
+    "update.mode": "default",
+    "python.createEnvironment.trigger": "off",
+    "terminal.integrated.defaultProfile.osx": "zsh"
+  }'
+  if [[ -f "$f" ]] && jq empty "$f" >/dev/null 2>&1; then
+    jq --argjson p "$patch" '. + $p' "$f" > "$tmp"
+  else
+    echo "$patch" | jq '.' > "$tmp"
+  fi
+  mv "$tmp" "$f"
 }
 
 ucc_target \
-  --name    "nvm" \
-  --observe _observe_nvm \
+  --name    "vscode-settings" \
+  --observe _observe_vscode_settings \
+  --desired "configured" \
+  --install _apply_vscode_settings \
+  --update  _apply_vscode_settings
+
+# --- iTerm2 -------------------------------------------------
+_observe_iterm2() {
+  brew_cask_is_installed iterm2 && echo "installed" || echo "absent"
+}
+_install_iterm2() { ucc_run brew install --cask iterm2; }
+_update_iterm2()  { ucc_run brew upgrade --cask iterm2 2>/dev/null || true; }
+
+ucc_target \
+  --name    "iterm2" \
+  --observe _observe_iterm2 \
   --desired "installed" \
-  --install _install_nvm
+  --install _install_iterm2 \
+  --update  _update_iterm2
 
-export NVM_DIR="$HOME/.nvm"
-# shellcheck disable=SC1090
-[[ -s "$NVM_DIR/nvm.sh" ]] && source "$NVM_DIR/nvm.sh" 2>/dev/null || true
-
+# --- Node.js (brew, LTS) ------------------------------------
 _observe_node() {
   is_installed node && echo "installed" || echo "absent"
 }
-_install_node() {
-  nvm install --lts
-  nvm use --lts
-}
-_update_node() {
-  nvm install --lts
-  nvm use --lts
-  nvm alias default 'lts/*'
-}
+_install_node() { ucc_run brew install node; }
+_update_node()  { ucc_run brew upgrade node 2>/dev/null || ucc_run brew install node; }
 
 ucc_target \
   --name    "node-lts" \
@@ -112,5 +163,61 @@ ucc_target \
   --desired "installed" \
   --install _install_omz \
   --update  _update_omz
+
+# --- $HOME/bin in PATH --------------------------------------
+_observe_home_bin_path() {
+  grep -q 'export PATH="$HOME/bin:$PATH"' "$HOME/.zprofile" 2>/dev/null && echo "present" || echo "absent"
+}
+_add_home_bin_path() {
+  mkdir -p "$HOME/bin"
+  printf '\nexport PATH="$HOME/bin:$PATH"\n' >> "$HOME/.zprofile"
+  export PATH="$HOME/bin:$PATH"
+}
+
+ucc_target \
+  --name    "home-bin-in-path" \
+  --observe _observe_home_bin_path \
+  --desired "present" \
+  --install _add_home_bin_path
+
+# --- ai-healthcheck script ----------------------------------
+_observe_healthcheck() {
+  [[ -x "$HOME/bin/ai-healthcheck" ]] && echo "present" || echo "absent"
+}
+_install_healthcheck() {
+  mkdir -p "$HOME/bin"
+  cat > "$HOME/bin/ai-healthcheck" <<'HCEOF'
+#!/bin/bash
+set -euo pipefail
+echo "=== AI Mac Mini Healthcheck ==="
+echo "brew:    $(command -v brew   || echo 'missing')"
+echo "python:  $(python3 --version 2>/dev/null || echo 'missing')"
+echo "node:    $(node   --version 2>/dev/null || echo 'missing')"
+echo "uv:      $(uv     --version 2>/dev/null || echo 'missing')"
+echo "code:    $(code   --version 2>/dev/null | head -n1 || echo 'missing')"
+echo "ollama:  $(ollama --version 2>/dev/null || echo 'missing')"
+echo ""
+echo "--- VSCode extensions ---"
+code --list-extensions 2>/dev/null | sort || echo "code not available"
+echo ""
+echo "--- Ollama models ---"
+curl -fsS http://127.0.0.1:11434/api/tags 2>/dev/null \
+  | python3 -c "import sys,json; [print(m['name']) for m in json.load(sys.stdin).get('models',[])]" \
+  || echo "Ollama API not reachable"
+echo ""
+echo "--- Docker containers ---"
+docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' 2>/dev/null || echo "Docker not running"
+HCEOF
+  chmod +x "$HOME/bin/ai-healthcheck"
+}
+
+ucc_target \
+  --name    "ai-healthcheck" \
+  --observe _observe_healthcheck \
+  --desired "present" \
+  --install _install_healthcheck \
+  --update  _install_healthcheck
+
+log_info "Run 'ai-healthcheck' to verify the full setup"
 
 ucc_summary "08-dev-tools"
