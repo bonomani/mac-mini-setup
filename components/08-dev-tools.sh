@@ -3,7 +3,7 @@
 # UCC + Basic
 
 # --- CLI tools (brew) ---------------------------------------
-CLI_TOOLS=(jq wget curl htop tmux fzf ripgrep fd tree uv pnpm)
+CLI_TOOLS=(jq wget curl htop tmux fzf ripgrep fd tree uv pnpm gcc gh)
 
 for tool in "${CLI_TOOLS[@]}"; do
   eval "_observe_${tool}() { brew_is_installed '$tool' && echo 'installed' || echo 'absent'; }"
@@ -132,19 +132,50 @@ ucc_target \
   --install _install_iterm2 \
   --update  _update_iterm2
 
-# --- Node.js (brew, LTS) ------------------------------------
-_observe_node() {
-  is_installed node && echo "installed" || echo "absent"
+# --- Node.js 20 LTS -----------------------------------------
+_observe_node20() {
+  node --version 2>/dev/null | grep -q '^v20\.' && echo "node20" || echo "absent"
 }
-_install_node() { ucc_run brew install node; }
-_update_node()  { ucc_run brew upgrade node 2>/dev/null || ucc_run brew install node; }
+_install_node20() { ucc_run brew install node@20 && ucc_run brew link --overwrite --force node@20; }
+_update_node20()  { ucc_run brew upgrade node@20 2>/dev/null || ucc_run brew install node@20; }
 
 ucc_target \
-  --name    "node-lts" \
-  --observe _observe_node \
-  --desired "installed" \
-  --install _install_node \
-  --update  _update_node
+  --name    "node-20-lts" \
+  --observe _observe_node20 \
+  --desired "node20" \
+  --install _install_node20 \
+  --update  _update_node20
+
+# Ensure node@20 is in PATH
+if [[ -d /opt/homebrew/opt/node@20/bin ]]; then
+  export PATH="/opt/homebrew/opt/node@20/bin:$PATH"
+elif [[ -d /usr/local/opt/node@20/bin ]]; then
+  export PATH="/usr/local/opt/node@20/bin:$PATH"
+fi
+
+# --- npm global AI CLI tools --------------------------------
+# Each is a ucc_target: observe via npm ls -g, install via npm install -g
+NPM_GLOBAL_PKGS=(
+  "@openai/codex"            # OpenAI Codex CLI
+  "opencode"                 # OpenCode AI coding assistant
+  "@anthropic-ai/claude-code" # Claude Code CLI
+)
+
+for pkg in "${NPM_GLOBAL_PKGS[@]}"; do
+  _pkg_id="${pkg//[@\/]/_}"  # safe function name
+  eval "_observe_npm_${_pkg_id}() {
+    npm ls -g '${pkg}' --depth=0 &>/dev/null 2>&1 && echo 'installed' || echo 'absent'
+  }"
+  eval "_install_npm_${_pkg_id}() { ucc_run npm install -g '${pkg}'; }"
+  eval "_update_npm_${_pkg_id}()  { ucc_run npm update  -g '${pkg}'; }"
+
+  ucc_target \
+    --name    "npm-global-$pkg" \
+    --observe "_observe_npm_${_pkg_id}" \
+    --desired "installed" \
+    --install "_install_npm_${_pkg_id}" \
+    --update  "_update_npm_${_pkg_id}"
+done
 
 # --- Oh My Zsh ----------------------------------------------
 _observe_omz() {
