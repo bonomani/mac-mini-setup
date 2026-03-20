@@ -40,7 +40,20 @@ _observe_stack() {
   [[ "$running" -ge "$STACK_SERVICES" ]] && echo "running" || echo "stopped"
 }
 
+# Remove any legacy bare containers that would conflict with compose
+_remove_legacy_containers() {
+  local name
+  for name in open-webui flowise openhands n8n qdrant; do
+    if docker inspect "$name" &>/dev/null 2>&1; then
+      log_info "Removing legacy container: $name"
+      docker stop "$name" 2>/dev/null || true
+      docker rm   "$name" 2>/dev/null || true
+    fi
+  done
+}
+
 _start_stack() {
+  _remove_legacy_containers
   ucc_run docker compose -f "$COMPOSE_FILE" up -d
 }
 
