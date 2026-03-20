@@ -56,17 +56,8 @@ ucc_target \
   --update  _disable_app_nap
 
 # --- Reduce transparency (performance) ----------------------
-_observe_transparency() {
-  defaults read com.apple.universalaccess reduceTransparency 2>/dev/null || echo "0"
-}
-_reduce_transparency() { ucc_run defaults write com.apple.universalaccess reduceTransparency -bool true; }
-
-ucc_target \
-  --name    "reduce-transparency=1" \
-  --observe _observe_transparency \
-  --desired "1" \
-  --install _reduce_transparency \
-  --update  _reduce_transparency
+# Note: com.apple.universalaccess is write-protected on macOS 14+ from scripts.
+# Set manually: System Settings → Accessibility → Display → Reduce Transparency
 
 # --- Show hidden files in Finder ----------------------------
 _observe_hidden_files() {
