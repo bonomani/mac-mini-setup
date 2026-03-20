@@ -36,6 +36,11 @@ ucc_target \
   --update  _update_docker
 
 # --- Docker resource settings (48 GB RAM for AI workloads) --
+# UIC preferences: docker-memory-gb (safe default=48) and docker-cpu-count (safe default=10)
+_DOCKER_MEM_GB="${UIC_PREF_DOCKER_MEMORY_GB:-48}"
+_DOCKER_MEM_MIB=$(( _DOCKER_MEM_GB * 1024 ))
+_DOCKER_CPUS="${UIC_PREF_DOCKER_CPU_COUNT:-10}"
+
 _observe_docker_settings() {
   local f="$HOME/Library/Group Containers/group.com.docker/settings.json"
   # File only exists after Docker Desktop is opened at least once → indeterminate
@@ -44,25 +49,26 @@ _observe_docker_settings() {
   mem=$(python3 -c "import json; d=json.load(open('$f')); print(d.get('memoryMiB',0))" 2>/dev/null)
   # Return non-zero (indeterminate) if python3 failed or output is empty
   [[ -z "$mem" ]] && return 1
-  [[ "$mem" -ge 49152 ]] && echo "configured" || echo "needs-update"
+  [[ "$mem" -ge "$_DOCKER_MEM_MIB" ]] && echo "configured" || echo "needs-update"
 }
 
 _configure_docker_settings() {
   local f="$HOME/Library/Group Containers/group.com.docker/settings.json"
   [[ -f "$f" ]] || { log_warn "Docker settings file not found yet — launch Docker first"; return 1; }
-  python3 - <<'EOF'
+  MEM_MIB="$_DOCKER_MEM_MIB" CPU_COUNT="$_DOCKER_CPUS" python3 - <<'EOF'
 import json, os
 path = os.path.expanduser("~/Library/Group Containers/group.com.docker/settings.json")
 with open(path) as f:
     s = json.load(f)
-s["memoryMiB"]   = 49152   # 48 GB
-s["cpus"]        = 12
+s["memoryMiB"]   = int(os.environ["MEM_MIB"])
+s["cpus"]        = int(os.environ["CPU_COUNT"])
 s["swapMiB"]     = 4096
 s["diskSizeMiB"] = 204800  # 200 GB
 with open(path, "w") as f:
     json.dump(s, f, indent=2)
 EOF
   log_warn "Restart Docker Desktop to apply new resource settings"
+  log_info "Docker resources set: memory=${_DOCKER_MEM_GB}GB cpus=${_DOCKER_CPUS}"
 }
 
 ucc_target \

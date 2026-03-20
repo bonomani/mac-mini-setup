@@ -2,7 +2,8 @@
 # Component: Python via pyenv
 # UCC + Basic
 
-PYTHON_VERSION="3.12.3"
+# UIC preference: python-version (safe default = 3.12.3)
+PYTHON_VERSION="${UIC_PREF_PYTHON_VERSION:-3.12.3}"
 
 _observe_pyenv() {
   is_installed pyenv && echo "installed" || echo "absent"
