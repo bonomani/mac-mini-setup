@@ -20,7 +20,9 @@ done
 
 # --- VSCode -------------------------------------------------
 _observe_vscode() {
-  brew_cask_is_installed visual-studio-code && echo "installed" || echo "absent"
+  # Accept manual install (/Applications) or brew cask
+  [[ -d "/Applications/Visual Studio Code.app" ]] && echo "installed" \
+    || (brew_cask_is_installed visual-studio-code && echo "installed" || echo "absent")
 }
 _install_vscode() { ucc_run brew install --cask visual-studio-code; }
 _update_vscode()  { ucc_run brew upgrade --cask visual-studio-code 2>/dev/null || true; }

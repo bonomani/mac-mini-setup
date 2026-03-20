@@ -8,10 +8,15 @@ docker info &>/dev/null || log_error "Docker must be running first (run 03-docke
 # open-webui — chat UI for Ollama (port 3000)
 # ============================================================
 _observe_open_webui() {
-  docker_is_running 'open-webui' && echo 'running' \
-    || (docker_exists 'open-webui' && echo 'stopped' || echo 'absent')
+  if docker_is_running 'open-webui'; then
+    local img; img=$(docker inspect --format '{{.Config.Image}}' open-webui 2>/dev/null)
+    [[ "$img" == "ghcr.io/open-webui/open-webui:main" ]] && echo 'running' || echo 'absent'
+  elif docker_exists 'open-webui'; then echo 'stopped'
+  else echo 'absent'
+  fi
 }
 _install_open_webui() {
+  docker stop 'open-webui' 2>/dev/null || true
   docker_exists 'open-webui' && docker rm 'open-webui' 2>/dev/null || true
   ucc_run docker run -d \
     --name open-webui --restart always \
@@ -34,10 +39,15 @@ ucc_target --name "docker-open-webui" \
 # n8n — workflow automation (port 5678)
 # ============================================================
 _observe_n8n() {
-  docker_is_running 'n8n' && echo 'running' \
-    || (docker_exists 'n8n' && echo 'stopped' || echo 'absent')
+  if docker_is_running 'n8n'; then
+    local img; img=$(docker inspect --format '{{.Config.Image}}' n8n 2>/dev/null)
+    [[ "$img" == "docker.n8n.io/n8nio/n8n" ]] && echo 'running' || echo 'absent'
+  elif docker_exists 'n8n'; then echo 'stopped'
+  else echo 'absent'
+  fi
 }
 _install_n8n() {
+  docker stop 'n8n' 2>/dev/null || true
   docker_exists 'n8n' && docker rm 'n8n' 2>/dev/null || true
   ucc_run docker run -d \
     --name n8n --restart always \
@@ -59,10 +69,15 @@ ucc_target --name "docker-n8n" \
 # qdrant — vector database (port 6333)
 # ============================================================
 _observe_qdrant() {
-  docker_is_running 'qdrant' && echo 'running' \
-    || (docker_exists 'qdrant' && echo 'stopped' || echo 'absent')
+  if docker_is_running 'qdrant'; then
+    local img; img=$(docker inspect --format '{{.Config.Image}}' qdrant 2>/dev/null)
+    [[ "$img" == "qdrant/qdrant" ]] && echo 'running' || echo 'absent'
+  elif docker_exists 'qdrant'; then echo 'stopped'
+  else echo 'absent'
+  fi
 }
 _install_qdrant() {
+  docker stop 'qdrant' 2>/dev/null || true
   docker_exists 'qdrant' && docker rm 'qdrant' 2>/dev/null || true
   ucc_run docker run -d \
     --name qdrant --restart always \
@@ -84,10 +99,15 @@ ucc_target --name "docker-qdrant" \
 # flowise — LLM flow builder (port 3001)
 # ============================================================
 _observe_flowise() {
-  docker_is_running 'flowise' && echo 'running' \
-    || (docker_exists 'flowise' && echo 'stopped' || echo 'absent')
+  if docker_is_running 'flowise'; then
+    local img; img=$(docker inspect --format '{{.Config.Image}}' flowise 2>/dev/null)
+    [[ "$img" == "flowiseai/flowise" ]] && echo 'running' || echo 'absent'
+  elif docker_exists 'flowise'; then echo 'stopped'
+  else echo 'absent'
+  fi
 }
 _install_flowise() {
+  docker stop 'flowise' 2>/dev/null || true
   docker_exists 'flowise' && docker rm 'flowise' 2>/dev/null || true
   ucc_run docker run -d \
     --name flowise --restart always \

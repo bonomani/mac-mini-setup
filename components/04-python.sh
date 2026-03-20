@@ -33,6 +33,19 @@ ucc_target \
   --install _install_pyenv \
   --update  _update_pyenv
 
+# --- xz (required to avoid lzma warning when building Python) --
+_observe_xz() {
+  brew_is_installed xz && echo "installed" || echo "absent"
+}
+_install_xz() { brew install xz; }
+
+ucc_target \
+  --name    "xz" \
+  --observe _observe_xz \
+  --desired "installed" \
+  --install _install_xz \
+  --update  _install_xz
+
 # Load pyenv for subsequent steps
 export PYENV_ROOT="$HOME/.pyenv"
 export PATH="$PYENV_ROOT/bin:$PATH"

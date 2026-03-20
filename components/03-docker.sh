@@ -3,11 +3,17 @@
 # UCC + Basic
 
 _observe_docker_app() {
-  brew_cask_is_installed docker && echo "installed" || echo "absent"
+  # Accept manual install (/Applications) or brew cask
+  [[ -d "/Applications/Docker.app" ]] && echo "installed" \
+    || (brew_cask_is_installed docker && echo "installed" || echo "absent")
 }
 
 _install_docker() {
-  brew install --cask docker
+  if [[ -d "/Applications/Docker.app" ]]; then
+    log_info "Docker.app already present — skipping brew install"
+  else
+    brew install --cask docker
+  fi
   open -a Docker
   log_info "Waiting for Docker daemon..."
   for i in $(seq 1 12); do

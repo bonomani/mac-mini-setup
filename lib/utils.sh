@@ -11,6 +11,14 @@ for _bp in /opt/homebrew/bin/brew /usr/local/bin/brew; do
 done
 unset _bp
 
+# Ensure pyenv shims are in PATH for every component subshell
+if [[ -d "$HOME/.pyenv" ]]; then
+  export PYENV_ROOT="$HOME/.pyenv"
+  export PATH="$PYENV_ROOT/bin:$PATH"
+  eval "$(pyenv init --path 2>/dev/null)" || true
+  eval "$(pyenv init - 2>/dev/null)" || true
+fi
+
 # Check if a command exists
 is_installed() { command -v "$1" &>/dev/null; }
 
