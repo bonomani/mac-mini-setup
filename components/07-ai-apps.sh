@@ -4,6 +4,19 @@
 
 docker info &>/dev/null || log_error "Docker must be running first (run 03-docker.sh)"
 
+# Stop and remove any container currently occupying a host port
+_free_host_port() {
+  local port="$1"
+  local cid
+  cid=$(docker ps --format '{{.ID}} {{.Ports}}' 2>/dev/null \
+    | awk -v p=":${port}->" '$0 ~ p {print $1}')
+  if [[ -n "$cid" ]]; then
+    log_info "Freeing host port ${port} (container ${cid})..."
+    docker stop "$cid" 2>/dev/null || true
+    docker rm   "$cid" 2>/dev/null || true
+  fi
+}
+
 # ============================================================
 # open-webui — chat UI for Ollama (port 3000)
 # ============================================================
@@ -16,6 +29,7 @@ _observe_open_webui() {
   fi
 }
 _install_open_webui() {
+  _free_host_port 3000
   docker stop 'open-webui' 2>/dev/null || true
   docker_exists 'open-webui' && docker rm 'open-webui' 2>/dev/null || true
   ucc_run docker run -d \
@@ -47,6 +61,7 @@ _observe_n8n() {
   fi
 }
 _install_n8n() {
+  _free_host_port 5678
   docker stop 'n8n' 2>/dev/null || true
   docker_exists 'n8n' && docker rm 'n8n' 2>/dev/null || true
   ucc_run docker run -d \
@@ -77,6 +92,7 @@ _observe_qdrant() {
   fi
 }
 _install_qdrant() {
+  _free_host_port 6333
   docker stop 'qdrant' 2>/dev/null || true
   docker_exists 'qdrant' && docker rm 'qdrant' 2>/dev/null || true
   ucc_run docker run -d \
@@ -107,6 +123,7 @@ _observe_flowise() {
   fi
 }
 _install_flowise() {
+  _free_host_port 3001
   docker stop 'flowise' 2>/dev/null || true
   docker_exists 'flowise' && docker rm 'flowise' 2>/dev/null || true
   ucc_run docker run -d \
