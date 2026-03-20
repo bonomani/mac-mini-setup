@@ -32,9 +32,11 @@ ucc_target \
 # --- Docker resource settings (48 GB RAM for AI workloads) --
 _observe_docker_settings() {
   local f="$HOME/Library/Group Containers/group.com.docker/settings.json"
-  [[ -f "$f" ]] || { echo "absent"; return; }
+  [[ -f "$f" ]] || { echo "absent"; return 0; }
   local mem
   mem=$(python3 -c "import json; d=json.load(open('$f')); print(d.get('memoryMiB',0))" 2>/dev/null)
+  # Return non-zero (indeterminate) if python3 failed or output is empty
+  [[ -z "$mem" ]] && return 1
   [[ "$mem" -ge 49152 ]] && echo "configured" || echo "needs-update"
 }
 

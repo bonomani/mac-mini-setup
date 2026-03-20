@@ -2,28 +2,41 @@
 # ============================================================
 #  UCC + Basic — Universal Convergence Contract engine
 #  Implements Steps 0-6 of UCC/2.0 in bash
+#
+#  Three-field result model (normative):
+#    observation : ok | indeterminate | failed
+#    outcome     : converged | changed | unchanged | failed
+#    completion  : complete | pending  (when outcome=changed)
+#
+#  Qualifiers (conditional):
+#    failure_class : retryable | permanent  (when outcome=failed)
+#    inhibitor     : dry_run | policy       (when outcome=unchanged)
+#    reason        : match | updated | verify_failed | no_install_fn
+#
+#  Mandatory state fields:
+#    before  : observed state before action  (when observation=ok)
+#    diff    : {was,is} or empty             (when observation=ok)
+#    after   : observed state after action   (when outcome=changed, completion=complete)
+#    proof   : verify_pass | update_applied  (when outcome=changed)
+#
+#  Five-field counters (per-target in NOTICE, totals in summary):
+#    Observed Applied Changed Failed Skipped
 # ============================================================
 
-# --- Runtime context (set by install.sh or per-script) ------
-UCC_DRY_RUN=${UCC_DRY_RUN:-0}   # 1 = dry-run  (inhibitor=dry_run)
+# --- Runtime context ----------------------------------------
+UCC_DRY_RUN=${UCC_DRY_RUN:-0}   # 1 = dry-run (inhibitor=dry_run)
 UCC_MODE=${UCC_MODE:-install}    # install | update
 UCC_DEBUG=${UCC_DEBUG:-0}        # 1 = show DEBUG lines
 UCC_CORRELATION_ID=${UCC_CORRELATION_ID:-$(uuidgen 2>/dev/null || date +%s%N)}
 
-# --- Per-script counters ------------------------------------
+# --- Per-script running totals ------------------------------
 _UCC_OBSERVED=0
 _UCC_APPLIED=0
 _UCC_CHANGED=0
 _UCC_FAILED=0
 _UCC_SKIPPED=0
 
-# --- Structured logging (UCC-aligned levels) ----------------
-#   INFO   – what is being processed
-#   NOTICE – final observable state + counters
-#   DEBUG  – diagnostics (shown only when UCC_DEBUG=1)
-#   WARN   – degraded but non-fatal
-#   ERROR  – blocking failure (exits)
-
+# --- Structured logging -------------------------------------
 _ts() { date '+%H:%M:%S'; }
 log_info()   { echo "$(_ts) [INFO]   $*"; }
 log_notice() { echo "$(_ts) [NOTICE] $*"; }
@@ -31,7 +44,7 @@ log_debug()  { [[ "$UCC_DEBUG" == "1" ]] && echo "$(_ts) [DEBUG]  $*" || true; }
 log_warn()   { echo "$(_ts) [WARN]   $*" >&2; }
 log_error()  { echo "$(_ts) [ERROR]  $*" >&2; exit 1; }
 
-# --- Run or print command (dry-run gate) --------------------
+# --- Dry-run gate -------------------------------------------
 ucc_run() {
   if [[ "$UCC_DRY_RUN" == "1" ]]; then
     log_debug "DRY-RUN would execute: $*"
@@ -41,19 +54,7 @@ ucc_run() {
 }
 
 # ============================================================
-#  ucc_target — core UCC lifecycle per target
-#
-#  Usage:
-#    ucc_target \
-#      --name     "homebrew"         \
-#      --observe  _observe_homebrew  \   # fn that echoes current state
-#      --desired  "installed"        \   # desired state string
-#      --install  _install_homebrew  \   # fn called when state != desired (install mode)
-#      --update   _update_homebrew       # fn called in update mode (optional)
-#
-#  observe fn must echo exactly the current state string.
-#  install/update fns return 0 on success, non-zero on failure.
-#  After install, observe is re-run to verify (Step 5).
+#  ucc_target — full UCC Steps 0-6 lifecycle per target
 # ============================================================
 ucc_target() {
   local name="" observe_fn="" desired="" install_fn="" update_fn=""
@@ -72,71 +73,84 @@ ucc_target() {
   log_info "Target: $name"
 
   # Step 1 – Observe current state
-  local observed
-  observed=$($observe_fn 2>/dev/null) || observed="unknown"
-  log_debug "observed=$observed desired=$desired mode=$UCC_MODE"
+  local observed obs_exit
+  observed=$($observe_fn 2>/dev/null)
+  obs_exit=$?
   _UCC_OBSERVED=$(( _UCC_OBSERVED + 1 ))
 
-  # Step 3 – Diff
+  # Step 1 result: observation=indeterminate when observe infrastructure fails
+  # (non-zero exit OR empty output = state cannot be determined)
+  if [[ $obs_exit -ne 0 || -z "$observed" ]]; then
+    _UCC_SKIPPED=$(( _UCC_SKIPPED + 1 ))
+    log_notice "$name | observation=indeterminate | Observed=1 Applied=0 Changed=0 Failed=0 Skipped=1"
+    return 0
+  fi
+
+  log_debug "observed=\"$observed\" desired=\"$desired\" mode=$UCC_MODE"
+
+  # Step 3 – Diff: is observed state == desired?
   if [[ "$observed" == "$desired" ]]; then
-    # State already matches desired
+
     if [[ "$UCC_MODE" == "update" && -n "$update_fn" ]]; then
-      # Update mode: run upgrade even if already installed
+      # Update mode: run upgrade even when state already matches
       if [[ "$UCC_DRY_RUN" == "1" ]]; then
-        log_notice "$name | Observed=1 Applied=0 Changed=0 Failed=0 Skipped=1 | outcome=unchanged inhibitor=dry_run"
         _UCC_SKIPPED=$(( _UCC_SKIPPED + 1 ))
+        log_notice "$name | observation=ok outcome=unchanged inhibitor=dry_run | before=\"$observed\" diff=empty | Observed=1 Applied=0 Changed=0 Failed=0 Skipped=1"
         return 0
       fi
       _UCC_APPLIED=$(( _UCC_APPLIED + 1 ))
       if $update_fn; then
         _UCC_CHANGED=$(( _UCC_CHANGED + 1 ))
-        log_notice "$name | Observed=1 Applied=1 Changed=1 Failed=0 Skipped=0 | outcome=changed reason=updated"
+        log_notice "$name | observation=ok outcome=changed completion=complete | before=\"$observed\" diff=empty proof=update_applied reason=updated | Observed=1 Applied=1 Changed=1 Failed=0 Skipped=0"
       else
         _UCC_FAILED=$(( _UCC_FAILED + 1 ))
-        log_notice "$name | Observed=1 Applied=1 Changed=0 Failed=1 Skipped=0 | outcome=failed failure_class=retryable"
+        log_notice "$name | observation=ok outcome=failed failure_class=retryable | before=\"$observed\" diff=empty | Observed=1 Applied=1 Changed=0 Failed=1 Skipped=0"
       fi
     else
-      # Already converged, nothing to do
-      log_notice "$name | Observed=1 Applied=0 Changed=0 Failed=0 Skipped=0 | outcome=converged reason=match"
+      # Already at desired state — converged
+      log_notice "$name | observation=ok outcome=converged | before=\"$observed\" diff=empty reason=match | Observed=1 Applied=0 Changed=0 Failed=0 Skipped=0"
     fi
     return 0
   fi
 
-  # Diff non-empty — Step 4: Apply transition
+  # Diff non-empty
+  local diff_str="{was=\"$observed\",is=\"$desired\"}"
+
+  # Step 4: Apply transition
   if [[ "$UCC_DRY_RUN" == "1" ]]; then
-    log_notice "$name | Observed=1 Applied=0 Changed=0 Failed=0 Skipped=1 | outcome=unchanged inhibitor=dry_run | was=\"$observed\" desired=\"$desired\""
     _UCC_SKIPPED=$(( _UCC_SKIPPED + 1 ))
+    log_notice "$name | observation=ok outcome=unchanged inhibitor=dry_run | before=\"$observed\" diff=$diff_str | Observed=1 Applied=0 Changed=0 Failed=0 Skipped=1"
     return 0
   fi
 
   if [[ -z "$install_fn" ]]; then
-    log_warn "$name — no install function defined, skipping"
     _UCC_SKIPPED=$(( _UCC_SKIPPED + 1 ))
-    log_notice "$name | Observed=1 Applied=0 Changed=0 Failed=0 Skipped=1 | outcome=unchanged inhibitor=policy reason=no_install_fn"
+    log_notice "$name | observation=ok outcome=unchanged inhibitor=policy | before=\"$observed\" diff=$diff_str reason=no_install_fn | Observed=1 Applied=0 Changed=0 Failed=0 Skipped=1"
     return 0
   fi
 
   _UCC_APPLIED=$(( _UCC_APPLIED + 1 ))
   if $install_fn; then
-    # Step 5 – Verify
-    local verified
-    verified=$($observe_fn 2>/dev/null) || verified="unknown"
-    log_debug "post-install observed=$verified"
-    if [[ "$verified" == "$desired" ]]; then
+    # Step 5 – Verify: re-observe after transition
+    local verified ver_exit
+    verified=$($observe_fn 2>/dev/null)
+    ver_exit=$?
+    log_debug "post-install observed=\"$verified\""
+    if [[ $ver_exit -eq 0 && "$verified" == "$desired" ]]; then
       _UCC_CHANGED=$(( _UCC_CHANGED + 1 ))
-      log_notice "$name | Observed=1 Applied=1 Changed=1 Failed=0 Skipped=0 | outcome=changed completion=complete"
+      log_notice "$name | observation=ok outcome=changed completion=complete | before=\"$observed\" diff=$diff_str after=\"$verified\" proof=verify_pass | Observed=1 Applied=1 Changed=1 Failed=0 Skipped=0"
     else
       _UCC_FAILED=$(( _UCC_FAILED + 1 ))
-      log_notice "$name | Observed=1 Applied=1 Changed=0 Failed=1 Skipped=0 | outcome=failed reason=verify_failed | verified=\"$verified\""
+      log_notice "$name | observation=ok outcome=failed failure_class=retryable | before=\"$observed\" diff=$diff_str after=\"$verified\" reason=verify_failed | Observed=1 Applied=1 Changed=0 Failed=1 Skipped=0"
     fi
   else
     _UCC_FAILED=$(( _UCC_FAILED + 1 ))
-    log_notice "$name | Observed=1 Applied=1 Changed=0 Failed=1 Skipped=0 | outcome=failed failure_class=retryable"
+    log_notice "$name | observation=ok outcome=failed failure_class=retryable | before=\"$observed\" diff=$diff_str | Observed=1 Applied=1 Changed=0 Failed=1 Skipped=0"
   fi
 }
 
 # ============================================================
-#  ucc_summary — emit final counters for this script
+#  ucc_summary — final counters for this script
 #  Returns 1 if any target failed.
 # ============================================================
 ucc_summary() {

@@ -15,12 +15,23 @@ MODELS=(
   "nomic-embed-text"       # embedding model
 )
 
-# --- Step 0: Precondition — macOS 14+ required by Ollama ----
-if [[ "$MACOS_MAJOR" -lt 14 ]]; then
-  log_warn "Ollama requires macOS 14 (Sonoma) or later — current: macOS $MACOS_MAJOR. Skipping."
-  ucc_summary "05-ollama"
-  exit 0
-fi
+# --- Step 0: Precondition — macOS 14+ (via ucc_target) ------
+_observe_macos_prereq() {
+  [[ "$MACOS_MAJOR" -ge 14 ]] && echo "supported" || echo "unsupported"
+}
+_fail_macos_prereq() {
+  log_warn "Ollama requires macOS 14 (Sonoma) or later — current: macOS $MACOS_MAJOR"
+  return 1  # permanent failure — cannot install on this OS version
+}
+
+ucc_target \
+  --name    "macos-14-precondition" \
+  --observe _observe_macos_prereq \
+  --desired "supported" \
+  --install _fail_macos_prereq
+
+# Abort if precondition not met
+[[ "$MACOS_MAJOR" -ge 14 ]] || { ucc_summary "05-ollama"; exit 0; }
 
 # --- Ollama binary ------------------------------------------
 _observe_ollama() {

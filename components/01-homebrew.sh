@@ -62,12 +62,26 @@ if ! is_installed brew; then
 fi
 
 # Always update package index after install (not upgrade)
+# brew update has no observable desired state to diff — it is a GIC action,
+# not a UCC convergence target. We log and run it unconditionally.
 if is_installed brew && [[ "$UCC_MODE" == "install" ]]; then
   log_info "Updating Homebrew package index..."
   ucc_run brew update
 fi
 
-# Disable analytics (idempotent)
-is_installed brew && ucc_run brew analytics off
+# --- Disable analytics (observable state → ucc_target) -----
+_observe_brew_analytics() {
+  brew analytics state 2>/dev/null | grep -qi "disabled" && echo "off" || echo "on"
+}
+_disable_brew_analytics() { ucc_run brew analytics off; }
+
+if is_installed brew; then
+  ucc_target \
+    --name    "brew-analytics=off" \
+    --observe _observe_brew_analytics \
+    --desired "off" \
+    --install _disable_brew_analytics \
+    --update  _disable_brew_analytics
+fi
 
 ucc_summary "01-homebrew"
