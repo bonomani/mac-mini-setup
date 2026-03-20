@@ -158,8 +158,8 @@ fi
 # --- npm global AI CLI tools --------------------------------
 # Each is a ucc_target: observe via npm ls -g, install via npm install -g
 NPM_GLOBAL_PKGS=(
-  "@openai/codex"            # OpenAI Codex CLI
-  "opencode"                 # OpenCode AI coding assistant
+  "@openai/codex"             # OpenAI Codex CLI
+  # "opencode"                # OpenCode — not on npm registry (install manually from https://opencode.ai)
   "@anthropic-ai/claude-code" # Claude Code CLI
 )
 
