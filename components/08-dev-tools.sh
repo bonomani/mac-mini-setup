@@ -153,7 +153,15 @@ ucc_target \
 _observe_node20() {
   node --version 2>/dev/null | grep -q '^v20\.' && echo "node20" || echo "absent"
 }
-_install_node20() { ucc_run brew install node@20 && ucc_run brew link --overwrite --force node@20; }
+_install_node20() {
+  # If already installed but unlinked (e.g. opencode pulls in node-latest and unlinks node@20),
+  # just re-link — avoids the spurious "already installed" brew warning.
+  if brew list node@20 &>/dev/null 2>&1; then
+    ucc_run brew link --overwrite --force node@20
+  else
+    ucc_run brew install node@20 && ucc_run brew link --overwrite --force node@20
+  fi
+}
 _update_node20()  { ucc_run brew upgrade node@20 2>/dev/null || ucc_run brew install node@20; }
 
 ucc_target \

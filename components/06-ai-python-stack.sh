@@ -9,8 +9,8 @@ _pip_group() {
   local fn="${name//[^a-zA-Z0-9]/_}"
 
   eval "_observe_grp_${fn}() { pip_is_installed '${first}' && echo 'installed' || echo 'absent'; }"
-  eval "_install_grp_${fn}() { ucc_run pip install ${pkgs}; }"
-  eval "_update_grp_${fn}()  { ucc_run pip install --upgrade ${pkgs}; }"
+  eval "_install_grp_${fn}() { ucc_run pip install -q ${pkgs}; }"
+  eval "_update_grp_${fn}()  { ucc_run pip install -q --upgrade ${pkgs}; }"
 
   ucc_target \
     --name    "pip-group-$name" \
@@ -62,7 +62,7 @@ _pip_group "utilities" \
 
 _pip_group "optimum" \
   "optimum" \
-  "optimum optimum[exporters]"
+  "optimum"
 
 # Verify Metal/MPS availability
 if [[ "$UCC_DRY_RUN" != "1" ]] && is_installed python3; then
