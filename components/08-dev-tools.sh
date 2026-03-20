@@ -3,7 +3,7 @@
 # UCC + Basic
 
 # --- CLI tools (brew) ---------------------------------------
-CLI_TOOLS=(jq wget curl htop tmux fzf ripgrep fd tree uv pnpm gcc gh llama.cpp)
+CLI_TOOLS=(jq wget curl htop tmux fzf ripgrep fd tree uv pnpm gcc gh llama.cpp opencode)
 
 for tool in "${CLI_TOOLS[@]}"; do
   eval "_observe_${tool}() { brew_is_installed '$tool' && echo 'installed' || echo 'absent'; }"
@@ -174,7 +174,6 @@ fi
 # Each is a ucc_target: observe via npm ls -g, install via npm install -g
 NPM_GLOBAL_PKGS=(
   "@openai/codex"             # OpenAI Codex CLI
-  # "opencode"                # OpenCode — not on npm registry (install manually from https://opencode.ai)
   "@anthropic-ai/claude-code" # Claude Code CLI
 )
 
