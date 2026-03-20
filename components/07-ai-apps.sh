@@ -6,7 +6,7 @@ docker info &>/dev/null || log_error "Docker must be running first (run 03-docke
 
 COMPOSE_DIR="$HOME/.ai-stack"
 COMPOSE_FILE="$COMPOSE_DIR/docker-compose.yml"
-COMPOSE_MARKER="# ai-stack v1"   # bump to force re-deploy
+COMPOSE_MARKER="# ai-stack v2"   # bump to force re-deploy
 STACK_SERVICES=5                 # open-webui, flowise, openhands, n8n, qdrant
 
 # ============================================================

@@ -1,4 +1,4 @@
-# ai-stack v1
+# ai-stack v2
 services:
   open-webui:
     image: ghcr.io/open-webui/open-webui:main
@@ -21,7 +21,7 @@ services:
       - flowise_data:/root/.flowise
 
   openhands:
-    image: docker.all-hands.dev/all-hands-ai/openhands:main
+    image: docker.openhands.dev/openhands/openhands:1.5
     container_name: openhands
     restart: always
     ports:
@@ -30,7 +30,7 @@ services:
       - openhands_state:/app/state
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
-      - SANDBOX_RUNTIME_CONTAINER_IMAGE=docker.all-hands.dev/all-hands-ai/runtime:0.40-nikolaik
+      - SANDBOX_RUNTIME_CONTAINER_IMAGE=docker.openhands.dev/openhands/runtime:0.34-nikolaik
 
   n8n:
     image: docker.n8n.io/n8nio/n8n
