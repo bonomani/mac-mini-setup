@@ -65,6 +65,7 @@ VSCODE_EXTENSIONS=(
   "ms-vscode.cpptools"
   "continue.continue"
   "eamodio.gitlens"
+  "ms-vscode-remote.remote-containers"
 )
 # Note: Claude Code is a CLI tool (npm), not a VSCode marketplace extension
 

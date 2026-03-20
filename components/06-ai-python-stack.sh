@@ -30,7 +30,7 @@ _pip_group "huggingface" \
 
 _pip_group "langchain" \
   "langchain" \
-  "langchain langchain-community langchain-ollama"
+  "langchain langchain-community langchain-ollama langgraph"
 
 _pip_group "llamaindex" \
   "llama-index" \

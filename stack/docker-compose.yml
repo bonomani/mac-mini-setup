@@ -1,0 +1,58 @@
+# ai-stack v1
+services:
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    restart: always
+    ports:
+      - "3000:8080"
+    volumes:
+      - open-webui:/app/backend/data
+    environment:
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+
+  flowise:
+    image: flowiseai/flowise
+    container_name: flowise
+    restart: always
+    ports:
+      - "3001:3000"
+    volumes:
+      - flowise_data:/root/.flowise
+
+  openhands:
+    image: docker.all-hands.dev/all-hands-ai/openhands:main
+    container_name: openhands
+    restart: always
+    ports:
+      - "3002:3000"
+    volumes:
+      - openhands_state:/app/state
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - SANDBOX_RUNTIME_CONTAINER_IMAGE=docker.all-hands.dev/all-hands-ai/runtime:0.40-nikolaik
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n
+    container_name: n8n
+    restart: always
+    ports:
+      - "5678:5678"
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+  qdrant:
+    image: qdrant/qdrant
+    container_name: qdrant
+    restart: always
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_storage:/qdrant/storage
+
+volumes:
+  open-webui:
+  flowise_data:
+  openhands_state:
+  n8n_data:
+  qdrant_storage:
