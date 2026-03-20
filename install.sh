@@ -2,7 +2,24 @@
 # ============================================================
 #  Mac Mini AI Setup — Main installer
 #  Optimized for Apple Silicon + 64 GB RAM
-#  UCC + Basic compliant
+# ============================================================
+#
+#  Framework references (coding standards — do not remove)
+#  --------------------------------------------------------
+#  UIC  Universal Intent Contract
+#       Repo  : https://github.com/bonomani/uic
+#       WSL   : /home/bc/repos/github/bonomani/uic
+#       Win   : /mnt/c/scripts/Uic
+#
+#  UCC  Universal Convergence Contract engine
+#       Repo  : https://github.com/bonomani/ucc
+#       WSL   : /home/bc/repos/github/bonomani/ucc
+#       Win   : /mnt/c/scripts/Ucc
+#
+#  All components MUST be UCC + Basic compliant:
+#    - declare intent with ucc_target (observe / desired / install / update)
+#    - emit structured NOTICE lines (observation / outcome / diff / proof)
+#    - respect UCC_MODE (install | update) and UCC_DRY_RUN
 # ============================================================
 set -euo pipefail
 
