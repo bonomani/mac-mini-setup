@@ -35,12 +35,16 @@ _install_brew() {
 
 _setup_brew_path() {
   if [[ -x /opt/homebrew/bin/brew ]]; then
-    # Apple Silicon
-    echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
+    # Apple Silicon — guard against duplicate entries (idempotent)
+    if ! grep -q 'opt/homebrew/bin/brew shellenv' ~/.zprofile 2>/dev/null; then
+      echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
+    fi
     eval "$(/opt/homebrew/bin/brew shellenv)"
   elif [[ -x /usr/local/bin/brew ]]; then
-    # Intel Mac
-    echo 'eval "$(/usr/local/bin/brew shellenv)"' >> ~/.zprofile
+    # Intel Mac — guard against duplicate entries (idempotent)
+    if ! grep -q 'usr/local/bin/brew shellenv' ~/.zprofile 2>/dev/null; then
+      echo 'eval "$(/usr/local/bin/brew shellenv)"' >> ~/.zprofile
+    fi
     eval "$(/usr/local/bin/brew shellenv)"
   fi
 }

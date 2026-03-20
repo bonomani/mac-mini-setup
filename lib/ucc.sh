@@ -78,9 +78,17 @@ ucc_target() {
   obs_exit=$?
   _UCC_OBSERVED=$(( _UCC_OBSERVED + 1 ))
 
-  # Step 1 result: observation=indeterminate when observe infrastructure fails
-  # (non-zero exit OR empty output = state cannot be determined)
-  if [[ $obs_exit -ne 0 || -z "$observed" ]]; then
+  # observation=failed: observe function crashed (non-zero exit) —
+  #   the observation infrastructure itself did not complete
+  if [[ $obs_exit -ne 0 ]]; then
+    _UCC_SKIPPED=$(( _UCC_SKIPPED + 1 ))
+    log_notice "$name | observation=failed failure_class=retryable | Observed=1 Applied=0 Changed=0 Failed=0 Skipped=1"
+    return 0
+  fi
+
+  # observation=indeterminate: observe ran (exit 0) but produced no usable state —
+  #   target exists but its state cannot be classified as desired or not
+  if [[ -z "$observed" ]]; then
     _UCC_SKIPPED=$(( _UCC_SKIPPED + 1 ))
     log_notice "$name | observation=indeterminate | Observed=1 Applied=0 Changed=0 Failed=0 Skipped=1"
     return 0

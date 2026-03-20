@@ -35,9 +35,14 @@ ucc_target --name "ai-stack-compose-file" \
 # ============================================================
 _observe_stack() {
   [[ -f "$COMPOSE_FILE" ]] || { echo "stopped"; return; }
-  local running
-  running=$(docker compose -f "$COMPOSE_FILE" ps --status running --quiet 2>/dev/null | wc -l | tr -d ' ')
-  [[ "$running" -ge "$STACK_SERVICES" ]] && echo "running" || echo "stopped"
+  # Check each service by name via docker inspect — avoids fragile wc -l
+  # and does not depend on --status flag availability across compose versions
+  local svc state
+  for svc in open-webui flowise openhands n8n qdrant; do
+    state=$(docker inspect --format '{{.State.Status}}' "$svc" 2>/dev/null) || { echo "stopped"; return; }
+    [[ "$state" == "running" ]] || { echo "stopped"; return; }
+  done
+  echo "running"
 }
 
 # Remove any legacy bare containers that would conflict with compose

@@ -27,6 +27,14 @@ _observe_git_user() {
 }
 
 _configure_git() {
+  # OBS-1 compliance: observe is read-only; interactive input is in install only.
+  # Guard: skip silently in non-interactive shells (CI, subshells without a tty).
+  if [[ ! -t 0 ]]; then
+    log_warn "git-global-config: non-interactive shell — skipping. Set manually:"
+    log_warn "  git config --global user.name  'Your Name'"
+    log_warn "  git config --global user.email 'you@example.com'"
+    return 1
+  fi
   read -rp "Git username: " GIT_USER
   read -rp "Git email:    " GIT_EMAIL
   git config --global user.name  "$GIT_USER"
