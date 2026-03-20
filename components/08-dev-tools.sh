@@ -3,7 +3,7 @@
 # UCC + Basic
 
 # --- CLI tools (brew) ---------------------------------------
-CLI_TOOLS=(jq wget curl htop tmux fzf ripgrep fd tree uv pnpm gcc gh)
+CLI_TOOLS=(jq wget curl htop tmux fzf ripgrep fd tree uv pnpm gcc gh llama.cpp)
 
 for tool in "${CLI_TOOLS[@]}"; do
   eval "_observe_${tool}() { brew_is_installed '$tool' && echo 'installed' || echo 'absent'; }"
@@ -134,6 +134,20 @@ ucc_target \
   --desired "installed" \
   --install _install_iterm2 \
   --update  _update_iterm2
+
+# --- LM Studio — GUI for GGUF models -----------------------
+_observe_lmstudio() {
+  brew_cask_is_installed lm-studio && echo "installed" || echo "absent"
+}
+_install_lmstudio() { ucc_run brew install --cask lm-studio; }
+_update_lmstudio()  { ucc_run brew upgrade --cask lm-studio 2>/dev/null || true; }
+
+ucc_target \
+  --name    "lm-studio" \
+  --observe _observe_lmstudio \
+  --desired "installed" \
+  --install _install_lmstudio \
+  --update  _update_lmstudio
 
 # --- Node.js 20 LTS -----------------------------------------
 _observe_node20() {

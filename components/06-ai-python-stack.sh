@@ -60,6 +60,10 @@ _pip_group "utilities" \
   "python-dotenv" \
   "python-dotenv rich tqdm"
 
+_pip_group "optimum" \
+  "optimum" \
+  "optimum optimum[exporters]"
+
 # Verify Metal/MPS availability
 if [[ "$UCC_DRY_RUN" != "1" ]] && is_installed python3; then
   python3 - <<'EOF' 2>/dev/null || true
