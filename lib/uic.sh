@@ -115,17 +115,19 @@ uic_preference() {
   done
 
   # UIC §4 invariant: minimum 2 options
+  # Use echo (adds trailing newline) so wc -l counts lines not newlines:
+  # "mps|cpu" → "mps\ncpu\n" → wc -l = 2  (printf '%s' gives 1 newline = wrong)
   local opt_count
-  opt_count=$(printf '%s' "$options" | tr '|' '\n' | wc -l | tr -d ' ')
+  opt_count=$(echo "$options" | tr '|' '\n' | wc -l | tr -d ' ')
   if [[ "$opt_count" -lt 2 ]]; then
-    log_warn "UIC defect: preference '$name' has fewer than 2 options — skipping"
-    return 1
+    log_warn "UIC defect: preference '$name' has fewer than 2 options ($opt_count found) — skipping"
+    return 0   # warn but do not abort the script (set -e safe)
   fi
 
   # UIC §4 invariant: rationale mandatory
   if [[ -z "$rationale" ]]; then
     log_warn "UIC defect: preference '$name' missing rationale — skipping"
-    return 1
+    return 0   # warn but do not abort the script (set -e safe)
   fi
 
   # Resolve: operator file > safe default
@@ -133,7 +135,7 @@ uic_preference() {
   local file_val
   file_val="$(_uic_file_val "$name")"
   if [[ -n "$file_val" ]]; then
-    if printf '%s' "$options" | tr '|' '\n' | grep -qx "$file_val" 2>/dev/null; then
+    if echo "$options" | tr '|' '\n' | grep -qx "$file_val" 2>/dev/null; then
       resolved="$file_val"
     else
       log_warn "UIC: preference '$name' — operator value '$file_val' not in options ($options); using safe default '$default'"
