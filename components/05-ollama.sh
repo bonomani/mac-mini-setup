@@ -90,6 +90,9 @@ if [[ "$UCC_DRY_RUN" != "1" ]]; then
 fi
 
 # --- Pull models --------------------------------------------
+# Skipping model downloads — run manually: ollama pull <model>
+# Uncomment the block below to re-enable automatic pulls.
+: '
 for model in "${MODELS[@]}"; do
   _name="ollama-model-${model//:/-}"
 
@@ -108,6 +111,7 @@ for model in "${MODELS[@]}"; do
     --install "_pull_model_${_name//[^a-zA-Z0-9_]/_}" \
     --update  "_pull_model_${_name//[^a-zA-Z0-9_]/_}"
 done
+'
 
 log_info "Ollama API  → http://127.0.0.1:11434"
 log_info "Test with   → ollama run llama3.2"
