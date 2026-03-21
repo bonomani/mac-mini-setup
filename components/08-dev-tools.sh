@@ -146,7 +146,7 @@ ucc_target \
 # --- Node.js 20 LTS -----------------------------------------
 _observe_node20() {
   node --version 2>/dev/null | grep -q '^v20\.' || { echo "absent"; return; }
-  if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-install-only}" == "always-upgrade" ]]; then
+  if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-always-upgrade}" == "always-upgrade" ]]; then
     _brew_is_outdated "node@20" && { echo "outdated"; return; }
   fi
   echo "current"
@@ -295,7 +295,7 @@ _observe_ariaflow() {
   brew_is_installed ariaflow || { echo "absent"; return; }
   # Require lifecycle command (alpha.3+); older builds return "outdated" → triggers upgrade
   ariaflow lifecycle &>/dev/null 2>&1 || { echo "outdated"; return; }
-  if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-install-only}" == "always-upgrade" ]]; then
+  if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-always-upgrade}" == "always-upgrade" ]]; then
     _brew_is_outdated ariaflow && { echo "outdated"; return; }
   fi
   echo "current"

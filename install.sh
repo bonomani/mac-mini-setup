@@ -191,9 +191,9 @@ uic_preference \
 
 uic_preference \
   --name      "package-update-policy" \
-  --default   "install-only" \
+  --default   "always-upgrade" \
   --options   "install-only|always-upgrade" \
-  --rationale "install-only: skip already-installed packages; always-upgrade: also upgrade outdated packages on each run without needing --mode update" \
+  --rationale "always-upgrade: upgrade outdated packages on each run; install-only: skip already-installed packages (use to speed up runs when upgrades are not needed)" \
   --scope     "global"
 
 # --- Resolve (evaluate gates, report preferences) -----------
@@ -202,7 +202,7 @@ uic_resolve || _UIC_RC=$?
 uic_export
 
 # Cache brew outdated list once (skipped when policy=install-only to avoid network call)
-if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-install-only}" == "always-upgrade" ]] \
+if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-always-upgrade}" == "always-upgrade" ]] \
     && command -v brew &>/dev/null; then
   log_info "Caching brew outdated list (package-update-policy=always-upgrade)..."
   brew_cache_outdated

@@ -55,7 +55,7 @@ _brew_cask_is_outdated() { echo "${_BREW_CASK_OUTDATED_CACHE:-}" | grep -qx "$1"
 brew_observe() {
   local pkg="$1"
   brew_is_installed "$pkg" || { echo "absent"; return; }
-  if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-install-only}" == "always-upgrade" ]]; then
+  if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-always-upgrade}" == "always-upgrade" ]]; then
     _brew_is_outdated "$pkg" && { echo "outdated"; return; }
   fi
   echo "current"
@@ -64,7 +64,7 @@ brew_observe() {
 brew_cask_observe() {
   local pkg="$1"
   brew_cask_is_installed "$pkg" || { echo "absent"; return; }
-  if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-install-only}" == "always-upgrade" ]]; then
+  if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-always-upgrade}" == "always-upgrade" ]]; then
     _brew_cask_is_outdated "$pkg" && { echo "outdated"; return; }
   fi
   echo "current"

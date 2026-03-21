@@ -7,7 +7,7 @@ PYTHON_VERSION="${UIC_PREF_PYTHON_VERSION:-3.12.3}"
 
 _observe_pyenv() {
   is_installed pyenv || { echo "absent"; return; }
-  if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-install-only}" == "always-upgrade" ]]; then
+  if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-always-upgrade}" == "always-upgrade" ]]; then
     _brew_is_outdated pyenv && { echo "outdated"; return; }
   fi
   echo "current"
