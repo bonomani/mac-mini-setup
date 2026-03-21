@@ -302,6 +302,10 @@ _observe_ariaflow() {
 }
 _install_ariaflow() {
   ucc_run brew tap bonomani/ariaflow
+  # Unload running launchd agents before upgrade so they restart with the new binary
+  for _plist in ~/Library/LaunchAgents/com.ariaflow.*.plist; do
+    [[ -f "$_plist" ]] && ucc_run launchctl unload "$_plist" 2>/dev/null || true
+  done
   ucc_run brew upgrade ariaflow 2>/dev/null || ucc_run brew install ariaflow
 }
 
