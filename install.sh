@@ -206,7 +206,7 @@ uic_export
 if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-always-upgrade}" == "always-upgrade" ]] \
     && command -v brew &>/dev/null; then
   log_info "Updating Homebrew index (package-update-policy=always-upgrade)..."
-  brew update --quiet 2>/dev/null || true
+  brew update --force --quiet 2>/dev/null || true
   log_info "Caching brew outdated list..."
   brew_cache_outdated
 fi
