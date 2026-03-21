@@ -275,11 +275,13 @@ ucc_target \
 
 # --- ariaflow (brew tap bonomani/ariaflow) ------------------
 _observe_ariaflow() {
-  brew_is_installed ariaflow && echo "installed" || echo "absent"
+  brew_is_installed ariaflow || { echo "absent"; return; }
+  # Require lifecycle command (alpha.3+); older builds return "outdated" → triggers upgrade
+  ariaflow lifecycle &>/dev/null 2>&1 && echo "installed" || echo "outdated"
 }
 _install_ariaflow() {
   ucc_run brew tap bonomani/ariaflow
-  ucc_run brew install ariaflow
+  ucc_run brew upgrade ariaflow 2>/dev/null || ucc_run brew install ariaflow
 }
 _update_ariaflow() {
   ucc_run brew upgrade ariaflow 2>/dev/null || ucc_run brew install ariaflow
@@ -296,7 +298,7 @@ ucc_target \
 _observe_aria2_launchd() {
   ariaflow lifecycle 2>/dev/null \
     | python3 -c "import json,sys; r=json.load(sys.stdin).get('aria2-launchd',{}).get('result',{}); print('loaded' if r.get('outcome')=='converged' else 'absent')" \
-    2>/dev/null
+    2>/dev/null || true
 }
 _install_aria2_launchd() { ucc_run ariaflow install; }
 
@@ -311,7 +313,7 @@ ucc_target \
 _observe_ariaflow_launchd() {
   ariaflow lifecycle 2>/dev/null \
     | python3 -c "import json,sys; r=json.load(sys.stdin).get('ariaflow-serve-launchd',{}).get('result',{}); print('loaded' if r.get('outcome')=='converged' else 'absent')" \
-    2>/dev/null
+    2>/dev/null || true
 }
 _install_ariaflow_launchd() { ucc_run ariaflow install --with-web; }
 
