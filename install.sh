@@ -201,10 +201,13 @@ _UIC_RC=0
 uic_resolve || _UIC_RC=$?
 uic_export
 
-# Cache brew outdated list once (skipped when policy=install-only to avoid network call)
+# Update brew index and cache outdated list before any component runs,
+# so the outdated cache reflects the latest formula versions.
 if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-always-upgrade}" == "always-upgrade" ]] \
     && command -v brew &>/dev/null; then
-  log_info "Caching brew outdated list (package-update-policy=always-upgrade)..."
+  log_info "Updating Homebrew index (package-update-policy=always-upgrade)..."
+  brew update --quiet 2>/dev/null || true
+  log_info "Caching brew outdated list..."
   brew_cache_outdated
 fi
 

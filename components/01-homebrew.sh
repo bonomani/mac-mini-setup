@@ -65,10 +65,9 @@ if ! is_installed brew; then
   _setup_brew_path
 fi
 
-# Always update package index after install (not upgrade)
-# brew update has no observable desired state to diff — it is a GIC action,
-# not a UCC convergence target. We log and run it unconditionally.
-if is_installed brew && [[ "$UCC_MODE" == "install" ]]; then
+# Update package index — skipped when always-upgrade (install.sh already ran brew update)
+# brew update has no observable desired state — it is a GIC action, not a UCC target.
+if is_installed brew && [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-always-upgrade}" != "always-upgrade" ]]; then
   log_info "Updating Homebrew package index..."
   ucc_run brew update
 fi
