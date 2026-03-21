@@ -292,19 +292,6 @@ ucc_target \
   --install _install_ariaflow \
   --update  _update_ariaflow
 
-# --- Motrix (download manager, GUI, built on aria2) ---------
-_observe_motrix() {
-  brew_cask_is_installed motrix && echo "installed" || echo "absent"
-}
-_install_motrix() { ucc_run brew install --cask motrix; }
-_update_motrix()  { ucc_run brew upgrade --cask motrix 2>/dev/null || true; }
-
-ucc_target \
-  --name    "motrix" \
-  --observe _observe_motrix \
-  --desired "installed" \
-  --install _install_motrix \
-  --update  _update_motrix
 
 log_info "Run 'ai-healthcheck' to verify the full setup"
 
