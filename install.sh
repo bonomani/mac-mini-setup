@@ -217,9 +217,17 @@ if [[ "$UIC_PREFLIGHT" == "1" ]]; then
   exit $_UIC_RC
 fi
 
-# --- Hard gate failure: abort before any convergence --------
-if [[ $_UIC_RC -eq 1 ]]; then
-  log_error "UIC hard gate failed — convergence aborted (run --preflight for details)"
+# --- Hard gate failure: abort only on globally-scoped hard gates --------
+# Component-scoped hard gates block only their component (via uic_component_blocked).
+_GLOBAL_HARD_FAILED=0
+for _gi in "${!_UIC_GATE_NAMES[@]}"; do
+  [[ "${_UIC_GATE_BLOCKS[$_gi]}" == "hard" ]]   || continue
+  [[ "${_UIC_GATE_SCOPES[$_gi]}" == "global" ]]  || continue
+  _gkey="$(_uic_gate_key "${_UIC_GATE_NAMES[$_gi]}")"
+  [[ "${!_gkey:-}" == "1" ]] && _GLOBAL_HARD_FAILED=1
+done
+if [[ "$_GLOBAL_HARD_FAILED" == "1" ]]; then
+  log_error "UIC global hard gate failed — convergence aborted (run --preflight for details)"
 fi
 
 # --- Header -------------------------------------------------
