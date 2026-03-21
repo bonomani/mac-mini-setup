@@ -52,10 +52,17 @@ _brew_cask_is_outdated() { echo "${_BREW_CASK_OUTDATED_CACHE:-}" | grep -qx "$1"
 # Respect UIC_PREF_PACKAGE_UPDATE_POLICY (install-only | always-upgrade).
 # brew_is_installed / brew_cask_is_installed are defined in lib/utils.sh
 # which is always sourced before these helpers are called.
+_brew_refresh_if_stale() {
+  [[ "${_BREW_OUTDATED_STALE:-0}" == "1" ]] || return 0
+  brew_cache_outdated 2>/dev/null || true
+  _BREW_OUTDATED_STALE=0
+}
+
 brew_observe() {
   local pkg="$1"
   brew_is_installed "$pkg" || { echo "absent"; return; }
   if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-always-upgrade}" == "always-upgrade" ]]; then
+    _brew_refresh_if_stale
     _brew_is_outdated "$pkg" && { echo "outdated"; return; }
   fi
   echo "current"
@@ -65,6 +72,7 @@ brew_cask_observe() {
   local pkg="$1"
   brew_cask_is_installed "$pkg" || { echo "absent"; return; }
   if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-always-upgrade}" == "always-upgrade" ]]; then
+    _brew_refresh_if_stale
     _brew_cask_is_outdated "$pkg" && { echo "outdated"; return; }
   fi
   echo "current"
@@ -153,6 +161,7 @@ ucc_target() {
   fi
 
   if $install_fn; then
+    _BREW_OUTDATED_STALE=1  # invalidate cache so verify sees post-upgrade state
     # Step 5 – Verify: re-observe after transition
     local verified ver_exit
     verified=$($observe_fn 2>/dev/null)
