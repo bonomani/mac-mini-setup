@@ -3,7 +3,7 @@
 # UCC + Basic
 
 # --- CLI tools (brew) ---------------------------------------
-CLI_TOOLS=(jq wget curl htop tmux fzf ripgrep fd tree uv pnpm gcc gh llama.cpp opencode)
+CLI_TOOLS=(jq wget curl htop tmux fzf ripgrep fd tree uv pnpm gcc gh llama.cpp opencode aria2 matrox)
 
 for tool in "${CLI_TOOLS[@]}"; do
   eval "_observe_${tool}() { brew_is_installed '$tool' && echo 'installed' || echo 'absent'; }"
@@ -272,6 +272,25 @@ ucc_target \
   --desired "present" \
   --install _install_healthcheck \
   --update  _install_healthcheck
+
+# --- ariaflow (brew tap bonomani/ariaflow) ------------------
+_observe_ariaflow() {
+  brew_is_installed ariaflow && echo "installed" || echo "absent"
+}
+_install_ariaflow() {
+  ucc_run brew tap bonomani/ariaflow
+  ucc_run brew install ariaflow
+}
+_update_ariaflow() {
+  ucc_run brew upgrade ariaflow 2>/dev/null || ucc_run brew install ariaflow
+}
+
+ucc_target \
+  --name    "ariaflow" \
+  --observe _observe_ariaflow \
+  --desired "installed" \
+  --install _install_ariaflow \
+  --update  _update_ariaflow
 
 log_info "Run 'ai-healthcheck' to verify the full setup"
 
