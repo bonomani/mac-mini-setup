@@ -292,52 +292,93 @@ ucc_target \
   --install _install_ariaflow \
   --update  _update_ariaflow
 
-# --- aria2 daemon (RPC on port 6800, required by ariaflow) --
+# --- aria2 daemon — launchd (RPC port 6800, survives reboot) -
 _ARIA2_DIR="$HOME/.aria2"
-_observe_aria2_daemon() {
-  curl -sf --max-time 2 \
-    -d '{"jsonrpc":"2.0","method":"aria2.getVersion","id":"probe"}' \
-    http://localhost:6800/jsonrpc &>/dev/null && echo "running" || echo "stopped"
+_ARIA2_PLIST="$HOME/Library/LaunchAgents/com.ariaflow.aria2.plist"
+_ARIA2_BIN="$(command -v aria2c 2>/dev/null || echo /opt/homebrew/bin/aria2c)"
+
+_observe_aria2_launchd() {
+  launchctl list com.ariaflow.aria2 &>/dev/null && echo "loaded" || echo "absent"
 }
-_start_aria2_daemon() {
-  mkdir -p "$_ARIA2_DIR"
-  ucc_run aria2c \
-    --enable-rpc \
-    --rpc-listen-all=false \
-    --rpc-listen-port=6800 \
-    --daemon=true \
-    --log="$_ARIA2_DIR/aria2.log" \
-    --save-session="$_ARIA2_DIR/session.txt" \
-    --input-file="$_ARIA2_DIR/session.txt" \
-    --continue=true \
-    --dir="$HOME/Downloads"
-  sleep 1
+_install_aria2_launchd() {
+  mkdir -p "$_ARIA2_DIR" "$HOME/Downloads" "$(dirname "$_ARIA2_PLIST")"
+  # create session file if absent (aria2c requires it to exist for --input-file)
+  [[ -f "$_ARIA2_DIR/session.txt" ]] || touch "$_ARIA2_DIR/session.txt"
+  cat > "$_ARIA2_PLIST" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>             <string>com.ariaflow.aria2</string>
+  <key>RunAtLoad</key>         <true/>
+  <key>KeepAlive</key>         <true/>
+  <key>ProgramArguments</key>
+  <array>
+    <string>$_ARIA2_BIN</string>
+    <string>--enable-rpc</string>
+    <string>--rpc-listen-all=false</string>
+    <string>--rpc-listen-port=6800</string>
+    <string>--log=$_ARIA2_DIR/aria2.log</string>
+    <string>--save-session=$_ARIA2_DIR/session.txt</string>
+    <string>--input-file=$_ARIA2_DIR/session.txt</string>
+    <string>--continue=true</string>
+    <string>--dir=$HOME/Downloads</string>
+  </array>
+  <key>StandardOutPath</key>   <string>$_ARIA2_DIR/aria2.out.log</string>
+  <key>StandardErrorPath</key> <string>$_ARIA2_DIR/aria2.err.log</string>
+</dict>
+</plist>
+PLIST
+  ucc_run launchctl load "$_ARIA2_PLIST"
 }
 
 ucc_target \
-  --name    "aria2-daemon" \
-  --observe _observe_aria2_daemon \
-  --desired "running" \
-  --install _start_aria2_daemon \
-  --update  _start_aria2_daemon
+  --name    "aria2-launchd" \
+  --observe _observe_aria2_launchd \
+  --desired "loaded" \
+  --install _install_aria2_launchd \
+  --update  _install_aria2_launchd
 
-# --- ariaflow web UI (port 8000) ----------------------------
-_observe_ariaflow_serve() {
-  curl -sf --max-time 2 http://127.0.0.1:8000/ &>/dev/null && echo "running" || echo "stopped"
+# --- ariaflow web UI — launchd (port 8000, survives reboot) --
+_ARIAFLOW_PLIST="$HOME/Library/LaunchAgents/com.ariaflow.serve.plist"
+_ARIAFLOW_BIN="$(command -v ariaflow 2>/dev/null || echo /opt/homebrew/bin/ariaflow)"
+
+_observe_ariaflow_launchd() {
+  launchctl list com.ariaflow.serve &>/dev/null && echo "loaded" || echo "absent"
 }
-_start_ariaflow_serve() {
-  nohup ariaflow serve --host 127.0.0.1 --port 8000 \
-    >> "$_ARIA2_DIR/ariaflow-web.log" 2>&1 &
-  sleep 1
+_install_ariaflow_launchd() {
+  mkdir -p "$(dirname "$_ARIAFLOW_PLIST")" "$_ARIA2_DIR"
+  cat > "$_ARIAFLOW_PLIST" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>             <string>com.ariaflow.serve</string>
+  <key>RunAtLoad</key>         <true/>
+  <key>KeepAlive</key>         <true/>
+  <key>ProgramArguments</key>
+  <array>
+    <string>$_ARIAFLOW_BIN</string>
+    <string>serve</string>
+    <string>--host</string>   <string>127.0.0.1</string>
+    <string>--port</string>   <string>8000</string>
+  </array>
+  <key>StandardOutPath</key>   <string>$_ARIA2_DIR/ariaflow-web.out.log</string>
+  <key>StandardErrorPath</key> <string>$_ARIA2_DIR/ariaflow-web.err.log</string>
+</dict>
+</plist>
+PLIST
+  ucc_run launchctl load "$_ARIAFLOW_PLIST"
 }
 
 ucc_target \
-  --name    "ariaflow-serve" \
-  --observe _observe_ariaflow_serve \
-  --desired "running" \
-  --install _start_ariaflow_serve \
-  --update  _start_ariaflow_serve
+  --name    "ariaflow-serve-launchd" \
+  --observe _observe_ariaflow_launchd \
+  --desired "loaded" \
+  --install _install_ariaflow_launchd \
+  --update  _install_ariaflow_launchd
 
+log_info "aria2 RPC      → http://127.0.0.1:6800"
 log_info "ariaflow web UI → http://127.0.0.1:8000"
 
 log_info "Run 'ai-healthcheck' to verify the full setup"
