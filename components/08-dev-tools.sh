@@ -292,6 +292,53 @@ ucc_target \
   --install _install_ariaflow \
   --update  _update_ariaflow
 
+# --- aria2 daemon (RPC on port 6800, required by ariaflow) --
+_ARIA2_DIR="$HOME/.aria2"
+_observe_aria2_daemon() {
+  curl -sf --max-time 2 \
+    -d '{"jsonrpc":"2.0","method":"aria2.getVersion","id":"probe"}' \
+    http://localhost:6800/jsonrpc &>/dev/null && echo "running" || echo "stopped"
+}
+_start_aria2_daemon() {
+  mkdir -p "$_ARIA2_DIR"
+  ucc_run aria2c \
+    --enable-rpc \
+    --rpc-listen-all=false \
+    --rpc-listen-port=6800 \
+    --daemon=true \
+    --log="$_ARIA2_DIR/aria2.log" \
+    --save-session="$_ARIA2_DIR/session.txt" \
+    --input-file="$_ARIA2_DIR/session.txt" \
+    --continue=true \
+    --dir="$HOME/Downloads"
+  sleep 1
+}
+
+ucc_target \
+  --name    "aria2-daemon" \
+  --observe _observe_aria2_daemon \
+  --desired "running" \
+  --install _start_aria2_daemon \
+  --update  _start_aria2_daemon
+
+# --- ariaflow web UI (port 8000) ----------------------------
+_observe_ariaflow_serve() {
+  curl -sf --max-time 2 http://127.0.0.1:8000/ &>/dev/null && echo "running" || echo "stopped"
+}
+_start_ariaflow_serve() {
+  nohup ariaflow serve --host 127.0.0.1 --port 8000 \
+    >> "$_ARIA2_DIR/ariaflow-web.log" 2>&1 &
+  sleep 1
+}
+
+ucc_target \
+  --name    "ariaflow-serve" \
+  --observe _observe_ariaflow_serve \
+  --desired "running" \
+  --install _start_ariaflow_serve \
+  --update  _start_ariaflow_serve
+
+log_info "ariaflow web UI → http://127.0.0.1:8000"
 
 log_info "Run 'ai-healthcheck' to verify the full setup"
 
