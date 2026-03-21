@@ -219,6 +219,25 @@ ucc_target \
   --install _install_omz \
   --update  _update_omz
 
+# --- Oh My Zsh theme (agnoster) -----------------------------
+_observe_omz_theme() {
+  grep -q '^ZSH_THEME="agnoster"' "$HOME/.zshrc" 2>/dev/null && echo "set" || echo "unset"
+}
+_apply_omz_theme() {
+  if grep -q '^ZSH_THEME=' "$HOME/.zshrc" 2>/dev/null; then
+    sed -i '' 's/^ZSH_THEME=.*/ZSH_THEME="agnoster"/' "$HOME/.zshrc"
+  else
+    printf '\nZSH_THEME="agnoster"\n' >> "$HOME/.zshrc"
+  fi
+}
+
+ucc_target \
+  --name    "omz-theme-agnoster" \
+  --observe _observe_omz_theme \
+  --desired "set" \
+  --install _apply_omz_theme \
+  --update  _apply_omz_theme
+
 # --- $HOME/bin in PATH --------------------------------------
 _observe_home_bin_path() {
   grep -q 'export PATH="$HOME/bin:$PATH"' "$HOME/.zprofile" 2>/dev/null && echo "present" || echo "absent"
