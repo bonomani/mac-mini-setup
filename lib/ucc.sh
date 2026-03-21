@@ -45,8 +45,9 @@ brew_cache_outdated() {
   _BREW_CASK_OUTDATED_CACHE=$(brew outdated --cask --quiet 2>/dev/null || true)
 }
 
-_brew_is_outdated()      { echo "${_BREW_OUTDATED_CACHE:-}"      | grep -qx "$1"; }
-_brew_cask_is_outdated() { echo "${_BREW_CASK_OUTDATED_CACHE:-}" | grep -qx "$1"; }
+# Match short name ("ariaflow") or full tap name ("bonomani/ariaflow/ariaflow")
+_brew_is_outdated()      { echo "${_BREW_OUTDATED_CACHE:-}"      | grep -qE "(^|/)${1}$"; }
+_brew_cask_is_outdated() { echo "${_BREW_CASK_OUTDATED_CACHE:-}" | grep -qE "(^|/)${1}$"; }
 
 # Generic observe helpers — return: absent | outdated | current
 # Respect UIC_PREF_PACKAGE_UPDATE_POLICY (install-only | always-upgrade).
