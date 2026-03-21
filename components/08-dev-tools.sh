@@ -293,44 +293,12 @@ ucc_target \
   --update  _update_ariaflow
 
 # --- aria2 daemon — launchd (RPC port 6800, survives reboot) -
-_ARIA2_DIR="$HOME/.aria2"
-_ARIA2_PLIST="$HOME/Library/LaunchAgents/com.ariaflow.aria2.plist"
-_ARIA2_BIN="$(command -v aria2c 2>/dev/null || echo /opt/homebrew/bin/aria2c)"
-
 _observe_aria2_launchd() {
-  launchctl list com.ariaflow.aria2 &>/dev/null && echo "loaded" || echo "absent"
+  ariaflow lifecycle 2>/dev/null \
+    | python3 -c "import json,sys; r=json.load(sys.stdin).get('aria2-launchd',{}).get('result',{}); print('loaded' if r.get('outcome')=='converged' else 'absent')" \
+    2>/dev/null
 }
-_install_aria2_launchd() {
-  mkdir -p "$_ARIA2_DIR" "$HOME/Downloads" "$(dirname "$_ARIA2_PLIST")"
-  # create session file if absent (aria2c requires it to exist for --input-file)
-  [[ -f "$_ARIA2_DIR/session.txt" ]] || touch "$_ARIA2_DIR/session.txt"
-  cat > "$_ARIA2_PLIST" <<PLIST
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>Label</key>             <string>com.ariaflow.aria2</string>
-  <key>RunAtLoad</key>         <true/>
-  <key>KeepAlive</key>         <true/>
-  <key>ProgramArguments</key>
-  <array>
-    <string>$_ARIA2_BIN</string>
-    <string>--enable-rpc</string>
-    <string>--rpc-listen-all=false</string>
-    <string>--rpc-listen-port=6800</string>
-    <string>--log=$_ARIA2_DIR/aria2.log</string>
-    <string>--save-session=$_ARIA2_DIR/session.txt</string>
-    <string>--input-file=$_ARIA2_DIR/session.txt</string>
-    <string>--continue=true</string>
-    <string>--dir=$HOME/Downloads</string>
-  </array>
-  <key>StandardOutPath</key>   <string>$_ARIA2_DIR/aria2.out.log</string>
-  <key>StandardErrorPath</key> <string>$_ARIA2_DIR/aria2.err.log</string>
-</dict>
-</plist>
-PLIST
-  ucc_run launchctl load "$_ARIA2_PLIST"
-}
+_install_aria2_launchd() { ucc_run ariaflow install; }
 
 ucc_target \
   --name    "aria2-launchd" \
@@ -340,36 +308,12 @@ ucc_target \
   --update  _install_aria2_launchd
 
 # --- ariaflow web UI — launchd (port 8000, survives reboot) --
-_ARIAFLOW_PLIST="$HOME/Library/LaunchAgents/com.ariaflow.serve.plist"
-_ARIAFLOW_BIN="$(command -v ariaflow 2>/dev/null || echo /opt/homebrew/bin/ariaflow)"
-
 _observe_ariaflow_launchd() {
-  launchctl list com.ariaflow.serve &>/dev/null && echo "loaded" || echo "absent"
+  ariaflow lifecycle 2>/dev/null \
+    | python3 -c "import json,sys; r=json.load(sys.stdin).get('ariaflow-serve-launchd',{}).get('result',{}); print('loaded' if r.get('outcome')=='converged' else 'absent')" \
+    2>/dev/null
 }
-_install_ariaflow_launchd() {
-  mkdir -p "$(dirname "$_ARIAFLOW_PLIST")" "$_ARIA2_DIR"
-  cat > "$_ARIAFLOW_PLIST" <<PLIST
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>Label</key>             <string>com.ariaflow.serve</string>
-  <key>RunAtLoad</key>         <true/>
-  <key>KeepAlive</key>         <true/>
-  <key>ProgramArguments</key>
-  <array>
-    <string>$_ARIAFLOW_BIN</string>
-    <string>serve</string>
-    <string>--host</string>   <string>127.0.0.1</string>
-    <string>--port</string>   <string>8000</string>
-  </array>
-  <key>StandardOutPath</key>   <string>$_ARIA2_DIR/ariaflow-web.out.log</string>
-  <key>StandardErrorPath</key> <string>$_ARIA2_DIR/ariaflow-web.err.log</string>
-</dict>
-</plist>
-PLIST
-  ucc_run launchctl load "$_ARIAFLOW_PLIST"
-}
+_install_ariaflow_launchd() { ucc_run ariaflow install --with-web; }
 
 ucc_target \
   --name    "ariaflow-serve-launchd" \
