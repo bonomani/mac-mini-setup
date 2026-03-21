@@ -123,7 +123,7 @@ uic_gate \
   --condition _gate_docker_daemon \
   --scope     "component:07-ai-apps" \
   --class     "readiness" \
-  --blocking  "hard"
+  --blocking  "soft"
 
 uic_gate \
   --name      "docker-settings-file" \
@@ -187,6 +187,13 @@ uic_preference \
   --default   "off" \
   --options   "on|off" \
   --rationale "off prevents destructive container/package replacement without explicit operator intent; on allows full reimaging on update" \
+  --scope     "global"
+
+uic_preference \
+  --name      "service-policy" \
+  --default   "autostart" \
+  --options   "manual|autostart" \
+  --rationale "autostart: script starts required services (Docker, Ollama) when not running; manual: operator starts services before running the script" \
   --scope     "global"
 
 uic_preference \

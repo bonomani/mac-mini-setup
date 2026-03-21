@@ -2,9 +2,37 @@
 # Component: AI Applications via Docker Compose
 # UCC + Basic — bash 3.2 compatible (no declare -A)
 
-docker info &>/dev/null || log_error "Docker must be running first (run 03-docker.sh)"
-
 COMPOSE_DIR="$HOME/.ai-stack"
+
+# --- Docker running -----------------------------------------
+_observe_docker_running() {
+  docker info &>/dev/null 2>&1 && echo "running" || echo "stopped"
+}
+_start_docker() {
+  if [[ "${UIC_PREF_SERVICE_POLICY:-autostart}" != "autostart" ]]; then
+    log_warn "Docker not running — start it manually (service-policy=manual)"
+    return 1
+  fi
+  log_info "Starting Docker Desktop (service-policy=autostart)..."
+  open -a Docker
+  for i in $(seq 1 24); do
+    docker info &>/dev/null 2>&1 && return 0
+    log_debug "Waiting for Docker daemon ($i/24)..."
+    sleep 5
+  done
+  log_warn "Docker daemon did not start in time"
+  return 1
+}
+
+ucc_target \
+  --name    "docker-running" \
+  --observe _observe_docker_running \
+  --desired "running" \
+  --install _start_docker
+
+# Abort component if Docker still not running after attempting to start
+docker info &>/dev/null 2>&1 || { log_warn "Docker not running — skipping AI stack"; ucc_summary "07-ai-apps"; exit 0; }
+
 COMPOSE_FILE="$COMPOSE_DIR/docker-compose.yml"
 COMPOSE_MARKER="# ai-stack v2"   # bump to force re-deploy
 STACK_SERVICES=5                 # open-webui, flowise, openhands, n8n, qdrant
