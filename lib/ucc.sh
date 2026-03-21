@@ -33,6 +33,43 @@ log_debug()  { [[ "$UCC_DEBUG" == "1" ]] && echo "$(_ts) [DEBUG]  $*" || true; }
 log_warn()   { echo "$(_ts) [WARN]   $*" >&2; }
 log_error()  { echo "$(_ts) [ERROR]  $*" >&2; exit 1; }
 
+# ============================================================
+#  Package outdated cache
+#  Populated once in install.sh; exported so component subshells
+#  can read it without repeating the network call.
+# ============================================================
+brew_cache_outdated() {
+  export _BREW_OUTDATED_CACHE
+  export _BREW_CASK_OUTDATED_CACHE
+  _BREW_OUTDATED_CACHE=$(brew outdated --quiet 2>/dev/null || true)
+  _BREW_CASK_OUTDATED_CACHE=$(brew outdated --cask --quiet 2>/dev/null || true)
+}
+
+_brew_is_outdated()      { echo "${_BREW_OUTDATED_CACHE:-}"      | grep -qx "$1"; }
+_brew_cask_is_outdated() { echo "${_BREW_CASK_OUTDATED_CACHE:-}" | grep -qx "$1"; }
+
+# Generic observe helpers — return: absent | outdated | current
+# Respect UIC_PREF_PACKAGE_UPDATE_POLICY (install-only | always-upgrade).
+# brew_is_installed / brew_cask_is_installed are defined in lib/utils.sh
+# which is always sourced before these helpers are called.
+brew_observe() {
+  local pkg="$1"
+  brew_is_installed "$pkg" || { echo "absent"; return; }
+  if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-install-only}" == "always-upgrade" ]]; then
+    _brew_is_outdated "$pkg" && { echo "outdated"; return; }
+  fi
+  echo "current"
+}
+
+brew_cask_observe() {
+  local pkg="$1"
+  brew_cask_is_installed "$pkg" || { echo "absent"; return; }
+  if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-install-only}" == "always-upgrade" ]]; then
+    _brew_cask_is_outdated "$pkg" && { echo "outdated"; return; }
+  fi
+  echo "current"
+}
+
 # --- Dry-run gate -------------------------------------------
 ucc_run() {
   if [[ "$UCC_DRY_RUN" == "1" ]]; then

@@ -8,14 +8,14 @@ _pip_group() {
   local name="$1" first="$2" pkgs="$3"
   local fn="${name//[^a-zA-Z0-9]/_}"
 
-  eval "_observe_grp_${fn}() { pip_is_installed '${first}' && echo 'installed' || echo 'absent'; }"
+  eval "_observe_grp_${fn}() { pip_is_installed '${first}' && echo 'current' || echo 'absent'; }"
   eval "_install_grp_${fn}() { ucc_run pip install -q ${pkgs}; }"
   eval "_update_grp_${fn}()  { ucc_run pip install -q --upgrade ${pkgs}; }"
 
   ucc_target \
     --name    "pip-group-$name" \
     --observe "_observe_grp_${fn}" \
-    --desired "installed" \
+    --desired "current" \
     --install "_install_grp_${fn}" \
     --update  "_update_grp_${fn}"
 }

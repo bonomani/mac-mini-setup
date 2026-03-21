@@ -6,11 +6,15 @@
 PYTHON_VERSION="${UIC_PREF_PYTHON_VERSION:-3.12.3}"
 
 _observe_pyenv() {
-  is_installed pyenv && echo "installed" || echo "absent"
+  is_installed pyenv || { echo "absent"; return; }
+  if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-install-only}" == "always-upgrade" ]]; then
+    _brew_is_outdated pyenv && { echo "outdated"; return; }
+  fi
+  echo "current"
 }
 
 _install_pyenv() {
-  brew install pyenv pyenv-virtualenv
+  ucc_run brew upgrade pyenv pyenv-virtualenv 2>/dev/null || ucc_run brew install pyenv pyenv-virtualenv
   if ! grep -q 'pyenv init' ~/.zshrc 2>/dev/null; then
     cat >> ~/.zshrc <<'EOF'
 
@@ -23,27 +27,21 @@ EOF
   fi
 }
 
-_update_pyenv() {
-  brew upgrade pyenv pyenv-virtualenv 2>/dev/null || true
-}
-
 ucc_target \
   --name    "pyenv" \
   --observe _observe_pyenv \
-  --desired "installed" \
+  --desired "current" \
   --install _install_pyenv \
-  --update  _update_pyenv
+  --update  _install_pyenv
 
 # --- xz (required to avoid lzma warning when building Python) --
-_observe_xz() {
-  brew_is_installed xz && echo "installed" || echo "absent"
-}
-_install_xz() { brew install xz; }
+_observe_xz() { brew_observe xz; }
+_install_xz() { ucc_run brew upgrade xz 2>/dev/null || ucc_run brew install xz; }
 
 ucc_target \
   --name    "xz" \
   --observe _observe_xz \
-  --desired "installed" \
+  --desired "current" \
   --install _install_xz \
   --update  _install_xz
 

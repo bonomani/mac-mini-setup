@@ -189,10 +189,24 @@ uic_preference \
   --rationale "off prevents destructive container/package replacement without explicit operator intent; on allows full reimaging on update" \
   --scope     "global"
 
+uic_preference \
+  --name      "package-update-policy" \
+  --default   "install-only" \
+  --options   "install-only|always-upgrade" \
+  --rationale "install-only: skip already-installed packages; always-upgrade: also upgrade outdated packages on each run without needing --mode update" \
+  --scope     "global"
+
 # --- Resolve (evaluate gates, report preferences) -----------
 _UIC_RC=0
 uic_resolve || _UIC_RC=$?
 uic_export
+
+# Cache brew outdated list once (skipped when policy=install-only to avoid network call)
+if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-install-only}" == "always-upgrade" ]] \
+    && command -v brew &>/dev/null; then
+  log_info "Caching brew outdated list (package-update-policy=always-upgrade)..."
+  brew_cache_outdated
+fi
 
 # --- Preflight mode: write template and exit ----------------
 if [[ "$UIC_PREFLIGHT" == "1" ]]; then
@@ -265,9 +279,6 @@ for comp in "${TO_RUN[@]}"; do
   echo "--------------------------------------------------------"
   log_info "Component: $comp"
   echo "--------------------------------------------------------"
-
-  # Reset per-script counters before sourcing
-  _UCC_OBSERVED=0; _UCC_APPLIED=0; _UCC_CHANGED=0; _UCC_FAILED=0; _UCC_SKIPPED=0
 
   if bash \
       -c "source \"$DIR/lib/ucc.sh\"; source \"$DIR/lib/uic.sh\"; source \"$DIR/lib/utils.sh\"; source \"$SCRIPT\"" \

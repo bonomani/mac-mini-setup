@@ -3,17 +3,15 @@
 # UCC + Basic
 
 _observe_docker_app() {
-  # Accept manual install (/Applications) or brew cask
-  [[ -d "/Applications/Docker.app" ]] && echo "installed" \
-    || (brew_cask_is_installed docker && echo "installed" || echo "absent")
+  # Manual install counts as current — brew cask tracks upgrades for brew-installed only
+  if [[ -d "/Applications/Docker.app" ]] && ! brew_cask_is_installed docker; then
+    echo "current"; return
+  fi
+  brew_cask_observe docker
 }
 
 _install_docker() {
-  if [[ -d "/Applications/Docker.app" ]]; then
-    log_info "Docker.app already present — skipping brew install"
-  else
-    brew install --cask docker
-  fi
+  ucc_run brew upgrade --cask docker 2>/dev/null || ucc_run brew install --cask docker
   open -a Docker
   log_info "Waiting for Docker daemon..."
   for i in $(seq 1 12); do
@@ -24,16 +22,17 @@ _install_docker() {
   return 1
 }
 
-_update_docker() {
-  brew upgrade --cask docker 2>/dev/null || true
+_upgrade_docker() {
+  ucc_run brew upgrade --cask docker 2>/dev/null || true
+  log_warn "Restart Docker Desktop to apply the upgrade"
 }
 
 ucc_target \
   --name    "docker-desktop" \
   --observe _observe_docker_app \
-  --desired "installed" \
+  --desired "current" \
   --install _install_docker \
-  --update  _update_docker
+  --update  _upgrade_docker
 
 # --- Docker resource settings (48 GB RAM for AI workloads) --
 # UIC preferences: docker-memory-gb (safe default=48) and docker-cpu-count (safe default=10)

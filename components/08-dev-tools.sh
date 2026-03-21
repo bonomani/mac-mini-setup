@@ -6,33 +6,33 @@
 CLI_TOOLS=(jq wget curl htop tmux fzf ripgrep fd tree uv pnpm gcc gh llama.cpp opencode aria2)
 
 for tool in "${CLI_TOOLS[@]}"; do
-  eval "_observe_${tool}() { brew_is_installed '$tool' && echo 'installed' || echo 'absent'; }"
-  eval "_install_${tool}() { ucc_run brew install '$tool'; }"
-  eval "_update_${tool}()  { ucc_run brew upgrade '$tool' 2>/dev/null || ucc_run brew install '$tool'; }"
+  eval "_observe_${tool}() { brew_observe '$tool'; }"
+  eval "_install_${tool}() { ucc_run brew upgrade '$tool' 2>/dev/null || ucc_run brew install '$tool'; }"
 
   ucc_target \
     --name    "cli-$tool" \
     --observe "_observe_${tool}" \
-    --desired "installed" \
+    --desired "current" \
     --install "_install_${tool}" \
-    --update  "_update_${tool}"
+    --update  "_install_${tool}"
 done
 
 # --- VSCode -------------------------------------------------
 _observe_vscode() {
-  # Accept manual install (/Applications) or brew cask
-  [[ -d "/Applications/Visual Studio Code.app" ]] && echo "installed" \
-    || (brew_cask_is_installed visual-studio-code && echo "installed" || echo "absent")
+  # Manual install (/Applications) counts as current — can't upgrade via brew
+  if [[ -d "/Applications/Visual Studio Code.app" ]]; then
+    echo "current"; return
+  fi
+  brew_cask_observe visual-studio-code
 }
-_install_vscode() { ucc_run brew install --cask visual-studio-code; }
-_update_vscode()  { ucc_run brew upgrade --cask visual-studio-code 2>/dev/null || true; }
+_install_vscode() { ucc_run brew upgrade --cask visual-studio-code 2>/dev/null || ucc_run brew install --cask visual-studio-code; }
 
 ucc_target \
   --name    "vscode" \
   --observe _observe_vscode \
-  --desired "installed" \
+  --desired "current" \
   --install _install_vscode \
-  --update  _update_vscode
+  --update  _install_vscode
 
 # Ensure 'code' CLI is available in PATH
 _observe_code_cmd() {
@@ -122,54 +122,52 @@ ucc_target \
   --update  _apply_vscode_settings
 
 # --- iTerm2 -------------------------------------------------
-_observe_iterm2() {
-  brew_cask_is_installed iterm2 && echo "installed" || echo "absent"
-}
-_install_iterm2() { ucc_run brew install --cask iterm2; }
-_update_iterm2()  { ucc_run brew upgrade --cask iterm2 2>/dev/null || true; }
+_observe_iterm2() { brew_cask_observe iterm2; }
+_install_iterm2() { ucc_run brew upgrade --cask iterm2 2>/dev/null || ucc_run brew install --cask iterm2; }
 
 ucc_target \
   --name    "iterm2" \
   --observe _observe_iterm2 \
-  --desired "installed" \
+  --desired "current" \
   --install _install_iterm2 \
-  --update  _update_iterm2
+  --update  _install_iterm2
 
 # --- LM Studio — GUI for GGUF models -----------------------
-_observe_lmstudio() {
-  brew_cask_is_installed lm-studio && echo "installed" || echo "absent"
-}
-_install_lmstudio() { ucc_run brew install --cask lm-studio; }
-_update_lmstudio()  { ucc_run brew upgrade --cask lm-studio 2>/dev/null || true; }
+_observe_lmstudio() { brew_cask_observe lm-studio; }
+_install_lmstudio() { ucc_run brew upgrade --cask lm-studio 2>/dev/null || ucc_run brew install --cask lm-studio; }
 
 ucc_target \
   --name    "lm-studio" \
   --observe _observe_lmstudio \
-  --desired "installed" \
+  --desired "current" \
   --install _install_lmstudio \
-  --update  _update_lmstudio
+  --update  _install_lmstudio
 
 # --- Node.js 20 LTS -----------------------------------------
 _observe_node20() {
-  node --version 2>/dev/null | grep -q '^v20\.' && echo "node20" || echo "absent"
+  node --version 2>/dev/null | grep -q '^v20\.' || { echo "absent"; return; }
+  if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-install-only}" == "always-upgrade" ]]; then
+    _brew_is_outdated "node@20" && { echo "outdated"; return; }
+  fi
+  echo "current"
 }
 _install_node20() {
   # If already installed but unlinked (e.g. opencode pulls in node-latest and unlinks node@20),
   # just re-link — avoids the spurious "already installed" brew warning.
   if brew list node@20 &>/dev/null 2>&1; then
+    ucc_run brew upgrade node@20 2>/dev/null || true
     ucc_run brew link --overwrite --force node@20
   else
     ucc_run brew install node@20 && ucc_run brew link --overwrite --force node@20
   fi
 }
-_update_node20()  { ucc_run brew upgrade node@20 2>/dev/null || ucc_run brew install node@20; }
 
 ucc_target \
   --name    "node-20-lts" \
   --observe _observe_node20 \
-  --desired "node20" \
+  --desired "current" \
   --install _install_node20 \
-  --update  _update_node20
+  --update  _install_node20
 
 # Ensure node@20 is in PATH
 if [[ -d /opt/homebrew/opt/node@20/bin ]]; then
@@ -188,7 +186,7 @@ NPM_GLOBAL_PKGS=(
 for pkg in "${NPM_GLOBAL_PKGS[@]}"; do
   _pkg_id="${pkg//[@\/]/_}"  # safe function name
   eval "_observe_npm_${_pkg_id}() {
-    npm ls -g '${pkg}' --depth=0 &>/dev/null 2>&1 && echo 'installed' || echo 'absent'
+    npm ls -g '${pkg}' --depth=0 &>/dev/null 2>&1 && echo 'current' || echo 'absent'
   }"
   eval "_install_npm_${_pkg_id}() { ucc_run npm install -g '${pkg}'; }"
   eval "_update_npm_${_pkg_id}()  { ucc_run npm update  -g '${pkg}'; }"
@@ -196,7 +194,7 @@ for pkg in "${NPM_GLOBAL_PKGS[@]}"; do
   ucc_target \
     --name    "npm-global-$pkg" \
     --observe "_observe_npm_${_pkg_id}" \
-    --desired "installed" \
+    --desired "current" \
     --install "_install_npm_${_pkg_id}" \
     --update  "_update_npm_${_pkg_id}"
 done
@@ -296,22 +294,23 @@ ucc_target \
 _observe_ariaflow() {
   brew_is_installed ariaflow || { echo "absent"; return; }
   # Require lifecycle command (alpha.3+); older builds return "outdated" → triggers upgrade
-  ariaflow lifecycle &>/dev/null 2>&1 && echo "installed" || echo "outdated"
+  ariaflow lifecycle &>/dev/null 2>&1 || { echo "outdated"; return; }
+  if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-install-only}" == "always-upgrade" ]]; then
+    _brew_is_outdated ariaflow && { echo "outdated"; return; }
+  fi
+  echo "current"
 }
 _install_ariaflow() {
   ucc_run brew tap bonomani/ariaflow
-  ucc_run brew upgrade ariaflow 2>/dev/null || ucc_run brew install ariaflow
-}
-_update_ariaflow() {
   ucc_run brew upgrade ariaflow 2>/dev/null || ucc_run brew install ariaflow
 }
 
 ucc_target \
   --name    "ariaflow" \
   --observe _observe_ariaflow \
-  --desired "installed" \
+  --desired "current" \
   --install _install_ariaflow \
-  --update  _update_ariaflow
+  --update  _install_ariaflow
 
 # --- aria2 daemon — launchd (RPC port 6800, survives reboot) -
 _observe_aria2_launchd() {
