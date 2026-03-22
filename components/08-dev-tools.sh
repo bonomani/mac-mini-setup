@@ -181,6 +181,7 @@ fi
 NPM_GLOBAL_PKGS=(
   "@openai/codex"             # OpenAI Codex CLI
   "@anthropic-ai/claude-code" # Claude Code CLI
+  "bmad-method"               # BMAD — Breakthrough Method for Agile AI-Driven Development
 )
 
 for pkg in "${NPM_GLOBAL_PKGS[@]}"; do
@@ -322,7 +323,7 @@ _observe_aria2_launchd() {
     | python3 -c "import json,sys; r=json.load(sys.stdin).get('aria2-launchd',{}).get('result',{}); print('loaded' if r.get('outcome')=='converged' else 'absent')" \
     2>/dev/null || true
 }
-_install_aria2_launchd() { ucc_run ariaflow install; }
+_install_aria2_launchd() { ucc_run ariaflow install --with-aria2; }
 
 ucc_target \
   --name    "aria2-launchd" \
