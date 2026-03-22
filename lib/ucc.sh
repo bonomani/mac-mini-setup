@@ -25,6 +25,9 @@ UCC_MODE=${UCC_MODE:-install}    # install | update
 UCC_DEBUG=${UCC_DEBUG:-0}        # 1 = show DEBUG lines
 UCC_CORRELATION_ID=${UCC_CORRELATION_ID:-$(uuidgen 2>/dev/null || date +%s%N)}
 
+# Per-component counters (reset in each subshell)
+_UCC_CONVERGED=0
+
 # --- Structured logging -------------------------------------
 _ts() { date '+%H:%M:%S'; }
 log_info()   { echo "  $*"; }
@@ -139,8 +142,8 @@ ucc_target() {
         log_notice "$name | failed class=retryable | before=\"$observed\" diff={}"
       fi
     else
-      # Already at desired state — converged (compact: full fields only on non-trivial outcomes)
-      log_notice "$name | converged"
+      # Already at desired state — count silently; ucc_summary prints the total
+      _UCC_CONVERGED=$(( _UCC_CONVERGED + 1 ))
     fi
     return 0
   fi
@@ -180,5 +183,5 @@ ucc_target() {
 #  ucc_summary — final marker for this script
 # ============================================================
 ucc_summary() {
-  : # orchestrator (install.sh) emits Component done/failed — no duplicate line needed
+  [[ $_UCC_CONVERGED -gt 0 ]] && log_notice "  $_UCC_CONVERGED converged"
 }
