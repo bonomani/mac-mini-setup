@@ -296,8 +296,11 @@ _refresh_brew_path() {
 }
 _refresh_brew_path
 
+# --- Structured result artifact (UCC/2.0 JSONL) -------------
+export UCC_RESULT_FILE="$HOME/.ai-stack/runs/${UCC_CORRELATION_ID}.jsonl"
+mkdir -p "$HOME/.ai-stack/runs"
+
 # --- Run components -----------------------------------------
-TOTAL_OBSERVED=0; TOTAL_APPLIED=0; TOTAL_CHANGED=0; TOTAL_FAILED=0; TOTAL_SKIPPED=0
 FAILED_COMPONENTS=()
 
 for comp in "${TO_RUN[@]}"; do
@@ -337,6 +340,7 @@ else
   log_warn "Completed with failures: ${FAILED_COMPONENTS[*]}"
 fi
 echo "========================================================"
+log_info "Result artifact: $UCC_RESULT_FILE"
 echo ""
 
 [[ ${#FAILED_COMPONENTS[@]} -eq 0 ]]

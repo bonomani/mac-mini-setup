@@ -82,6 +82,26 @@ brew_cask_observe() {
   echo "current"
 }
 
+# ============================================================
+#  Structured result artifact (machine-consumable JSONL)
+#  Written to UCC_RESULT_FILE when set (exported by install.sh)
+#  Each ucc_target result appends one JSON line.
+#  Fields comply with UCC/2.0 canonical result paths.
+# ============================================================
+_ucc_jstr() { printf '%s' "$*" | sed 's/\\/\\\\/g; s/"/\\"/g'; }
+
+_ucc_meta() {
+  local id="${$}-${RANDOM}-${RANDOM}"
+  local ts; ts=$(date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo "unknown")
+  printf '"meta":{"contract":"ucc","version":"2.0","id":"%s","timestamp":"%s","correlation_id":"%s"}' \
+    "$id" "$ts" "$(_ucc_jstr "${UCC_CORRELATION_ID:-}")"
+}
+
+_ucc_record() {
+  [[ -z "${UCC_RESULT_FILE:-}" ]] && return 0
+  printf '%s\n' "$1" >> "$UCC_RESULT_FILE" 2>/dev/null || true
+}
+
 # --- Dry-run gate -------------------------------------------
 ucc_run() {
   if [[ "$UCC_DRY_RUN" == "1" ]]; then
@@ -116,12 +136,14 @@ ucc_target() {
   # observation=failed: observe function crashed (non-zero exit)
   if [[ $obs_exit -ne 0 ]]; then
     log_notice "$name | obs-failed"
+    _ucc_record "{$(_ucc_meta),\"target\":\"$(_ucc_jstr "$name")\",\"result\":{\"observation\":\"failed\"}}"
     return 0
   fi
 
   # observation=indeterminate: observe ran (exit 0) but produced no usable state
   if [[ -z "$observed" ]]; then
     log_notice "$name | indeterminate"
+    _ucc_record "{$(_ucc_meta),\"target\":\"$(_ucc_jstr "$name")\",\"result\":{\"observation\":\"indeterminate\"}}"
     return 0
   fi
 
@@ -133,17 +155,21 @@ ucc_target() {
     if [[ "$UCC_MODE" == "update" && -n "$update_fn" ]]; then
       # Update mode: run upgrade even when state already matches
       if [[ "$UCC_DRY_RUN" == "1" ]]; then
-        log_notice "$name | observation=ok outcome=unchanged inhibitor=dry_run | before=\"$observed\" diff={}"
+        log_notice "$name | unchanged inhibitor=dry_run | before=\"$observed\" diff={}"
+        _ucc_record "{$(_ucc_meta),\"target\":\"$(_ucc_jstr "$name")\",\"result\":{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"dry_run\",\"observed_before\":\"$(_ucc_jstr "$observed")\"}}"
         return 0
       fi
       if $update_fn; then
-        log_notice "$name | changed \"$observed\" → \"$desired\" proof=update_applied"
+        log_notice "$name | changed \"$observed\" → \"$desired\" completion=complete proof=update_applied"
+        _ucc_record "{$(_ucc_meta),\"target\":\"$(_ucc_jstr "$name")\",\"result\":{\"observation\":\"ok\",\"outcome\":\"changed\",\"completion\":\"complete\",\"proof\":\"update_applied\",\"observed_before\":\"$(_ucc_jstr "$observed")\",\"observed_after\":\"$(_ucc_jstr "$desired")\"}}"
       else
         log_notice "$name | failed class=retryable | before=\"$observed\" diff={}"
+        _ucc_record "{$(_ucc_meta),\"target\":\"$(_ucc_jstr "$name")\",\"result\":{\"observation\":\"ok\",\"outcome\":\"failed\",\"failure_class\":\"retryable\",\"observed_before\":\"$(_ucc_jstr "$observed")\"}}"
       fi
     else
       # Already at desired state — count silently; ucc_summary prints the total
       _UCC_CONVERGED=$(( _UCC_CONVERGED + 1 ))
+      _ucc_record "{$(_ucc_meta),\"target\":\"$(_ucc_jstr "$name")\",\"result\":{\"observation\":\"ok\",\"outcome\":\"converged\",\"observed_before\":\"$(_ucc_jstr "$observed")\"}}"
     fi
     return 0
   fi
@@ -154,11 +180,13 @@ ucc_target() {
   # Step 4: Apply transition
   if [[ "$UCC_DRY_RUN" == "1" ]]; then
     log_notice "$name | unchanged inhibitor=dry_run | before=\"$observed\" diff=$diff_str"
+    _ucc_record "{$(_ucc_meta),\"target\":\"$(_ucc_jstr "$name")\",\"result\":{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"dry_run\",\"observed_before\":\"$(_ucc_jstr "$observed")\"}}"
     return 0
   fi
 
   if [[ -z "$install_fn" ]]; then
     log_notice "$name | unchanged inhibitor=policy | before=\"$observed\" diff=$diff_str"
+    _ucc_record "{$(_ucc_meta),\"target\":\"$(_ucc_jstr "$name")\",\"result\":{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"policy\",\"observed_before\":\"$(_ucc_jstr "$observed")\"}}"
     return 0
   fi
 
@@ -170,12 +198,15 @@ ucc_target() {
     ver_exit=$?
     log_debug "post-install observed=\"$verified\""
     if [[ $ver_exit -eq 0 && "$verified" == "$desired" ]]; then
-      log_notice "$name | changed \"$observed\" → \"$desired\" proof=verify_pass"
+      log_notice "$name | changed \"$observed\" → \"$desired\" completion=complete proof=verify_pass"
+      _ucc_record "{$(_ucc_meta),\"target\":\"$(_ucc_jstr "$name")\",\"result\":{\"observation\":\"ok\",\"outcome\":\"changed\",\"completion\":\"complete\",\"proof\":\"verify_pass\",\"observed_before\":\"$(_ucc_jstr "$observed")\",\"observed_after\":\"$(_ucc_jstr "$verified")\"}}"
     else
       log_notice "$name | failed class=retryable | before=\"$observed\" diff=$diff_str after=\"${verified:-?}\""
+      _ucc_record "{$(_ucc_meta),\"target\":\"$(_ucc_jstr "$name")\",\"result\":{\"observation\":\"ok\",\"outcome\":\"failed\",\"failure_class\":\"retryable\",\"observed_before\":\"$(_ucc_jstr "$observed")\",\"observed_after\":\"$(_ucc_jstr "${verified:-}")\"}}"
     fi
   else
     log_notice "$name | failed class=retryable | before=\"$observed\" diff=$diff_str"
+    _ucc_record "{$(_ucc_meta),\"target\":\"$(_ucc_jstr "$name")\",\"result\":{\"observation\":\"ok\",\"outcome\":\"failed\",\"failure_class\":\"retryable\",\"observed_before\":\"$(_ucc_jstr "$observed")\"}}"
   fi
 }
 
