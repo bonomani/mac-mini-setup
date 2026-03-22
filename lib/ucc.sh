@@ -137,7 +137,7 @@ ucc_target() {
 
   # observation=failed: observe function crashed (non-zero exit)
   if [[ $obs_exit -ne 0 ]]; then
-    printf '  %-46s  obs-failed\n' "$name"
+    printf '  %-46s  obs-failed  (observe fn exited non-zero)\n' "$name"
     _UCC_FAILED=$(( _UCC_FAILED + 1 ))
     _ucc_record "{$(_ucc_meta),\"target\":\"$(_ucc_jstr "$name")\",\"result\":{\"observation\":\"failed\",\"message\":\"observe function exited non-zero\"}}"
     return 0
@@ -145,7 +145,7 @@ ucc_target() {
 
   # observation=indeterminate: observe ran (exit 0) but produced no usable state
   if [[ -z "$observed" ]]; then
-    printf '  %-46s  indeterminate\n' "$name"
+    printf '  %-46s  indeterminate  (observe returned no state)\n' "$name"
     _UCC_FAILED=$(( _UCC_FAILED + 1 ))
     _ucc_record "{$(_ucc_meta),\"target\":\"$(_ucc_jstr "$name")\",\"result\":{\"observation\":\"indeterminate\",\"message\":\"observe returned empty state\"}}"
     return 0
@@ -159,22 +159,22 @@ ucc_target() {
     if [[ "$UCC_MODE" == "update" && -n "$update_fn" ]]; then
       # Update mode: run upgrade even when state already matches
       if [[ "$UCC_DRY_RUN" == "1" ]]; then
-        printf '  %-46s  dry-run (update skipped)\n' "$name"
+        printf '  %-46s  dry-run  state="%s"  (update skipped)\n' "$name" "$observed"
         _ucc_record "{$(_ucc_meta),\"target\":\"$(_ucc_jstr "$name")\",\"result\":{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"dry_run\",\"message\":\"transition not applied due to dry-run mode\",\"observed_before\":\"$(_ucc_jstr "$observed")\"}}"
         return 0
       fi
       if $update_fn; then
-        printf '  %-46s  updated\n' "$name"
+        printf '  %-46s  updated  state="%s"\n' "$name" "$observed"
         _UCC_CHANGED=$(( _UCC_CHANGED + 1 ))
         _ucc_record "{$(_ucc_meta),\"target\":\"$(_ucc_jstr "$name")\",\"result\":{\"observation\":\"ok\",\"outcome\":\"changed\",\"completion\":\"complete\",\"proof\":\"update_applied\",\"observed_before\":\"$(_ucc_jstr "$observed")\",\"observed_after\":\"$(_ucc_jstr "$desired")\"}}"
       else
-        printf '  %-46s  FAILED — update error\n' "$name"
+        printf '  %-46s  FAILED — update error  state="%s"\n' "$name" "$observed"
         _UCC_FAILED=$(( _UCC_FAILED + 1 ))
         _ucc_record "{$(_ucc_meta),\"target\":\"$(_ucc_jstr "$name")\",\"result\":{\"observation\":\"ok\",\"outcome\":\"failed\",\"failure_class\":\"retryable\",\"message\":\"update function failed\",\"observed_before\":\"$(_ucc_jstr "$observed")\"}}"
       fi
     else
       # Already at desired state
-      printf '  %-46s  ok\n' "$name"
+      printf '  %-46s  ok  state="%s"\n' "$name" "$observed"
       _UCC_CONVERGED=$(( _UCC_CONVERGED + 1 ))
       _ucc_record "{$(_ucc_meta),\"target\":\"$(_ucc_jstr "$name")\",\"result\":{\"observation\":\"ok\",\"outcome\":\"converged\",\"observed_before\":\"$(_ucc_jstr "$observed")\"}}"
     fi
@@ -211,7 +211,7 @@ ucc_target() {
       _ucc_record "{$(_ucc_meta),\"target\":\"$(_ucc_jstr "$name")\",\"result\":{\"observation\":\"ok\",\"outcome\":\"failed\",\"failure_class\":\"retryable\",\"message\":\"post-install verify did not reach desired state\",\"observed_before\":\"$(_ucc_jstr "$observed")\",\"observed_after\":\"$(_ucc_jstr "${verified:-}")\"}}"
     fi
   else
-    printf '  %-46s  FAILED — install error\n' "$name"
+    printf '  %-46s  FAILED — install error  was="%s"\n' "$name" "$observed"
     _UCC_FAILED=$(( _UCC_FAILED + 1 ))
     _ucc_record "{$(_ucc_meta),\"target\":\"$(_ucc_jstr "$name")\",\"result\":{\"observation\":\"ok\",\"outcome\":\"failed\",\"failure_class\":\"retryable\",\"message\":\"install function failed\",\"observed_before\":\"$(_ucc_jstr "$observed")\"}}"
   fi
