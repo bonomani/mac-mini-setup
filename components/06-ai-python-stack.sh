@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # Component: AI Python Stack (PyTorch MPS + LLM frameworks)
-# UCC + Basic — bash 3.2 compatible (no declare -A)
+# BGS: UCC + Basic  (bgs/SUITE.md §4.5 + §4.3) — bash 3.2 compatible (no declare -A)
+#
+# BISS: Axis A = UCC (state convergence — pip packages installed + launchd service loaded)
+#       Axis B = Basic
+# Boundary: local filesystem · pip/PyPI (network) · macOS launchd (Unsloth Studio service)
 
 # Helper: define one pip group as a ucc_target
 # Usage: _pip_group <name> <first_pkg_to_observe> "<space-separated packages>"

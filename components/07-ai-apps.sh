@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # Component: AI Applications via Docker Compose
-# UCC + Basic — bash 3.2 compatible (no declare -A)
+# BGS: UCC + Basic  (bgs/SUITE.md §4.5 + §4.3) — bash 3.2 compatible (no declare -A)
+#
+# BISS: Axis A = UCC (state convergence — compose file present + containers running)
+#       Axis B = Basic
+# Boundary: local filesystem · Docker daemon API · network (image pulls)
 
 COMPOSE_DIR="$HOME/.ai-stack"
 

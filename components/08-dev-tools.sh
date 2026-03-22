@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # Component: Dev tools (Node, VSCode, CLI tools, Oh My Zsh, healthcheck)
-# UCC + Basic
+# BGS: UCC + Basic  (bgs/SUITE.md §4.5 + §4.3)
+#
+# BISS: Axis A = UCC (state convergence — brew formulae + casks + npm globals + launchd agents)
+#       Axis B = Basic
+# Boundary: local filesystem · brew · npm · macOS launchd · network (package downloads)
 
 # --- CLI tools (brew) ---------------------------------------
 CLI_TOOLS=(jq wget curl htop tmux fzf ripgrep fd tree uv pnpm gcc gh llama.cpp opencode aria2 xz cmake)

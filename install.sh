@@ -4,8 +4,27 @@
 #  Optimized for Apple Silicon + 64 GB RAM
 # ============================================================
 #
+#  BGS Suite compliance — Boundary Governance Suite
+#  Adoption profile: D — Governed and verified execution
+#    BISS classification → UIC preflight → UCC convergence → TIC verification
+#  See: bgs/SUITE.md, bgs/SUITE-MAP.md
+#
+#  BISS (Boundary Interaction Semantic Standard)
+#  -----------------------------------------------
+#  This installer crosses the following boundaries:
+#    - local filesystem       (UCC — convergence)
+#    - network                (UCC — downloads; GIC — package index update)
+#    - macOS system APIs      (UCC — pmset, defaults write, launchctl)
+#    - Docker daemon API      (UCC — container state)
+#    - HTTP APIs              (GIC — health checks, model availability probes)
+#  All boundary interactions are explicitly classified per component BISS header.
+#
 #  Framework references (coding standards — do not remove)
 #  --------------------------------------------------------
+#  BGS  Boundary Governance Suite
+#       Repo  : https://github.com/bonomani/bgs
+#       WSL   : /home/bc/repos/github/bonomani/bgs
+#
 #  UIC  Universal Intent Contract
 #       Repo  : https://github.com/bonomani/uic
 #       WSL   : /home/bc/repos/github/bonomani/uic
@@ -16,16 +35,24 @@
 #       WSL   : /home/bc/repos/github/bonomani/ucc
 #       Win   : /mnt/c/scripts/Ucc
 #
+#  TIC  Test Intent Contract
+#       Repo  : https://github.com/bonomani/tic
+#       WSL   : /home/bc/repos/github/bonomani/tic
+#       Impl  : lib/tic.sh + components/10-verify.sh
+#
 #  All components MUST be UCC + Basic compliant:
+#    - declare BISS classification (Axis A + Axis B + Boundary) in header
 #    - declare intent with ucc_target (observe / desired / install / update)
 #    - emit structured NOTICE lines (observation / outcome / diff / proof)
 #    - respect UCC_MODE (install | update) and UCC_DRY_RUN
+#  Component 10-verify runs TIC tests after all UCC components complete.
 # ============================================================
 set -euo pipefail
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$DIR/lib/ucc.sh"
 source "$DIR/lib/uic.sh"
+source "$DIR/lib/tic.sh"
 
 # ============================================================
 #  UIC gate condition functions (read-only, no side effects)
@@ -47,6 +74,7 @@ COMPONENTS=(
   "07-ai-apps"
   "08-dev-tools"
   "09-macos-defaults"
+  "10-verify"
 )
 
 usage() {

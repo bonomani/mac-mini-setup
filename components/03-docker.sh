@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # Component: Docker Desktop
-# UCC + Basic
+# BGS: UCC + Basic  (bgs/SUITE.md §4.5 + §4.3)
+#
+# BISS: Axis A = UCC (state convergence — app installed/absent + resources configured)
+#       Axis B = Basic
+# Boundary: local filesystem · brew cask · Docker daemon API · macOS launchd
 
 _observe_docker_app() {
   # Manual install counts as current — brew cask tracks upgrades for brew-installed only

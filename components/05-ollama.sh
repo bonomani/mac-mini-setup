@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # Component: Ollama — local LLMs via Apple Metal
-# UCC + Basic
+# BGS: UCC + Basic  (bgs/SUITE.md §4.5 + §4.3)
+#
+# BISS: Axis A = UCC (state convergence — ollama binary + service running + models present)
+#       Axis B = Basic
+# Boundary: local filesystem · network (official installer + model pulls) · HTTP API (port 11434) · macOS launchd
 
 MACOS_MAJOR="$(sw_vers -productVersion | awk -F. '{print $1}')"
 

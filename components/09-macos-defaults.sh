@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # Component: macOS system defaults (optimized for AI workloads)
-# UCC + Basic
+# BGS: UCC + Basic  (bgs/SUITE.md §4.5 + §4.3)
+#
+# BISS: Axis A = UCC (state convergence — pmset + defaults write settings)
+#       Axis B = Basic
+# Boundary: macOS system preferences API · pmset (requires sudo)
 
 # Each setting is a UCC target: observe current value → apply if different
 

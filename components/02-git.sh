@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # Component: Git — version control
-# UCC + Basic
+# BGS: UCC + Basic  (bgs/SUITE.md §4.5 + §4.3)
+#
+# BISS: Axis A = UCC (state convergence — git present/absent + config configured/absent)
+#       Axis B = Basic
+# Boundary: local filesystem · brew (git binary)
 
 _observe_git() {
   is_installed git && echo "installed" || echo "absent"

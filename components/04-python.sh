@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # Component: Python via pyenv
-# UCC + Basic
+# BGS: UCC + Basic  (bgs/SUITE.md §4.5 + §4.3)
+#
+# BISS: Axis A = UCC (state convergence — pyenv + Python version + pip present/absent)
+#       Axis B = Basic
+# Boundary: local filesystem · brew · network (pyenv install downloads Python source)
 
 # UIC preference: python-version (safe default = 3.12.3)
 PYTHON_VERSION="${UIC_PREF_PYTHON_VERSION:-3.12.3}"
