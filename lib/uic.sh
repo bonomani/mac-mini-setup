@@ -207,12 +207,10 @@ _uic_eval_gate() {
   local scope="${_UIC_GATE_SCOPES[$i]}"
 
   if $cond 2>/dev/null; then
-    printf '[GATE]        %-36s satisfied      [%s] class=%s scope=%s\n' \
-      "$name" "$blocking" "$class" "$scope"
+    printf '[GATE]  %-36s ok    [%s] scope=%s\n' "$name" "$blocking" "$scope"
     return 0
   else
-    printf '[GATE]        %-36s NOT_SATISFIED  [%s] class=%s scope=%s\n' \
-      "$name" "$blocking" "$class" "$scope"
+    printf '[GATE]  %-36s WARN  [%s] scope=%s\n' "$name" "$blocking" "$scope"
     if [[ "$blocking" == "hard" ]]; then
       log_warn "UIC hard gate '$name' failed — scope=$scope, failure_class=permanent"
     fi
@@ -265,12 +263,12 @@ uic_resolve() {
     local scope="${_UIC_PREF_SCOPES[$i]}"
     local source="operator"
     [[ "$val" == "$default" ]] && source="default(safe)"
+    local flag=""; [[ "$val" != "$default" ]] && flag=" *"
     if [[ "${UIC_PREFLIGHT:-0}" == "1" ]]; then
-      printf '[PREFERENCE]  %-30s %-18s [%s] scope=%s  options: %s\n' \
-        "$name" "$val" "$source" "$scope" "$opts"
+      printf '[PREF]  %-30s %-18s scope=%-40s options: %s\n' \
+        "$name" "${val}${flag}" "$scope" "$opts"
     else
-      printf '[PREFERENCE]  %-30s %-18s [%s] scope=%s\n' \
-        "$name" "$val" "$source" "$scope"
+      printf '[PREF]  %-30s %-18s scope=%s\n' "$name" "${val}${flag}" "$scope"
     fi
   done
 

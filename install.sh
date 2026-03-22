@@ -316,10 +316,7 @@ for comp in "${TO_RUN[@]}"; do
     continue
   fi
 
-  echo ""
-  echo "--------------------------------------------------------"
-  log_info "Component: $comp"
-  echo "--------------------------------------------------------"
+  printf '\n── %s\n' "$comp"
 
   if ! bash \
       -c "source \"$DIR/lib/ucc.sh\"; source \"$DIR/lib/uic.sh\"; source \"$DIR/lib/utils.sh\"; source \"$SCRIPT\"" \

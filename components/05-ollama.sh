@@ -136,11 +136,9 @@ case "$_OLLAMA_AUTOPULL" in
     _ollama_pull_set "${MODELS_SMALL[@]}" "${MODELS_MEDIUM[@]}" "${MODELS_LARGE[@]}"
     ;;
   none|*)
-    log_info "ollama-model-autopull=none — skipping automatic pulls (run: ollama pull <model>)"
     ;;
 esac
 
-log_info "Ollama API  → http://127.0.0.1:11434"
-log_info "Test with   → ollama run llama3.2"
+log_info "Ollama API → http://127.0.0.1:11434  (pull models: ollama pull <model>)"
 
 ucc_summary "05-ollama"
