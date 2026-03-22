@@ -208,8 +208,7 @@ _uic_eval_gate() {
 
   local scope_short="${scope/component:/}"
   if $cond 2>/dev/null; then
-    [[ "${UIC_PREFLIGHT:-0}" == "1" ]] && \
-      printf '[GATE]  %-36s ok    [%s] →%s\n' "$name" "$blocking" "$scope_short"
+    printf '[GATE]  %-36s ok    [%s] →%s\n' "$name" "$blocking" "$scope_short"
     return 0
   else
     printf '[GATE]  %-36s WARN  [%s] →%s\n' "$name" "$blocking" "$scope_short"
@@ -235,8 +234,7 @@ uic_resolve() {
   echo "  UIC Pre-Convergence Resolution"
   echo "  ──────────────────────────────────────────────────────"
 
-  # Steps 1+2: Gates — only print failing ones; silent on ok
-  local _gate_warn_count=0
+  # Steps 1+2: Gates — always show all with their result
   for i in "${!_UIC_GATE_NAMES[@]}"; do
     local blocking="${_UIC_GATE_BLOCKS[$i]}"
     if ! _uic_eval_gate "$i"; then
@@ -247,13 +245,11 @@ uic_resolve() {
         _UIC_FAILED_SOFT+=("${_UIC_GATE_NAMES[$i]}")
         [[ $exit_code -eq 0 ]] && exit_code=2
       fi
-      _gate_warn_count=$(( _gate_warn_count + 1 ))
     fi
   done
-  [[ $_gate_warn_count -eq 0 ]] && echo "  Gates: all ok"
 
-  # Steps 3+4: Preferences — only print operator overrides; silent on defaults
-  local _pref_override_count=0
+  # Steps 3+4: Preferences — always show all with default, active value, and options
+  echo ""
   for i in "${!_UIC_PREF_NAMES[@]}"; do
     local name="${_UIC_PREF_NAMES[$i]}"
     local val="${_UIC_PREF_VALUES[$i]}"
@@ -262,17 +258,11 @@ uic_resolve() {
     local scope="${_UIC_PREF_SCOPES[$i]}"
     local scope_short="${scope/component:/}"
     if [[ "$val" != "$default" ]]; then
-      _pref_override_count=$(( _pref_override_count + 1 ))
-      if [[ "${UIC_PREFLIGHT:-0}" == "1" ]]; then
-        printf '[PREF]  %-30s %-18s →%-20s options: %s\n' "$name" "${val} *" "$scope_short" "$opts"
-      else
-        printf '[PREF]  %-30s %-18s →%s\n' "$name" "${val} *" "$scope_short"
-      fi
-    elif [[ "${UIC_PREFLIGHT:-0}" == "1" ]]; then
+      printf '[PREF]  %-30s %-18s →%-20s options: %s\n' "$name" "${val} *" "$scope_short" "$opts"
+    else
       printf '[PREF]  %-30s %-18s →%-20s options: %s\n' "$name" "$val" "$scope_short" "$opts"
     fi
   done
-  [[ $_pref_override_count -eq 0 && "${UIC_PREFLIGHT:-0}" != "1" ]] && echo "  Preferences: all defaults"
   [[ -f "$UIC_PREF_FILE" ]] && echo "  Preferences file: $UIC_PREF_FILE  [operator overrides active]"
 
   echo ""
