@@ -89,13 +89,18 @@ UNSLOTH_PLIST="$HOME/Library/LaunchAgents/ai.unsloth.studio.plist"
 # launchd does not load pyenv shims — resolve the absolute binary path now
 UNSLOTH_BIN="$(pyenv which unsloth 2>/dev/null || command -v unsloth)"
 
+UNSLOTH_PLIST_MARKER="<!-- ai.unsloth.studio v2 -->"
+
 _observe_unsloth_studio_launchd() {
-  launchctl list 2>/dev/null | grep -q "ai.unsloth.studio" && echo "loaded" || echo "absent"
+  launchctl list 2>/dev/null | grep -q "ai.unsloth.studio" || { echo "absent"; return; }
+  grep -qF "$UNSLOTH_PLIST_MARKER" "$UNSLOTH_PLIST" 2>/dev/null || { echo "outdated"; return; }
+  echo "loaded"
 }
 
 _install_unsloth_studio_launchd() {
   mkdir -p "$(dirname "$UNSLOTH_PLIST")"
   cat > "$UNSLOTH_PLIST" <<PLIST
+${UNSLOTH_PLIST_MARKER}
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
