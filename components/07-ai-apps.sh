@@ -103,11 +103,4 @@ ucc_target --name "ai-stack-running" \
   --observe _observe_stack --desired "running" \
   --install _start_stack --update _update_stack
 
-log_info "Open WebUI (Ollama chat) → http://localhost:3000"
-log_info "Flowise (LLM flows)      → http://localhost:3001"
-log_info "OpenHands (agent)        → http://localhost:3002"
-log_info "n8n (automation)         → http://localhost:5678"
-log_info "Qdrant (vector DB)       → http://localhost:6333"
-log_info "Manage: docker compose -f ~/.ai-stack/docker-compose.yml <up|down|ps|logs>"
-
 ucc_summary "07-ai-apps"

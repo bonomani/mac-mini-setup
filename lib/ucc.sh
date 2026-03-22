@@ -27,6 +27,8 @@ export UCC_CORRELATION_ID=${UCC_CORRELATION_ID:-$(uuidgen 2>/dev/null || date +%
 
 # Per-component counters (reset in each subshell)
 _UCC_CONVERGED=0
+_UCC_CHANGED=0
+_UCC_FAILED=0
 
 # --- Structured logging -------------------------------------
 _ts() { date '+%H:%M:%S'; }
@@ -135,14 +137,16 @@ ucc_target() {
 
   # observation=failed: observe function crashed (non-zero exit)
   if [[ $obs_exit -ne 0 ]]; then
-    log_notice "$name | obs-failed"
+    printf '  %-46s  obs-failed\n' "$name"
+    _UCC_FAILED=$(( _UCC_FAILED + 1 ))
     _ucc_record "{$(_ucc_meta),\"target\":\"$(_ucc_jstr "$name")\",\"result\":{\"observation\":\"failed\",\"message\":\"observe function exited non-zero\"}}"
     return 0
   fi
 
   # observation=indeterminate: observe ran (exit 0) but produced no usable state
   if [[ -z "$observed" ]]; then
-    log_notice "$name | indeterminate"
+    printf '  %-46s  indeterminate\n' "$name"
+    _UCC_FAILED=$(( _UCC_FAILED + 1 ))
     _ucc_record "{$(_ucc_meta),\"target\":\"$(_ucc_jstr "$name")\",\"result\":{\"observation\":\"indeterminate\",\"message\":\"observe returned empty state\"}}"
     return 0
   fi
@@ -155,38 +159,38 @@ ucc_target() {
     if [[ "$UCC_MODE" == "update" && -n "$update_fn" ]]; then
       # Update mode: run upgrade even when state already matches
       if [[ "$UCC_DRY_RUN" == "1" ]]; then
-        log_notice "$name | unchanged inhibitor=dry_run | before=\"$observed\" diff={}"
-        _ucc_record "{$(_ucc_meta),\"target\":\"$(_ucc_jstr "$name")\",\"result\":{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"dry_run\",\"observed_before\":\"$(_ucc_jstr "$observed")\"}}"
+        printf '  %-46s  dry-run (update skipped)\n' "$name"
+        _ucc_record "{$(_ucc_meta),\"target\":\"$(_ucc_jstr "$name")\",\"result\":{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"dry_run\",\"message\":\"transition not applied due to dry-run mode\",\"observed_before\":\"$(_ucc_jstr "$observed")\"}}"
         return 0
       fi
       if $update_fn; then
-        log_notice "$name | changed \"$observed\" → \"$desired\" completion=complete proof=update_applied"
+        printf '  %-46s  updated\n' "$name"
+        _UCC_CHANGED=$(( _UCC_CHANGED + 1 ))
         _ucc_record "{$(_ucc_meta),\"target\":\"$(_ucc_jstr "$name")\",\"result\":{\"observation\":\"ok\",\"outcome\":\"changed\",\"completion\":\"complete\",\"proof\":\"update_applied\",\"observed_before\":\"$(_ucc_jstr "$observed")\",\"observed_after\":\"$(_ucc_jstr "$desired")\"}}"
       else
-        log_notice "$name | failed class=retryable | before=\"$observed\" diff={}"
+        printf '  %-46s  FAILED — update error\n' "$name"
+        _UCC_FAILED=$(( _UCC_FAILED + 1 ))
         _ucc_record "{$(_ucc_meta),\"target\":\"$(_ucc_jstr "$name")\",\"result\":{\"observation\":\"ok\",\"outcome\":\"failed\",\"failure_class\":\"retryable\",\"message\":\"update function failed\",\"observed_before\":\"$(_ucc_jstr "$observed")\"}}"
       fi
     else
-      # Already at desired state — count silently; ucc_summary prints the total
+      # Already at desired state
+      printf '  %-46s  ok\n' "$name"
       _UCC_CONVERGED=$(( _UCC_CONVERGED + 1 ))
       _ucc_record "{$(_ucc_meta),\"target\":\"$(_ucc_jstr "$name")\",\"result\":{\"observation\":\"ok\",\"outcome\":\"converged\",\"observed_before\":\"$(_ucc_jstr "$observed")\"}}"
     fi
     return 0
   fi
 
-  # Diff non-empty
-  local diff_str="{was=\"$observed\",is=\"$desired\"}"
-
   # Step 4: Apply transition
   if [[ "$UCC_DRY_RUN" == "1" ]]; then
-    log_notice "$name | unchanged inhibitor=dry_run | before=\"$observed\" diff=$diff_str"
-    _ucc_record "{$(_ucc_meta),\"target\":\"$(_ucc_jstr "$name")\",\"result\":{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"dry_run\",\"observed_before\":\"$(_ucc_jstr "$observed")\"}}"
+    printf '  %-46s  dry-run  "%s" → "%s"\n' "$name" "$observed" "$desired"
+    _ucc_record "{$(_ucc_meta),\"target\":\"$(_ucc_jstr "$name")\",\"result\":{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"dry_run\",\"message\":\"transition not applied due to dry-run mode\",\"observed_before\":\"$(_ucc_jstr "$observed")\"}}"
     return 0
   fi
 
   if [[ -z "$install_fn" ]]; then
-    log_notice "$name | unchanged inhibitor=policy | before=\"$observed\" diff=$diff_str"
-    _ucc_record "{$(_ucc_meta),\"target\":\"$(_ucc_jstr "$name")\",\"result\":{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"policy\",\"observed_before\":\"$(_ucc_jstr "$observed")\"}}"
+    printf '  %-46s  no-install (policy)  "%s" → "%s"\n' "$name" "$observed" "$desired"
+    _ucc_record "{$(_ucc_meta),\"target\":\"$(_ucc_jstr "$name")\",\"result\":{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"policy\",\"message\":\"transition not applied — no install function declared\",\"observed_before\":\"$(_ucc_jstr "$observed")\"}}"
     return 0
   fi
 
@@ -198,21 +202,28 @@ ucc_target() {
     ver_exit=$?
     log_debug "post-install observed=\"$verified\""
     if [[ $ver_exit -eq 0 && "$verified" == "$desired" ]]; then
-      log_notice "$name | changed \"$observed\" → \"$desired\" completion=complete proof=verify_pass"
+      printf '  %-46s  installed  "%s" → "%s"\n' "$name" "$observed" "$verified"
+      _UCC_CHANGED=$(( _UCC_CHANGED + 1 ))
       _ucc_record "{$(_ucc_meta),\"target\":\"$(_ucc_jstr "$name")\",\"result\":{\"observation\":\"ok\",\"outcome\":\"changed\",\"completion\":\"complete\",\"proof\":\"verify_pass\",\"observed_before\":\"$(_ucc_jstr "$observed")\",\"observed_after\":\"$(_ucc_jstr "$verified")\"}}"
     else
-      log_notice "$name | failed class=retryable | before=\"$observed\" diff=$diff_str after=\"${verified:-?}\""
+      printf '  %-46s  FAILED — verify after install: "%s"\n' "$name" "${verified:-?}"
+      _UCC_FAILED=$(( _UCC_FAILED + 1 ))
       _ucc_record "{$(_ucc_meta),\"target\":\"$(_ucc_jstr "$name")\",\"result\":{\"observation\":\"ok\",\"outcome\":\"failed\",\"failure_class\":\"retryable\",\"message\":\"post-install verify did not reach desired state\",\"observed_before\":\"$(_ucc_jstr "$observed")\",\"observed_after\":\"$(_ucc_jstr "${verified:-}")\"}}"
     fi
   else
-    log_notice "$name | failed class=retryable | before=\"$observed\" diff=$diff_str"
+    printf '  %-46s  FAILED — install error\n' "$name"
+    _UCC_FAILED=$(( _UCC_FAILED + 1 ))
     _ucc_record "{$(_ucc_meta),\"target\":\"$(_ucc_jstr "$name")\",\"result\":{\"observation\":\"ok\",\"outcome\":\"failed\",\"failure_class\":\"retryable\",\"message\":\"install function failed\",\"observed_before\":\"$(_ucc_jstr "$observed")\"}}"
   fi
 }
 
 # ============================================================
-#  ucc_summary — final marker for this script
+#  ucc_summary — write per-component counts to summary file
 # ============================================================
 ucc_summary() {
-  [[ $_UCC_CONVERGED -gt 0 ]] && log_notice "  $_UCC_CONVERGED converged"
+  local comp="${1:-}"
+  if [[ -n "${UCC_SUMMARY_FILE:-}" && -n "$comp" ]]; then
+    printf '%s|%d|%d|%d\n' "$comp" "$_UCC_CONVERGED" "$_UCC_CHANGED" "$_UCC_FAILED" \
+      >> "$UCC_SUMMARY_FILE" 2>/dev/null || true
+  fi
 }

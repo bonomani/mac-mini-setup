@@ -138,6 +138,4 @@ case "$_OLLAMA_AUTOPULL" in
     ;;
 esac
 
-log_info "Ollama API → http://127.0.0.1:11434  (pull models: ollama pull <model>)"
-
 ucc_summary "05-ollama"

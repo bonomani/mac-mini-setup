@@ -162,8 +162,6 @@ ucc_target \
   --install _install_unsloth_studio_launchd \
   --update  _update_unsloth_studio_launchd
 
-log_info "Unsloth Studio → http://0.0.0.0:8888"
-
 # Verify Metal/MPS availability
 if [[ "$UCC_DRY_RUN" != "1" ]] && is_installed python3; then
   _mps=$(python3 -c "import torch; print('available' if torch.backends.mps.is_available() else 'not available (CPU only)')" 2>/dev/null || true)

@@ -304,6 +304,7 @@ _refresh_brew_path
 
 # --- Structured result artifact (UCC/2.0 JSONL) -------------
 export UCC_RESULT_FILE="$HOME/.ai-stack/runs/${UCC_CORRELATION_ID}.jsonl"
+export UCC_SUMMARY_FILE="$HOME/.ai-stack/runs/${UCC_CORRELATION_ID}.summary"
 mkdir -p "$HOME/.ai-stack/runs"
 
 # --- Run components -----------------------------------------
@@ -338,15 +339,53 @@ done
 # --- Final summary ------------------------------------------
 echo ""
 echo "========================================================"
-if [[ ${#FAILED_COMPONENTS[@]} -eq 0 ]]; then
-  _summary="All components completed | mode=$UCC_MODE"
-  [[ "$UCC_DRY_RUN" == "1" ]] && _summary="$_summary dry_run=1"
-  log_notice "$_summary"
-else
-  log_warn "Completed with failures: ${FAILED_COMPONENTS[*]}"
+_hdr_sum="Summary | mode=$UCC_MODE"
+[[ "$UCC_DRY_RUN" == "1" ]] && _hdr_sum="$_hdr_sum | dry_run=1"
+echo "  $_hdr_sum"
+echo "  ──────────────────────────────────────────────────────"
+
+_total_ok=0; _total_chg=0; _total_fail=0
+if [[ -f "$UCC_SUMMARY_FILE" ]]; then
+  while IFS='|' read -r _comp _a _b _c _d; do
+    if [[ "$_a" == "tic" ]]; then
+      printf '  %-22s  TIC  pass=%-3s  fail=%-3s  skip=%s\n' "$_comp" "$_b" "$_c" "$_d"
+    else
+      _total_ok=$(( _total_ok + _a ))
+      _total_chg=$(( _total_chg + _b ))
+      _total_fail=$(( _total_fail + _c ))
+      _parts=""
+      [[ $_a -gt 0 ]] && _parts="${_a} ok"
+      [[ $_b -gt 0 ]] && _parts="${_parts:+$_parts  }${_b} changed"
+      [[ $_c -gt 0 ]] && _parts="${_parts:+$_parts  }${_c} FAILED"
+      printf '  %-22s  %s\n' "$_comp" "${_parts:----}"
+    fi
+  done < "$UCC_SUMMARY_FILE"
+  echo "  ──────────────────────────────────────────────────────"
+  _totline="${_total_ok} ok"
+  [[ $_total_chg  -gt 0 ]] && _totline="${_totline}  ${_total_chg} changed"
+  [[ $_total_fail -gt 0 ]] && _totline="${_totline}  ${_total_fail} FAILED"
+  printf '  %-22s  %s\n' "Total" "$_totline"
 fi
+
+if [[ ${#FAILED_COMPONENTS[@]} -gt 0 ]]; then
+  echo ""
+  log_warn "Failed components: ${FAILED_COMPONENTS[*]}"
+fi
+
+echo "  ──────────────────────────────────────────────────────"
+echo "  Services"
+echo "    Ollama API       → http://127.0.0.1:11434   (ollama pull <model>)"
+echo "    Unsloth Studio   → http://0.0.0.0:8888"
+echo "    Open WebUI       → http://localhost:3000"
+echo "    Flowise          → http://localhost:3001"
+echo "    OpenHands        → http://localhost:3002"
+echo "    n8n              → http://localhost:5678"
+echo "    Qdrant           → http://localhost:6333"
+echo "    aria2 RPC        → http://127.0.0.1:6800"
+echo "    ariaflow web UI  → http://127.0.0.1:8001"
+echo "  ──────────────────────────────────────────────────────"
+echo "  Result: $UCC_RESULT_FILE"
 echo "========================================================"
-log_info "Result artifact: $UCC_RESULT_FILE"
 echo ""
 
 [[ ${#FAILED_COMPONENTS[@]} -eq 0 ]]

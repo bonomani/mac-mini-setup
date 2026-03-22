@@ -377,7 +377,4 @@ ucc_target \
   --install _start_ariaflow_web_service \
   --update  _restart_ariaflow_web_service
 
-log_info "aria2 RPC      → http://127.0.0.1:6800"
-log_info "ariaflow web UI → http://127.0.0.1:8001"
-
 ucc_summary "08-dev-tools"
