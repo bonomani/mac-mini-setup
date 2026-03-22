@@ -112,13 +112,13 @@ ucc_target() {
 
   # observation=failed: observe function crashed (non-zero exit)
   if [[ $obs_exit -ne 0 ]]; then
-    log_notice "$name | observation=failed failure_class=retryable"
+    log_notice "$name | obs-failed"
     return 0
   fi
 
   # observation=indeterminate: observe ran (exit 0) but produced no usable state
   if [[ -z "$observed" ]]; then
-    log_notice "$name | observation=indeterminate"
+    log_notice "$name | indeterminate"
     return 0
   fi
 

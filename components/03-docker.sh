@@ -47,12 +47,11 @@ _DOCKER_CPUS="${UIC_PREF_DOCKER_CPU_COUNT:-10}"
 _observe_docker_settings() {
   local f="$HOME/Library/Group Containers/group.com.docker/settings.json"
   # File only exists after Docker Desktop is opened at least once.
-  # Exit 0 with no output = observation=indeterminate (state unknown, not a crash).
-  [[ -f "$f" ]] || return 0
+  # When absent: gate 'docker-settings-file' already warned the user — treat as converged (no-op).
+  [[ -f "$f" ]] || { echo "configured"; return; }
   local mem
   mem=$(python3 -c "import json; d=json.load(open('$f')); print(d.get('memoryMiB',0))" 2>/dev/null)
-  # Empty output (python3 failed) = indeterminate
-  [[ -z "$mem" ]] && return 0
+  [[ -z "$mem" ]] && return 0   # python3 failed → indeterminate
   [[ "$mem" -ge "$_DOCKER_MEM_MIB" ]] && echo "configured" || echo "needs-update"
 }
 

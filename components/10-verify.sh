@@ -170,7 +170,7 @@ tic_test \
   --name   "unsloth-importable" \
   --intent "unsloth Python package is not importable on Apple Silicon (NVIDIA/AMD only)" \
   --oracle "true" \
-  --skip   "unsloth pip package raises NotImplementedError on Apple Silicon — Unsloth Studio uses its own isolated venv instead" \
+  --skip   "not importable on Apple Silicon (NVIDIA only) — Studio runs in its own venv" \
   --trace  "component:06-ai-python-stack / ucc-target:unsloth-studio-setup"
 
 tic_test \
