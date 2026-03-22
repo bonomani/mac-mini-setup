@@ -208,10 +208,10 @@ _uic_eval_gate() {
 
   local scope_short="${scope/component:/}"
   if $cond 2>/dev/null; then
-    printf '[GATE]  %-36s ok    [%s] →%s\n' "$name" "$blocking" "$scope_short"
+    printf '[GATE]  %-36s ok    [%s/%s] →%s\n' "$name" "$blocking" "$class" "$scope_short"
     return 0
   else
-    printf '[GATE]  %-36s WARN  [%s] →%s\n' "$name" "$blocking" "$scope_short"
+    printf '[GATE]  %-36s WARN  [%s/%s] →%s\n' "$name" "$blocking" "$class" "$scope_short"
     if [[ "$blocking" == "hard" ]]; then
       log_warn "UIC hard gate '$name' failed — scope=$scope, failure_class=permanent"
     fi
@@ -255,6 +255,7 @@ uic_resolve() {
     local val="${_UIC_PREF_VALUES[$i]}"
     local default="${_UIC_PREF_DEFAULTS[$i]}"
     local opts="${_UIC_PREF_OPTIONS[$i]}"
+    local rationale="${_UIC_PREF_RATIONALES[$i]}"
     local scope="${_UIC_PREF_SCOPES[$i]}"
     local scope_short="${scope/component:/}"
     if [[ "$val" != "$default" ]]; then
@@ -262,6 +263,7 @@ uic_resolve() {
     else
       printf '[PREF]  %-30s %-18s →%-20s options: %s\n' "$name" "$val" "$scope_short" "$opts"
     fi
+    printf '        # %s\n' "$rationale"
   done
   [[ -f "$UIC_PREF_FILE" ]] && echo "  Preferences file: $UIC_PREF_FILE  [operator overrides active]"
 
