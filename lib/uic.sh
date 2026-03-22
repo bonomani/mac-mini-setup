@@ -208,7 +208,8 @@ _uic_eval_gate() {
 
   local scope_short="${scope/component:/}"
   if $cond 2>/dev/null; then
-    printf '[GATE]  %-36s ok    [%s] →%s\n' "$name" "$blocking" "$scope_short"
+    [[ "${UIC_PREFLIGHT:-0}" == "1" ]] && \
+      printf '[GATE]  %-36s ok    [%s] →%s\n' "$name" "$blocking" "$scope_short"
     return 0
   else
     printf '[GATE]  %-36s WARN  [%s] →%s\n' "$name" "$blocking" "$scope_short"
@@ -234,55 +235,53 @@ uic_resolve() {
   echo "  UIC Pre-Convergence Resolution"
   echo "  ──────────────────────────────────────────────────────"
 
-  # Step 1: Hard gates
-  echo "  Gates (hard):"
+  # Steps 1+2: Gates — only print failing ones; silent on ok
+  local _gate_warn_count=0
   for i in "${!_UIC_GATE_NAMES[@]}"; do
-    [[ "${_UIC_GATE_BLOCKS[$i]}" == "hard" ]] || continue
+    local blocking="${_UIC_GATE_BLOCKS[$i]}"
     if ! _uic_eval_gate "$i"; then
-      _UIC_FAILED_HARD+=("${_UIC_GATE_NAMES[$i]}")
-      exit_code=1
+      if [[ "$blocking" == "hard" ]]; then
+        _UIC_FAILED_HARD+=("${_UIC_GATE_NAMES[$i]}")
+        exit_code=1
+      else
+        _UIC_FAILED_SOFT+=("${_UIC_GATE_NAMES[$i]}")
+        [[ $exit_code -eq 0 ]] && exit_code=2
+      fi
+      _gate_warn_count=$(( _gate_warn_count + 1 ))
     fi
   done
+  [[ $_gate_warn_count -eq 0 ]] && echo "  Gates: all ok"
 
-  # Step 2: Soft gates
-  echo "  Gates (soft):"
-  for i in "${!_UIC_GATE_NAMES[@]}"; do
-    [[ "${_UIC_GATE_BLOCKS[$i]}" == "soft" ]] || continue
-    if ! _uic_eval_gate "$i"; then
-      _UIC_FAILED_SOFT+=("${_UIC_GATE_NAMES[$i]}")
-      [[ $exit_code -eq 0 ]] && exit_code=2
-    fi
-  done
-
-  # Steps 3+4: Preferences (resolved at declaration time; report here)
-  echo "  Preferences:"
+  # Steps 3+4: Preferences — only print operator overrides; silent on defaults
+  local _pref_override_count=0
   for i in "${!_UIC_PREF_NAMES[@]}"; do
     local name="${_UIC_PREF_NAMES[$i]}"
     local val="${_UIC_PREF_VALUES[$i]}"
     local default="${_UIC_PREF_DEFAULTS[$i]}"
     local opts="${_UIC_PREF_OPTIONS[$i]}"
     local scope="${_UIC_PREF_SCOPES[$i]}"
-    local source="operator"
-    [[ "$val" == "$default" ]] && source="default(safe)"
-    local flag=""; [[ "$val" != "$default" ]] && flag=" *"
     local scope_short="${scope/component:/}"
-    if [[ "${UIC_PREFLIGHT:-0}" == "1" ]]; then
-      printf '[PREF]  %-30s %-18s →%-20s options: %s\n' \
-        "$name" "${val}${flag}" "$scope_short" "$opts"
-    else
-      printf '[PREF]  %-30s %-18s →%s\n' "$name" "${val}${flag}" "$scope_short"
+    if [[ "$val" != "$default" ]]; then
+      _pref_override_count=$(( _pref_override_count + 1 ))
+      if [[ "${UIC_PREFLIGHT:-0}" == "1" ]]; then
+        printf '[PREF]  %-30s %-18s →%-20s options: %s\n' "$name" "${val} *" "$scope_short" "$opts"
+      else
+        printf '[PREF]  %-30s %-18s →%s\n' "$name" "${val} *" "$scope_short"
+      fi
+    elif [[ "${UIC_PREFLIGHT:-0}" == "1" ]]; then
+      printf '[PREF]  %-30s %-18s →%-20s options: %s\n' "$name" "$val" "$scope_short" "$opts"
     fi
   done
-
-  echo ""
+  [[ $_pref_override_count -eq 0 && "${UIC_PREFLIGHT:-0}" != "1" ]] && echo "  Preferences: all defaults"
   [[ -f "$UIC_PREF_FILE" ]] && echo "  Preferences file: $UIC_PREF_FILE  [operator overrides active]"
+
   echo ""
   if [[ $exit_code -eq 0 ]]; then
     echo "  resolution: PASS"
   elif [[ $exit_code -eq 1 ]]; then
     echo "  resolution: FAIL — hard gate failure"
   else
-    echo "  resolution: WARN — soft gate(s) not satisfied (see above)"
+    echo "  resolution: WARN — ${#_UIC_FAILED_SOFT[@]} soft gate(s) not satisfied"
   fi
   echo ""
 
