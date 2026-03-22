@@ -105,8 +105,6 @@ ucc_target() {
     esac
   done
 
-  log_info "Target: $name"
-
   # Step 1 – Observe current state
   local observed obs_exit
   observed=$($observe_fn 2>/dev/null)
