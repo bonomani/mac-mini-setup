@@ -348,14 +348,5 @@ else
 fi
 echo "========================================================"
 echo ""
-log_info "Services (once running):"
-log_info "  Ollama API       → http://localhost:11434"
-log_info "  Open WebUI       → http://localhost:3000"
-log_info "  Flowise          → http://localhost:3001"
-log_info "  n8n              → http://localhost:5678"
-log_info "  Qdrant           → http://localhost:6333"
-log_info "  OpenHands        → http://localhost:3002"
-log_info "  Jupyter Lab      → run: jupyter lab"
-echo ""
 
 [[ ${#FAILED_COMPONENTS[@]} -eq 0 ]]

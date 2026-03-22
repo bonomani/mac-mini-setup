@@ -214,9 +214,7 @@ _uic_eval_gate() {
     printf '[GATE]        %-36s NOT_SATISFIED  [%s] class=%s scope=%s\n' \
       "$name" "$blocking" "$class" "$scope"
     if [[ "$blocking" == "hard" ]]; then
-      log_warn "UIC hard gate '$name' failed — scope=$scope → outcome=failed, failure_class=permanent, reason=gate_failed"
-    else
-      log_warn "UIC soft gate '$name' not satisfied — scope=$scope → outcome=unchanged, inhibitor=policy, reason=gate_not_satisfied"
+      log_warn "UIC hard gate '$name' failed — scope=$scope, failure_class=permanent"
     fi
     return 1
   fi
@@ -276,12 +274,10 @@ uic_resolve() {
   done
 
   echo ""
-  echo "  Preferences file: $UIC_PREF_FILE"
   if [[ -f "$UIC_PREF_FILE" ]]; then
-    echo "  Status: present — operator overrides active"
+    echo "  Preferences file: $UIC_PREF_FILE  [operator overrides active]"
   else
-    echo "  Status: absent  — all safe defaults in effect"
-    echo "  To override: create $UIC_PREF_FILE  (see template below)"
+    echo "  Preferences file: $UIC_PREF_FILE  [absent — safe defaults in effect]"
   fi
 
   echo ""
