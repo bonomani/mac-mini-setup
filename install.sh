@@ -46,6 +46,12 @@
 #    - emit structured NOTICE lines (observation / outcome / diff / proof)
 #    - respect UCC_MODE (install | update) and UCC_DRY_RUN
 #  Component 10-verify runs TIC tests after all UCC components complete.
+#
+#  Immutable framework version refs (BGS-COMPLIANCE.md CR-7)
+#    BGS : bgs@c31f200
+#    UCC : ucc@1505204
+#    UIC : uic@a997340
+#    TIC : tic@5f125a3
 # ============================================================
 set -euo pipefail
 
