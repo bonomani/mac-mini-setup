@@ -23,7 +23,7 @@
 UCC_DRY_RUN=${UCC_DRY_RUN:-0}   # 1 = dry-run (inhibitor=dry_run)
 UCC_MODE=${UCC_MODE:-install}    # install | update
 UCC_DEBUG=${UCC_DEBUG:-0}        # 1 = show DEBUG lines
-UCC_CORRELATION_ID=${UCC_CORRELATION_ID:-$(uuidgen 2>/dev/null || date +%s%N)}
+export UCC_CORRELATION_ID=${UCC_CORRELATION_ID:-$(uuidgen 2>/dev/null || date +%s%N)}
 
 # Per-component counters (reset in each subshell)
 _UCC_CONVERGED=0
