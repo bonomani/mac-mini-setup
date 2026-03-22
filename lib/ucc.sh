@@ -180,7 +180,5 @@ ucc_target() {
 #  ucc_summary — final marker for this script
 # ============================================================
 ucc_summary() {
-  local script_name="${1:-$(basename "${BASH_SOURCE[1]:-$0}")}"
-  echo ""
-  log_notice "=== $script_name ==="
+  : # orchestrator (install.sh) emits Component done/failed — no duplicate line needed
 }

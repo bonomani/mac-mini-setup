@@ -70,7 +70,8 @@ _pip_group "vector-dbs" \
 
 _pip_group "jupyter" \
   "jupyterlab" \
-  "jupyterlab ipywidgets jupyter-ai nbformat"
+  "jupyterlab ipywidgets nbformat"
+# Note: jupyter-ai removed — it pins langchain<0.4.0, incompatible with langchain>=1.0.0
 
 _pip_group "serving" \
   "fastapi" \

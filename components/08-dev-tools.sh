@@ -337,23 +337,48 @@ ucc_target \
   --install _install_aria2_launchd \
   --update  _install_aria2_launchd
 
-# --- ariaflow web UI — launchd (port 8000, survives reboot) --
-_observe_ariaflow_launchd() {
-  ariaflow lifecycle 2>/dev/null \
-    | python3 -c "import json,sys; r=json.load(sys.stdin).get('ariaflow-serve-launchd',{}).get('result',{}); print('loaded' if r.get('outcome')=='converged' else 'absent')" \
-    2>/dev/null || true
+# --- ariaflow-web — brew formula (port 8001, separate from ariaflow) -
+# ariaflow-web is a distinct brew package; managed via brew services (not ariaflow install --with-web)
+_observe_ariaflow_web() {
+  brew_is_installed ariaflow-web || { echo "absent"; return; }
+  if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-always-upgrade}" == "always-upgrade" ]]; then
+    _brew_is_outdated ariaflow-web && { echo "outdated"; return; }
+  fi
+  echo "current"
 }
-_install_ariaflow_launchd() { ucc_run ariaflow install --with-web; }
+_install_ariaflow_web() {
+  ucc_run brew tap bonomani/ariaflow
+  ucc_run brew upgrade ariaflow-web 2>/dev/null || ucc_run brew install ariaflow-web
+}
 
 ucc_target \
-  --name    "ariaflow-serve-launchd" \
-  --observe _observe_ariaflow_launchd \
-  --desired "loaded" \
-  --install _install_ariaflow_launchd \
-  --update  _install_ariaflow_launchd
+  --name    "ariaflow-web" \
+  --observe _observe_ariaflow_web \
+  --desired "current" \
+  --install _install_ariaflow_web \
+  --update  _install_ariaflow_web
+
+# --- ariaflow-web service — brew services (port 8001, survives reboot) --
+_observe_ariaflow_web_service() {
+  brew services list 2>/dev/null | awk '/^ariaflow-web/ {print $2}' | grep -q "^started$" \
+    && echo "started" || echo "stopped"
+}
+_start_ariaflow_web_service() {
+  ucc_run brew services start bonomani/ariaflow/ariaflow-web
+}
+_restart_ariaflow_web_service() {
+  ucc_run brew services restart bonomani/ariaflow/ariaflow-web
+}
+
+ucc_target \
+  --name    "ariaflow-web-service" \
+  --observe _observe_ariaflow_web_service \
+  --desired "started" \
+  --install _start_ariaflow_web_service \
+  --update  _restart_ariaflow_web_service
 
 log_info "aria2 RPC      → http://127.0.0.1:6800"
-log_info "ariaflow web UI → http://127.0.0.1:8000"
+log_info "ariaflow web UI → http://127.0.0.1:8001"
 
 log_info "Run 'ai-healthcheck' to verify the full setup"
 
