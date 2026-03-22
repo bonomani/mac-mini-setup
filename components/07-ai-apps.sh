@@ -103,7 +103,6 @@ ucc_target --name "ai-stack-running" \
   --observe _observe_stack --desired "running" \
   --install _start_stack --update _update_stack
 
-echo ""
 log_info "Open WebUI (Ollama chat) → http://localhost:3000"
 log_info "Flowise (LLM flows)      → http://localhost:3001"
 log_info "OpenHands (agent)        → http://localhost:3002"

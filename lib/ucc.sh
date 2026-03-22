@@ -134,13 +134,13 @@ ucc_target() {
         return 0
       fi
       if $update_fn; then
-        log_notice "$name | observation=ok outcome=changed completion=complete | before=\"$observed\" diff={} after=\"$desired\" proof=update_applied"
+        log_notice "$name | changed \"$observed\" → \"$desired\" proof=update_applied"
       else
-        log_notice "$name | observation=ok outcome=failed failure_class=retryable | before=\"$observed\" diff={}"
+        log_notice "$name | failed class=retryable | before=\"$observed\" diff={}"
       fi
     else
-      # Already at desired state — converged
-      log_notice "$name | observation=ok outcome=converged | before=\"$observed\" diff={}"
+      # Already at desired state — converged (compact: full fields only on non-trivial outcomes)
+      log_notice "$name | converged"
     fi
     return 0
   fi
@@ -150,12 +150,12 @@ ucc_target() {
 
   # Step 4: Apply transition
   if [[ "$UCC_DRY_RUN" == "1" ]]; then
-    log_notice "$name | observation=ok outcome=unchanged inhibitor=dry_run | before=\"$observed\" diff=$diff_str"
+    log_notice "$name | unchanged inhibitor=dry_run | before=\"$observed\" diff=$diff_str"
     return 0
   fi
 
   if [[ -z "$install_fn" ]]; then
-    log_notice "$name | observation=ok outcome=unchanged inhibitor=policy | before=\"$observed\" diff=$diff_str"
+    log_notice "$name | unchanged inhibitor=policy | before=\"$observed\" diff=$diff_str"
     return 0
   fi
 
@@ -167,12 +167,12 @@ ucc_target() {
     ver_exit=$?
     log_debug "post-install observed=\"$verified\""
     if [[ $ver_exit -eq 0 && "$verified" == "$desired" ]]; then
-      log_notice "$name | observation=ok outcome=changed completion=complete | before=\"$observed\" diff=$diff_str after=\"$verified\" proof=verify_pass"
+      log_notice "$name | changed \"$observed\" → \"$desired\" proof=verify_pass"
     else
-      log_notice "$name | observation=ok outcome=failed failure_class=retryable | before=\"$observed\" diff=$diff_str after=\"$verified\""
+      log_notice "$name | failed class=retryable | before=\"$observed\" diff=$diff_str after=\"${verified:-?}\""
     fi
   else
-    log_notice "$name | observation=ok outcome=failed failure_class=retryable | before=\"$observed\" diff=$diff_str"
+    log_notice "$name | failed class=retryable | before=\"$observed\" diff=$diff_str"
   fi
 }
 
