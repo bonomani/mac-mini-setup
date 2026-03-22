@@ -232,12 +232,10 @@ uic_resolve() {
   local exit_code=0 i
 
   echo ""
-  echo "========================================================"
   echo "  UIC Pre-Convergence Resolution"
-  echo "========================================================"
+  echo "  ──────────────────────────────────────────────────────"
 
   # Step 1: Hard gates
-  echo ""
   echo "  Gates (hard):"
   for i in "${!_UIC_GATE_NAMES[@]}"; do
     [[ "${_UIC_GATE_BLOCKS[$i]}" == "hard" ]] || continue
@@ -248,7 +246,6 @@ uic_resolve() {
   done
 
   # Step 2: Soft gates
-  echo ""
   echo "  Gates (soft):"
   for i in "${!_UIC_GATE_NAMES[@]}"; do
     [[ "${_UIC_GATE_BLOCKS[$i]}" == "soft" ]] || continue
@@ -259,7 +256,6 @@ uic_resolve() {
   done
 
   # Steps 3+4: Preferences (resolved at declaration time; report here)
-  echo ""
   echo "  Preferences:"
   for i in "${!_UIC_PREF_NAMES[@]}"; do
     local name="${_UIC_PREF_NAMES[$i]}"
@@ -269,8 +265,13 @@ uic_resolve() {
     local scope="${_UIC_PREF_SCOPES[$i]}"
     local source="operator"
     [[ "$val" == "$default" ]] && source="default(safe)"
-    printf '[PREFERENCE]  %-30s %-18s [%s] scope=%s\n' \
-      "$name" "$val" "$source" "$scope"
+    if [[ "${UIC_PREFLIGHT:-0}" == "1" ]]; then
+      printf '[PREFERENCE]  %-30s %-18s [%s] scope=%s  options: %s\n' \
+        "$name" "$val" "$source" "$scope" "$opts"
+    else
+      printf '[PREFERENCE]  %-30s %-18s [%s] scope=%s\n' \
+        "$name" "$val" "$source" "$scope"
+    fi
   done
 
   echo ""
@@ -282,13 +283,12 @@ uic_resolve() {
 
   echo ""
   if [[ $exit_code -eq 0 ]]; then
-    echo "  UIC resolution: PASS"
+    echo "  resolution: PASS"
   elif [[ $exit_code -eq 1 ]]; then
-    echo "  UIC resolution: FAIL — hard gate failure"
+    echo "  resolution: FAIL — hard gate failure"
   else
-    echo "  UIC resolution: WARN — soft gate(s) not satisfied (see above)"
+    echo "  resolution: WARN — soft gate(s) not satisfied (see above)"
   fi
-  echo "========================================================"
   echo ""
 
   return $exit_code

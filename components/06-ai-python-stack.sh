@@ -166,13 +166,8 @@ log_info "Unsloth Studio → http://0.0.0.0:8888"
 
 # Verify Metal/MPS availability
 if [[ "$UCC_DRY_RUN" != "1" ]] && is_installed python3; then
-  python3 - <<'EOF' 2>/dev/null || true
-import torch
-if torch.backends.mps.is_available():
-    print("MPS (Metal) GPU acceleration: available")
-else:
-    print("MPS (Metal) GPU acceleration: not available (CPU only)")
-EOF
+  _mps=$(python3 -c "import torch; print('available' if torch.backends.mps.is_available() else 'not available (CPU only)')" 2>/dev/null || true)
+  [[ -n "$_mps" ]] && log_info "MPS (Metal) GPU: $_mps"
 fi
 
 ucc_summary "06-ai-python-stack"

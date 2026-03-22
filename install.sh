@@ -265,15 +265,6 @@ if [[ "$_GLOBAL_HARD_FAILED" == "1" ]]; then
   log_error "UIC global hard gate failed — convergence aborted (run --preflight for details)"
 fi
 
-# --- Header -------------------------------------------------
-echo ""
-echo "========================================================"
-echo "  Mac Mini AI Setup"
-echo "  mode=$UCC_MODE dry_run=$UCC_DRY_RUN correlation_id=$UCC_CORRELATION_ID"
-echo "  $(date)"
-echo "========================================================"
-echo ""
-
 [[ "$(uname)" == "Darwin" ]] || log_error "This script is for macOS only"
 
 ARCH=$(uname -m)
@@ -282,7 +273,14 @@ TOTAL_GB=$(( TOTAL_MEM / 1024 / 1024 / 1024 ))
 
 _arch_label="$ARCH"; [[ "$ARCH" == "arm64" ]] && _arch_label="arm64 (Apple Silicon / Metal)"
 _ram_label="${TOTAL_GB} GB"; [[ $TOTAL_GB -ge 32 ]] && _ram_label="${TOTAL_GB} GB (large model capable)"
-log_info "arch=$_arch_label  ram=$_ram_label"
+
+echo "========================================================"
+echo "  Mac Mini AI Setup | mode=$UCC_MODE dry_run=$UCC_DRY_RUN | $(date '+%Y-%m-%d %H:%M')"
+echo "  $_arch_label  ·  $_ram_label"
+log_debug "correlation_id=$UCC_CORRELATION_ID"
+echo "========================================================"
+echo ""
+
 [[ "$ARCH" != "arm64" ]] && log_warn "Intel Mac detected — some AI acceleration features may differ"
 [[ $TOTAL_GB -lt 32 ]]   && log_warn "Less than 32 GB RAM — large models may be slow"
 
