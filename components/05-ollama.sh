@@ -99,7 +99,6 @@ if [[ "$UCC_DRY_RUN" != "1" ]]; then
     ucc_summary "05-ollama"
     exit 1
   fi
-  log_info "Ollama API health check: ok"
 fi
 
 # --- Pull models (gated by UIC preference ollama-model-autopull) ----

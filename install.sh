@@ -279,7 +279,6 @@ echo "  Mac Mini AI Setup | mode=$UCC_MODE dry_run=$UCC_DRY_RUN | $(date '+%Y-%m
 echo "  $_arch_label  ·  $_ram_label"
 log_debug "correlation_id=$UCC_CORRELATION_ID"
 echo "========================================================"
-echo ""
 
 [[ "$ARCH" != "arm64" ]] && log_warn "Intel Mac detected — some AI acceleration features may differ"
 [[ $TOTAL_GB -lt 32 ]]   && log_warn "Less than 32 GB RAM — large models may be slow"

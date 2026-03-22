@@ -380,6 +380,4 @@ ucc_target \
 log_info "aria2 RPC      → http://127.0.0.1:6800"
 log_info "ariaflow web UI → http://127.0.0.1:8001"
 
-log_info "Run 'ai-healthcheck' to verify the full setup"
-
 ucc_summary "08-dev-tools"

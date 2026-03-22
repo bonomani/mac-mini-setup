@@ -71,8 +71,7 @@ tic_test() {
 
 # tic_summary: emit aggregated result and return non-zero if any test failed
 tic_summary() {
-  local component="${1:-verify}"
-  printf '\nTIC summary [%s] | pass=%d fail=%d skip=%d\n' \
-    "$component" "$TIC_PASS" "$TIC_FAIL" "$TIC_SKIP"
+  printf '\nTIC summary | pass=%d fail=%d skip=%d\n' \
+    "$TIC_PASS" "$TIC_FAIL" "$TIC_SKIP"
   [[ "$TIC_FAIL" -eq 0 ]]
 }
