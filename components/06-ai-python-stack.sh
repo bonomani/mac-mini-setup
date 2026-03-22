@@ -68,18 +68,32 @@ _pip_group "unsloth" \
   "unsloth" \
   "unsloth[studio]"
 
+# --- Unsloth Studio setup (downloads frontend, creates venv) ---
+_observe_unsloth_studio_setup() {
+  [[ -d "$HOME/.unsloth/studio" ]] && echo "done" || echo "absent"
+}
+_run_unsloth_studio_setup() {
+  ucc_run unsloth studio setup
+}
+
+ucc_target \
+  --name    "unsloth-studio-setup" \
+  --observe _observe_unsloth_studio_setup \
+  --desired "done" \
+  --install _run_unsloth_studio_setup \
+  --update  _run_unsloth_studio_setup
+
 # --- Unsloth Studio — launchd (port 8888, survives reboot) ---
 UNSLOTH_PLIST="$HOME/Library/LaunchAgents/ai.unsloth.studio.plist"
+
+# launchd does not load pyenv shims — resolve the absolute binary path now
+UNSLOTH_BIN="$(pyenv which unsloth 2>/dev/null || command -v unsloth)"
 
 _observe_unsloth_studio_launchd() {
   launchctl list 2>/dev/null | grep -q "ai.unsloth.studio" && echo "loaded" || echo "absent"
 }
 
 _install_unsloth_studio_launchd() {
-  local python_bin
-  python_bin="$(command -v python3)"
-  local unsloth_bin
-  unsloth_bin="$(command -v unsloth 2>/dev/null || dirname "$python_bin")/unsloth"
   mkdir -p "$(dirname "$UNSLOTH_PLIST")"
   cat > "$UNSLOTH_PLIST" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -89,7 +103,7 @@ _install_unsloth_studio_launchd() {
   <key>Label</key>             <string>ai.unsloth.studio</string>
   <key>ProgramArguments</key>
   <array>
-    <string>${unsloth_bin}</string>
+    <string>${UNSLOTH_BIN}</string>
     <string>studio</string>
     <string>-H</string><string>0.0.0.0</string>
     <string>-p</string><string>8888</string>
