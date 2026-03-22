@@ -143,37 +143,38 @@ ucc_target \
   --install _install_lmstudio \
   --update  _install_lmstudio
 
-# --- Node.js 20 LTS -----------------------------------------
-_observe_node20() {
-  node --version 2>/dev/null | grep -q '^v20\.' || { echo "absent"; return; }
+# --- Node.js 24 LTS -----------------------------------------
+# node@24 required by Unsloth Studio; also compatible with Claude Code, Codex, BMAD
+_observe_node24() {
+  node --version 2>/dev/null | grep -q '^v24\.' || { echo "absent"; return; }
   if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-always-upgrade}" == "always-upgrade" ]]; then
-    _brew_is_outdated "node@20" && { echo "outdated"; return; }
+    _brew_is_outdated "node@24" && { echo "outdated"; return; }
   fi
   echo "current"
 }
-_install_node20() {
-  # If already installed but unlinked (e.g. opencode pulls in node-latest and unlinks node@20),
-  # just re-link — avoids the spurious "already installed" brew warning.
-  if brew list node@20 &>/dev/null 2>&1; then
-    ucc_run brew upgrade node@20 2>/dev/null || true
-    ucc_run brew link --overwrite --force node@20
+_install_node24() {
+  # Unlink any older brew-managed node versions to avoid PATH conflicts
+  brew unlink node@20 2>/dev/null || true
+  if brew list node@24 &>/dev/null 2>&1; then
+    ucc_run brew upgrade node@24 2>/dev/null || true
+    ucc_run brew link --overwrite --force node@24
   else
-    ucc_run brew install node@20 && ucc_run brew link --overwrite --force node@20
+    ucc_run brew install node@24 && ucc_run brew link --overwrite --force node@24
   fi
 }
 
 ucc_target \
-  --name    "node-20-lts" \
-  --observe _observe_node20 \
+  --name    "node-24-lts" \
+  --observe _observe_node24 \
   --desired "current" \
-  --install _install_node20 \
-  --update  _install_node20
+  --install _install_node24 \
+  --update  _install_node24
 
-# Ensure node@20 is in PATH
-if [[ -d /opt/homebrew/opt/node@20/bin ]]; then
-  export PATH="/opt/homebrew/opt/node@20/bin:$PATH"
-elif [[ -d /usr/local/opt/node@20/bin ]]; then
-  export PATH="/usr/local/opt/node@20/bin:$PATH"
+# Ensure node@24 is in PATH
+if [[ -d /opt/homebrew/opt/node@24/bin ]]; then
+  export PATH="/opt/homebrew/opt/node@24/bin:$PATH"
+elif [[ -d /usr/local/opt/node@24/bin ]]; then
+  export PATH="/usr/local/opt/node@24/bin:$PATH"
 fi
 
 # --- npm global AI CLI tools --------------------------------
