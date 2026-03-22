@@ -275,7 +275,8 @@ _arch_label="$ARCH"; [[ "$ARCH" == "arm64" ]] && _arch_label="arm64 (Apple Silic
 _ram_label="${TOTAL_GB} GB"; [[ $TOTAL_GB -ge 32 ]] && _ram_label="${TOTAL_GB} GB (large model capable)"
 
 echo "========================================================"
-echo "  Mac Mini AI Setup | mode=$UCC_MODE dry_run=$UCC_DRY_RUN | $(date '+%Y-%m-%d %H:%M')"
+_hdr_flags="mode=$UCC_MODE"; [[ "$UCC_DRY_RUN" == "1" ]] && _hdr_flags="$_hdr_flags dry_run=1"
+echo "  Mac Mini AI Setup | $_hdr_flags | $(date '+%Y-%m-%d %H:%M')"
 echo "  $_arch_label  ·  $_ram_label"
 log_debug "correlation_id=$UCC_CORRELATION_ID"
 echo "========================================================"

@@ -27,7 +27,7 @@ UCC_CORRELATION_ID=${UCC_CORRELATION_ID:-$(uuidgen 2>/dev/null || date +%s%N)}
 
 # --- Structured logging -------------------------------------
 _ts() { date '+%H:%M:%S'; }
-log_info()   { echo "$(_ts) [INFO]   $*"; }
+log_info()   { echo "  $*"; }
 log_notice() { echo "$*"; }
 log_debug()  { [[ "$UCC_DEBUG" == "1" ]] && echo "$(_ts) [DEBUG]  $*" || true; }
 log_warn()   { echo "$(_ts) [WARN]   $*" >&2; }
