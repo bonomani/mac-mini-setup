@@ -275,12 +275,7 @@ uic_resolve() {
   done
 
   echo ""
-  if [[ -f "$UIC_PREF_FILE" ]]; then
-    echo "  Preferences file: $UIC_PREF_FILE  [operator overrides active]"
-  else
-    echo "  Preferences file: $UIC_PREF_FILE  [absent — safe defaults in effect]"
-  fi
-
+  [[ -f "$UIC_PREF_FILE" ]] && echo "  Preferences file: $UIC_PREF_FILE  [operator overrides active]"
   echo ""
   if [[ $exit_code -eq 0 ]]; then
     echo "  resolution: PASS"

@@ -332,7 +332,9 @@ done
 echo ""
 echo "========================================================"
 if [[ ${#FAILED_COMPONENTS[@]} -eq 0 ]]; then
-  log_notice "All components completed | mode=$UCC_MODE dry_run=$UCC_DRY_RUN"
+  _summary="All components completed | mode=$UCC_MODE"
+  [[ "$UCC_DRY_RUN" == "1" ]] && _summary="$_summary dry_run=1"
+  log_notice "$_summary"
 else
   log_warn "Completed with failures: ${FAILED_COMPONENTS[*]}"
 fi
