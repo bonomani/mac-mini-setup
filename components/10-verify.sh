@@ -158,14 +158,20 @@ tic_test \
 tic_test \
   --name   "langchain-core-version" \
   --intent "langchain-core must be >=1.0.0 (required by langgraph and langchain-ollama)" \
-  --oracle "python3 -c \"import langchain_core; from packaging.version import Version; assert Version(langchain_core.__version__) >= Version('1.0.0')\"" \
+  --oracle "python3 -c \"
+import importlib.util, sys
+import langchain_core
+from packaging.version import Version
+sys.exit(0 if Version(langchain_core.__version__) >= Version('1.0.0') else 1)
+\"" \
   --trace  "component:06-ai-python-stack / ucc-target:pip-group-langchain"
 
 tic_test \
   --name   "unsloth-importable" \
-  --intent "unsloth must be importable" \
-  --oracle "python3 -c 'import unsloth'" \
-  --trace  "component:06-ai-python-stack / ucc-target:pip-group-unsloth"
+  --intent "unsloth Python package is not importable on Apple Silicon (NVIDIA/AMD only)" \
+  --oracle "true" \
+  --skip   "unsloth pip package raises NotImplementedError on Apple Silicon — Unsloth Studio uses its own isolated venv instead" \
+  --trace  "component:06-ai-python-stack / ucc-target:unsloth-studio-setup"
 
 tic_test \
   --name   "unsloth-studio-setup-dir" \

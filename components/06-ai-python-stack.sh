@@ -32,9 +32,29 @@ _pip_group "huggingface" \
   "transformers" \
   "transformers diffusers accelerate datasets tokenizers sentencepiece huggingface-hub peft trl"
 
-_pip_group "langchain" \
-  "langchain" \
-  "langchain-core>=1.0.0 langchain langchain-community langchain-ollama langgraph"
+# langchain-core must be >=1.0.0 for langgraph + langchain-ollama compatibility.
+# Custom observe checks version — forces upgrade if still on 0.x.
+_observe_grp_langchain() {
+  python3 -c "
+import importlib.util, sys
+if importlib.util.find_spec('langchain_core') is None: sys.exit(1)
+import langchain_core
+from packaging.version import Version
+sys.exit(0 if Version(langchain_core.__version__) >= Version('1.0.0') else 1)
+" 2>/dev/null && echo "current" || echo "absent"
+}
+_install_grp_langchain() {
+  ucc_run pip install -q "langchain-core>=1.0.0" langchain langchain-community langchain-ollama langgraph
+}
+_update_grp_langchain() {
+  ucc_run pip install -q --upgrade "langchain-core>=1.0.0" langchain langchain-community langchain-ollama langgraph
+}
+ucc_target \
+  --name    "pip-group-langchain" \
+  --observe _observe_grp_langchain \
+  --desired "current" \
+  --install _install_grp_langchain \
+  --update  _update_grp_langchain
 
 _pip_group "llamaindex" \
   "llama-index" \
@@ -68,9 +88,10 @@ _pip_group "optimum" \
   "optimum" \
   "optimum"
 
-_pip_group "unsloth" \
-  "unsloth" \
-  "unsloth"
+# Note: the unsloth Python package cannot be imported on Apple Silicon —
+# it raises NotImplementedError at import time (NVIDIA/AMD/Intel GPUs only).
+# Unsloth Studio runs in its own isolated venv and works on Mac via the CLI.
+# Do NOT install the pip package — it is unused and untestable on this platform.
 
 # --- Unsloth Studio setup (downloads frontend, creates venv) ---
 _observe_unsloth_studio_setup() {
