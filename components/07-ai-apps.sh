@@ -109,7 +109,6 @@ log_info "Flowise (LLM flows)      → http://localhost:3001"
 log_info "OpenHands (agent)        → http://localhost:3002"
 log_info "n8n (automation)         → http://localhost:5678"
 log_info "Qdrant (vector DB)       → http://localhost:6333"
-log_info ""
 log_info "Manage: docker compose -f $COMPOSE_FILE <up|down|ps|logs>"
 
 ucc_summary "07-ai-apps"

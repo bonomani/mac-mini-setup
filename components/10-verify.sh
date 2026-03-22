@@ -243,6 +243,24 @@ tic_test \
   --trace  "component:08-dev-tools / ucc-target:ariaflow"
 
 tic_test \
+  --name   "ariaflow-web-installed" \
+  --intent "ariaflow-web brew formula must be installed" \
+  --oracle "brew list ariaflow-web >/dev/null 2>&1" \
+  --trace  "component:08-dev-tools / ucc-target:ariaflow-web"
+
+tic_test \
+  --name   "ariaflow-web-service-started" \
+  --intent "ariaflow-web brew service must be running (port 8001)" \
+  --oracle "brew services list 2>/dev/null | awk '/^ariaflow-web/ {print \$2}' | grep -q '^started$'" \
+  --trace  "component:08-dev-tools / ucc-target:ariaflow-web-service"
+
+tic_test \
+  --name   "ariaflow-web-port-8001" \
+  --intent "ariaflow web UI must be listening on port 8001" \
+  --oracle "curl -fsS --max-time 5 http://127.0.0.1:8001 >/dev/null 2>&1" \
+  --trace  "component:08-dev-tools / ucc-target:ariaflow-web-service"
+
+tic_test \
   --name   "vscode-installed" \
   --intent "Visual Studio Code must be installed" \
   --oracle "[[ -d '/Applications/Visual Studio Code.app' ]] || is_installed code" \
