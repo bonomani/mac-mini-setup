@@ -3,7 +3,7 @@
 # UCC + Basic
 
 # --- CLI tools (brew) ---------------------------------------
-CLI_TOOLS=(jq wget curl htop tmux fzf ripgrep fd tree uv pnpm gcc gh llama.cpp opencode aria2)
+CLI_TOOLS=(jq wget curl htop tmux fzf ripgrep fd tree uv pnpm gcc gh llama.cpp opencode aria2 xz cmake)
 
 for tool in "${CLI_TOOLS[@]}"; do
   eval "_observe_${tool}() { brew_observe '$tool'; }"
