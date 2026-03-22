@@ -280,14 +280,11 @@ ARCH=$(uname -m)
 TOTAL_MEM=$(sysctl -n hw.memsize)
 TOTAL_GB=$(( TOTAL_MEM / 1024 / 1024 / 1024 ))
 
-log_info "Architecture : $ARCH"
-log_info "RAM          : ${TOTAL_GB} GB"
-[[ "$ARCH" == "arm64" ]] \
-  && log_info "Apple Silicon detected — Metal GPU acceleration available" \
-  || log_warn "Intel Mac detected — some AI acceleration features may differ"
-[[ $TOTAL_GB -ge 32 ]] \
-  && log_info "RAM sufficient for large models (70B+)" \
-  || log_warn "Less than 32 GB RAM — large models may be slow"
+_arch_label="$ARCH"; [[ "$ARCH" == "arm64" ]] && _arch_label="arm64 (Apple Silicon / Metal)"
+_ram_label="${TOTAL_GB} GB"; [[ $TOTAL_GB -ge 32 ]] && _ram_label="${TOTAL_GB} GB (large model capable)"
+log_info "arch=$_arch_label  ram=$_ram_label"
+[[ "$ARCH" != "arm64" ]] && log_warn "Intel Mac detected — some AI acceleration features may differ"
+[[ $TOTAL_GB -lt 32 ]]   && log_warn "Less than 32 GB RAM — large models may be slow"
 
 # --- Ensure brew is in PATH (re-checked after each component) ---
 _refresh_brew_path() {
@@ -326,11 +323,9 @@ for comp in "${TO_RUN[@]}"; do
   log_info "Component: $comp"
   echo "--------------------------------------------------------"
 
-  if bash \
+  if ! bash \
       -c "source \"$DIR/lib/ucc.sh\"; source \"$DIR/lib/uic.sh\"; source \"$DIR/lib/utils.sh\"; source \"$SCRIPT\"" \
       -- "$SCRIPT"; then
-    log_info "Component done: $comp"
-  else
     log_warn "Component failed: $comp"
     FAILED_COMPONENTS+=("$comp")
   fi

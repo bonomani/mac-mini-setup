@@ -269,8 +269,8 @@ uic_resolve() {
     local scope="${_UIC_PREF_SCOPES[$i]}"
     local source="operator"
     [[ "$val" == "$default" ]] && source="default(safe)"
-    printf '[PREFERENCE]  %-30s %-18s [%s] scope=%s  options: %s\n' \
-      "$name" "$val" "$source" "$scope" "$opts"
+    printf '[PREFERENCE]  %-30s %-18s [%s] scope=%s\n' \
+      "$name" "$val" "$source" "$scope"
   done
 
   echo ""
@@ -281,13 +281,12 @@ uic_resolve() {
   fi
 
   echo ""
-  echo "========================================================"
   if [[ $exit_code -eq 0 ]]; then
     echo "  UIC resolution: PASS"
   elif [[ $exit_code -eq 1 ]]; then
     echo "  UIC resolution: FAIL — hard gate failure"
   else
-    echo "  UIC resolution: WARN — soft gate not satisfied"
+    echo "  UIC resolution: WARN — soft gate(s) not satisfied (see above)"
   fi
   echo "========================================================"
   echo ""
