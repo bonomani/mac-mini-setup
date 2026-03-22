@@ -30,7 +30,7 @@ _pip_group "huggingface" \
 
 _pip_group "langchain" \
   "langchain" \
-  "langchain langchain-community langchain-ollama langgraph"
+  "langchain-core>=1.0.0 langchain langchain-community langchain-ollama langgraph"
 
 _pip_group "llamaindex" \
   "llama-index" \
@@ -66,7 +66,7 @@ _pip_group "optimum" \
 
 _pip_group "unsloth" \
   "unsloth" \
-  "unsloth[studio]"
+  "unsloth"
 
 # --- Unsloth Studio setup (downloads frontend, creates venv) ---
 _observe_unsloth_studio_setup() {
