@@ -94,6 +94,137 @@ while IFS= read -r _component; do
   [[ -n "$_component" ]] && COMPONENTS+=("$_component")
 done < <(_load_components)
 
+_print_services_summary() {
+  local services_file="$DIR/services.yaml"
+  local name="" url="" note="" line=""
+  [[ -f "$services_file" ]] || return 0
+  echo "  ──────────────────────────────────────────────────────"
+  echo "  Services"
+  while IFS= read -r _line; do
+    case "$_line" in
+      "  - name: "*)
+        [[ -n "$name" ]] || { name="${_line#  - name: }"; continue; }
+        line="    $(printf '%-16s' "$name") → ${url}"
+        [[ -n "$note" ]] && line="${line}   (${note})"
+        echo "$line"
+        name="${_line#  - name: }"
+        url=""
+        note=""
+        ;;
+      "    name: "*)
+        name="${_line#    name: }"
+        ;;
+      "    url: "*)
+        url="${_line#    url: }"
+        ;;
+      "    note: "*)
+        note="${_line#    note: }"
+        ;;
+    esac
+  done < "$services_file"
+  if [[ -n "$name" ]]; then
+    line="    $(printf '%-16s' "$name") → ${url}"
+    [[ -n "$note" ]] && line="${line}   (${note})"
+    echo "$line"
+  fi
+}
+
+_load_uic_preferences() {
+  local pref_file="$DIR/policy/preferences.yaml"
+  local name="" default="" options="" scope="" rationale=""
+  [[ -f "$pref_file" ]] || return 0
+  while IFS= read -r _line; do
+    case "$_line" in
+      "  - name: "*)
+        if [[ -n "$name" ]]; then
+          uic_preference \
+            --name "$name" \
+            --default "$default" \
+            --options "$options" \
+            --rationale "$rationale" \
+            --scope "${scope:-global}"
+        fi
+        name="${_line#  - name: }"
+        default=""
+        options=""
+        scope="global"
+        rationale=""
+        ;;
+      "    default: "*)
+        default="${_line#    default: }"
+        ;;
+      "    options: "*)
+        options="${_line#    options: }"
+        ;;
+      "    scope: "*)
+        scope="${_line#    scope: }"
+        ;;
+      "    rationale: "*)
+        rationale="${_line#    rationale: }"
+        ;;
+    esac
+  done < "$pref_file"
+  if [[ -n "$name" ]]; then
+    uic_preference \
+      --name "$name" \
+      --default "$default" \
+      --options "$options" \
+      --rationale "$rationale" \
+      --scope "${scope:-global}"
+  fi
+}
+
+_load_uic_gates() {
+  local gates_file="$DIR/policy/gates.yaml"
+  local name="" condition="" scope="" class="" target_state="" blocking=""
+  [[ -f "$gates_file" ]] || return 0
+  while IFS= read -r _line; do
+    case "$_line" in
+      "  - name: "*)
+        if [[ -n "$name" ]]; then
+          uic_gate \
+            --name "$name" \
+            --condition "$condition" \
+            --scope "${scope:-global}" \
+            --class "${class:-readiness}" \
+            --target-state "$target_state" \
+            --blocking "${blocking:-hard}"
+        fi
+        name="${_line#  - name: }"
+        condition=""
+        scope="global"
+        class="readiness"
+        target_state=""
+        blocking="hard"
+        ;;
+      "    condition: "*)
+        condition="${_line#    condition: }"
+        ;;
+      "    scope: "*)
+        scope="${_line#    scope: }"
+        ;;
+      "    class: "*)
+        class="${_line#    class: }"
+        ;;
+      "    target_state: "*)
+        target_state="${_line#    target_state: }"
+        ;;
+      "    blocking: "*)
+        blocking="${_line#    blocking: }"
+        ;;
+    esac
+  done < "$gates_file"
+  if [[ -n "$name" ]]; then
+    uic_gate \
+      --name "$name" \
+      --condition "$condition" \
+      --scope "${scope:-global}" \
+      --class "${class:-readiness}" \
+      --target-state "$target_state" \
+      --blocking "${blocking:-hard}"
+  fi
+}
+
 usage() {
   cat <<EOF
 
@@ -149,110 +280,10 @@ done
 # ============================================================
 
 # --- Gates --------------------------------------------------
-uic_gate \
-  --name      "macos-platform" \
-  --condition _gate_macos \
-  --scope     "global" \
-  --class     "readiness" \
-  --target-state "host installation_state=Configured" \
-  --blocking  "hard"
-
-uic_gate \
-  --name      "apple-silicon" \
-  --condition _gate_arm64 \
-  --scope     "global" \
-  --class     "readiness" \
-  --target-state "host dependency_state=DepsReady" \
-  --blocking  "soft"
-
-uic_gate \
-  --name      "docker-daemon" \
-  --condition _gate_docker_daemon \
-  --scope     "component:07-ai-apps" \
-  --class     "readiness" \
-  --target-state "07-ai-apps runtime_state=Running dependency_state=DepsReady" \
-  --blocking  "soft"
-
-uic_gate \
-  --name      "docker-settings-file" \
-  --condition _gate_docker_settings \
-  --scope     "component:03-docker" \
-  --class     "readiness" \
-  --target-state "03-docker installation_state=Configured dependency_state=DepsReady" \
-  --blocking  "soft"
-
-uic_gate \
-  --name      "ollama-api" \
-  --condition _gate_ollama_api \
-  --scope     "component:05-ollama" \
-  --class     "readiness" \
-  --target-state "05-ollama runtime_state=Running dependency_state=DepsReady" \
-  --blocking  "soft"
-
-uic_gate \
-  --name      "sudo-available" \
-  --condition _gate_sudo \
-  --scope     "component:09-macos-defaults" \
-  --class     "authorization" \
-  --target-state "09-macos-defaults admin_state=Enabled dependency_state=DepsReady" \
-  --blocking  "soft"
+_load_uic_gates
 
 # --- Preferences (safe defaults = most conservative choice) -
-uic_preference \
-  --name      "python-version" \
-  --default   "3.12.3" \
-  --options   "3.11.9|3.12.3|3.13.0" \
-  --rationale "3.12.3 is the tested stable release with best ML library support; 3.13 is newer but less tested with PyTorch/HF" \
-  --scope     "component:04-python"
-
-uic_preference \
-  --name      "docker-memory-gb" \
-  --default   "48" \
-  --options   "16|32|48|56" \
-  --rationale "48 GB leaves 16 GB for macOS and native processes on a 64 GB machine; 56 risks host instability under load" \
-  --scope     "component:03-docker"
-
-uic_preference \
-  --name      "docker-cpu-count" \
-  --default   "10" \
-  --options   "4|6|8|10|12" \
-  --rationale "10 cores leaves 2 for macOS scheduler; 12 (all) risks UI unresponsiveness during heavy container workloads" \
-  --scope     "component:03-docker"
-
-uic_preference \
-  --name      "ollama-model-autopull" \
-  --default   "none" \
-  --options   "none|small|medium|large" \
-  --rationale "none prevents automatic multi-GB downloads; pull models manually when ready. small=≤3B, medium=≤8B, large=all" \
-  --scope     "component:05-ollama"
-
-uic_preference \
-  --name      "pytorch-device" \
-  --default   "mps" \
-  --options   "mps|cpu" \
-  --rationale "mps uses Apple Silicon Metal GPU for ML acceleration; cpu works everywhere but is significantly slower" \
-  --scope     "component:06-ai-python-stack"
-
-uic_preference \
-  --name      "destructive-updates" \
-  --default   "off" \
-  --options   "on|off" \
-  --rationale "off prevents destructive container/package replacement without explicit operator intent; on allows full reimaging on update" \
-  --scope     "global"
-
-uic_preference \
-  --name      "service-policy" \
-  --default   "autostart" \
-  --options   "manual|autostart" \
-  --rationale "autostart: script starts required services (Docker, Ollama) when not running; manual: operator starts services before running the script" \
-  --scope     "global"
-
-uic_preference \
-  --name      "package-update-policy" \
-  --default   "always-upgrade" \
-  --options   "install-only|always-upgrade" \
-  --rationale "always-upgrade: upgrade outdated packages on each run; install-only: skip already-installed packages (use to speed up runs when upgrades are not needed)" \
-  --scope     "global"
+_load_uic_preferences
 
 # --- Resolve (evaluate gates, report preferences) -----------
 _UIC_RC=0
@@ -489,17 +520,7 @@ if [[ ${#FAILED_COMPONENTS[@]} -gt 0 ]]; then
   log_warn "Failed components: ${FAILED_COMPONENTS[*]}"
 fi
 
-echo "  ──────────────────────────────────────────────────────"
-echo "  Services"
-echo "    Ollama API       → http://127.0.0.1:11434   (ollama pull <model>)"
-echo "    Unsloth Studio   → http://0.0.0.0:8888"
-echo "    Open WebUI       → http://localhost:3000"
-echo "    Flowise          → http://localhost:3001"
-echo "    OpenHands        → http://localhost:3002"
-echo "    n8n              → http://localhost:5678"
-echo "    Qdrant           → http://localhost:6333"
-echo "    aria2 RPC        → http://127.0.0.1:6800"
-echo "    ariaflow web UI  → http://127.0.0.1:8001"
+_print_services_summary
 echo "  ──────────────────────────────────────────────────────"
 echo "  Declarations: $UCC_DECLARATION_FILE"
 echo "  Results:      $UCC_RESULT_FILE"

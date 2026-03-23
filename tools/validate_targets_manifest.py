@@ -5,14 +5,24 @@ from pathlib import Path
 
 
 KNOWN_PROFILES = {"presence", "configured", "runtime", "verification"}
-KNOWN_GATES = {
-    "macos-platform",
-    "apple-silicon",
-    "docker-daemon",
-    "docker-settings-file",
-    "ollama-api",
-    "sudo-available",
-}
+
+
+def parse_gate_names(path: Path):
+    gate_names = set()
+    if not path.exists():
+        return gate_names
+
+    for lineno, raw in enumerate(path.read_text().splitlines(), start=1):
+        if not raw.strip() or raw.lstrip().startswith("#"):
+            continue
+        if raw.startswith("  - name: "):
+            gate_names.add(raw[len("  - name: "):].strip())
+        elif raw.startswith("gates:") or raw.startswith("    ") or raw.startswith("  "):
+            continue
+        else:
+            raise ValueError(f"{path}:{lineno}: unsupported gate manifest structure")
+
+    return gate_names
 
 def parse_manifest_file(path: Path):
     manifest = {"component": None, "primary_profile": None, "targets": {}}
@@ -104,7 +114,7 @@ def parse_manifest(path: Path):
     return {"targets": manifest["targets"], "components": {}}
 
 
-def validate(manifest):
+def validate(manifest, known_gates):
     targets = manifest["targets"]
     components = manifest["components"]
     errors = []
@@ -126,7 +136,7 @@ def validate(manifest):
         for dep in data.get("soft_depends_on", []):
             if dep.startswith("gate:"):
                 gate = dep.split(":", 1)[1]
-                if gate not in KNOWN_GATES:
+                if gate not in known_gates:
                     errors.append(f"target '{name}' soft_depends_on unknown gate '{gate}'")
             elif dep not in targets:
                 errors.append(f"target '{name}' soft_depends_on unknown target '{dep}'")
@@ -208,7 +218,8 @@ def main():
     path = Path(args[0]) if args else Path("targets")
     try:
         manifest = parse_manifest(path)
-        errors, ordered = validate(manifest)
+        known_gates = parse_gate_names(Path("policy/gates.yaml"))
+        errors, ordered = validate(manifest, known_gates)
     except Exception as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
