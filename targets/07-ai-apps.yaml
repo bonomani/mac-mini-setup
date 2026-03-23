@@ -1,0 +1,20 @@
+targets:
+  docker-running:
+    component: 07-ai-apps
+    profile: runtime
+    depends_on:
+      - docker-desktop
+    soft_depends_on:
+      - gate:docker-daemon
+
+  ai-stack-compose-file:
+    component: 07-ai-apps
+    profile: configured
+
+  ai-stack-running:
+    component: 07-ai-apps
+    profile: runtime
+    depends_on:
+      - docker-running
+      - ai-stack-compose-file
+    provided_by_tool: docker-compose

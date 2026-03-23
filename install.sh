@@ -347,7 +347,7 @@ _print_profile_contracts() {
   for profile in presence configured runtime; do
     expected="$(ucc_profile_expected_text "$profile")"
     [[ -n "$expected" ]] || continue
-    printf '  Profile %-10s | %s\n' "$(ucc_profile_label "$profile")" "$expected"
+    printf '  Profile %-10s | baseline: %s\n' "$(ucc_profile_label "$profile")" "$expected"
   done
 }
 
@@ -384,7 +384,7 @@ export UCC_SUMMARY_FILE="$HOME/.ai-stack/runs/${UCC_CORRELATION_ID}.summary"
 export UCC_PROFILE_SUMMARY_FILE="$HOME/.ai-stack/runs/${UCC_CORRELATION_ID}.profile-summary"
 export UCC_TARGET_STATUS_FILE="$HOME/.ai-stack/runs/${UCC_CORRELATION_ID}.target-status"
 export UCC_VERIFICATION_REPORT_FILE="$HOME/.ai-stack/runs/${UCC_CORRELATION_ID}.verification.report"
-export UCC_TARGETS_MANIFEST="$DIR/targets.yaml"
+export UCC_TARGETS_MANIFEST="$DIR/targets"
 export UCC_TARGETS_QUERY_SCRIPT="$DIR/tools/validate_targets_manifest.py"
 mkdir -p "$HOME/.ai-stack/runs"
 
@@ -395,9 +395,9 @@ _print_verification_section() {
   cat "$UCC_VERIFICATION_REPORT_FILE"
 }
 
-if [[ -f "$DIR/targets.yaml" && -x "$(command -v python3)" ]]; then
-  if ! python3 "$DIR/tools/validate_targets_manifest.py" "$DIR/targets.yaml" >/dev/null; then
-    log_error "Invalid orchestration manifest: $DIR/targets.yaml"
+if [[ -d "$DIR/targets" && -x "$(command -v python3)" ]]; then
+  if ! python3 "$DIR/tools/validate_targets_manifest.py" "$DIR/targets" >/dev/null; then
+    log_error "Invalid orchestration manifest directory: $DIR/targets"
   fi
 fi
 

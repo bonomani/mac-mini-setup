@@ -138,7 +138,14 @@ _observe_stack() {
     --admin Enabled \
     --dependencies DepsReady
 }
-_evidence_stack() { printf 'services=%s compose=%s' "$STACK_SERVICES" "$COMPOSE_FILE"; }
+_evidence_stack() {
+  local running=0 svc state
+  for svc in open-webui flowise openhands n8n qdrant; do
+    state=$(docker inspect --format '{{.State.Status}}' "$svc" 2>/dev/null || true)
+    [[ "$state" == "running" ]] && running=$((running + 1))
+  done
+  printf 'running=%s/%s compose=%s' "$running" "$STACK_SERVICES" "$COMPOSE_FILE"
+}
 
 # Remove any legacy bare containers that would conflict with compose
 _remove_legacy_containers() {

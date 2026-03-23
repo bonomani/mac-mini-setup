@@ -202,14 +202,44 @@ _ucc_dependency_evidence() {
   [[ ${#pairs[@]} -gt 0 ]] && printf 'deps: %s' "$(IFS=', '; echo "${pairs[*]}")"
 }
 
+_ucc_soft_dependency_evidence() {
+  local target="$1" deps="" dep status pairs=() gate gate_key
+  [[ -n "${UCC_TARGETS_MANIFEST:-}" && -n "${UCC_TARGETS_QUERY_SCRIPT:-}" ]] || return 0
+  [[ -f "${UCC_TARGETS_MANIFEST}" && -f "${UCC_TARGETS_QUERY_SCRIPT}" ]] || return 0
+  deps=$(python3 "$UCC_TARGETS_QUERY_SCRIPT" --soft-deps "$target" "$UCC_TARGETS_MANIFEST" 2>/dev/null || true)
+  [[ -n "$deps" ]] || return 0
+  while IFS= read -r dep; do
+    [[ -n "$dep" ]] || continue
+    if [[ "$dep" == gate:* ]]; then
+      gate="${dep#gate:}"
+      gate_key="UIC_GATE_FAILED_$(echo "${gate//-/_}" | tr '[:lower:]' '[:upper:]')"
+      if [[ "${!gate_key:-0}" == "1" ]]; then
+        status="warn"
+      else
+        status="ok"
+      fi
+      pairs+=("${gate}=${status}")
+    else
+      status=$(awk -F'|' -v dep="$dep" '$1==dep {val=$2} END {print val}' "$UCC_TARGET_STATUS_FILE" 2>/dev/null || true)
+      [[ -z "$status" ]] && status="unknown"
+      pairs+=("${dep}=${status}")
+    fi
+  done <<< "$deps"
+  [[ ${#pairs[@]} -gt 0 ]] && printf 'soft_deps: %s' "$(IFS=', '; echo "${pairs[*]}")"
+}
+
 _ucc_compose_evidence() {
-  local target="$1" observed="$2" axes="$3" evidence_fn="$4" primary deps
+  local target="$1" observed="$2" axes="$3" evidence_fn="$4" primary deps soft_deps
   primary="$(_ucc_evidence_text "$observed" "$axes" "$evidence_fn")"
   deps="$(_ucc_dependency_evidence "$target")"
-  if [[ -n "$primary" && -n "$deps" ]]; then
-    printf '%s  %s' "$primary" "$deps"
-  elif [[ -n "$deps" ]]; then
-    printf '%s' "$deps"
+  soft_deps="$(_ucc_soft_dependency_evidence "$target")"
+  if [[ -n "$primary" ]]; then
+    printf '%s' "$primary"
+    [[ -n "$deps" ]] && printf '  %s' "$deps"
+    [[ -n "$soft_deps" ]] && printf '  %s' "$soft_deps"
+  elif [[ -n "$deps" || -n "$soft_deps" ]]; then
+    [[ -n "$deps" ]] && printf '%s' "$deps"
+    [[ -n "$soft_deps" ]] && printf '%s%s' "${deps:+  }" "$soft_deps"
   else
     printf '%s' "$primary"
   fi

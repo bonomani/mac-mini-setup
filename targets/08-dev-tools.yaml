@@ -1,0 +1,72 @@
+targets:
+  vscode:
+    component: 08-dev-tools
+    profile: configured
+    depends_on:
+      - homebrew
+    provided_by_tool: brew-cask
+
+  vscode-code-cmd:
+    component: 08-dev-tools
+    profile: configured
+    depends_on:
+      - vscode
+
+  vscode-settings:
+    component: 08-dev-tools
+    profile: configured
+    depends_on:
+      - vscode
+
+  node-24-lts:
+    component: 08-dev-tools
+    profile: configured
+    depends_on:
+      - homebrew
+    provided_by_tool: brew
+
+  oh-my-zsh:
+    component: 08-dev-tools
+    profile: configured
+
+  omz-theme-agnoster:
+    component: 08-dev-tools
+    profile: configured
+    depends_on:
+      - oh-my-zsh
+
+  home-bin-in-path:
+    component: 08-dev-tools
+    profile: configured
+
+  ai-healthcheck:
+    component: 08-dev-tools
+    profile: configured
+    depends_on:
+      - home-bin-in-path
+
+  ariaflow:
+    component: 08-dev-tools
+    profile: configured
+    depends_on:
+      - homebrew
+    provided_by_tool: brew
+
+  aria2-launchd:
+    component: 08-dev-tools
+    profile: runtime
+    depends_on:
+      - ariaflow
+
+  ariaflow-web:
+    component: 08-dev-tools
+    profile: configured
+    depends_on:
+      - ariaflow
+    provided_by_tool: brew
+
+  ariaflow-web-service:
+    component: 08-dev-tools
+    profile: runtime
+    depends_on:
+      - ariaflow-web

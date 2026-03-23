@@ -1,0 +1,13 @@
+targets:
+  unsloth-studio-setup:
+    component: 06-ai-python-stack
+    profile: configured
+    depends_on:
+      - python-3.12.3
+      - pip-latest
+
+  unsloth-studio-launchd:
+    component: 06-ai-python-stack
+    profile: runtime
+    depends_on:
+      - unsloth-studio-setup

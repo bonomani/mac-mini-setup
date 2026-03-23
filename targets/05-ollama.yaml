@@ -1,0 +1,19 @@
+targets:
+  macos-14-precondition:
+    component: 05-ollama
+    profile: configured
+
+  ollama:
+    component: 05-ollama
+    profile: configured
+    depends_on:
+      - macos-14-precondition
+    provided_by_tool: ollama-installer
+
+  ollama-service:
+    component: 05-ollama
+    profile: runtime
+    depends_on:
+      - ollama
+    soft_depends_on:
+      - gate:ollama-api

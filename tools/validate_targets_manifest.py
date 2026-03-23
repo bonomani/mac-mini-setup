@@ -15,7 +15,7 @@ KNOWN_GATES = {
 }
 
 
-def parse_manifest(path: Path):
+def parse_manifest_file(path: Path):
     targets = {}
     current = None
     current_list = None
@@ -72,6 +72,21 @@ def parse_manifest(path: Path):
     return targets
 
 
+def parse_manifest(path: Path):
+    if path.is_dir():
+        merged = {}
+        files = sorted(path.glob("*.yaml"))
+        if not files:
+            raise ValueError(f"{path}: no *.yaml files found")
+        for file in files:
+            for name, data in parse_manifest_file(file).items():
+                if name in merged:
+                    raise ValueError(f"{file}: duplicate target '{name}'")
+                merged[name] = data
+        return merged
+    return parse_manifest_file(path)
+
+
 def validate(targets):
     errors = []
 
@@ -124,13 +139,18 @@ def validate(targets):
 def main():
     args = sys.argv[1:]
     deps_mode = False
+    soft_deps_mode = False
     target_name = None
     if len(args) >= 2 and args[0] == "--deps":
         deps_mode = True
         target_name = args[1]
         args = args[2:]
+    elif len(args) >= 2 and args[0] == "--soft-deps":
+        soft_deps_mode = True
+        target_name = args[1]
+        args = args[2:]
 
-    path = Path(args[0]) if args else Path("targets.yaml")
+    path = Path(args[0]) if args else Path("targets")
     try:
         targets = parse_manifest(path)
         errors, ordered = validate(targets)
@@ -145,6 +165,11 @@ def main():
 
     if deps_mode:
         for dep in targets.get(target_name, {}).get("depends_on", []):
+            print(dep)
+        return 0
+
+    if soft_deps_mode:
+        for dep in targets.get(target_name, {}).get("soft_depends_on", []):
             print(dep)
         return 0
 

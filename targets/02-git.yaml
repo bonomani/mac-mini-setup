@@ -1,0 +1,13 @@
+targets:
+  git:
+    component: 02-git
+    profile: configured
+    depends_on:
+      - homebrew
+    provided_by_tool: brew
+
+  git-global-config:
+    component: 02-git
+    profile: configured
+    depends_on:
+      - git

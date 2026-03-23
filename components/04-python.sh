@@ -17,9 +17,9 @@ _observe_pyenv() {
 _evidence_pyenv() {
   local ver path
   ver=$(pyenv --version 2>/dev/null | awk '{print $2}')
-  path=$(command -v pyenv 2>/dev/null || true)
+  path=$(pyenv root 2>/dev/null || true)
   [[ -n "$ver" ]] && printf 'version=%s' "$ver"
-  [[ -n "$path" ]] && printf '%s path=%s' "${ver:+ }" "$path"
+  [[ -n "$path" ]] && printf '%s root=%s' "${ver:+ }" "$path"
 }
 
 _install_pyenv() {
