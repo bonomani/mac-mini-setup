@@ -190,7 +190,7 @@ _ucc_evidence_text() {
 _ucc_dependency_evidence() {
   local target="$1" deps="" dep status pairs=()
   [[ -n "${UCC_TARGETS_MANIFEST:-}" && -n "${UCC_TARGETS_QUERY_SCRIPT:-}" && -n "${UCC_TARGET_STATUS_FILE:-}" ]] || return 0
-  [[ -f "${UCC_TARGETS_MANIFEST}" && -f "${UCC_TARGETS_QUERY_SCRIPT}" ]] || return 0
+  [[ -e "${UCC_TARGETS_MANIFEST}" && -f "${UCC_TARGETS_QUERY_SCRIPT}" ]] || return 0
   deps=$(python3 "$UCC_TARGETS_QUERY_SCRIPT" --deps "$target" "$UCC_TARGETS_MANIFEST" 2>/dev/null || true)
   [[ -n "$deps" ]] || return 0
   while IFS= read -r dep; do
@@ -205,7 +205,7 @@ _ucc_dependency_evidence() {
 _ucc_soft_dependency_evidence() {
   local target="$1" deps="" dep status pairs=() gate gate_key
   [[ -n "${UCC_TARGETS_MANIFEST:-}" && -n "${UCC_TARGETS_QUERY_SCRIPT:-}" ]] || return 0
-  [[ -f "${UCC_TARGETS_MANIFEST}" && -f "${UCC_TARGETS_QUERY_SCRIPT}" ]] || return 0
+  [[ -e "${UCC_TARGETS_MANIFEST}" && -f "${UCC_TARGETS_QUERY_SCRIPT}" ]] || return 0
   deps=$(python3 "$UCC_TARGETS_QUERY_SCRIPT" --soft-deps "$target" "$UCC_TARGETS_MANIFEST" 2>/dev/null || true)
   [[ -n "$deps" ]] || return 0
   while IFS= read -r dep; do
@@ -424,19 +424,16 @@ ucc_profile_expected_text() {
 }
 
 ucc_component_profile() {
-  case "$1" in
-    01-homebrew) printf 'presence' ;;
-    02-git) printf 'configured' ;;
-    03-docker) printf 'configured' ;;
-    04-python) printf 'configured' ;;
-    05-ollama) printf 'runtime' ;;
-    06-ai-python-stack) printf 'runtime' ;;
-    07-ai-apps) printf 'runtime' ;;
-    08-dev-tools) printf 'configured' ;;
-    09-macos-defaults) printf 'configured' ;;
-    10-verify) printf 'verification' ;;
-    *) printf 'configured' ;;
-  esac
+  local component="$1" profile=""
+  if [[ -n "${UCC_TARGETS_MANIFEST:-}" && -n "${UCC_TARGETS_QUERY_SCRIPT:-}" ]] \
+      && [[ -e "${UCC_TARGETS_MANIFEST}" && -f "${UCC_TARGETS_QUERY_SCRIPT}" ]]; then
+    profile=$(python3 "$UCC_TARGETS_QUERY_SCRIPT" --component-profile "$component" "$UCC_TARGETS_MANIFEST" 2>/dev/null || true)
+  fi
+  if [[ -n "$profile" ]]; then
+    printf '%s' "$profile"
+    return 0
+  fi
+  [[ "$component" == "10-verify" ]] && printf 'verification' || printf 'configured'
 }
 
 _ucc_meta_in() {

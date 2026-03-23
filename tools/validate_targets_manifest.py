@@ -14,6 +14,13 @@ KNOWN_GATES = {
     "sudo-available",
 }
 
+PROFILE_PRECEDENCE = {
+    "presence": 1,
+    "configured": 2,
+    "runtime": 3,
+    "verification": 4,
+}
+
 
 def parse_manifest_file(path: Path):
     targets = {}
@@ -136,10 +143,24 @@ def validate(targets):
     return errors, ordered
 
 
+def component_profile(targets, component):
+    profiles = {
+        data.get("profile")
+        for data in targets.values()
+        if data.get("component") == component and data.get("profile")
+    }
+    if not profiles:
+        return "configured"
+    if profiles == {"verification"}:
+        return "verification"
+    return max(profiles, key=lambda profile: PROFILE_PRECEDENCE.get(profile, 0))
+
+
 def main():
     args = sys.argv[1:]
     deps_mode = False
     soft_deps_mode = False
+    component_profile_mode = False
     target_name = None
     if len(args) >= 2 and args[0] == "--deps":
         deps_mode = True
@@ -147,6 +168,10 @@ def main():
         args = args[2:]
     elif len(args) >= 2 and args[0] == "--soft-deps":
         soft_deps_mode = True
+        target_name = args[1]
+        args = args[2:]
+    elif len(args) >= 2 and args[0] == "--component-profile":
+        component_profile_mode = True
         target_name = args[1]
         args = args[2:]
 
@@ -171,6 +196,10 @@ def main():
     if soft_deps_mode:
         for dep in targets.get(target_name, {}).get("soft_depends_on", []):
             print(dep)
+        return 0
+
+    if component_profile_mode:
+        print(component_profile(targets, target_name))
         return 0
 
     print(f"OK: {len(targets)} orchestration targets validated")
