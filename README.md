@@ -9,6 +9,7 @@ Scripts to set up a Mac mini (Apple Silicon, 64 GB) as an AI workstation.
 - BISS evidence: `./docs/biss-classification.md`
 - ASM state model: `./docs/setup-state-model.md`
 - ASM state artifact: `./docs/setup-state-artifact.yaml`
+- ASM artifact validator: `./tools/validate_setup_state_artifact.py`
 - UCC engine: `./lib/ucc.sh`
 - UIC preflight: `./lib/uic.sh`
 - TIC verification: `./lib/tic.sh`

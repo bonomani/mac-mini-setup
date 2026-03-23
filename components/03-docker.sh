@@ -9,9 +9,42 @@
 _observe_docker_app() {
   # Manual install counts as current — brew cask tracks upgrades for brew-installed only
   if [[ -d "/Applications/Docker.app" ]] && ! brew_cask_is_installed docker; then
-    echo "current"; return
+    ucc_asm_state \
+      --installation Installed \
+      --runtime NeverStarted \
+      --health Unknown \
+      --admin Enabled \
+      --dependencies DepsUnknown
+    return
   fi
-  brew_cask_observe docker
+  local observed
+  observed=$(brew_cask_observe docker)
+  case "$observed" in
+    absent)
+      ucc_asm_state \
+        --installation Absent \
+        --runtime NeverStarted \
+        --health Unavailable \
+        --admin Enabled \
+        --dependencies DepsUnknown
+      ;;
+    outdated)
+      ucc_asm_state \
+        --installation Upgrading \
+        --runtime Stopped \
+        --health Degraded \
+        --admin Enabled \
+        --dependencies DepsDegraded
+      ;;
+    *)
+      ucc_asm_state \
+        --installation Installed \
+        --runtime NeverStarted \
+        --health Unknown \
+        --admin Enabled \
+        --dependencies DepsUnknown
+      ;;
+  esac
 }
 
 _install_docker() {
@@ -34,7 +67,7 @@ _upgrade_docker() {
 ucc_target \
   --name    "docker-desktop" \
   --observe _observe_docker_app \
-  --desired "current" \
+  --desired "$(ucc_asm_state --installation Installed --runtime NeverStarted --health Unknown --admin Enabled --dependencies DepsUnknown)" \
   --install _install_docker \
   --update  _upgrade_docker
 
@@ -47,12 +80,33 @@ _DOCKER_CPUS="${UIC_PREF_DOCKER_CPU_COUNT:-10}"
 _observe_docker_settings() {
   local f="$HOME/Library/Group Containers/group.com.docker/settings.json"
   # File only exists after Docker Desktop is opened at least once.
-  # When absent: gate 'docker-settings-file' already warned the user — treat as converged (no-op).
-  [[ -f "$f" ]] || { echo "configured"; return; }
+  [[ -f "$f" ]] || {
+    ucc_asm_state \
+      --installation Installed \
+      --runtime Stopped \
+      --health Unavailable \
+      --admin Enabled \
+      --dependencies DepsFailed
+    return
+  }
   local mem
   mem=$(python3 -c "import json; d=json.load(open('$f')); print(d.get('memoryMiB',0))" 2>/dev/null)
   [[ -z "$mem" ]] && return 0   # python3 failed → indeterminate
-  [[ "$mem" -ge "$_DOCKER_MEM_MIB" ]] && echo "configured" || echo "needs-update"
+  if [[ "$mem" -ge "$_DOCKER_MEM_MIB" ]]; then
+    ucc_asm_state \
+      --installation Configured \
+      --runtime Stopped \
+      --health Healthy \
+      --admin Enabled \
+      --dependencies DepsReady
+  else
+    ucc_asm_state \
+      --installation Installed \
+      --runtime Stopped \
+      --health Degraded \
+      --admin Enabled \
+      --dependencies DepsDegraded
+  fi
 }
 
 _configure_docker_settings() {
@@ -77,7 +131,7 @@ EOF
 ucc_target \
   --name    "docker-resources-48gb" \
   --observe _observe_docker_settings \
-  --desired "configured" \
+  --desired "$(ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady)" \
   --install _configure_docker_settings \
   --update  _configure_docker_settings
 
