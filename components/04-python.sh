@@ -18,7 +18,7 @@ _observe_pyenv() {
 }
 
 _install_pyenv() {
-  ucc_run brew upgrade pyenv pyenv-virtualenv 2>/dev/null || ucc_run brew install pyenv pyenv-virtualenv
+  brew_install_or_upgrade pyenv pyenv-virtualenv
   if ! grep -q 'pyenv init' ~/.zshrc 2>/dev/null; then
     cat >> ~/.zshrc <<'EOF'
 
@@ -40,7 +40,7 @@ ucc_target \
 
 # --- xz (required to avoid lzma warning when building Python) --
 _observe_xz() { brew_observe xz; }
-_install_xz() { ucc_run brew upgrade xz 2>/dev/null || ucc_run brew install xz; }
+_install_xz() { brew_install_or_upgrade xz; }
 
 ucc_target \
   --name    "xz" \

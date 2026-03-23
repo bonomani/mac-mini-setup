@@ -39,3 +39,10 @@ pip_is_installed() { pip show "$1" &>/dev/null 2>&1; }
 
 # Check if an ollama model is present
 ollama_model_present() { ollama list 2>/dev/null | grep -q "^$1"; }
+
+# Install or upgrade a brew formula (idempotent: upgrade first, install if absent)
+# Accepts multiple packages: brew_install_or_upgrade pkg1 pkg2 ...
+brew_install_or_upgrade()      { ucc_run brew upgrade      "$@" 2>/dev/null || ucc_run brew install      "$@"; }
+
+# Install or upgrade a brew cask
+brew_cask_install_or_upgrade() { ucc_run brew upgrade --cask "$@" 2>/dev/null || ucc_run brew install --cask "$@"; }

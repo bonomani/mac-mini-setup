@@ -114,6 +114,44 @@ ucc_run() {
 }
 
 # ============================================================
+#  Convenience target helpers — eliminate boilerplate for common patterns
+# ============================================================
+
+# ucc_brew_target <target-name> <brew-pkg>
+# Standard brew formula: observe=brew_observe desired=current install/update=upgrade|install
+ucc_brew_target() {
+  local tname="$1" pkg="$2"
+  local fn; fn="${pkg//[^a-zA-Z0-9]/_}"
+  eval "_ubt_obs_${fn}() { brew_observe '${pkg}'; }"
+  eval "_ubt_ins_${fn}() { brew_install_or_upgrade '${pkg}'; }"
+  ucc_target --name "$tname" --observe "_ubt_obs_${fn}" --desired "current" \
+             --install "_ubt_ins_${fn}" --update "_ubt_ins_${fn}"
+}
+
+# ucc_brew_cask_target <target-name> <cask-pkg>
+# Standard brew cask: observe=brew_cask_observe desired=current install/update=upgrade|install
+ucc_brew_cask_target() {
+  local tname="$1" pkg="$2"
+  local fn; fn="${pkg//[^a-zA-Z0-9]/_}"
+  eval "_ubct_obs_${fn}() { brew_cask_observe '${pkg}'; }"
+  eval "_ubct_ins_${fn}() { brew_cask_install_or_upgrade '${pkg}'; }"
+  ucc_target --name "$tname" --observe "_ubct_obs_${fn}" --desired "current" \
+             --install "_ubct_ins_${fn}" --update "_ubct_ins_${fn}"
+}
+
+# ucc_npm_target <npm-pkg>
+# Global npm package: observe=npm ls -g desired=current install=npm install -g update=npm update -g
+ucc_npm_target() {
+  local pkg="$1"
+  local fn; fn="${pkg//[@\/]/_}"
+  eval "_unt_obs_${fn}() { npm ls -g '${pkg}' --depth=0 &>/dev/null 2>&1 && echo 'current' || echo 'absent'; }"
+  eval "_unt_ins_${fn}() { ucc_run npm install -g '${pkg}'; }"
+  eval "_unt_upd_${fn}() { ucc_run npm update  -g '${pkg}'; }"
+  ucc_target --name "npm-global-${pkg}" --observe "_unt_obs_${fn}" --desired "current" \
+             --install "_unt_ins_${fn}" --update "_unt_upd_${fn}"
+}
+
+# ============================================================
 #  ucc_target — full UCC Steps 0-6 lifecycle per target
 # ============================================================
 ucc_target() {

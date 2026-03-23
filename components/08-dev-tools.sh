@@ -10,15 +10,7 @@
 CLI_TOOLS=(jq wget curl htop tmux fzf ripgrep fd tree uv pnpm gcc gh llama.cpp opencode aria2 xz cmake)
 
 for tool in "${CLI_TOOLS[@]}"; do
-  eval "_observe_${tool}() { brew_observe '$tool'; }"
-  eval "_install_${tool}() { ucc_run brew upgrade '$tool' 2>/dev/null || ucc_run brew install '$tool'; }"
-
-  ucc_target \
-    --name    "cli-$tool" \
-    --observe "_observe_${tool}" \
-    --desired "current" \
-    --install "_install_${tool}" \
-    --update  "_install_${tool}"
+  ucc_brew_target "cli-$tool" "$tool"
 done
 
 # --- VSCode -------------------------------------------------
@@ -29,7 +21,7 @@ _observe_vscode() {
   fi
   brew_cask_observe visual-studio-code
 }
-_install_vscode() { ucc_run brew upgrade --cask visual-studio-code 2>/dev/null || ucc_run brew install --cask visual-studio-code; }
+_install_vscode() { brew_cask_install_or_upgrade visual-studio-code; }
 
 ucc_target \
   --name    "vscode" \
@@ -126,26 +118,10 @@ ucc_target \
   --update  _apply_vscode_settings
 
 # --- iTerm2 -------------------------------------------------
-_observe_iterm2() { brew_cask_observe iterm2; }
-_install_iterm2() { ucc_run brew upgrade --cask iterm2 2>/dev/null || ucc_run brew install --cask iterm2; }
-
-ucc_target \
-  --name    "iterm2" \
-  --observe _observe_iterm2 \
-  --desired "current" \
-  --install _install_iterm2 \
-  --update  _install_iterm2
+ucc_brew_cask_target "iterm2" "iterm2"
 
 # --- LM Studio — GUI for GGUF models -----------------------
-_observe_lmstudio() { brew_cask_observe lm-studio; }
-_install_lmstudio() { ucc_run brew upgrade --cask lm-studio 2>/dev/null || ucc_run brew install --cask lm-studio; }
-
-ucc_target \
-  --name    "lm-studio" \
-  --observe _observe_lmstudio \
-  --desired "current" \
-  --install _install_lmstudio \
-  --update  _install_lmstudio
+ucc_brew_cask_target "lm-studio" "lm-studio"
 
 # --- Node.js 24 LTS -----------------------------------------
 # node@24 required by Unsloth Studio; also compatible with Claude Code, Codex, BMAD
@@ -190,19 +166,7 @@ NPM_GLOBAL_PKGS=(
 )
 
 for pkg in "${NPM_GLOBAL_PKGS[@]}"; do
-  _pkg_id="${pkg//[@\/]/_}"  # safe function name
-  eval "_observe_npm_${_pkg_id}() {
-    npm ls -g '${pkg}' --depth=0 &>/dev/null 2>&1 && echo 'current' || echo 'absent'
-  }"
-  eval "_install_npm_${_pkg_id}() { ucc_run npm install -g '${pkg}'; }"
-  eval "_update_npm_${_pkg_id}()  { ucc_run npm update  -g '${pkg}'; }"
-
-  ucc_target \
-    --name    "npm-global-$pkg" \
-    --observe "_observe_npm_${_pkg_id}" \
-    --desired "current" \
-    --install "_install_npm_${_pkg_id}" \
-    --update  "_update_npm_${_pkg_id}"
+  ucc_npm_target "$pkg"
 done
 
 # --- Oh My Zsh ----------------------------------------------
@@ -312,7 +276,7 @@ _install_ariaflow() {
   for _plist in ~/Library/LaunchAgents/com.ariaflow.*.plist; do
     [[ -f "$_plist" ]] && ucc_run launchctl unload "$_plist" 2>/dev/null || true
   done
-  ucc_run brew upgrade ariaflow 2>/dev/null || ucc_run brew install ariaflow
+  brew_install_or_upgrade ariaflow
 }
 
 ucc_target \
@@ -339,16 +303,10 @@ ucc_target \
 
 # --- ariaflow-web — brew formula (port 8001, separate from ariaflow) -
 # ariaflow-web is a distinct brew package; managed via brew services (not ariaflow install --with-web)
-_observe_ariaflow_web() {
-  brew_is_installed ariaflow-web || { echo "absent"; return; }
-  if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-always-upgrade}" == "always-upgrade" ]]; then
-    _brew_is_outdated ariaflow-web && { echo "outdated"; return; }
-  fi
-  echo "current"
-}
+_observe_ariaflow_web() { brew_observe ariaflow-web; }
 _install_ariaflow_web() {
   ucc_run brew tap bonomani/ariaflow
-  ucc_run brew upgrade ariaflow-web 2>/dev/null || ucc_run brew install ariaflow-web
+  brew_install_or_upgrade ariaflow-web
 }
 
 ucc_target \
