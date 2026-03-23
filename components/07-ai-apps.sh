@@ -35,6 +35,11 @@ _observe_docker_running() {
       --dependencies DepsUnknown
   fi
 }
+_evidence_docker_running() {
+  local ver
+  ver=$(docker --version 2>/dev/null | awk '{print $3}' | tr -d ',')
+  [[ -n "$ver" ]] && printf 'version=%s daemon=running' "$ver" || printf 'daemon=running'
+}
 _start_docker() {
   if [[ "${UIC_PREF_SERVICE_POLICY:-autostart}" != "autostart" ]]; then
     log_warn "Docker not running — start it manually (service-policy=manual)"
@@ -54,6 +59,7 @@ _start_docker() {
 ucc_target_service \
   --name    "docker-running" \
   --observe _observe_docker_running \
+  --evidence _evidence_docker_running \
   --desired "$(ucc_asm_state --installation Configured --runtime Running --health Healthy --admin Enabled --dependencies DepsReady)" \
   --install _start_docker
 
@@ -73,6 +79,7 @@ _observe_compose_file() {
     && echo "present" || echo "absent")
   ucc_asm_config_state "$raw"
 }
+_evidence_compose_file() { printf 'path=%s' "$COMPOSE_FILE"; }
 
 _write_compose_file() {
   ucc_run mkdir -p "$COMPOSE_DIR"
@@ -85,6 +92,7 @@ _write_compose_file() {
 
 ucc_target_nonruntime --name "ai-stack-compose-file" \
   --observe _observe_compose_file \
+  --evidence _evidence_compose_file \
   --install _write_compose_file --update _write_compose_file
 
 # ============================================================
@@ -130,6 +138,7 @@ _observe_stack() {
     --admin Enabled \
     --dependencies DepsReady
 }
+_evidence_stack() { printf 'services=%s compose=%s' "$STACK_SERVICES" "$COMPOSE_FILE"; }
 
 # Remove any legacy bare containers that would conflict with compose
 _remove_legacy_containers() {
@@ -155,6 +164,7 @@ _update_stack() {
 
 ucc_target_service --name "ai-stack-running" \
   --observe _observe_stack \
+  --evidence _evidence_stack \
   --desired "$(ucc_asm_state --installation Configured --runtime Running --health Healthy --admin Enabled --dependencies DepsReady)" \
   --install _start_stack --update _update_stack
 

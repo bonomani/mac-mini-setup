@@ -343,13 +343,18 @@ _profile_bump() {
 }
 
 _print_component_header() {
-  local component="$1" profile expected
+  local component="$1" profile
   profile="$(ucc_component_profile "$component")"
   printf '\n── %s [%s]\n' "$component" "$(ucc_profile_label "$profile")"
-  if [[ "$profile" != "verification" ]]; then
+}
+
+_print_profile_contracts() {
+  local profile expected
+  for profile in presence configured runtime; do
     expected="$(ucc_profile_expected_text "$profile")"
-    [[ -n "$expected" ]] && printf '   expected: %s\n' "$expected"
-  fi
+    [[ -n "$expected" ]] || continue
+    printf '  Profile %-10s | %s\n' "$(ucc_profile_label "$profile")" "$expected"
+  done
 }
 
 echo "========================================================"
@@ -357,6 +362,7 @@ _hdr_flags="mode=$UCC_MODE"; [[ "$UCC_DRY_RUN" == "1" ]] && _hdr_flags="$_hdr_fl
 echo "  Mac Mini AI Setup | $_hdr_flags | $(date '+%Y-%m-%d %H:%M')"
 echo "  $_arch_label  ·  $_ram_label"
 echo "  Global State     | $(_global_state_label) ($(_global_state_detail))"
+_print_profile_contracts
 log_debug "correlation_id=$UCC_CORRELATION_ID"
 echo "========================================================"
 
@@ -451,11 +457,8 @@ if [[ -f "$UCC_PROFILE_SUMMARY_FILE" ]]; then
   echo "  ──────────────────────────────────────────────────────"
   echo "  By Profile"
   printf '  %-22s  %s\n' "$(ucc_profile_label presence)" "$(_summary_line "$_profile_presence_ok" "$_profile_presence_chg" "$_profile_presence_fail")"
-  printf '  %-22s  expected: %s\n' "" "$(ucc_profile_expected_text presence)"
   printf '  %-22s  %s\n' "$(ucc_profile_label configured)" "$(_summary_line "$_profile_configured_ok" "$_profile_configured_chg" "$_profile_configured_fail")"
-  printf '  %-22s  expected: %s\n' "" "$(ucc_profile_expected_text configured)"
   printf '  %-22s  %s\n' "$(ucc_profile_label runtime)" "$(_summary_line "$_profile_runtime_ok" "$_profile_runtime_chg" "$_profile_runtime_fail")"
-  printf '  %-22s  expected: %s\n' "" "$(ucc_profile_expected_text runtime)"
 fi
 
 if [[ ${#FAILED_COMPONENTS[@]} -gt 0 ]]; then

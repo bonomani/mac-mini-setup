@@ -11,6 +11,13 @@ _observe_git() {
   raw=$(is_installed git && git --version 2>/dev/null | awk '{print $3}' || echo "absent")
   ucc_asm_package_state "$raw"
 }
+_evidence_git() {
+  local ver path
+  ver=$(git --version 2>/dev/null | awk '{print $3}')
+  path=$(command -v git 2>/dev/null || true)
+  [[ -n "$ver" ]] && printf 'version=%s' "$ver"
+  [[ -n "$path" ]] && printf '%s path=%s' "${ver:+ }" "$path"
+}
 
 _install_git() { brew_install git; }
 _update_git()  { brew_upgrade  git; }
@@ -18,6 +25,7 @@ _update_git()  { brew_upgrade  git; }
 ucc_target_nonruntime \
   --name    "git" \
   --observe _observe_git \
+  --evidence _evidence_git \
   --install _install_git \
   --update  _update_git
 
@@ -26,6 +34,13 @@ _observe_git_user() {
   local raw
   raw=$(git config --global user.name &>/dev/null && echo "configured" || echo "absent")
   ucc_asm_config_state "$raw"
+}
+_evidence_git_user() {
+  local name email
+  name=$(git config --global user.name 2>/dev/null || true)
+  email=$(git config --global user.email 2>/dev/null || true)
+  [[ -n "$name" ]] && printf 'user=%s' "$name"
+  [[ -n "$email" ]] && printf '%s email=%s' "${name:+ }" "$email"
 }
 
 _configure_git() {
@@ -50,6 +65,7 @@ if [[ "$UCC_DRY_RUN" != "1" ]]; then
   ucc_target_nonruntime \
     --name    "git-global-config" \
     --observe _observe_git_user \
+    --evidence _evidence_git_user \
         --install _configure_git
 fi
 

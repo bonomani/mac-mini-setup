@@ -16,6 +16,13 @@ _observe_xcode_clt() {
     || echo "absent")
   ucc_asm_package_state "$raw"
 }
+_evidence_xcode_clt() {
+  local ver path
+  ver=$(pkgutil --pkg-info=com.apple.pkg.CLTools_Executables 2>/dev/null | awk '/^version:/ {print $2}')
+  path=$(xcode-select -p 2>/dev/null || true)
+  [[ -n "$ver" ]] && printf 'version=%s' "$ver"
+  [[ -n "$path" ]] && printf '%s path=%s' "${ver:+ }" "$path"
+}
 
 _install_xcode_clt() {
   log_info "Triggering Xcode Command Line Tools install..."
@@ -27,6 +34,7 @@ _install_xcode_clt() {
 ucc_target_nonruntime \
   --name    "xcode-command-line-tools" \
   --observe _observe_xcode_clt \
+  --evidence _evidence_xcode_clt \
   --install _install_xcode_clt
 
 # Abort if CLT just got triggered (install_fn returned 1)
@@ -37,6 +45,13 @@ _observe_brew() {
   local raw
   raw=$(is_installed brew && brew --version 2>/dev/null | awk 'NR==1 {print $2}' || echo "absent")
   ucc_asm_package_state "$raw"
+}
+_evidence_brew() {
+  local ver path
+  ver=$(brew --version 2>/dev/null | awk 'NR==1 {print $2}')
+  path=$(command -v brew 2>/dev/null || true)
+  [[ -n "$ver" ]] && printf 'version=%s' "$ver"
+  [[ -n "$path" ]] && printf '%s path=%s' "${ver:+ }" "$path"
 }
 
 _install_brew() {
@@ -67,6 +82,7 @@ _update_brew() {
 ucc_target_nonruntime \
   --name    "homebrew" \
   --observe _observe_brew \
+  --evidence _evidence_brew \
   --install _install_brew \
   --update  _update_brew
 
@@ -88,12 +104,14 @@ _observe_brew_analytics() {
   raw=$(brew analytics state 2>/dev/null | grep -qi "disabled" && echo "off" || echo "on")
   ucc_asm_config_state "$raw"
 }
+_evidence_brew_analytics() { printf 'analytics=off'; }
 _disable_brew_analytics() { ucc_run brew analytics off; }
 
 if is_installed brew; then
   ucc_target_nonruntime \
     --name    "brew-analytics=off" \
     --observe _observe_brew_analytics \
+    --evidence _evidence_brew_analytics \
         --install _disable_brew_analytics \
     --update  _disable_brew_analytics
 fi

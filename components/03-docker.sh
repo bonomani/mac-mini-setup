@@ -46,6 +46,11 @@ _observe_docker_app() {
       ;;
   esac
 }
+_evidence_docker_app() {
+  local ver
+  ver=$(defaults read "/Applications/Docker.app/Contents/Info" CFBundleShortVersionString 2>/dev/null || docker --version 2>/dev/null | awk '{print $3}' | tr -d ',')
+  [[ -n "$ver" ]] && printf 'version=%s' "$ver"
+}
 
 _install_docker() {
   brew_cask_install docker
@@ -67,7 +72,8 @@ _upgrade_docker() {
 ucc_target \
   --name    "docker-desktop" \
   --observe _observe_docker_app \
-  --axes    "$UCC_ASM_NONRUNTIME_AXES" \
+  --evidence _evidence_docker_app \
+  --axes    "$UCC_ASM_CONFIGURED_AXES" \
   --desired "$(ucc_asm_state --installation Installed --runtime NeverStarted --health Unknown --admin Enabled --dependencies DepsUnknown)" \
   --install _install_docker \
   --update  _upgrade_docker
@@ -127,6 +133,13 @@ _observe_docker_settings() {
       --dependencies DepsDegraded
   fi
 }
+_evidence_docker_settings() {
+  local f="$HOME/Library/Group Containers/group.com.docker/settings.json" mem cpus
+  [[ -f "$f" ]] || { printf 'settings=%s' "$f"; return; }
+  mem=$(python3 -c "import json; d=json.load(open('$f')); print(d.get('memoryMiB',0)//1024)" 2>/dev/null)
+  cpus=$(python3 -c "import json; d=json.load(open('$f')); print(d.get('cpus',0))" 2>/dev/null)
+  printf 'memory=%sGB cpus=%s settings=%s' "${mem:-0}" "${cpus:-0}" "$f"
+}
 
 _configure_docker_settings() {
   local f="$HOME/Library/Group Containers/group.com.docker/settings.json"
@@ -150,7 +163,8 @@ EOF
 ucc_target \
   --name    "docker-resources-48gb" \
   --observe _observe_docker_settings \
-  --axes    "$UCC_ASM_NONRUNTIME_AXES" \
+  --evidence _evidence_docker_settings \
+  --axes    "$UCC_ASM_CONFIGURED_AXES" \
   --desired "$(_docker_settings_desired_state)" \
   --install _configure_docker_settings \
   --update  _configure_docker_settings

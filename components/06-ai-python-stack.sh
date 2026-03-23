@@ -13,12 +13,14 @@ _pip_group() {
   local fn="${name//[^a-zA-Z0-9]/_}"
 
   eval "_observe_grp_${fn}() { local raw; raw=\$(pip_is_installed '${first}' && pip show '${first}' 2>/dev/null | awk '/^Version:/ {print \$2}' || echo 'absent'); ucc_asm_package_state \"\$raw\"; }"
+  eval "_evidence_grp_${fn}() { local ver; ver=\$(pip show '${first}' 2>/dev/null | awk '/^Version:/ {print \$2}'); [[ -n \"\$ver\" ]] && printf 'version=%s pkg=${first}' \"\$ver\"; }"
   eval "_install_grp_${fn}() { ucc_run pip install -q ${pkgs}; }"
   eval "_update_grp_${fn}()  { ucc_run pip install -q --upgrade ${pkgs}; }"
 
   ucc_target_nonruntime \
     --name    "pip-group-$name" \
     --observe "_observe_grp_${fn}" \
+    --evidence "_evidence_grp_${fn}" \
         --install "_install_grp_${fn}" \
     --update  "_update_grp_${fn}"
 }
@@ -44,6 +46,11 @@ sys.exit(0 if Version(langchain_core.__version__) >= Version('1.0.0') else 1)
 " 2>/dev/null && python3 -c "import langchain_core; print(langchain_core.__version__)" 2>/dev/null || echo "absent")
   ucc_asm_package_state "$raw"
 }
+_evidence_grp_langchain() {
+  local ver
+  ver=$(python3 -c "import langchain_core; print(langchain_core.__version__)" 2>/dev/null || true)
+  [[ -n "$ver" ]] && printf 'version=%s pkg=langchain-core' "$ver"
+}
 _install_grp_langchain() {
   ucc_run pip install -q "langchain-core>=1.0.0" langchain langchain-community langchain-ollama langgraph
 }
@@ -53,6 +60,7 @@ _update_grp_langchain() {
 ucc_target_nonruntime \
   --name    "pip-group-langchain" \
   --observe _observe_grp_langchain \
+  --evidence _evidence_grp_langchain \
   --install _install_grp_langchain \
   --update  _update_grp_langchain
 
@@ -100,6 +108,7 @@ _observe_unsloth_studio_setup() {
   raw=$([[ -d "$HOME/.unsloth/studio" ]] && echo "present" || echo "absent")
   ucc_asm_package_state "$raw"
 }
+_evidence_unsloth_studio_setup() { printf 'folder=%s' "$HOME/.unsloth/studio"; }
 _run_unsloth_studio_setup() {
   ucc_run unsloth studio setup
 }
@@ -107,6 +116,7 @@ _run_unsloth_studio_setup() {
 ucc_target_nonruntime \
   --name    "unsloth-studio-setup" \
   --observe _observe_unsloth_studio_setup \
+  --evidence _evidence_unsloth_studio_setup \
   --install _run_unsloth_studio_setup \
   --update  _run_unsloth_studio_setup
 
@@ -123,6 +133,11 @@ _observe_unsloth_studio_launchd() {
   launchctl list 2>/dev/null | grep -q "ai.unsloth.studio" || { ucc_asm_service_state "absent"; return; }
   grep -qF "$UNSLOTH_PLIST_MARKER" "$UNSLOTH_PLIST" 2>/dev/null || { ucc_asm_service_state "outdated"; return; }
   ucc_asm_service_state "loaded"
+}
+_evidence_unsloth_studio_launchd() {
+  local pid
+  pid=$(pgrep -f 'unsloth.*studio' 2>/dev/null | head -1 || true)
+  [[ -n "$pid" ]] && printf 'pid=%s port=8888 plist=%s' "$pid" "$UNSLOTH_PLIST" || printf 'port=8888 plist=%s' "$UNSLOTH_PLIST"
 }
 
 _install_unsloth_studio_launchd() {
@@ -160,6 +175,7 @@ _update_unsloth_studio_launchd() {
 ucc_target_service \
   --name    "unsloth-studio-launchd" \
   --observe _observe_unsloth_studio_launchd \
+  --evidence _evidence_unsloth_studio_launchd \
   --desired "$(ucc_asm_state --installation Configured --runtime Running --health Healthy --admin Enabled --dependencies DepsReady)" \
   --install _install_unsloth_studio_launchd \
   --update  _update_unsloth_studio_launchd

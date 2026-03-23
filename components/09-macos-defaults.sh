@@ -36,11 +36,13 @@ _observe_ac_sleep() {
   current=$(pmset -g | awk '/^[[:space:]]+sleep / {print $2}')
   _macos_defaults_state "$current" "0"
 }
+_evidence_ac_sleep() { printf 'value=%s' "$(pmset -g | awk '/^[[:space:]]+sleep / {print $2}' | head -1)"; }
 _set_ac_sleep_0() { ucc_run sudo pmset -c sleep 0; }
 
 ucc_target_nonruntime \
   --name    "pmset-ac-sleep=0" \
   --observe _observe_ac_sleep \
+  --evidence _evidence_ac_sleep \
   --desired "$(_macos_defaults_desired_state)" \
   --install _set_ac_sleep_0 \
   --update  _set_ac_sleep_0
@@ -50,11 +52,13 @@ _observe_disksleep() {
   current=$(pmset -g | awk '/disksleep/ {print $2}')
   _macos_defaults_state "$current" "0"
 }
+_evidence_disksleep() { printf 'value=%s' "$(pmset -g | awk '/disksleep/ {print $2}' | head -1)"; }
 _set_disksleep_0() { ucc_run sudo pmset -c disksleep 0; }
 
 ucc_target_nonruntime \
   --name    "pmset-disksleep=0" \
   --observe _observe_disksleep \
+  --evidence _evidence_disksleep \
   --desired "$(_macos_defaults_desired_state)" \
   --install _set_disksleep_0 \
   --update  _set_disksleep_0
@@ -64,11 +68,13 @@ _observe_standby() {
   current=$(pmset -g | awk '/^[[:space:]]+standby / {print $2}')
   _macos_defaults_state "$current" "0"
 }
+_evidence_standby() { printf 'value=%s' "$(pmset -g | awk '/^[[:space:]]+standby / {print $2}' | head -1)"; }
 _set_standby_0() { ucc_run sudo pmset -c standby 0; }
 
 ucc_target_nonruntime \
   --name    "pmset-standby=0" \
   --observe _observe_standby \
+  --evidence _evidence_standby \
   --desired "$(_macos_defaults_desired_state)" \
   --install _set_standby_0 \
   --update  _set_standby_0
@@ -79,11 +85,13 @@ _observe_app_nap() {
   current=$(defaults read NSGlobalDomain NSAppSleepDisabled 2>/dev/null || echo "0")
   _macos_defaults_state "$current" "1"
 }
+_evidence_app_nap() { printf 'value=%s' "$(defaults read NSGlobalDomain NSAppSleepDisabled 2>/dev/null || echo 0)"; }
 _disable_app_nap() { ucc_run defaults write NSGlobalDomain NSAppSleepDisabled -bool YES; }
 
 ucc_target_nonruntime \
   --name    "app-nap=disabled" \
   --observe _observe_app_nap \
+  --evidence _evidence_app_nap \
   --desired "$(_macos_defaults_desired_state)" \
   --install _disable_app_nap \
   --update  _disable_app_nap
@@ -98,11 +106,13 @@ _observe_hidden_files() {
   current=$(defaults read com.apple.finder AppleShowAllFiles 2>/dev/null || echo "0")
   _macos_defaults_state "$current" "1"
 }
+_evidence_hidden_files() { printf 'value=%s' "$(defaults read com.apple.finder AppleShowAllFiles 2>/dev/null || echo 0)"; }
 _show_hidden_files() { ucc_run defaults write com.apple.finder AppleShowAllFiles -bool true; }
 
 ucc_target_nonruntime \
   --name    "finder-show-hidden=1" \
   --observe _observe_hidden_files \
+  --evidence _evidence_hidden_files \
   --desired "$(_macos_defaults_desired_state)" \
   --install _show_hidden_files \
   --update  _show_hidden_files
@@ -113,11 +123,13 @@ _observe_extensions() {
   current=$(defaults read NSGlobalDomain AppleShowAllExtensions 2>/dev/null || echo "0")
   _macos_defaults_state "$current" "1"
 }
+_evidence_extensions() { printf 'value=%s' "$(defaults read NSGlobalDomain AppleShowAllExtensions 2>/dev/null || echo 0)"; }
 _show_extensions() { ucc_run defaults write NSGlobalDomain AppleShowAllExtensions -bool true; }
 
 ucc_target_nonruntime \
   --name    "show-all-extensions=1" \
   --observe _observe_extensions \
+  --evidence _evidence_extensions \
   --desired "$(_macos_defaults_desired_state)" \
   --install _show_extensions \
   --update  _show_extensions
@@ -128,11 +140,13 @@ _observe_dock_autohide() {
   current=$(defaults read com.apple.dock autohide 2>/dev/null || echo "0")
   _macos_defaults_state "$current" "1"
 }
+_evidence_dock_autohide() { printf 'value=%s' "$(defaults read com.apple.dock autohide 2>/dev/null || echo 0)"; }
 _dock_autohide() { ucc_run defaults write com.apple.dock autohide -bool true; }
 
 ucc_target_nonruntime \
   --name    "dock-autohide=1" \
   --observe _observe_dock_autohide \
+  --evidence _evidence_dock_autohide \
   --desired "$(_macos_defaults_desired_state)" \
   --install _dock_autohide \
   --update  _dock_autohide

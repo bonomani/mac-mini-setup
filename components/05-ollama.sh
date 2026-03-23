@@ -36,6 +36,7 @@ _observe_macos_prereq() {
     ucc_asm_config_state "absent"
   fi
 }
+_evidence_macos_prereq() { printf 'macos=%s' "$(sw_vers -productVersion 2>/dev/null || echo unknown)"; }
 _fail_macos_prereq() {
   log_warn "Ollama requires macOS 14 (Sonoma) or later — current: macOS $MACOS_MAJOR"
   return 1  # permanent failure — cannot install on this OS version
@@ -44,6 +45,7 @@ _fail_macos_prereq() {
 ucc_target_nonruntime \
   --name    "macos-14-precondition" \
   --observe _observe_macos_prereq \
+  --evidence _evidence_macos_prereq \
   --install _fail_macos_prereq
 
 # Abort if precondition not met
@@ -54,6 +56,13 @@ _observe_ollama() {
   local raw
   raw=$(is_installed ollama && ollama --version 2>/dev/null | awk '{print $NF}' || echo "absent")
   ucc_asm_package_state "$raw"
+}
+_evidence_ollama() {
+  local ver path
+  ver=$(ollama --version 2>/dev/null | awk '{print $NF}')
+  path=$(command -v ollama 2>/dev/null || true)
+  [[ -n "$ver" ]] && printf 'version=%s' "$ver"
+  [[ -n "$path" ]] && printf '%s path=%s' "${ver:+ }" "$path"
 }
 
 _install_ollama() {
@@ -69,6 +78,7 @@ _update_ollama() {
 ucc_target_nonruntime \
   --name    "ollama" \
   --observe _observe_ollama \
+  --evidence _evidence_ollama \
   --install _install_ollama \
   --update  _update_ollama
 
@@ -99,6 +109,11 @@ _observe_ollama_service() {
       --dependencies DepsDegraded
   fi
 }
+_evidence_ollama_service() {
+  local pid
+  pid=$(pgrep -f 'ollama (serve|app)' 2>/dev/null | head -1 || true)
+  [[ -n "$pid" ]] && printf 'pid=%s port=11434' "$pid" || printf 'port=11434'
+}
 
 _start_ollama_service() {
   if is_installed brew && brew list ollama &>/dev/null 2>&1; then
@@ -113,6 +128,7 @@ _start_ollama_service() {
 ucc_target_service \
   --name    "ollama-service" \
   --observe _observe_ollama_service \
+  --evidence _evidence_ollama_service \
   --desired "$(ucc_asm_state --installation Configured --runtime Running --health Healthy --admin Enabled --dependencies DepsReady)" \
   --install _start_ollama_service
 
@@ -138,10 +154,12 @@ _ollama_pull_set() {
     _name="ollama-model-${model//:/-}"
     _fn="${_name//[^a-zA-Z0-9_]/_}"
     eval "_observe_${_fn}() { local raw; raw=\$(ollama_model_present '${model}' && echo 'present' || echo 'absent'); ucc_asm_package_state \"\$raw\"; }"
+    eval "_evidence_${_fn}() { printf 'model=${model}'; }"
     eval "_pull_${_fn}()    { log_info 'Pulling model: ${model}'; ucc_run ollama pull '${model}'; }"
     ucc_target_nonruntime \
       --name    "$_name" \
       --observe "_observe_${_fn}" \
+      --evidence "_evidence_${_fn}" \
               --install "_pull_${_fn}" \
       --update  "_pull_${_fn}"
   done

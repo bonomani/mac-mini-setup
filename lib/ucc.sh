@@ -175,6 +175,18 @@ PY
   fi
 }
 
+_ucc_evidence_text() {
+  local observed="$1" axes="${2:-}" evidence_fn="${3:-}" evidence=""
+  if [[ -n "$evidence_fn" ]]; then
+    evidence=$($evidence_fn 2>/dev/null || true)
+  fi
+  if [[ -n "$evidence" ]]; then
+    printf '%s' "$evidence"
+    return 0
+  fi
+  printf 'observed=%s' "$(_ucc_display_state "$observed" "$axes")"
+}
+
 ucc_asm_state() {
   local installation="" runtime="" health="" admin="" dependency=""
   while [[ $# -gt 0 ]]; do
@@ -415,9 +427,11 @@ ucc_brew_target() {
   local tname="$1" pkg="$2"
   local fn; fn="${pkg//[^a-zA-Z0-9]/_}"
   eval "_ubt_obs_${fn}() { local raw; raw=\$(brew_observe '${pkg}'); ucc_asm_package_state \"\$raw\"; }"
+  eval "_ubt_evd_${fn}() { local ver; ver=\$(brew list --versions '${pkg}' 2>/dev/null | awk '{print \$NF}'); [[ -n \"\$ver\" ]] && printf 'version=%s' \"\$ver\"; }"
   eval "_ubt_ins_${fn}() { brew_install  '${pkg}'; }"
   eval "_ubt_upd_${fn}() { brew_upgrade  '${pkg}'; }"
   ucc_target --profile presence --name "$tname" --observe "_ubt_obs_${fn}" \
+             --evidence "_ubt_evd_${fn}" \
              --install "_ubt_ins_${fn}" --update "_ubt_upd_${fn}"
 }
 
@@ -427,9 +441,11 @@ ucc_brew_cask_target() {
   local tname="$1" pkg="$2"
   local fn; fn="${pkg//[^a-zA-Z0-9]/_}"
   eval "_ubct_obs_${fn}() { local raw; raw=\$(brew_cask_observe '${pkg}'); ucc_asm_package_state \"\$raw\"; }"
+  eval "_ubct_evd_${fn}() { local ver; ver=\$(brew list --cask --versions '${pkg}' 2>/dev/null | awk '{print \$NF}'); [[ -n \"\$ver\" ]] && printf 'version=%s' \"\$ver\"; }"
   eval "_ubct_ins_${fn}() { brew_cask_install '${pkg}'; }"
   eval "_ubct_upd_${fn}() { brew_cask_upgrade '${pkg}'; }"
   ucc_target --profile presence --name "$tname" --observe "_ubct_obs_${fn}" \
+             --evidence "_ubct_evd_${fn}" \
              --install "_ubct_ins_${fn}" --update "_ubct_upd_${fn}"
 }
 
@@ -439,9 +455,11 @@ ucc_npm_target() {
   local pkg="$1"
   local fn; fn="${pkg//[@\/]/_}"
   eval "_unt_obs_${fn}() { local raw; raw=\$(npm ls -g '${pkg}' --depth=0 --json 2>/dev/null | python3 -c \"import sys,json; d=json.load(sys.stdin); deps=d.get('dependencies',{}); k=next(iter(deps),''); print(deps[k].get('version','present') if k else 'absent')\" 2>/dev/null || echo 'absent'); ucc_asm_package_state \"\$raw\"; }"
+  eval "_unt_evd_${fn}() { local ver; ver=\$(npm ls -g '${pkg}' --depth=0 --json 2>/dev/null | python3 -c \"import sys,json; d=json.load(sys.stdin); deps=d.get('dependencies',{}); k=next(iter(deps),''); print(deps[k].get('version','')) if k else None\" 2>/dev/null); [[ -n \"\$ver\" ]] && printf 'version=%s' \"\$ver\"; }"
   eval "_unt_ins_${fn}() { ucc_run npm install -g '${pkg}'; }"
   eval "_unt_upd_${fn}() { ucc_run npm update  -g '${pkg}'; }"
   ucc_target --profile presence --name "npm-global-${pkg}" --observe "_unt_obs_${fn}" \
+             --evidence "_unt_evd_${fn}" \
              --install "_unt_ins_${fn}" --update "_unt_upd_${fn}"
 }
 
@@ -449,7 +467,7 @@ ucc_npm_target() {
 #  ucc_target — full UCC Steps 0-6 lifecycle per target
 # ============================================================
 ucc_target() {
-  local name="" observe_fn="" desired="" install_fn="" update_fn="" axes="" profile=""
+  local name="" observe_fn="" desired="" install_fn="" update_fn="" axes="" profile="" evidence_fn=""
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -459,6 +477,7 @@ ucc_target() {
       --install) install_fn="$2"; shift 2 ;;
       --update)  update_fn="$2";  shift 2 ;;
       --axes)    axes="$2";       shift 2 ;;
+      --evidence) evidence_fn="$2"; shift 2 ;;
       --kind)    profile="$2";    shift 2 ;;
       --profile) profile="$2";    shift 2 ;;
       *) shift ;;
@@ -571,7 +590,7 @@ ucc_target() {
       fi
     else
       # Already at desired state
-      printf '  %-46s  ok\n' "$name"
+      printf '  %-46s  ok  %s\n' "$name" "$(_ucc_evidence_text "$observed" "$axes" "$evidence_fn")"
       _UCC_CONVERGED=$(( _UCC_CONVERGED + 1 ))
       _ucc_record_profile_summary "$profile" "ok"
       duration_ms=$(_ucc_duration_ms "$started_at")

@@ -27,12 +27,18 @@ _observe_vscode() {
   ucc_asm_package_state "$raw"
   return
 }
+_evidence_vscode() {
+  local ver
+  ver=$(defaults read "/Applications/Visual Studio Code.app/Contents/Info" CFBundleShortVersionString 2>/dev/null || true)
+  [[ -n "$ver" ]] && printf 'version=%s' "$ver"
+}
 _install_vscode() { brew_cask_install visual-studio-code; }
 _update_vscode()  { brew_cask_upgrade visual-studio-code; }
 
 ucc_target_nonruntime \
   --name    "vscode" \
   --observe _observe_vscode \
+  --evidence _evidence_vscode \
   --install _install_vscode \
   --update  _update_vscode
 
@@ -41,6 +47,11 @@ _observe_code_cmd() {
   local raw
   raw=$(is_installed code && code --version 2>/dev/null | awk 'NR==1 {print $1}' || echo "absent")
   ucc_asm_package_state "$raw"
+}
+_evidence_code_cmd() {
+  local path
+  path=$(command -v code 2>/dev/null || true)
+  [[ -n "$path" ]] && printf 'path=%s' "$path"
 }
 _fix_code_symlink() {
   local vscode_bin="/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code"
@@ -58,6 +69,7 @@ _fix_code_symlink() {
 ucc_target_nonruntime \
   --name    "vscode-code-cmd" \
   --observe _observe_code_cmd \
+  --evidence _evidence_code_cmd \
   --install _fix_code_symlink
 
 # --- VSCode extensions --------------------------------------
@@ -78,11 +90,15 @@ if is_installed code; then
     eval "_observe_ext_${_ext_id//-/_}() {
       local raw; raw=\$(code --list-extensions --show-versions 2>/dev/null | grep -i '^${ext}@' | awk -F@ '{print \$2}' | head -1 || echo 'absent'); ucc_asm_package_state \"\$raw\"
     }"
+    eval "_evidence_ext_${_ext_id//-/_}() {
+      local ver; ver=\$(code --list-extensions --show-versions 2>/dev/null | grep -i '^${ext}@' | awk -F@ '{print \$2}' | head -1 || true); [[ -n \"\$ver\" ]] && printf 'version=%s' \"\$ver\";
+    }"
     eval "_install_ext_${_ext_id//-/_}() { ucc_run code --install-extension '${ext}' --force; }"
 
     ucc_target_nonruntime \
       --name    "vscode-ext-$ext" \
       --observe "_observe_ext_${_ext_id//-/_}" \
+      --evidence "_evidence_ext_${_ext_id//-/_}" \
               --install "_install_ext_${_ext_id//-/_}" \
       --update  "_install_ext_${_ext_id//-/_}"
   done
@@ -98,6 +114,9 @@ _observe_vscode_settings() {
   else
     ucc_asm_config_state "needs-update"
   fi
+}
+_evidence_vscode_settings() {
+  printf 'path=%s' "$HOME/Library/Application Support/Code/User/settings.json"
 }
 
 _apply_vscode_settings() {
@@ -123,6 +142,7 @@ _apply_vscode_settings() {
 ucc_target_nonruntime \
   --name    "vscode-settings" \
   --observe _observe_vscode_settings \
+  --evidence _evidence_vscode_settings \
   --install _apply_vscode_settings \
   --update  _apply_vscode_settings
 
@@ -144,6 +164,13 @@ _observe_node24() {
   raw="${ver#v}"
   ucc_asm_package_state "$raw"
 }
+_evidence_node24() {
+  local ver path
+  ver=$(node --version 2>/dev/null | sed 's/^v//')
+  path=$(command -v node 2>/dev/null || true)
+  [[ -n "$ver" ]] && printf 'version=%s' "$ver"
+  [[ -n "$path" ]] && printf '%s path=%s' "${ver:+ }" "$path"
+}
 _install_node24() {
   brew unlink node@20 2>/dev/null || true
   ucc_run brew install node@24 && ucc_run brew link --overwrite --force node@24
@@ -155,6 +182,7 @@ _update_node24() {
 ucc_target_nonruntime \
   --name    "node-24-lts" \
   --observe _observe_node24 \
+  --evidence _evidence_node24 \
   --install _install_node24 \
   --update  _update_node24
 
@@ -183,6 +211,7 @@ _observe_omz() {
   raw=$([[ -d "$HOME/.oh-my-zsh" ]] && echo "installed" || echo "absent")
   ucc_asm_package_state "$raw"
 }
+_evidence_omz() { printf 'folder=%s' "$HOME/.oh-my-zsh"; }
 _install_omz() {
   sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
 }
@@ -193,6 +222,7 @@ _update_omz() {
 ucc_target_nonruntime \
   --name    "oh-my-zsh" \
   --observe _observe_omz \
+  --evidence _evidence_omz \
   --install _install_omz \
   --update  _update_omz
 
@@ -202,6 +232,7 @@ _observe_omz_theme() {
   raw=$(grep -q '^ZSH_THEME="agnoster"' "$HOME/.zshrc" 2>/dev/null && echo "set" || echo "unset")
   ucc_asm_config_state "$raw"
 }
+_evidence_omz_theme() { printf 'theme=agnoster file=%s' "$HOME/.zshrc"; }
 _apply_omz_theme() {
   if grep -q '^ZSH_THEME=' "$HOME/.zshrc" 2>/dev/null; then
     sed -i '' 's/^ZSH_THEME=.*/ZSH_THEME="agnoster"/' "$HOME/.zshrc"
@@ -213,6 +244,7 @@ _apply_omz_theme() {
 ucc_target_nonruntime \
   --name    "omz-theme-agnoster" \
   --observe _observe_omz_theme \
+  --evidence _evidence_omz_theme \
   --install _apply_omz_theme \
   --update  _apply_omz_theme
 
@@ -222,6 +254,7 @@ _observe_home_bin_path() {
   raw=$(grep -q 'export PATH="$HOME/bin:$PATH"' "$HOME/.zprofile" 2>/dev/null && echo "present" || echo "absent")
   ucc_asm_config_state "$raw"
 }
+_evidence_home_bin_path() { printf 'path=%s' "$HOME/bin"; }
 _add_home_bin_path() {
   mkdir -p "$HOME/bin"
   printf '\nexport PATH="$HOME/bin:$PATH"\n' >> "$HOME/.zprofile"
@@ -231,6 +264,7 @@ _add_home_bin_path() {
 ucc_target_nonruntime \
   --name    "home-bin-in-path" \
   --observe _observe_home_bin_path \
+  --evidence _evidence_home_bin_path \
   --install _add_home_bin_path
 
 # --- ai-healthcheck script ----------------------------------
@@ -239,6 +273,7 @@ _observe_healthcheck() {
   raw=$([[ -x "$HOME/bin/ai-healthcheck" ]] && echo "present" || echo "absent")
   ucc_asm_package_state "$raw"
 }
+_evidence_healthcheck() { printf 'path=%s' "$HOME/bin/ai-healthcheck"; }
 _install_healthcheck() {
   mkdir -p "$HOME/bin"
   cat > "$HOME/bin/ai-healthcheck" <<'HCEOF'
@@ -269,6 +304,7 @@ HCEOF
 ucc_target_nonruntime \
   --name    "ai-healthcheck" \
   --observe _observe_healthcheck \
+  --evidence _evidence_healthcheck \
   --install _install_healthcheck \
   --update  _install_healthcheck
 
@@ -283,6 +319,11 @@ _observe_ariaflow() {
   local raw
   raw=$(brew list --versions ariaflow 2>/dev/null | awk '{print $NF}')
   ucc_asm_package_state "$raw"
+}
+_evidence_ariaflow() {
+  local ver
+  ver=$(brew list --versions ariaflow 2>/dev/null | awk '{print $NF}')
+  [[ -n "$ver" ]] && printf 'version=%s' "$ver"
 }
 _install_ariaflow() {
   ucc_run brew tap bonomani/ariaflow
@@ -300,6 +341,7 @@ _update_ariaflow() {
 ucc_target_nonruntime \
   --name    "ariaflow" \
   --observe _observe_ariaflow \
+  --evidence _evidence_ariaflow \
   --install _install_ariaflow \
   --update  _update_ariaflow
 
@@ -309,12 +351,18 @@ _observe_aria2_launchd() {
     | python3 -c "import json,sys; r=json.load(sys.stdin).get('aria2-launchd',{}).get('result',{}); print('loaded' if r.get('outcome')=='converged' else 'absent')" \
     2>/dev/null | while read -r raw; do ucc_asm_service_state \"${raw:-absent}\"; done
 }
+_evidence_aria2_launchd() {
+  local pid
+  pid=$(lsof -ti tcp:6800 2>/dev/null | head -1 || true)
+  [[ -n "$pid" ]] && printf 'pid=%s port=6800' "$pid" || printf 'port=6800'
+}
 # install and update both use ariaflow install — it is idempotent and handles both cases
 _install_aria2_launchd() { ucc_run ariaflow install --with-aria2; }
 
 ucc_target_service \
   --name    "aria2-launchd" \
   --observe _observe_aria2_launchd \
+  --evidence _evidence_aria2_launchd \
   --desired "$(ucc_asm_state --installation Configured --runtime Running --health Healthy --admin Enabled --dependencies DepsReady)" \
   --install _install_aria2_launchd \
   --update  _install_aria2_launchd
@@ -325,6 +373,11 @@ _observe_ariaflow_web() {
   local raw
   raw=$(brew_observe ariaflow-web)
   ucc_asm_package_state "$raw"
+}
+_evidence_ariaflow_web() {
+  local ver
+  ver=$(brew list --versions ariaflow-web 2>/dev/null | awk '{print $NF}')
+  [[ -n "$ver" ]] && printf 'version=%s' "$ver"
 }
 _install_ariaflow_web() {
   ucc_run brew tap bonomani/ariaflow
@@ -338,6 +391,7 @@ _update_ariaflow_web() {
 ucc_target_nonruntime \
   --name    "ariaflow-web" \
   --observe _observe_ariaflow_web \
+  --evidence _evidence_ariaflow_web \
   --install _install_ariaflow_web \
   --update  _update_ariaflow_web
 
@@ -349,6 +403,11 @@ _observe_ariaflow_web_service() {
     ucc_asm_service_state "stopped"
   fi
 }
+_evidence_ariaflow_web_service() {
+  local pid
+  pid=$(lsof -ti tcp:8001 2>/dev/null | head -1 || true)
+  [[ -n "$pid" ]] && printf 'pid=%s port=8001' "$pid" || printf 'port=8001'
+}
 _start_ariaflow_web_service() {
   ucc_run brew services start bonomani/ariaflow/ariaflow-web
 }
@@ -359,6 +418,7 @@ _restart_ariaflow_web_service() {
 ucc_target_service \
   --name    "ariaflow-web-service" \
   --observe _observe_ariaflow_web_service \
+  --evidence _evidence_ariaflow_web_service \
   --desired "$(ucc_asm_state --installation Configured --runtime Running --health Healthy --admin Enabled --dependencies DepsReady)" \
   --install _start_ariaflow_web_service \
   --update  _restart_ariaflow_web_service

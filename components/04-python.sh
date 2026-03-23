@@ -14,6 +14,13 @@ _observe_pyenv() {
   raw=$(brew_observe pyenv)
   ucc_asm_package_state "$raw"
 }
+_evidence_pyenv() {
+  local ver path
+  ver=$(pyenv --version 2>/dev/null | awk '{print $2}')
+  path=$(command -v pyenv 2>/dev/null || true)
+  [[ -n "$ver" ]] && printf 'version=%s' "$ver"
+  [[ -n "$path" ]] && printf '%s path=%s' "${ver:+ }" "$path"
+}
 
 _install_pyenv() {
   brew_install pyenv pyenv-virtualenv
@@ -33,6 +40,7 @@ _update_pyenv() { brew_upgrade pyenv pyenv-virtualenv; }
 ucc_target_nonruntime \
   --name    "pyenv" \
   --observe _observe_pyenv \
+  --evidence _evidence_pyenv \
   --install _install_pyenv \
   --update  _update_pyenv
 
@@ -42,12 +50,18 @@ _observe_xz() {
   raw=$(brew_observe xz)
   ucc_asm_package_state "$raw"
 }
+_evidence_xz() {
+  local ver
+  ver=$(xz --version 2>/dev/null | awk 'NR==1 {print $4}')
+  [[ -n "$ver" ]] && printf 'version=%s' "$ver"
+}
 _install_xz()  { brew_install xz; }
 _update_xz()   { brew_upgrade  xz; }
 
 ucc_target_nonruntime \
   --name    "xz" \
   --observe _observe_xz \
+  --evidence _evidence_xz \
   --install _install_xz \
   --update  _update_xz
 
@@ -61,6 +75,13 @@ _observe_python_version() {
   local raw
   raw=$(pyenv versions 2>/dev/null | grep -q "$PYTHON_VERSION" && echo "$PYTHON_VERSION" || echo "absent")
   ucc_asm_package_state "$raw"
+}
+_evidence_python_version() {
+  local ver path
+  ver=$(python3 --version 2>/dev/null | awk '{print $2}')
+  path=$(pyenv which python3 2>/dev/null || command -v python3 2>/dev/null || true)
+  [[ -n "$ver" ]] && printf 'version=%s' "$ver"
+  [[ -n "$path" ]] && printf '%s path=%s' "${ver:+ }" "$path"
 }
 
 _install_python_version() {
@@ -77,6 +98,7 @@ _update_python_version() {
 ucc_target_nonruntime \
   --name    "python-$PYTHON_VERSION" \
   --observe _observe_python_version \
+  --evidence _evidence_python_version \
   --install _install_python_version \
   --update  _update_python_version
 
@@ -86,6 +108,13 @@ _observe_pip() {
   raw=$(is_installed pip && pip --version 2>/dev/null | awk '{print $2}' || echo "absent")
   ucc_asm_package_state "$raw"
 }
+_evidence_pip() {
+  local ver path
+  ver=$(pip --version 2>/dev/null | awk '{print $2}')
+  path=$(command -v pip 2>/dev/null || true)
+  [[ -n "$ver" ]] && printf 'version=%s' "$ver"
+  [[ -n "$path" ]] && printf '%s path=%s' "${ver:+ }" "$path"
+}
 
 _upgrade_pip() {
   pip install --upgrade pip setuptools wheel
@@ -94,6 +123,7 @@ _upgrade_pip() {
 ucc_target_nonruntime \
   --name    "pip-latest" \
   --observe _observe_pip \
+  --evidence _evidence_pip \
   --install _upgrade_pip \
   --update  _upgrade_pip
 
