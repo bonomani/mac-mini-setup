@@ -30,10 +30,9 @@ _observe_vscode() {
 _install_vscode() { brew_cask_install visual-studio-code; }
 _update_vscode()  { brew_cask_upgrade visual-studio-code; }
 
-ucc_target \
+ucc_target_nonruntime \
   --name    "vscode" \
   --observe _observe_vscode \
-  --desired "$(ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady)" \
   --install _install_vscode \
   --update  _update_vscode
 
@@ -56,10 +55,9 @@ _fix_code_symlink() {
   fi
 }
 
-ucc_target \
+ucc_target_nonruntime \
   --name    "vscode-code-cmd" \
   --observe _observe_code_cmd \
-  --desired "$(ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady)" \
   --install _fix_code_symlink
 
 # --- VSCode extensions --------------------------------------
@@ -82,11 +80,10 @@ if is_installed code; then
     }"
     eval "_install_ext_${_ext_id//-/_}() { ucc_run code --install-extension '${ext}' --force; }"
 
-    ucc_target \
+    ucc_target_nonruntime \
       --name    "vscode-ext-$ext" \
       --observe "_observe_ext_${_ext_id//-/_}" \
-      --desired "$(ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady)" \
-      --install "_install_ext_${_ext_id//-/_}" \
+              --install "_install_ext_${_ext_id//-/_}" \
       --update  "_install_ext_${_ext_id//-/_}"
   done
 fi
@@ -123,10 +120,9 @@ _apply_vscode_settings() {
   mv "$tmp" "$f"
 }
 
-ucc_target \
+ucc_target_nonruntime \
   --name    "vscode-settings" \
   --observe _observe_vscode_settings \
-  --desired "$(ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady)" \
   --install _apply_vscode_settings \
   --update  _apply_vscode_settings
 
@@ -156,10 +152,9 @@ _update_node24() {
   ucc_run brew upgrade node@24 && ucc_run brew link --overwrite --force node@24
 }
 
-ucc_target \
+ucc_target_nonruntime \
   --name    "node-24-lts" \
   --observe _observe_node24 \
-  --desired "$(ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady)" \
   --install _install_node24 \
   --update  _update_node24
 
@@ -195,10 +190,9 @@ _update_omz() {
   [[ -f "$HOME/.oh-my-zsh/tools/upgrade.sh" ]] && bash "$HOME/.oh-my-zsh/tools/upgrade.sh" || true
 }
 
-ucc_target \
+ucc_target_nonruntime \
   --name    "oh-my-zsh" \
   --observe _observe_omz \
-  --desired "$(ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady)" \
   --install _install_omz \
   --update  _update_omz
 
@@ -216,10 +210,9 @@ _apply_omz_theme() {
   fi
 }
 
-ucc_target \
+ucc_target_nonruntime \
   --name    "omz-theme-agnoster" \
   --observe _observe_omz_theme \
-  --desired "$(ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady)" \
   --install _apply_omz_theme \
   --update  _apply_omz_theme
 
@@ -235,10 +228,9 @@ _add_home_bin_path() {
   export PATH="$HOME/bin:$PATH"
 }
 
-ucc_target \
+ucc_target_nonruntime \
   --name    "home-bin-in-path" \
   --observe _observe_home_bin_path \
-  --desired "$(ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady)" \
   --install _add_home_bin_path
 
 # --- ai-healthcheck script ----------------------------------
@@ -274,10 +266,9 @@ HCEOF
   chmod +x "$HOME/bin/ai-healthcheck"
 }
 
-ucc_target \
+ucc_target_nonruntime \
   --name    "ai-healthcheck" \
   --observe _observe_healthcheck \
-  --desired "$(ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady)" \
   --install _install_healthcheck \
   --update  _install_healthcheck
 
@@ -306,10 +297,9 @@ _update_ariaflow() {
   brew_upgrade ariaflow
 }
 
-ucc_target \
+ucc_target_nonruntime \
   --name    "ariaflow" \
   --observe _observe_ariaflow \
-  --desired "$(ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady)" \
   --install _install_ariaflow \
   --update  _update_ariaflow
 
@@ -345,10 +335,9 @@ _update_ariaflow_web() {
   brew_upgrade ariaflow-web
 }
 
-ucc_target \
+ucc_target_nonruntime \
   --name    "ariaflow-web" \
   --observe _observe_ariaflow_web \
-  --desired "$(ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady)" \
   --install _install_ariaflow_web \
   --update  _update_ariaflow_web
 

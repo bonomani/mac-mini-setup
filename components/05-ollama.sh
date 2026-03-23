@@ -41,10 +41,9 @@ _fail_macos_prereq() {
   return 1  # permanent failure — cannot install on this OS version
 }
 
-ucc_target \
+ucc_target_nonruntime \
   --name    "macos-14-precondition" \
   --observe _observe_macos_prereq \
-  --desired "$(ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady)" \
   --install _fail_macos_prereq
 
 # Abort if precondition not met
@@ -67,10 +66,9 @@ _update_ollama() {
   curl -fsSL https://ollama.com/install.sh | sh
 }
 
-ucc_target \
+ucc_target_nonruntime \
   --name    "ollama" \
   --observe _observe_ollama \
-  --desired "$(ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady)" \
   --install _install_ollama \
   --update  _update_ollama
 
@@ -141,11 +139,10 @@ _ollama_pull_set() {
     _fn="${_name//[^a-zA-Z0-9_]/_}"
     eval "_observe_${_fn}() { local raw; raw=\$(ollama_model_present '${model}' && echo 'present' || echo 'absent'); ucc_asm_package_state \"\$raw\"; }"
     eval "_pull_${_fn}()    { log_info 'Pulling model: ${model}'; ucc_run ollama pull '${model}'; }"
-    ucc_target \
+    ucc_target_nonruntime \
       --name    "$_name" \
       --observe "_observe_${_fn}" \
-      --desired "$(ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady)" \
-      --install "_pull_${_fn}" \
+              --install "_pull_${_fn}" \
       --update  "_pull_${_fn}"
   done
 }

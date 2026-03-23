@@ -38,7 +38,7 @@ _observe_ac_sleep() {
 }
 _set_ac_sleep_0() { ucc_run sudo pmset -c sleep 0; }
 
-ucc_target \
+ucc_target_nonruntime \
   --name    "pmset-ac-sleep=0" \
   --observe _observe_ac_sleep \
   --desired "$(_macos_defaults_desired_state)" \
@@ -52,7 +52,7 @@ _observe_disksleep() {
 }
 _set_disksleep_0() { ucc_run sudo pmset -c disksleep 0; }
 
-ucc_target \
+ucc_target_nonruntime \
   --name    "pmset-disksleep=0" \
   --observe _observe_disksleep \
   --desired "$(_macos_defaults_desired_state)" \
@@ -66,7 +66,7 @@ _observe_standby() {
 }
 _set_standby_0() { ucc_run sudo pmset -c standby 0; }
 
-ucc_target \
+ucc_target_nonruntime \
   --name    "pmset-standby=0" \
   --observe _observe_standby \
   --desired "$(_macos_defaults_desired_state)" \
@@ -81,7 +81,7 @@ _observe_app_nap() {
 }
 _disable_app_nap() { ucc_run defaults write NSGlobalDomain NSAppSleepDisabled -bool YES; }
 
-ucc_target \
+ucc_target_nonruntime \
   --name    "app-nap=disabled" \
   --observe _observe_app_nap \
   --desired "$(_macos_defaults_desired_state)" \
@@ -100,7 +100,7 @@ _observe_hidden_files() {
 }
 _show_hidden_files() { ucc_run defaults write com.apple.finder AppleShowAllFiles -bool true; }
 
-ucc_target \
+ucc_target_nonruntime \
   --name    "finder-show-hidden=1" \
   --observe _observe_hidden_files \
   --desired "$(_macos_defaults_desired_state)" \
@@ -115,7 +115,7 @@ _observe_extensions() {
 }
 _show_extensions() { ucc_run defaults write NSGlobalDomain AppleShowAllExtensions -bool true; }
 
-ucc_target \
+ucc_target_nonruntime \
   --name    "show-all-extensions=1" \
   --observe _observe_extensions \
   --desired "$(_macos_defaults_desired_state)" \
@@ -130,7 +130,7 @@ _observe_dock_autohide() {
 }
 _dock_autohide() { ucc_run defaults write com.apple.dock autohide -bool true; }
 
-ucc_target \
+ucc_target_nonruntime \
   --name    "dock-autohide=1" \
   --observe _observe_dock_autohide \
   --desired "$(_macos_defaults_desired_state)" \

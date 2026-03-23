@@ -24,10 +24,9 @@ _install_xcode_clt() {
   return 1  # Force exit — user must re-run after CLT installs
 }
 
-ucc_target \
+ucc_target_nonruntime \
   --name    "xcode-command-line-tools" \
   --observe _observe_xcode_clt \
-  --desired "$(ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady)" \
   --install _install_xcode_clt
 
 # Abort if CLT just got triggered (install_fn returned 1)
@@ -65,10 +64,9 @@ _update_brew() {
   brew update && brew upgrade
 }
 
-ucc_target \
+ucc_target_nonruntime \
   --name    "homebrew" \
   --observe _observe_brew \
-  --desired "$(ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady)" \
   --install _install_brew \
   --update  _update_brew
 
@@ -93,11 +91,10 @@ _observe_brew_analytics() {
 _disable_brew_analytics() { ucc_run brew analytics off; }
 
 if is_installed brew; then
-  ucc_target \
+  ucc_target_nonruntime \
     --name    "brew-analytics=off" \
     --observe _observe_brew_analytics \
-    --desired "$(ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady)" \
-    --install _disable_brew_analytics \
+        --install _disable_brew_analytics \
     --update  _disable_brew_analytics
 fi
 

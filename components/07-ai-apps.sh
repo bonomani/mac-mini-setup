@@ -83,9 +83,8 @@ _write_compose_file() {
   ucc_run cp "$repo_root/stack/docker-compose.yml" "$COMPOSE_FILE"
 }
 
-ucc_target --name "ai-stack-compose-file" \
+ucc_target_nonruntime --name "ai-stack-compose-file" \
   --observe _observe_compose_file \
-  --desired "$(ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady)" \
   --install _write_compose_file --update _write_compose_file
 
 # ============================================================

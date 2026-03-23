@@ -67,6 +67,7 @@ _upgrade_docker() {
 ucc_target \
   --name    "docker-desktop" \
   --observe _observe_docker_app \
+  --axes    "$UCC_ASM_NONRUNTIME_AXES" \
   --desired "$(ucc_asm_state --installation Installed --runtime NeverStarted --health Unknown --admin Enabled --dependencies DepsUnknown)" \
   --install _install_docker \
   --update  _upgrade_docker
@@ -149,6 +150,7 @@ EOF
 ucc_target \
   --name    "docker-resources-48gb" \
   --observe _observe_docker_settings \
+  --axes    "$UCC_ASM_NONRUNTIME_AXES" \
   --desired "$(_docker_settings_desired_state)" \
   --install _configure_docker_settings \
   --update  _configure_docker_settings

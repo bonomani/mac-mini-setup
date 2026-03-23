@@ -15,10 +15,9 @@ _observe_git() {
 _install_git() { brew_install git; }
 _update_git()  { brew_upgrade  git; }
 
-ucc_target \
+ucc_target_nonruntime \
   --name    "git" \
   --observe _observe_git \
-  --desired "$(ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady)" \
   --install _install_git \
   --update  _update_git
 
@@ -48,11 +47,10 @@ _configure_git() {
 }
 
 if [[ "$UCC_DRY_RUN" != "1" ]]; then
-  ucc_target \
+  ucc_target_nonruntime \
     --name    "git-global-config" \
     --observe _observe_git_user \
-    --desired "$(ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady)" \
-    --install _configure_git
+        --install _configure_git
 fi
 
 ucc_summary "02-git"

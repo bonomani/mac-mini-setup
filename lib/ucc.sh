@@ -122,9 +122,9 @@ _ucc_state_obj() {
 }
 
 _ucc_diff_obj() {
-  local before="$1" after="$2"
+  local before="$1" after="$2" axes="${3:-}"
   if _ucc_is_json_obj "$before" || _ucc_is_json_obj "$after"; then
-    if _ucc_json_equal "$before" "$after"; then
+    if _ucc_json_equal "$before" "$after" "$axes"; then
       printf '{}'
     else
       printf '{"before":%s,"after":%s}' "$(_ucc_state_obj "$before")" "$(_ucc_state_obj "$after")"
@@ -140,11 +140,15 @@ _ucc_diff_obj() {
 }
 
 _ucc_json_equal() {
-  python3 - "$1" "$2" <<'PY' 2>/dev/null
+  python3 - "$1" "$2" "${3:-}" <<'PY' 2>/dev/null
 import json, sys
 try:
     left = json.loads(sys.argv[1])
     right = json.loads(sys.argv[2])
+    axes = [a for a in sys.argv[3].split(",") if a] if len(sys.argv) > 3 and sys.argv[3] else []
+    if axes:
+        left = {k: left.get(k) for k in axes}
+        right = {k: right.get(k) for k in axes}
     sys.exit(0 if left == right else 1)
 except Exception:
     sys.exit(1)
@@ -152,12 +156,15 @@ PY
 }
 
 _ucc_display_state() {
+  local axes="${2:-}"
   if _ucc_is_json_obj "$1"; then
-    python3 - "$1" <<'PY' 2>/dev/null
+    python3 - "$1" "$axes" <<'PY' 2>/dev/null
 import json, sys
 state = json.loads(sys.argv[1])
+axes = [a for a in sys.argv[2].split(",") if a] if len(sys.argv) > 2 and sys.argv[2] else []
 fields = []
-for key in ("installation_state", "runtime_state", "health_state", "admin_state", "dependency_state"):
+keys = axes or ("installation_state", "runtime_state", "health_state", "admin_state", "dependency_state")
+for key in keys:
     value = state.get(key)
     if value:
         fields.append(f"{key}={value}")
@@ -233,6 +240,17 @@ ucc_asm_service_state() {
   esac
 }
 
+UCC_ASM_NONRUNTIME_AXES="installation_state,health_state,dependency_state"
+
+ucc_asm_nonruntime_desired() {
+  ucc_asm_state \
+    --installation Configured \
+    --runtime Stopped \
+    --health Healthy \
+    --admin Enabled \
+    --dependencies DepsReady
+}
+
 _ucc_meta_in() {
   local id="$1" ts="$2"
   printf '"meta":{"contract":"ucc","version":"2.0","id":"%s","timestamp":"%s","scope":"operation"}' \
@@ -293,9 +311,8 @@ ucc_brew_target() {
   eval "_ubt_obs_${fn}() { local raw; raw=\$(brew_observe '${pkg}'); ucc_asm_package_state \"\$raw\"; }"
   eval "_ubt_ins_${fn}() { brew_install  '${pkg}'; }"
   eval "_ubt_upd_${fn}() { brew_upgrade  '${pkg}'; }"
-  ucc_target --name "$tname" --observe "_ubt_obs_${fn}" \
-             --desired "$(ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady)" \
-             --install "_ubt_ins_${fn}" --update "_ubt_upd_${fn}"
+  ucc_target_nonruntime --name "$tname" --observe "_ubt_obs_${fn}" \
+                        --install "_ubt_ins_${fn}" --update "_ubt_upd_${fn}"
 }
 
 # ucc_brew_cask_target <target-name> <cask-pkg>
@@ -306,9 +323,8 @@ ucc_brew_cask_target() {
   eval "_ubct_obs_${fn}() { local raw; raw=\$(brew_cask_observe '${pkg}'); ucc_asm_package_state \"\$raw\"; }"
   eval "_ubct_ins_${fn}() { brew_cask_install '${pkg}'; }"
   eval "_ubct_upd_${fn}() { brew_cask_upgrade '${pkg}'; }"
-  ucc_target --name "$tname" --observe "_ubct_obs_${fn}" \
-             --desired "$(ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady)" \
-             --install "_ubct_ins_${fn}" --update "_ubct_upd_${fn}"
+  ucc_target_nonruntime --name "$tname" --observe "_ubct_obs_${fn}" \
+                        --install "_ubct_ins_${fn}" --update "_ubct_upd_${fn}"
 }
 
 # ucc_npm_target <npm-pkg>
@@ -319,16 +335,15 @@ ucc_npm_target() {
   eval "_unt_obs_${fn}() { local raw; raw=\$(npm ls -g '${pkg}' --depth=0 --json 2>/dev/null | python3 -c \"import sys,json; d=json.load(sys.stdin); deps=d.get('dependencies',{}); k=next(iter(deps),''); print(deps[k].get('version','present') if k else 'absent')\" 2>/dev/null || echo 'absent'); ucc_asm_package_state \"\$raw\"; }"
   eval "_unt_ins_${fn}() { ucc_run npm install -g '${pkg}'; }"
   eval "_unt_upd_${fn}() { ucc_run npm update  -g '${pkg}'; }"
-  ucc_target --name "npm-global-${pkg}" --observe "_unt_obs_${fn}" \
-             --desired "$(ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady)" \
-             --install "_unt_ins_${fn}" --update "_unt_upd_${fn}"
+  ucc_target_nonruntime --name "npm-global-${pkg}" --observe "_unt_obs_${fn}" \
+                        --install "_unt_ins_${fn}" --update "_unt_upd_${fn}"
 }
 
 # ============================================================
 #  ucc_target — full UCC Steps 0-6 lifecycle per target
 # ============================================================
 ucc_target() {
-  local name="" observe_fn="" desired="" install_fn="" update_fn=""
+  local name="" observe_fn="" desired="" install_fn="" update_fn="" axes=""
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -337,6 +352,7 @@ ucc_target() {
       --desired) desired="$2";    shift 2 ;;
       --install) install_fn="$2"; shift 2 ;;
       --update)  update_fn="$2";  shift 2 ;;
+      --axes)    axes="$2";       shift 2 ;;
       *) shift ;;
     esac
   done
@@ -382,7 +398,7 @@ ucc_target() {
   _ucc_satisfied() {
     local obs="$1" des="$2"
     if _ucc_is_json_obj "$obs" || _ucc_is_json_obj "$des"; then
-      _ucc_json_equal "$obs" "$des" && return 0
+      _ucc_json_equal "$obs" "$des" "$axes" && return 0
       return 1
     fi
     [[ "$obs" == "$des" ]] && return 0
@@ -396,7 +412,7 @@ ucc_target() {
     if [[ "$UCC_MODE" == "update" && -n "$update_fn" ]]; then
       # Update mode: run upgrade even when state already matches
       if [[ "$UCC_DRY_RUN" == "1" ]]; then
-        printf '  %-46s  dry-run  state="%s"  (update skipped)\n' "$name" "$(_ucc_display_state "$observed")"
+        printf '  %-46s  dry-run  state="%s"  (update skipped)\n' "$name" "$(_ucc_display_state "$observed" "$axes")"
         duration_ms=$(_ucc_duration_ms "$started_at")
         _ucc_record_result "$msg_id" "$duration_ms" \
           "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":{}}" \
@@ -408,14 +424,14 @@ ucc_target() {
         verified=$($observe_fn 2>/dev/null)
         ver_exit=$?
         if [[ $ver_exit -eq 0 ]] && _ucc_satisfied "$verified" "$desired"; then
-          printf '  %-46s  updated  "%s" → "%s"\n' "$name" "$(_ucc_display_state "$observed")" "$(_ucc_display_state "$verified")"
+          printf '  %-46s  updated  "%s" → "%s"\n' "$name" "$(_ucc_display_state "$observed" "$axes")" "$(_ucc_display_state "$verified" "$axes")"
           _UCC_CHANGED=$(( _UCC_CHANGED + 1 ))
           duration_ms=$(_ucc_duration_ms "$started_at")
           _ucc_record_result "$msg_id" "$duration_ms" \
-            "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$verified"),\"observed_after\":$(_ucc_state_obj "$verified")}" \
+            "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$verified" "$axes"),\"observed_after\":$(_ucc_state_obj "$verified")}" \
             "{\"observation\":\"ok\",\"outcome\":\"changed\",\"completion\":\"complete\",\"proof\":{\"change\":\"update_applied\"}}"
         else
-          printf '  %-46s  FAILED — verify after update: "%s"\n' "$name" "$(_ucc_display_state "${verified:-?}")"
+          printf '  %-46s  FAILED — verify after update: "%s"\n' "$name" "$(_ucc_display_state "${verified:-?}" "$axes")"
           _UCC_FAILED=$(( _UCC_FAILED + 1 ))
           duration_ms=$(_ucc_duration_ms "$started_at")
           if [[ $ver_exit -eq 0 && -n "$verified" ]]; then
@@ -429,7 +445,7 @@ ucc_target() {
           fi
         fi
       else
-        printf '  %-46s  FAILED — update error  state="%s"\n' "$name" "$(_ucc_display_state "$observed")"
+        printf '  %-46s  FAILED — update error  state="%s"\n' "$name" "$(_ucc_display_state "$observed" "$axes")"
         _UCC_FAILED=$(( _UCC_FAILED + 1 ))
         duration_ms=$(_ucc_duration_ms "$started_at")
         _ucc_record_result "$msg_id" "$duration_ms" \
@@ -438,7 +454,7 @@ ucc_target() {
       fi
     else
       # Already at desired state
-      printf '  %-46s  ok  state="%s"\n' "$name" "$(_ucc_display_state "$observed")"
+      printf '  %-46s  ok  state="%s"\n' "$name" "$(_ucc_display_state "$observed" "$axes")"
       _UCC_CONVERGED=$(( _UCC_CONVERGED + 1 ))
       duration_ms=$(_ucc_duration_ms "$started_at")
       _ucc_record_result "$msg_id" "$duration_ms" \
@@ -450,19 +466,19 @@ ucc_target() {
 
   # Step 4: Apply transition
   if [[ "$UCC_DRY_RUN" == "1" ]]; then
-    printf '  %-46s  dry-run  "%s" → "%s"\n' "$name" "$(_ucc_display_state "$observed")" "$(_ucc_display_state "$desired")"
+    printf '  %-46s  dry-run  "%s" → "%s"\n' "$name" "$(_ucc_display_state "$observed" "$axes")" "$(_ucc_display_state "$desired" "$axes")"
     duration_ms=$(_ucc_duration_ms "$started_at")
     _ucc_record_result "$msg_id" "$duration_ms" \
-      "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$desired")}" \
+      "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$desired" "$axes")}" \
       "{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"dry_run\",\"message\":\"transition not applied due to dry-run mode\"}"
     return 0
   fi
 
   if [[ -z "$install_fn" ]]; then
-    printf '  %-46s  no-install (policy)  "%s" → "%s"\n' "$name" "$(_ucc_display_state "$observed")" "$(_ucc_display_state "$desired")"
+    printf '  %-46s  no-install (policy)  "%s" → "%s"\n' "$name" "$(_ucc_display_state "$observed" "$axes")" "$(_ucc_display_state "$desired" "$axes")"
     duration_ms=$(_ucc_duration_ms "$started_at")
     _ucc_record_result "$msg_id" "$duration_ms" \
-      "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$desired")}" \
+      "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$desired" "$axes")}" \
       "{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"policy\",\"message\":\"transition not applied - no install function declared\"}"
     return 0
   fi
@@ -483,14 +499,14 @@ ucc_target() {
     ver_exit=$?
     log_debug "post-install observed=\"$verified\""
     if [[ $ver_exit -eq 0 ]] && _ucc_satisfied "$verified" "$desired"; then
-      printf '  %-46s  %s  "%s" → "%s"\n' "$name" "$action_label" "$(_ucc_display_state "$observed")" "$(_ucc_display_state "$verified")"
+      printf '  %-46s  %s  "%s" → "%s"\n' "$name" "$action_label" "$(_ucc_display_state "$observed" "$axes")" "$(_ucc_display_state "$verified" "$axes")"
       _UCC_CHANGED=$(( _UCC_CHANGED + 1 ))
       duration_ms=$(_ucc_duration_ms "$started_at")
       _ucc_record_result "$msg_id" "$duration_ms" \
-        "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$verified"),\"observed_after\":$(_ucc_state_obj "$verified")}" \
+        "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$verified" "$axes"),\"observed_after\":$(_ucc_state_obj "$verified")}" \
         "{\"observation\":\"ok\",\"outcome\":\"changed\",\"completion\":\"complete\",\"proof\":{\"change\":\"verify_pass\"}}"
     else
-      printf '  %-46s  FAILED — verify after install: "%s"\n' "$name" "$(_ucc_display_state "${verified:-?}")"
+      printf '  %-46s  FAILED — verify after install: "%s"\n' "$name" "$(_ucc_display_state "${verified:-?}" "$axes")"
       _UCC_FAILED=$(( _UCC_FAILED + 1 ))
       duration_ms=$(_ucc_duration_ms "$started_at")
       if [[ $ver_exit -eq 0 && -n "$verified" ]]; then
@@ -504,13 +520,20 @@ ucc_target() {
       fi
     fi
   else
-    printf '  %-46s  FAILED — install error  was="%s"\n' "$name" "$(_ucc_display_state "$observed")"
+    printf '  %-46s  FAILED — install error  was="%s"\n' "$name" "$(_ucc_display_state "$observed" "$axes")"
     _UCC_FAILED=$(( _UCC_FAILED + 1 ))
     duration_ms=$(_ucc_duration_ms "$started_at")
     _ucc_record_result "$msg_id" "$duration_ms" \
       "{}" \
       "{\"observation\":\"failed\",\"message\":\"install function failed\"}"
   fi
+}
+
+ucc_target_nonruntime() {
+  ucc_target \
+    --axes "$UCC_ASM_NONRUNTIME_AXES" \
+    --desired "$(ucc_asm_nonruntime_desired)" \
+    "$@"
 }
 
 # ============================================================

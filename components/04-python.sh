@@ -30,10 +30,9 @@ EOF
 }
 _update_pyenv() { brew_upgrade pyenv pyenv-virtualenv; }
 
-ucc_target \
+ucc_target_nonruntime \
   --name    "pyenv" \
   --observe _observe_pyenv \
-  --desired "$(ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady)" \
   --install _install_pyenv \
   --update  _update_pyenv
 
@@ -46,10 +45,9 @@ _observe_xz() {
 _install_xz()  { brew_install xz; }
 _update_xz()   { brew_upgrade  xz; }
 
-ucc_target \
+ucc_target_nonruntime \
   --name    "xz" \
   --observe _observe_xz \
-  --desired "$(ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady)" \
   --install _install_xz \
   --update  _update_xz
 
@@ -76,10 +74,9 @@ _update_python_version() {
   pyenv global "$PYTHON_VERSION"
 }
 
-ucc_target \
+ucc_target_nonruntime \
   --name    "python-$PYTHON_VERSION" \
   --observe _observe_python_version \
-  --desired "$(ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady)" \
   --install _install_python_version \
   --update  _update_python_version
 
@@ -94,10 +91,9 @@ _upgrade_pip() {
   pip install --upgrade pip setuptools wheel
 }
 
-ucc_target \
+ucc_target_nonruntime \
   --name    "pip-latest" \
   --observe _observe_pip \
-  --desired "$(ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady)" \
   --install _upgrade_pip \
   --update  _upgrade_pip
 
