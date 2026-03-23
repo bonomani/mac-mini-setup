@@ -77,6 +77,24 @@ _DOCKER_MEM_GB="${UIC_PREF_DOCKER_MEMORY_GB:-48}"
 _DOCKER_MEM_MIB=$(( _DOCKER_MEM_GB * 1024 ))
 _DOCKER_CPUS="${UIC_PREF_DOCKER_CPU_COUNT:-10}"
 
+_docker_settings_desired_state() {
+  if [[ "${UIC_GATE_FAILED_DOCKER_SETTINGS_FILE:-0}" == "1" ]]; then
+    ucc_asm_state \
+      --installation Installed \
+      --runtime Stopped \
+      --health Unavailable \
+      --admin Enabled \
+      --dependencies DepsFailed
+  else
+    ucc_asm_state \
+      --installation Configured \
+      --runtime Stopped \
+      --health Healthy \
+      --admin Enabled \
+      --dependencies DepsReady
+  fi
+}
+
 _observe_docker_settings() {
   local f="$HOME/Library/Group Containers/group.com.docker/settings.json"
   # File only exists after Docker Desktop is opened at least once.
@@ -131,7 +149,7 @@ EOF
 ucc_target \
   --name    "docker-resources-48gb" \
   --observe _observe_docker_settings \
-  --desired "$(ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady)" \
+  --desired "$(_docker_settings_desired_state)" \
   --install _configure_docker_settings \
   --update  _configure_docker_settings
 
