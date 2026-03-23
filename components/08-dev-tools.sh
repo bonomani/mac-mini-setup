@@ -13,6 +13,32 @@ for tool in "${CLI_TOOLS[@]}"; do
   ucc_brew_target "cli-$tool" "$tool"
 done
 
+_devtools_brew_cask_target() {
+  local target_name="$1" cask_pkg="$2"
+  ucc_brew_cask_target "$target_name" "$cask_pkg"
+}
+
+_devtools_vscode_extension_target() {
+  local ext="$1"
+  local ext_id fn
+  ext_id="${ext//./-}"
+  fn="${ext_id//-/_}"
+  eval "_observe_ext_${fn}() {
+    local raw; raw=\$(code --list-extensions --show-versions 2>/dev/null | grep -i '^${ext}@' | awk -F@ '{print \$2}' | head -1 || echo 'absent'); ucc_asm_package_state \"\$raw\"
+  }"
+  eval "_evidence_ext_${fn}() {
+    local ver; ver=\$(code --list-extensions --show-versions 2>/dev/null | grep -i '^${ext}@' | awk -F@ '{print \$2}' | head -1 || true); [[ -n \"\$ver\" ]] && printf 'version=%s' \"\$ver\";
+  }"
+  eval "_install_ext_${fn}() { ucc_run code --install-extension '${ext}' --force; }"
+
+  ucc_target_nonruntime \
+    --name "vscode-ext-$ext" \
+    --observe "_observe_ext_${fn}" \
+    --evidence "_evidence_ext_${fn}" \
+    --install "_install_ext_${fn}" \
+    --update "_install_ext_${fn}"
+}
+
 # --- VSCode -------------------------------------------------
 _observe_vscode() {
   local raw
@@ -86,21 +112,7 @@ VSCODE_EXTENSIONS=(
 
 if is_installed code; then
   for ext in "${VSCODE_EXTENSIONS[@]}"; do
-    _ext_id="${ext//./-}"
-    eval "_observe_ext_${_ext_id//-/_}() {
-      local raw; raw=\$(code --list-extensions --show-versions 2>/dev/null | grep -i '^${ext}@' | awk -F@ '{print \$2}' | head -1 || echo 'absent'); ucc_asm_package_state \"\$raw\"
-    }"
-    eval "_evidence_ext_${_ext_id//-/_}() {
-      local ver; ver=\$(code --list-extensions --show-versions 2>/dev/null | grep -i '^${ext}@' | awk -F@ '{print \$2}' | head -1 || true); [[ -n \"\$ver\" ]] && printf 'version=%s' \"\$ver\";
-    }"
-    eval "_install_ext_${_ext_id//-/_}() { ucc_run code --install-extension '${ext}' --force; }"
-
-    ucc_target_nonruntime \
-      --name    "vscode-ext-$ext" \
-      --observe "_observe_ext_${_ext_id//-/_}" \
-      --evidence "_evidence_ext_${_ext_id//-/_}" \
-              --install "_install_ext_${_ext_id//-/_}" \
-      --update  "_install_ext_${_ext_id//-/_}"
+    _devtools_vscode_extension_target "$ext"
   done
 fi
 
@@ -146,11 +158,15 @@ ucc_target_nonruntime \
   --install _apply_vscode_settings \
   --update  _apply_vscode_settings
 
-# --- iTerm2 -------------------------------------------------
-ucc_brew_cask_target "iterm2" "iterm2"
+# --- GUI tools (brew cask) ---------------------------------
+DEVTOOLS_CASKS=(
+  "iterm2:iterm2"
+  "lm-studio:lm-studio"
+)
 
-# --- LM Studio — GUI for GGUF models -----------------------
-ucc_brew_cask_target "lm-studio" "lm-studio"
+for cask_spec in "${DEVTOOLS_CASKS[@]}"; do
+  _devtools_brew_cask_target "${cask_spec%%:*}" "${cask_spec#*:}"
+done
 
 # --- Node.js 24 LTS -----------------------------------------
 # node@24 required by Unsloth Studio; also compatible with Claude Code, Codex, BMAD
