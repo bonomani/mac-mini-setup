@@ -290,10 +290,35 @@ TOTAL_GB=$(( TOTAL_MEM / 1024 / 1024 / 1024 ))
 _arch_label="$ARCH"; [[ "$ARCH" == "arm64" ]] && _arch_label="arm64 (Apple Silicon / Metal)"
 _ram_label="${TOTAL_GB} GB"; [[ $TOTAL_GB -ge 32 ]] && _ram_label="${TOTAL_GB} GB (large model capable)"
 
+_global_state_label() {
+  if [[ ${#_UIC_FAILED_HARD[@]} -gt 0 ]]; then
+    printf 'Blocked'
+    return
+  fi
+  if [[ ${#_UIC_FAILED_SOFT[@]} -gt 0 ]]; then
+    printf 'Degraded'
+    return
+  fi
+  printf 'Ready'
+}
+
+_global_state_detail() {
+  local detail=""
+  if [[ ${#_UIC_FAILED_HARD[@]} -gt 0 ]]; then
+    detail="hard_gates=${_UIC_FAILED_HARD[*]}"
+  elif [[ ${#_UIC_FAILED_SOFT[@]} -gt 0 ]]; then
+    detail="soft_gates=${_UIC_FAILED_SOFT[*]}"
+  else
+    detail="all_gates_satisfied"
+  fi
+  printf '%s' "$detail" | tr ' ' ','
+}
+
 echo "========================================================"
 _hdr_flags="mode=$UCC_MODE"; [[ "$UCC_DRY_RUN" == "1" ]] && _hdr_flags="$_hdr_flags dry_run=1"
 echo "  Mac Mini AI Setup | $_hdr_flags | $(date '+%Y-%m-%d %H:%M')"
 echo "  $_arch_label  ·  $_ram_label"
+echo "  Global State     | $(_global_state_label) ($(_global_state_detail))"
 log_debug "correlation_id=$UCC_CORRELATION_ID"
 echo "========================================================"
 
@@ -318,6 +343,7 @@ _refresh_brew_path
 export UCC_DECLARATION_FILE="$HOME/.ai-stack/runs/${UCC_CORRELATION_ID}.declaration.jsonl"
 export UCC_RESULT_FILE="$HOME/.ai-stack/runs/${UCC_CORRELATION_ID}.result.jsonl"
 export UCC_SUMMARY_FILE="$HOME/.ai-stack/runs/${UCC_CORRELATION_ID}.summary"
+export UCC_KIND_SUMMARY_FILE="$HOME/.ai-stack/runs/${UCC_CORRELATION_ID}.kind-summary"
 mkdir -p "$HOME/.ai-stack/runs"
 
 # --- Run components -----------------------------------------
@@ -358,6 +384,9 @@ echo "  $_hdr_sum"
 echo "  ──────────────────────────────────────────────────────"
 
 _total_ok=0; _total_chg=0; _total_fail=0
+_kind_packages_ok=0; _kind_packages_chg=0; _kind_packages_fail=0
+_kind_config_ok=0; _kind_config_chg=0; _kind_config_fail=0
+_kind_services_ok=0; _kind_services_chg=0; _kind_services_fail=0
 if [[ -f "$UCC_SUMMARY_FILE" ]]; then
   while IFS='|' read -r _comp _a _b _c _d; do
     if [[ "$_a" == "tic" ]]; then
@@ -378,6 +407,30 @@ if [[ -f "$UCC_SUMMARY_FILE" ]]; then
   [[ $_total_chg  -gt 0 ]] && _totline="${_totline}  ${_total_chg} changed"
   [[ $_total_fail -gt 0 ]] && _totline="${_totline}  ${_total_fail} FAILED"
   printf '  %-22s  %s\n' "Total" "$_totline"
+fi
+
+if [[ -f "$UCC_KIND_SUMMARY_FILE" ]]; then
+  while IFS='|' read -r _kind _outcome; do
+    case "$_kind|$_outcome" in
+      Packages|ok) _kind_packages_ok=$(( _kind_packages_ok + 1 )) ;;
+      Packages|changed) _kind_packages_chg=$(( _kind_packages_chg + 1 )) ;;
+      Packages|failed) _kind_packages_fail=$(( _kind_packages_fail + 1 )) ;;
+      Config|ok) _kind_config_ok=$(( _kind_config_ok + 1 )) ;;
+      Config|changed) _kind_config_chg=$(( _kind_config_chg + 1 )) ;;
+      Config|failed) _kind_config_fail=$(( _kind_config_fail + 1 )) ;;
+      Services|ok) _kind_services_ok=$(( _kind_services_ok + 1 )) ;;
+      Services|changed) _kind_services_chg=$(( _kind_services_chg + 1 )) ;;
+      Services|failed) _kind_services_fail=$(( _kind_services_fail + 1 )) ;;
+    esac
+  done < "$UCC_KIND_SUMMARY_FILE"
+  echo "  ──────────────────────────────────────────────────────"
+  echo "  By Kind"
+  _line="${_kind_packages_ok} ok"; [[ $_kind_packages_chg -gt 0 ]] && _line="${_line}  ${_kind_packages_chg} changed"; [[ $_kind_packages_fail -gt 0 ]] && _line="${_line}  ${_kind_packages_fail} FAILED"
+  printf '  %-22s  %s\n' "Packages" "$_line"
+  _line="${_kind_config_ok} ok"; [[ $_kind_config_chg -gt 0 ]] && _line="${_line}  ${_kind_config_chg} changed"; [[ $_kind_config_fail -gt 0 ]] && _line="${_line}  ${_kind_config_fail} FAILED"
+  printf '  %-22s  %s\n' "Config" "$_line"
+  _line="${_kind_services_ok} ok"; [[ $_kind_services_chg -gt 0 ]] && _line="${_line}  ${_kind_services_chg} changed"; [[ $_kind_services_fail -gt 0 ]] && _line="${_line}  ${_kind_services_fail} FAILED"
+  printf '  %-22s  %s\n' "Services" "$_line"
 fi
 
 if [[ ${#FAILED_COMPONENTS[@]} -gt 0 ]]; then

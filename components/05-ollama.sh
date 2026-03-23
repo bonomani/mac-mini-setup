@@ -111,6 +111,7 @@ _start_ollama_service() {
 }
 
 ucc_target \
+  --kind    "service" \
   --name    "ollama-service" \
   --observe _observe_ollama_service \
   --desired "$(ucc_asm_state --installation Configured --runtime Running --health Healthy --admin Enabled --dependencies DepsReady)" \

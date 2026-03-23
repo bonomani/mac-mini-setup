@@ -52,6 +52,7 @@ _start_docker() {
 }
 
 ucc_target \
+  --kind    "service" \
   --name    "docker-running" \
   --observe _observe_docker_running \
   --desired "$(ucc_asm_state --installation Configured --runtime Running --health Healthy --admin Enabled --dependencies DepsReady)" \
@@ -154,6 +155,7 @@ _update_stack() {
 }
 
 ucc_target --name "ai-stack-running" \
+  --kind    "service" \
   --observe _observe_stack \
   --desired "$(ucc_asm_state --installation Configured --runtime Running --health Healthy --admin Enabled --dependencies DepsReady)" \
   --install _start_stack --update _update_stack

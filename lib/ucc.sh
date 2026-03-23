@@ -321,6 +321,21 @@ _ucc_record_result() {
   _ucc_record_file "${UCC_RESULT_FILE:-}" "$payload"
 }
 
+_ucc_kind_bucket() {
+  case "$1" in
+    package) printf 'Packages' ;;
+    service) printf 'Services' ;;
+    config|precondition|nonruntime|"") printf 'Config' ;;
+    *) printf 'Config' ;;
+  esac
+}
+
+_ucc_record_kind_summary() {
+  local kind="$1" outcome="$2"
+  [[ -z "${UCC_KIND_SUMMARY_FILE:-}" ]] && return 0
+  printf '%s|%s\n' "$(_ucc_kind_bucket "$kind")" "$outcome" >> "$UCC_KIND_SUMMARY_FILE" 2>/dev/null || true
+}
+
 _ucc_duration_ms() {
   local started_at="$1" now
   now=$(date +%s 2>/dev/null || echo 0)
@@ -416,6 +431,7 @@ ucc_target() {
   if [[ $obs_exit -ne 0 ]]; then
     printf '  %-46s  obs-failed  (observe fn exited non-zero)\n' "$name"
     _UCC_FAILED=$(( _UCC_FAILED + 1 ))
+    _ucc_record_kind_summary "$kind" "failed"
     duration_ms=$(_ucc_duration_ms "$started_at")
     _ucc_record_result "$msg_id" "$duration_ms" "{}" \
       "{\"observation\":\"failed\",\"message\":\"observe function exited non-zero\"}"
@@ -426,6 +442,7 @@ ucc_target() {
   if [[ -z "$observed" ]]; then
     printf '  %-46s  indeterminate  (observe returned no state)\n' "$name"
     _UCC_FAILED=$(( _UCC_FAILED + 1 ))
+    _ucc_record_kind_summary "$kind" "failed"
     duration_ms=$(_ucc_duration_ms "$started_at")
     _ucc_record_result "$msg_id" "$duration_ms" "{}" \
       "{\"observation\":\"indeterminate\",\"message\":\"observe returned empty state\"}"
@@ -454,6 +471,7 @@ ucc_target() {
       # Update mode: run upgrade even when state already matches
       if [[ "$UCC_DRY_RUN" == "1" ]]; then
         printf '  %-46s  dry-run  state="%s"  (update skipped)\n' "$name" "$(_ucc_display_state "$observed" "$axes")"
+        _ucc_record_kind_summary "$kind" "unchanged"
         duration_ms=$(_ucc_duration_ms "$started_at")
         _ucc_record_result "$msg_id" "$duration_ms" \
           "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":{}}" \
@@ -467,6 +485,7 @@ ucc_target() {
         if [[ $ver_exit -eq 0 ]] && _ucc_satisfied "$verified" "$desired"; then
           printf '  %-46s  updated  "%s" → "%s"\n' "$name" "$(_ucc_display_state "$observed" "$axes")" "$(_ucc_display_state "$verified" "$axes")"
           _UCC_CHANGED=$(( _UCC_CHANGED + 1 ))
+          _ucc_record_kind_summary "$kind" "changed"
           duration_ms=$(_ucc_duration_ms "$started_at")
           _ucc_record_result "$msg_id" "$duration_ms" \
             "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$verified" "$axes"),\"observed_after\":$(_ucc_state_obj "$verified")}" \
@@ -474,6 +493,7 @@ ucc_target() {
         else
           printf '  %-46s  FAILED — verify after update: "%s"\n' "$name" "$(_ucc_display_state "${verified:-?}" "$axes")"
           _UCC_FAILED=$(( _UCC_FAILED + 1 ))
+          _ucc_record_kind_summary "$kind" "failed"
           duration_ms=$(_ucc_duration_ms "$started_at")
           if [[ $ver_exit -eq 0 && -n "$verified" ]]; then
             _ucc_record_result "$msg_id" "$duration_ms" \
@@ -488,6 +508,7 @@ ucc_target() {
       else
         printf '  %-46s  FAILED — update error  state="%s"\n' "$name" "$(_ucc_display_state "$observed" "$axes")"
         _UCC_FAILED=$(( _UCC_FAILED + 1 ))
+        _ucc_record_kind_summary "$kind" "failed"
         duration_ms=$(_ucc_duration_ms "$started_at")
         _ucc_record_result "$msg_id" "$duration_ms" \
           "{}" \
@@ -495,8 +516,9 @@ ucc_target() {
       fi
     else
       # Already at desired state
-      printf '  %-46s  ok  state="%s"\n' "$name" "$(_ucc_display_state "$observed" "$axes")"
+      printf '  %-46s  ok\n' "$name"
       _UCC_CONVERGED=$(( _UCC_CONVERGED + 1 ))
+      _ucc_record_kind_summary "$kind" "ok"
       duration_ms=$(_ucc_duration_ms "$started_at")
       _ucc_record_result "$msg_id" "$duration_ms" \
         "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":{}}" \
@@ -508,6 +530,7 @@ ucc_target() {
   # Step 4: Apply transition
   if [[ "$UCC_DRY_RUN" == "1" ]]; then
     printf '  %-46s  dry-run  "%s" → "%s"\n' "$name" "$(_ucc_display_state "$observed" "$axes")" "$(_ucc_display_state "$desired" "$axes")"
+    _ucc_record_kind_summary "$kind" "unchanged"
     duration_ms=$(_ucc_duration_ms "$started_at")
     _ucc_record_result "$msg_id" "$duration_ms" \
       "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$desired" "$axes")}" \
@@ -517,6 +540,7 @@ ucc_target() {
 
   if [[ -z "$install_fn" ]]; then
     printf '  %-46s  no-install (policy)  "%s" → "%s"\n' "$name" "$(_ucc_display_state "$observed" "$axes")" "$(_ucc_display_state "$desired" "$axes")"
+    _ucc_record_kind_summary "$kind" "unchanged"
     duration_ms=$(_ucc_duration_ms "$started_at")
     _ucc_record_result "$msg_id" "$duration_ms" \
       "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$desired" "$axes")}" \
@@ -542,6 +566,7 @@ ucc_target() {
     if [[ $ver_exit -eq 0 ]] && _ucc_satisfied "$verified" "$desired"; then
       printf '  %-46s  %s  "%s" → "%s"\n' "$name" "$action_label" "$(_ucc_display_state "$observed" "$axes")" "$(_ucc_display_state "$verified" "$axes")"
       _UCC_CHANGED=$(( _UCC_CHANGED + 1 ))
+      _ucc_record_kind_summary "$kind" "changed"
       duration_ms=$(_ucc_duration_ms "$started_at")
       _ucc_record_result "$msg_id" "$duration_ms" \
         "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$verified" "$axes"),\"observed_after\":$(_ucc_state_obj "$verified")}" \
@@ -549,6 +574,7 @@ ucc_target() {
     else
       printf '  %-46s  FAILED — verify after install: "%s"\n' "$name" "$(_ucc_display_state "${verified:-?}" "$axes")"
       _UCC_FAILED=$(( _UCC_FAILED + 1 ))
+      _ucc_record_kind_summary "$kind" "failed"
       duration_ms=$(_ucc_duration_ms "$started_at")
       if [[ $ver_exit -eq 0 && -n "$verified" ]]; then
         _ucc_record_result "$msg_id" "$duration_ms" \
@@ -563,6 +589,7 @@ ucc_target() {
   else
     printf '  %-46s  FAILED — install error  was="%s"\n' "$name" "$(_ucc_display_state "$observed" "$axes")"
     _UCC_FAILED=$(( _UCC_FAILED + 1 ))
+    _ucc_record_kind_summary "$kind" "failed"
     duration_ms=$(_ucc_duration_ms "$started_at")
     _ucc_record_result "$msg_id" "$duration_ms" \
       "{}" \
@@ -585,7 +612,7 @@ ucc_target_nonruntime() {
         ;;
     esac
   done
-  [[ -z "$desired" ]] && args+=(--kind nonruntime)
+  [[ -z "$desired" ]] && args+=(--kind config)
   ucc_target "${args[@]}"
 }
 
