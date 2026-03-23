@@ -15,7 +15,7 @@ _observe_docker_app() {
 }
 
 _install_docker() {
-  brew_cask_install_or_upgrade docker
+  brew_cask_install docker
   open -a Docker
   log_info "Waiting for Docker daemon..."
   for i in $(seq 1 12); do
@@ -27,7 +27,7 @@ _install_docker() {
 }
 
 _upgrade_docker() {
-  brew_cask_install_or_upgrade docker 2>/dev/null || true
+  brew_cask_upgrade docker 2>/dev/null || true
   log_warn "Restart Docker Desktop to apply the upgrade"
 }
 

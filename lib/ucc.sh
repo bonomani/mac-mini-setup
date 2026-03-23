@@ -118,25 +118,27 @@ ucc_run() {
 # ============================================================
 
 # ucc_brew_target <target-name> <brew-pkg>
-# Standard brew formula: observe=brew_observe desired=current install/update=upgrade|install
+# Standard brew formula: install=brew install, update=brew upgrade
 ucc_brew_target() {
   local tname="$1" pkg="$2"
   local fn; fn="${pkg//[^a-zA-Z0-9]/_}"
   eval "_ubt_obs_${fn}() { brew_observe '${pkg}'; }"
-  eval "_ubt_ins_${fn}() { brew_install_or_upgrade '${pkg}'; }"
+  eval "_ubt_ins_${fn}() { brew_install  '${pkg}'; }"
+  eval "_ubt_upd_${fn}() { brew_upgrade  '${pkg}'; }"
   ucc_target --name "$tname" --observe "_ubt_obs_${fn}" --desired "current" \
-             --install "_ubt_ins_${fn}" --update "_ubt_ins_${fn}"
+             --install "_ubt_ins_${fn}" --update "_ubt_upd_${fn}"
 }
 
 # ucc_brew_cask_target <target-name> <cask-pkg>
-# Standard brew cask: observe=brew_cask_observe desired=current install/update=upgrade|install
+# Standard brew cask: install=brew install --cask, update=brew upgrade --cask
 ucc_brew_cask_target() {
   local tname="$1" pkg="$2"
   local fn; fn="${pkg//[^a-zA-Z0-9]/_}"
   eval "_ubct_obs_${fn}() { brew_cask_observe '${pkg}'; }"
-  eval "_ubct_ins_${fn}() { brew_cask_install_or_upgrade '${pkg}'; }"
+  eval "_ubct_ins_${fn}() { brew_cask_install '${pkg}'; }"
+  eval "_ubct_upd_${fn}() { brew_cask_upgrade '${pkg}'; }"
   ucc_target --name "$tname" --observe "_ubct_obs_${fn}" --desired "current" \
-             --install "_ubct_ins_${fn}" --update "_ubct_ins_${fn}"
+             --install "_ubct_ins_${fn}" --update "_ubct_upd_${fn}"
 }
 
 # ucc_npm_target <npm-pkg>

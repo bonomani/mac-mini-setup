@@ -21,14 +21,15 @@ _observe_vscode() {
   fi
   brew_cask_observe visual-studio-code
 }
-_install_vscode() { brew_cask_install_or_upgrade visual-studio-code; }
+_install_vscode() { brew_cask_install visual-studio-code; }
+_update_vscode()  { brew_cask_upgrade visual-studio-code; }
 
 ucc_target \
   --name    "vscode" \
   --observe _observe_vscode \
   --desired "current" \
   --install _install_vscode \
-  --update  _install_vscode
+  --update  _update_vscode
 
 # Ensure 'code' CLI is available in PATH
 _observe_code_cmd() {
@@ -133,14 +134,11 @@ _observe_node24() {
   echo "current"
 }
 _install_node24() {
-  # Unlink any older brew-managed node versions to avoid PATH conflicts
   brew unlink node@20 2>/dev/null || true
-  if brew list node@24 &>/dev/null 2>&1; then
-    ucc_run brew upgrade node@24 2>/dev/null || true
-    ucc_run brew link --overwrite --force node@24
-  else
-    ucc_run brew install node@24 && ucc_run brew link --overwrite --force node@24
-  fi
+  ucc_run brew install node@24 && ucc_run brew link --overwrite --force node@24
+}
+_update_node24() {
+  ucc_run brew upgrade node@24 && ucc_run brew link --overwrite --force node@24
 }
 
 ucc_target \
@@ -148,7 +146,7 @@ ucc_target \
   --observe _observe_node24 \
   --desired "current" \
   --install _install_node24 \
-  --update  _install_node24
+  --update  _update_node24
 
 # Ensure node@24 is in PATH
 if [[ -d /opt/homebrew/opt/node@24/bin ]]; then
@@ -272,11 +270,15 @@ _observe_ariaflow() {
 }
 _install_ariaflow() {
   ucc_run brew tap bonomani/ariaflow
+  brew_install ariaflow
+}
+_update_ariaflow() {
+  ucc_run brew tap bonomani/ariaflow
   # Unload running launchd agents before upgrade so they restart with the new binary
   for _plist in ~/Library/LaunchAgents/com.ariaflow.*.plist; do
     [[ -f "$_plist" ]] && ucc_run launchctl unload "$_plist" 2>/dev/null || true
   done
-  brew_install_or_upgrade ariaflow
+  brew_upgrade ariaflow
 }
 
 ucc_target \
@@ -284,7 +286,7 @@ ucc_target \
   --observe _observe_ariaflow \
   --desired "current" \
   --install _install_ariaflow \
-  --update  _install_ariaflow
+  --update  _update_ariaflow
 
 # --- aria2 daemon — launchd (RPC port 6800, survives reboot) -
 _observe_aria2_launchd() {
@@ -292,6 +294,7 @@ _observe_aria2_launchd() {
     | python3 -c "import json,sys; r=json.load(sys.stdin).get('aria2-launchd',{}).get('result',{}); print('loaded' if r.get('outcome')=='converged' else 'absent')" \
     2>/dev/null || true
 }
+# install and update both use ariaflow install — it is idempotent and handles both cases
 _install_aria2_launchd() { ucc_run ariaflow install --with-aria2; }
 
 ucc_target \
@@ -306,7 +309,11 @@ ucc_target \
 _observe_ariaflow_web() { brew_observe ariaflow-web; }
 _install_ariaflow_web() {
   ucc_run brew tap bonomani/ariaflow
-  brew_install_or_upgrade ariaflow-web
+  brew_install ariaflow-web
+}
+_update_ariaflow_web() {
+  ucc_run brew tap bonomani/ariaflow
+  brew_upgrade ariaflow-web
 }
 
 ucc_target \
@@ -314,7 +321,7 @@ ucc_target \
   --observe _observe_ariaflow_web \
   --desired "current" \
   --install _install_ariaflow_web \
-  --update  _install_ariaflow_web
+  --update  _update_ariaflow_web
 
 # --- ariaflow-web service — brew services (port 8001, survives reboot) --
 _observe_ariaflow_web_service() {

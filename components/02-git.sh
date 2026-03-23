@@ -10,8 +10,8 @@ _observe_git() {
   is_installed git && echo "installed" || echo "absent"
 }
 
-_install_git() { brew_install_or_upgrade git; }
-_update_git()  { brew_install_or_upgrade git; }
+_install_git() { brew_install git; }
+_update_git()  { brew_upgrade  git; }
 
 ucc_target \
   --name    "git" \

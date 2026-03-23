@@ -18,7 +18,7 @@ _observe_pyenv() {
 }
 
 _install_pyenv() {
-  brew_install_or_upgrade pyenv pyenv-virtualenv
+  brew_install pyenv pyenv-virtualenv
   if ! grep -q 'pyenv init' ~/.zshrc 2>/dev/null; then
     cat >> ~/.zshrc <<'EOF'
 
@@ -30,24 +30,26 @@ eval "$(pyenv virtualenv-init -)"
 EOF
   fi
 }
+_update_pyenv() { brew_upgrade pyenv pyenv-virtualenv; }
 
 ucc_target \
   --name    "pyenv" \
   --observe _observe_pyenv \
   --desired "current" \
   --install _install_pyenv \
-  --update  _install_pyenv
+  --update  _update_pyenv
 
 # --- xz (required to avoid lzma warning when building Python) --
 _observe_xz() { brew_observe xz; }
-_install_xz() { brew_install_or_upgrade xz; }
+_install_xz()  { brew_install xz; }
+_update_xz()   { brew_upgrade  xz; }
 
 ucc_target \
   --name    "xz" \
   --observe _observe_xz \
   --desired "current" \
   --install _install_xz \
-  --update  _install_xz
+  --update  _update_xz
 
 # Load pyenv for subsequent steps
 export PYENV_ROOT="$HOME/.pyenv"
