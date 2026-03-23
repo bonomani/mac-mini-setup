@@ -2,17 +2,18 @@
 
 ```yaml
 decision_id: mac-mini-setup-bgs-001
-bgs_slice: BGS-Governed-Verified
+bgs_slice: BGS-State-Modeled-Governed
 declared_scope: >
   Mac mini AI workstation setup — full installation lifecycle across 10
   components: homebrew, git, docker, python, ollama, ai-python-stack,
   ai-apps, dev-tools, macos-defaults, verify.
   Covers install, idempotent re-run, and update modes.
 
-bgs_version_ref: bgs@c478e96
+bgs_version_ref: bgs@73adc3f
 
 members_used:
   - BISS
+  - ASM
   - UIC
   - UCC
   - TIC
@@ -21,6 +22,7 @@ overlays_used:
   - Basic
 
 member_version_refs:
+  asm: asm@5ca20bd
   ucc: ucc@da74277
   uic: uic@11bd400
   tic: tic@7cfba80
@@ -48,13 +50,17 @@ external_controls:
 
 evidence_refs:
   - ./biss-classification.md     # explicit BISS boundary inventory for this scope
+  - ./setup-state-model.md       # ASM-aligned setup state model
+  - ./setup-state-artifact.yaml  # concrete state artifact
+  - ./evidence/ollama-service.declaration.json
+  - ./evidence/ollama-service.result.json
   - ../install.sh                # UIC gates + preferences + orchestration
   - ../lib/ucc.sh                # UCC/2.0 declaration/result artifact engine
   - ../lib/uic.sh                # UIC preflight engine
   - ../lib/tic.sh                # TIC test engine
   - ../components/10-verify.sh   # TIC tests covering all components
-  - ~/.ai-stack/runs/*.declaration.jsonl
-  - ~/.ai-stack/runs/*.result.jsonl
+  - ~/.ai-stack/runs/*.declaration.jsonl  # runtime evidence outside the repo
+  - ~/.ai-stack/runs/*.result.jsonl       # runtime evidence outside the repo
 
 limitations:
   - Does not claim privacy enforcement beyond disabling brew analytics;
@@ -63,4 +69,7 @@ limitations:
   - TIC tests are read-only probes (GIC); they do not re-run convergence.
   - Sudo gate is soft (not hard); 09-macos-defaults is skipped if sudo
     is unavailable rather than aborting the full install.
+  - The claimed BGS slice is `BGS-State-Modeled-Governed`; `TIC` is used
+    as additional verification evidence because the suite does not yet
+    define a separate state-modeled-governed-verified slice.
 ```

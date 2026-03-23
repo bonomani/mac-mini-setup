@@ -1,0 +1,25 @@
+profile_layer: extended_operational
+scope: mac-mini-setup
+component: 05-ollama
+description: Example concrete component state for the configured Ollama service.
+
+installation_state: Configured
+runtime_state: Running
+health_state: Healthy
+admin_state: Enabled
+dependency_state: DepsReady
+
+derived_states:
+  - Present
+  - Ready
+  - Operational
+
+last_transition:
+  axis: runtime
+  from: Starting
+  to: Running
+
+notes:
+  - The component is installed and configured.
+  - The local API is expected to answer on http://127.0.0.1:11434.
+  - This artifact is illustrative evidence for the ASM-governed slice.

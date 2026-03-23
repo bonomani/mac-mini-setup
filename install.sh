@@ -5,8 +5,9 @@
 # ============================================================
 #
 #  BGS Suite compliance — Boundary Governance Suite
-#  BGS slice: BGS-Governed-Verified
-#    BISS classification -> UIC preflight -> UCC convergence -> TIC verification
+#  BGS slice: BGS-State-Modeled-Governed
+#    BISS classification -> ASM state model -> UIC preflight -> UCC convergence
+#    TIC verification is kept as additional evidence over the resulting state
 #  See: ./BGS.md and ./docs/bgs-decision.md
 #
 #  BISS (Boundary Interaction Semantic Standard)
@@ -24,6 +25,10 @@
 #  BGS  Boundary Governance Suite
 #       Repo  : https://github.com/bonomani/bgs
 #       WSL   : /home/bc/repos/github/bonomani/bgs
+#
+#  ASM  Atomic State Model
+#       Repo  : https://github.com/bonomani/asm
+#       WSL   : /home/bc/repos/github/bonomani/asm
 #
 #  UIC  Universal Intent Contract
 #       Repo  : https://github.com/bonomani/uic
@@ -48,7 +53,8 @@
 #  Component 10-verify runs TIC tests after all UCC components complete.
 #
 #  Immutable framework version refs (BGS decision record)
-#    BGS : bgs@c478e96
+#    BGS : bgs@73adc3f
+#    ASM : asm@5ca20bd
 #    UCC : ucc@da74277
 #    UIC : uic@11bd400
 #    TIC : tic@7cfba80
