@@ -122,7 +122,15 @@ def validate(targets):
 
 
 def main():
-    path = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("targets.yaml")
+    args = sys.argv[1:]
+    deps_mode = False
+    target_name = None
+    if len(args) >= 2 and args[0] == "--deps":
+        deps_mode = True
+        target_name = args[1]
+        args = args[2:]
+
+    path = Path(args[0]) if args else Path("targets.yaml")
     try:
         targets = parse_manifest(path)
         errors, ordered = validate(targets)
@@ -134,6 +142,11 @@ def main():
         for error in errors:
             print(f"ERROR: {error}", file=sys.stderr)
         return 1
+
+    if deps_mode:
+        for dep in targets.get(target_name, {}).get("depends_on", []):
+            print(dep)
+        return 0
 
     print(f"OK: {len(targets)} orchestration targets validated")
     print("Topological order:")

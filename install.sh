@@ -382,19 +382,11 @@ export UCC_DECLARATION_FILE="$HOME/.ai-stack/runs/${UCC_CORRELATION_ID}.declarat
 export UCC_RESULT_FILE="$HOME/.ai-stack/runs/${UCC_CORRELATION_ID}.result.jsonl"
 export UCC_SUMMARY_FILE="$HOME/.ai-stack/runs/${UCC_CORRELATION_ID}.summary"
 export UCC_PROFILE_SUMMARY_FILE="$HOME/.ai-stack/runs/${UCC_CORRELATION_ID}.profile-summary"
-export UCC_PROFILE_REPORT_DIR="$HOME/.ai-stack/runs/${UCC_CORRELATION_ID}.profiles"
+export UCC_TARGET_STATUS_FILE="$HOME/.ai-stack/runs/${UCC_CORRELATION_ID}.target-status"
 export UCC_VERIFICATION_REPORT_FILE="$HOME/.ai-stack/runs/${UCC_CORRELATION_ID}.verification.report"
+export UCC_TARGETS_MANIFEST="$DIR/targets.yaml"
+export UCC_TARGETS_QUERY_SCRIPT="$DIR/tools/validate_targets_manifest.py"
 mkdir -p "$HOME/.ai-stack/runs"
-mkdir -p "$UCC_PROFILE_REPORT_DIR"
-
-_print_profile_section() {
-  local profile="$1" path=""
-  path="$UCC_PROFILE_REPORT_DIR/${profile}.report"
-  [[ -s "$path" ]] || return 0
-  echo ""
-  printf '── %s\n' "$(ucc_profile_label "$profile")"
-  cat "$path"
-}
 
 _print_verification_section() {
   [[ -s "$UCC_VERIFICATION_REPORT_FILE" ]] || return 0
@@ -402,6 +394,12 @@ _print_verification_section() {
   printf '── %s\n' "$(ucc_profile_label verification)"
   cat "$UCC_VERIFICATION_REPORT_FILE"
 }
+
+if [[ -f "$DIR/targets.yaml" && -x "$(command -v python3)" ]]; then
+  if ! python3 "$DIR/tools/validate_targets_manifest.py" "$DIR/targets.yaml" >/dev/null; then
+    log_error "Invalid orchestration manifest: $DIR/targets.yaml"
+  fi
+fi
 
 # --- Run components -----------------------------------------
 FAILED_COMPONENTS=()
@@ -437,9 +435,6 @@ for comp in "${TO_RUN[@]}"; do
   _refresh_brew_path
 done
 
-_print_profile_section presence
-_print_profile_section configured
-_print_profile_section runtime
 _print_verification_section
 
 # --- Final summary ------------------------------------------

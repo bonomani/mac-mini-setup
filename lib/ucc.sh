@@ -187,6 +187,34 @@ _ucc_evidence_text() {
   printf 'observed=%s' "$(_ucc_display_state "$observed" "$axes")"
 }
 
+_ucc_dependency_evidence() {
+  local target="$1" deps="" dep status pairs=()
+  [[ -n "${UCC_TARGETS_MANIFEST:-}" && -n "${UCC_TARGETS_QUERY_SCRIPT:-}" && -n "${UCC_TARGET_STATUS_FILE:-}" ]] || return 0
+  [[ -f "${UCC_TARGETS_MANIFEST}" && -f "${UCC_TARGETS_QUERY_SCRIPT}" ]] || return 0
+  deps=$(python3 "$UCC_TARGETS_QUERY_SCRIPT" --deps "$target" "$UCC_TARGETS_MANIFEST" 2>/dev/null || true)
+  [[ -n "$deps" ]] || return 0
+  while IFS= read -r dep; do
+    [[ -n "$dep" ]] || continue
+    status=$(awk -F'|' -v dep="$dep" '$1==dep {val=$2} END {print val}' "$UCC_TARGET_STATUS_FILE" 2>/dev/null || true)
+    [[ -z "$status" ]] && status="unknown"
+    pairs+=("${dep}=${status}")
+  done <<< "$deps"
+  [[ ${#pairs[@]} -gt 0 ]] && printf 'deps: %s' "$(IFS=', '; echo "${pairs[*]}")"
+}
+
+_ucc_compose_evidence() {
+  local target="$1" observed="$2" axes="$3" evidence_fn="$4" primary deps
+  primary="$(_ucc_evidence_text "$observed" "$axes" "$evidence_fn")"
+  deps="$(_ucc_dependency_evidence "$target")"
+  if [[ -n "$primary" && -n "$deps" ]]; then
+    printf '%s  %s' "$primary" "$deps"
+  elif [[ -n "$deps" ]]; then
+    printf '%s' "$deps"
+  else
+    printf '%s' "$primary"
+  fi
+}
+
 _ucc_profile_report_path() {
   local profile="${1:-configured}"
   [[ -n "${UCC_PROFILE_REPORT_DIR:-}" ]] || return 1
@@ -420,6 +448,12 @@ _ucc_record_profile_summary() {
   printf '%s|%s\n' "${profile:-configured}" "$outcome" >> "$UCC_PROFILE_SUMMARY_FILE" 2>/dev/null || true
 }
 
+_ucc_record_target_status() {
+  local target="$1" status="$2"
+  [[ -z "${UCC_TARGET_STATUS_FILE:-}" ]] && return 0
+  printf '%s|%s\n' "$target" "$status" >> "$UCC_TARGET_STATUS_FILE" 2>/dev/null || true
+}
+
 _ucc_duration_ms() {
   local started_at="$1" now
   now=$(date +%s 2>/dev/null || echo 0)
@@ -524,6 +558,7 @@ ucc_target() {
     _ucc_emit_profile_line "$profile" "$(printf '  %-46s  obs-failed  (observe fn exited non-zero)' "$name")"
     _UCC_FAILED=$(( _UCC_FAILED + 1 ))
     _ucc_record_profile_summary "$profile" "failed"
+    _ucc_record_target_status "$name" "failed"
     duration_ms=$(_ucc_duration_ms "$started_at")
     _ucc_record_result "$msg_id" "$duration_ms" "{}" \
       "{\"observation\":\"failed\",\"message\":\"observe function exited non-zero\"}"
@@ -535,6 +570,7 @@ ucc_target() {
     _ucc_emit_profile_line "$profile" "$(printf '  %-46s  indeterminate  (observe returned no state)' "$name")"
     _UCC_FAILED=$(( _UCC_FAILED + 1 ))
     _ucc_record_profile_summary "$profile" "failed"
+    _ucc_record_target_status "$name" "failed"
     duration_ms=$(_ucc_duration_ms "$started_at")
     _ucc_record_result "$msg_id" "$duration_ms" "{}" \
       "{\"observation\":\"indeterminate\",\"message\":\"observe returned empty state\"}"
@@ -564,6 +600,7 @@ ucc_target() {
       if [[ "$UCC_DRY_RUN" == "1" ]]; then
         _ucc_emit_profile_line "$profile" "$(printf '  %-46s  dry-run  state=\"%s\"  (update skipped)' "$name" "$(_ucc_display_state "$observed" "$axes")")"
         _ucc_record_profile_summary "$profile" "unchanged"
+        _ucc_record_target_status "$name" "unchanged"
         duration_ms=$(_ucc_duration_ms "$started_at")
         _ucc_record_result "$msg_id" "$duration_ms" \
           "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":{}}" \
@@ -578,6 +615,7 @@ ucc_target() {
           _ucc_emit_profile_line "$profile" "$(printf '  %-46s  updated  \"%s\" → \"%s\"' "$name" "$(_ucc_display_state "$observed" "$axes")" "$(_ucc_display_state "$verified" "$axes")")"
           _UCC_CHANGED=$(( _UCC_CHANGED + 1 ))
           _ucc_record_profile_summary "$profile" "changed"
+          _ucc_record_target_status "$name" "ok"
           duration_ms=$(_ucc_duration_ms "$started_at")
           _ucc_record_result "$msg_id" "$duration_ms" \
             "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$verified" "$axes"),\"observed_after\":$(_ucc_state_obj "$verified")}" \
@@ -586,6 +624,7 @@ ucc_target() {
           _ucc_emit_profile_line "$profile" "$(printf '  %-46s  FAILED — verify after update: \"%s\"' "$name" "$(_ucc_display_state "${verified:-?}" "$axes")")"
           _UCC_FAILED=$(( _UCC_FAILED + 1 ))
           _ucc_record_profile_summary "$profile" "failed"
+          _ucc_record_target_status "$name" "failed"
           duration_ms=$(_ucc_duration_ms "$started_at")
           if [[ $ver_exit -eq 0 && -n "$verified" ]]; then
             _ucc_record_result "$msg_id" "$duration_ms" \
@@ -601,6 +640,7 @@ ucc_target() {
         _ucc_emit_profile_line "$profile" "$(printf '  %-46s  FAILED — update error  state=\"%s\"' "$name" "$(_ucc_display_state "$observed" "$axes")")"
         _UCC_FAILED=$(( _UCC_FAILED + 1 ))
         _ucc_record_profile_summary "$profile" "failed"
+        _ucc_record_target_status "$name" "failed"
         duration_ms=$(_ucc_duration_ms "$started_at")
         _ucc_record_result "$msg_id" "$duration_ms" \
           "{}" \
@@ -608,9 +648,10 @@ ucc_target() {
       fi
     else
       # Already at desired state
-      _ucc_emit_profile_line "$profile" "$(printf '  %-46s  ok  %s' "$name" "$(_ucc_evidence_text "$observed" "$axes" "$evidence_fn")")"
+      _ucc_emit_profile_line "$profile" "$(printf '  %-46s  ok  %s' "$name" "$(_ucc_compose_evidence "$name" "$observed" "$axes" "$evidence_fn")")"
       _UCC_CONVERGED=$(( _UCC_CONVERGED + 1 ))
       _ucc_record_profile_summary "$profile" "ok"
+      _ucc_record_target_status "$name" "ok"
       duration_ms=$(_ucc_duration_ms "$started_at")
       _ucc_record_result "$msg_id" "$duration_ms" \
         "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":{}}" \
@@ -623,6 +664,7 @@ ucc_target() {
   if [[ "$UCC_DRY_RUN" == "1" ]]; then
     _ucc_emit_profile_line "$profile" "$(printf '  %-46s  dry-run  \"%s\" → \"%s\"' "$name" "$(_ucc_display_state "$observed" "$axes")" "$(_ucc_display_state "$desired" "$axes")")"
     _ucc_record_profile_summary "$profile" "unchanged"
+    _ucc_record_target_status "$name" "unchanged"
     duration_ms=$(_ucc_duration_ms "$started_at")
     _ucc_record_result "$msg_id" "$duration_ms" \
       "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$desired" "$axes")}" \
@@ -633,6 +675,7 @@ ucc_target() {
   if [[ -z "$install_fn" ]]; then
     _ucc_emit_profile_line "$profile" "$(printf '  %-46s  no-install (policy)  \"%s\" → \"%s\"' "$name" "$(_ucc_display_state "$observed" "$axes")" "$(_ucc_display_state "$desired" "$axes")")"
     _ucc_record_profile_summary "$profile" "unchanged"
+    _ucc_record_target_status "$name" "unchanged"
     duration_ms=$(_ucc_duration_ms "$started_at")
     _ucc_record_result "$msg_id" "$duration_ms" \
       "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$desired" "$axes")}" \
@@ -659,6 +702,7 @@ ucc_target() {
       _ucc_emit_profile_line "$profile" "$(printf '  %-46s  %s  \"%s\" → \"%s\"' "$name" "$action_label" "$(_ucc_display_state "$observed" "$axes")" "$(_ucc_display_state "$verified" "$axes")")"
       _UCC_CHANGED=$(( _UCC_CHANGED + 1 ))
       _ucc_record_profile_summary "$profile" "changed"
+      _ucc_record_target_status "$name" "ok"
       duration_ms=$(_ucc_duration_ms "$started_at")
       _ucc_record_result "$msg_id" "$duration_ms" \
         "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$verified" "$axes"),\"observed_after\":$(_ucc_state_obj "$verified")}" \
@@ -667,6 +711,7 @@ ucc_target() {
       _ucc_emit_profile_line "$profile" "$(printf '  %-46s  FAILED — verify after install: \"%s\"' "$name" "$(_ucc_display_state "${verified:-?}" "$axes")")"
       _UCC_FAILED=$(( _UCC_FAILED + 1 ))
       _ucc_record_profile_summary "$profile" "failed"
+      _ucc_record_target_status "$name" "failed"
       duration_ms=$(_ucc_duration_ms "$started_at")
       if [[ $ver_exit -eq 0 && -n "$verified" ]]; then
         _ucc_record_result "$msg_id" "$duration_ms" \
@@ -682,6 +727,7 @@ ucc_target() {
     _ucc_emit_profile_line "$profile" "$(printf '  %-46s  FAILED — install error  was=\"%s\"' "$name" "$(_ucc_display_state "$observed" "$axes")")"
     _UCC_FAILED=$(( _UCC_FAILED + 1 ))
     _ucc_record_profile_summary "$profile" "failed"
+    _ucc_record_target_status "$name" "failed"
     duration_ms=$(_ucc_duration_ms "$started_at")
     _ucc_record_result "$msg_id" "$duration_ms" \
       "{}" \
