@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Component: Docker Desktop
-# BGS: UCC + Basic  (bgs/SUITE.md §4.5 + §4.3)
+# BGS: UCC + Basic
 #
 # BISS: Axis A = UCC (state convergence — app installed/absent + resources configured)
 #       Axis B = Basic

@@ -9,7 +9,7 @@ declared_scope: >
   ai-apps, dev-tools, macos-defaults, verify.
   Covers install, idempotent re-run, and update modes.
 
-bgs_version_ref: bgs@c31f200
+bgs_version_ref: bgs@c478e96
 
 members_used:
   - BISS
@@ -21,9 +21,9 @@ overlays_used:
   - Basic
 
 member_version_refs:
-  UCC: ucc@1505204
-  UIC: uic@a997340
-  TIC: tic@5f125a3
+  ucc: ucc@da74277
+  uic: uic@11bd400
+  tic: tic@7cfba80
 
 external_controls:
   IAM and authorization: delegated
@@ -47,12 +47,14 @@ external_controls:
   # analytics are explicitly disabled (01-homebrew.sh).
 
 evidence_refs:
-  - ./install.sh          # UIC gates + preferences + orchestration
-  - ./lib/ucc.sh          # UCC/2.0 engine (steps 0-6, result model, JSONL)
-  - ./lib/uic.sh          # UIC preflight engine
-  - ./lib/tic.sh          # TIC test engine
-  - ./components/10-verify.sh   # 39 TIC tests covering all components
-  - ~/.ai-stack/runs/     # Per-run UCC/2.0 JSONL result artifacts
+  - ./biss-classification.md     # explicit BISS boundary inventory for this scope
+  - ../install.sh                # UIC gates + preferences + orchestration
+  - ../lib/ucc.sh                # UCC/2.0 declaration/result artifact engine
+  - ../lib/uic.sh                # UIC preflight engine
+  - ../lib/tic.sh                # TIC test engine
+  - ../components/10-verify.sh   # TIC tests covering all components
+  - ~/.ai-stack/runs/*.declaration.jsonl
+  - ~/.ai-stack/runs/*.result.jsonl
 
 limitations:
   - Does not claim privacy enforcement beyond disabling brew analytics;

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # lib/tic.sh — Test Intent Contract (TIC) helper
-# BGS suite — bgs/SUITE.md §4.6
+# BGS suite — TIC verification layer
 #
 # BISS: Axis A = GIC (observable verification — no convergence side-effects)
 #       Axis B = Basic

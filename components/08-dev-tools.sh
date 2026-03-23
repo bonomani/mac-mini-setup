@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Component: Dev tools (Node, VSCode, CLI tools, Oh My Zsh, healthcheck)
-# BGS: UCC + Basic  (bgs/SUITE.md §4.5 + §4.3)
+# BGS: UCC + Basic
 #
 # BISS: Axis A = UCC (state convergence — brew formulae + casks + npm globals + launchd agents)
 #       Axis B = Basic

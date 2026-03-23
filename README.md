@@ -2,6 +2,15 @@
 
 Scripts to set up a Mac mini (Apple Silicon, 64 GB) as an AI workstation.
 
+## Governance
+
+- BGS entry: `./BGS.md`
+- decision record: `./docs/bgs-decision.md`
+- BISS evidence: `./docs/biss-classification.md`
+- UCC engine: `./lib/ucc.sh`
+- UIC preflight: `./lib/uic.sh`
+- TIC verification: `./lib/tic.sh`
+
 ## What's installed
 
 | Component | Script | Description |

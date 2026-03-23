@@ -9,8 +9,9 @@ applies_to_scope: "Full Mac mini AI workstation setup — all 10 components
   (homebrew, git, docker, python, ollama, ai-python-stack, ai-apps,
   dev-tools, macos-defaults, verify)"
 decision_record_path: "./docs/bgs-decision.md"
-last_reviewed: 2026-03-22
+last_reviewed: 2026-03-23
 read_next:
+  - "./docs/biss-classification.md"
   - "./install.sh"
   - "./lib/ucc.sh"
   - "./lib/uic.sh"

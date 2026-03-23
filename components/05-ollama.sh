@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Component: Ollama — local LLMs via Apple Metal
-# BGS: UCC + Basic  (bgs/SUITE.md §4.5 + §4.3)
+# BGS: UCC + Basic
 #
 # BISS: Axis A = UCC (state convergence — ollama binary + service running + models present)
 #       Axis B = Basic

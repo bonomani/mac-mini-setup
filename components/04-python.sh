@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Component: Python via pyenv
-# BGS: UCC + Basic  (bgs/SUITE.md §4.5 + §4.3)
+# BGS: UCC + Basic
 #
 # BISS: Axis A = UCC (state convergence — pyenv + Python version + pip present/absent)
 #       Axis B = Basic

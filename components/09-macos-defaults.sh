@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Component: macOS system defaults (optimized for AI workloads)
-# BGS: UCC + Basic  (bgs/SUITE.md §4.5 + §4.3)
+# BGS: UCC + Basic
 #
 # BISS: Axis A = UCC (state convergence — pmset + defaults write settings)
 #       Axis B = Basic

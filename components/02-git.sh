@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Component: Git — version control
-# BGS: UCC + Basic  (bgs/SUITE.md §4.5 + §4.3)
+# BGS: UCC + Basic
 #
 # BISS: Axis A = UCC (state convergence — git present/absent + config configured/absent)
 #       Axis B = Basic

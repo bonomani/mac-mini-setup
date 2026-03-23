@@ -12,11 +12,11 @@
 #    failure_class : retryable | permanent  (when outcome=failed)
 #    inhibitor     : dry_run | policy       (when outcome=unchanged)
 #
-#  Mandatory state fields:
-#    before  : observed state before action  (when observation=ok)
-#    diff    : {was,is} or empty             (when observation=ok)
-#    after   : observed state after action   (when outcome=changed, completion=complete)
-#    proof   : verify_pass | update_applied  (when outcome=changed)
+#  Canonical message structure used here:
+#    declaration: meta + declaration
+#    result     : meta + observe + result
+#    observe.observed_before / observe.diff / observe.observed_after
+#    result.proof is emitted as an object when outcome=changed
 # ============================================================
 
 # --- Runtime context ----------------------------------------
@@ -87,23 +87,72 @@ brew_cask_observe() {
 }
 
 # ============================================================
-#  Structured result artifact (machine-consumable JSONL)
-#  Written to UCC_RESULT_FILE when set (exported by install.sh)
-#  Each ucc_target result appends one JSON line.
-#  Fields comply with UCC/2.0 canonical result paths.
+#  Structured artifacts (machine-consumable JSONL)
+#  Written to UCC_DECLARATION_FILE and UCC_RESULT_FILE when set.
+#  Each ucc_target appends one declaration line and one result line.
+#  Fields comply with UCC/2.0 canonical message shapes.
 # ============================================================
 _ucc_jstr() { printf '%s' "$*" | sed 's/\\/\\\\/g; s/"/\\"/g'; }
 
-_ucc_meta() {
-  local id="${$}-${RANDOM}-${RANDOM}"
-  local ts; ts=$(date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo "unknown")
-  printf '"meta":{"contract":"ucc","version":"2.0","id":"%s","timestamp":"%s","correlation_id":"%s"}' \
-    "$id" "$ts" "$(_ucc_jstr "${UCC_CORRELATION_ID:-}")"
+_ucc_now_utc() {
+  date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo "1970-01-01T00:00:00Z"
 }
 
-_ucc_record() {
-  [[ -z "${UCC_RESULT_FILE:-}" ]] && return 0
-  printf '%s\n' "$1" >> "$UCC_RESULT_FILE" 2>/dev/null || true
+_ucc_target_id() {
+  printf '%s' "$1" | tr -cs '[:alnum:]' '-' | sed 's/^-*//; s/-*$//' | tr '[:upper:]' '[:lower:]'
+}
+
+_ucc_state_obj() {
+  printf '{"state":"%s"}' "$(_ucc_jstr "$1")"
+}
+
+_ucc_diff_obj() {
+  local before="$1" after="$2"
+  if [[ "$before" == "$after" ]]; then
+    printf '{}'
+  else
+    printf '{"state":{"before":"%s","after":"%s"}}' \
+      "$(_ucc_jstr "$before")" "$(_ucc_jstr "$after")"
+  fi
+}
+
+_ucc_meta_in() {
+  local id="$1" ts="$2"
+  printf '"meta":{"contract":"ucc","version":"2.0","id":"%s","timestamp":"%s","scope":"operation"}' \
+    "$(_ucc_jstr "$id")" "$(_ucc_jstr "$ts")"
+}
+
+_ucc_meta_out() {
+  local id="$1" duration_ms="$2" ts
+  ts=$(_ucc_now_utc)
+  printf '"meta":{"contract":"ucc","version":"2.0","id":"%s","timestamp":"%s","duration_ms":%s,"scope":"operation"}' \
+    "$(_ucc_jstr "$id")" "$(_ucc_jstr "$ts")" "${duration_ms:-0}"
+}
+
+_ucc_record_file() {
+  local path="$1" payload="$2"
+  [[ -z "$path" ]] && return 0
+  printf '%s\n' "$payload" >> "$path" 2>/dev/null || true
+}
+
+_ucc_record_declaration() {
+  local id="$1" name="$2" desired="$3" mode="$4" ts="$5"
+  local payload
+  payload="{$(_ucc_meta_in "$id" "$ts"),\"declaration\":{\"mode\":\"$(_ucc_jstr "$mode")\",\"target\":\"$(_ucc_jstr "$name")\",\"desired_state\":$(_ucc_state_obj "$desired")}}"
+  _ucc_record_file "${UCC_DECLARATION_FILE:-}" "$payload"
+}
+
+_ucc_record_result() {
+  local id="$1" duration_ms="$2" observe_json="$3" result_json="$4"
+  local payload
+  payload="{$(_ucc_meta_out "$id" "$duration_ms"),\"observe\":${observe_json},\"result\":${result_json}}"
+  _ucc_record_file "${UCC_RESULT_FILE:-}" "$payload"
+}
+
+_ucc_duration_ms() {
+  local started_at="$1" now
+  now=$(date +%s 2>/dev/null || echo 0)
+  echo $(( (now - started_at) * 1000 ))
 }
 
 # --- Dry-run gate -------------------------------------------
@@ -172,6 +221,15 @@ ucc_target() {
     esac
   done
 
+  local started_at declaration_ts mode target_id msg_id duration_ms
+  started_at=$(date +%s 2>/dev/null || echo 0)
+  declaration_ts=$(_ucc_now_utc)
+  mode="apply"
+  [[ "$UCC_DRY_RUN" == "1" ]] && mode="dry_run"
+  target_id=$(_ucc_target_id "$name")
+  msg_id="${UCC_CORRELATION_ID:-run}-${target_id}"
+  _ucc_record_declaration "$msg_id" "$name" "$desired" "$mode" "$declaration_ts"
+
   # Step 1 – Observe current state
   local observed obs_exit
   observed=$($observe_fn 2>/dev/null)
@@ -181,7 +239,9 @@ ucc_target() {
   if [[ $obs_exit -ne 0 ]]; then
     printf '  %-46s  obs-failed  (observe fn exited non-zero)\n' "$name"
     _UCC_FAILED=$(( _UCC_FAILED + 1 ))
-    _ucc_record "{$(_ucc_meta),\"target\":\"$(_ucc_jstr "$name")\",\"result\":{\"observation\":\"failed\",\"message\":\"observe function exited non-zero\"}}"
+    duration_ms=$(_ucc_duration_ms "$started_at")
+    _ucc_record_result "$msg_id" "$duration_ms" "{}" \
+      "{\"observation\":\"failed\",\"message\":\"observe function exited non-zero\"}"
     return 0
   fi
 
@@ -189,7 +249,9 @@ ucc_target() {
   if [[ -z "$observed" ]]; then
     printf '  %-46s  indeterminate  (observe returned no state)\n' "$name"
     _UCC_FAILED=$(( _UCC_FAILED + 1 ))
-    _ucc_record "{$(_ucc_meta),\"target\":\"$(_ucc_jstr "$name")\",\"result\":{\"observation\":\"indeterminate\",\"message\":\"observe returned empty state\"}}"
+    duration_ms=$(_ucc_duration_ms "$started_at")
+    _ucc_record_result "$msg_id" "$duration_ms" "{}" \
+      "{\"observation\":\"indeterminate\",\"message\":\"observe returned empty state\"}"
     return 0
   fi
 
@@ -211,23 +273,53 @@ ucc_target() {
       # Update mode: run upgrade even when state already matches
       if [[ "$UCC_DRY_RUN" == "1" ]]; then
         printf '  %-46s  dry-run  state="%s"  (update skipped)\n' "$name" "$observed"
-        _ucc_record "{$(_ucc_meta),\"target\":\"$(_ucc_jstr "$name")\",\"result\":{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"dry_run\",\"message\":\"transition not applied due to dry-run mode\",\"observed_before\":\"$(_ucc_jstr "$observed")\"}}"
+        duration_ms=$(_ucc_duration_ms "$started_at")
+        _ucc_record_result "$msg_id" "$duration_ms" \
+          "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":{}}" \
+          "{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"dry_run\",\"message\":\"update transition not applied due to dry-run mode\"}"
         return 0
       fi
       if $update_fn; then
-        printf '  %-46s  updated  state="%s"\n' "$name" "$observed"
-        _UCC_CHANGED=$(( _UCC_CHANGED + 1 ))
-        _ucc_record "{$(_ucc_meta),\"target\":\"$(_ucc_jstr "$name")\",\"result\":{\"observation\":\"ok\",\"outcome\":\"changed\",\"completion\":\"complete\",\"proof\":\"update_applied\",\"observed_before\":\"$(_ucc_jstr "$observed")\",\"observed_after\":\"$(_ucc_jstr "$desired")\"}}"
+        local verified ver_exit
+        verified=$($observe_fn 2>/dev/null)
+        ver_exit=$?
+        if [[ $ver_exit -eq 0 ]] && _ucc_satisfied "$verified" "$desired"; then
+          printf '  %-46s  updated  "%s" → "%s"\n' "$name" "$observed" "$verified"
+          _UCC_CHANGED=$(( _UCC_CHANGED + 1 ))
+          duration_ms=$(_ucc_duration_ms "$started_at")
+          _ucc_record_result "$msg_id" "$duration_ms" \
+            "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$verified"),\"observed_after\":$(_ucc_state_obj "$verified")}" \
+            "{\"observation\":\"ok\",\"outcome\":\"changed\",\"completion\":\"complete\",\"proof\":{\"change\":\"update_applied\"}}"
+        else
+          printf '  %-46s  FAILED — verify after update: "%s"\n' "$name" "${verified:-?}"
+          _UCC_FAILED=$(( _UCC_FAILED + 1 ))
+          duration_ms=$(_ucc_duration_ms "$started_at")
+          if [[ $ver_exit -eq 0 && -n "$verified" ]]; then
+            _ucc_record_result "$msg_id" "$duration_ms" \
+              "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$verified"),\"observed_after\":$(_ucc_state_obj "$verified")}" \
+              "{\"observation\":\"ok\",\"outcome\":\"failed\",\"failure_class\":\"retryable\",\"message\":\"post-update verify did not reach desired state\"}"
+          else
+            _ucc_record_result "$msg_id" "$duration_ms" \
+              "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":{}}" \
+              "{\"observation\":\"ok\",\"outcome\":\"failed\",\"failure_class\":\"retryable\",\"message\":\"post-update verify did not reach desired state\"}"
+          fi
+        fi
       else
         printf '  %-46s  FAILED — update error  state="%s"\n' "$name" "$observed"
         _UCC_FAILED=$(( _UCC_FAILED + 1 ))
-        _ucc_record "{$(_ucc_meta),\"target\":\"$(_ucc_jstr "$name")\",\"result\":{\"observation\":\"ok\",\"outcome\":\"failed\",\"failure_class\":\"retryable\",\"message\":\"update function failed\",\"observed_before\":\"$(_ucc_jstr "$observed")\"}}"
+        duration_ms=$(_ucc_duration_ms "$started_at")
+        _ucc_record_result "$msg_id" "$duration_ms" \
+          "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":{}}" \
+          "{\"observation\":\"ok\",\"outcome\":\"failed\",\"failure_class\":\"retryable\",\"message\":\"update function failed\"}"
       fi
     else
       # Already at desired state
       printf '  %-46s  ok  state="%s"\n' "$name" "$observed"
       _UCC_CONVERGED=$(( _UCC_CONVERGED + 1 ))
-      _ucc_record "{$(_ucc_meta),\"target\":\"$(_ucc_jstr "$name")\",\"result\":{\"observation\":\"ok\",\"outcome\":\"converged\",\"observed_before\":\"$(_ucc_jstr "$observed")\"}}"
+      duration_ms=$(_ucc_duration_ms "$started_at")
+      _ucc_record_result "$msg_id" "$duration_ms" \
+        "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":{}}" \
+        "{\"observation\":\"ok\",\"outcome\":\"converged\"}"
     fi
     return 0
   fi
@@ -235,13 +327,19 @@ ucc_target() {
   # Step 4: Apply transition
   if [[ "$UCC_DRY_RUN" == "1" ]]; then
     printf '  %-46s  dry-run  "%s" → "%s"\n' "$name" "$observed" "$desired"
-    _ucc_record "{$(_ucc_meta),\"target\":\"$(_ucc_jstr "$name")\",\"result\":{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"dry_run\",\"message\":\"transition not applied due to dry-run mode\",\"observed_before\":\"$(_ucc_jstr "$observed")\"}}"
+    duration_ms=$(_ucc_duration_ms "$started_at")
+    _ucc_record_result "$msg_id" "$duration_ms" \
+      "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$desired")}" \
+      "{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"dry_run\",\"message\":\"transition not applied due to dry-run mode\"}"
     return 0
   fi
 
   if [[ -z "$install_fn" ]]; then
     printf '  %-46s  no-install (policy)  "%s" → "%s"\n' "$name" "$observed" "$desired"
-    _ucc_record "{$(_ucc_meta),\"target\":\"$(_ucc_jstr "$name")\",\"result\":{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"policy\",\"message\":\"transition not applied — no install function declared\",\"observed_before\":\"$(_ucc_jstr "$observed")\"}}"
+    duration_ms=$(_ucc_duration_ms "$started_at")
+    _ucc_record_result "$msg_id" "$duration_ms" \
+      "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$desired")}" \
+      "{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"policy\",\"message\":\"transition not applied - no install function declared\"}"
     return 0
   fi
 
@@ -263,16 +361,31 @@ ucc_target() {
     if [[ $ver_exit -eq 0 ]] && _ucc_satisfied "$verified" "$desired"; then
       printf '  %-46s  %s  "%s" → "%s"\n' "$name" "$action_label" "$observed" "$verified"
       _UCC_CHANGED=$(( _UCC_CHANGED + 1 ))
-      _ucc_record "{$(_ucc_meta),\"target\":\"$(_ucc_jstr "$name")\",\"result\":{\"observation\":\"ok\",\"outcome\":\"changed\",\"completion\":\"complete\",\"proof\":\"verify_pass\",\"observed_before\":\"$(_ucc_jstr "$observed")\",\"observed_after\":\"$(_ucc_jstr "$verified")\"}}"
+      duration_ms=$(_ucc_duration_ms "$started_at")
+      _ucc_record_result "$msg_id" "$duration_ms" \
+        "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$verified"),\"observed_after\":$(_ucc_state_obj "$verified")}" \
+        "{\"observation\":\"ok\",\"outcome\":\"changed\",\"completion\":\"complete\",\"proof\":{\"change\":\"verify_pass\"}}"
     else
       printf '  %-46s  FAILED — verify after install: "%s"\n' "$name" "${verified:-?}"
       _UCC_FAILED=$(( _UCC_FAILED + 1 ))
-      _ucc_record "{$(_ucc_meta),\"target\":\"$(_ucc_jstr "$name")\",\"result\":{\"observation\":\"ok\",\"outcome\":\"failed\",\"failure_class\":\"retryable\",\"message\":\"post-install verify did not reach desired state\",\"observed_before\":\"$(_ucc_jstr "$observed")\",\"observed_after\":\"$(_ucc_jstr "${verified:-}")\"}}"
+      duration_ms=$(_ucc_duration_ms "$started_at")
+      if [[ $ver_exit -eq 0 && -n "$verified" ]]; then
+        _ucc_record_result "$msg_id" "$duration_ms" \
+          "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$verified"),\"observed_after\":$(_ucc_state_obj "$verified")}" \
+          "{\"observation\":\"ok\",\"outcome\":\"failed\",\"failure_class\":\"retryable\",\"message\":\"post-install verify did not reach desired state\"}"
+      else
+        _ucc_record_result "$msg_id" "$duration_ms" \
+          "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$desired")}" \
+          "{\"observation\":\"ok\",\"outcome\":\"failed\",\"failure_class\":\"retryable\",\"message\":\"post-install verify did not reach desired state\"}"
+      fi
     fi
   else
     printf '  %-46s  FAILED — install error  was="%s"\n' "$name" "$observed"
     _UCC_FAILED=$(( _UCC_FAILED + 1 ))
-    _ucc_record "{$(_ucc_meta),\"target\":\"$(_ucc_jstr "$name")\",\"result\":{\"observation\":\"ok\",\"outcome\":\"failed\",\"failure_class\":\"retryable\",\"message\":\"install function failed\",\"observed_before\":\"$(_ucc_jstr "$observed")\"}}"
+    duration_ms=$(_ucc_duration_ms "$started_at")
+    _ucc_record_result "$msg_id" "$duration_ms" \
+      "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$desired")}" \
+      "{\"observation\":\"ok\",\"outcome\":\"failed\",\"failure_class\":\"retryable\",\"message\":\"install function failed\"}"
   fi
 }
 

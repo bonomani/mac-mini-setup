@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Component: TIC verification suite
-# BGS suite — bgs/SUITE.md §4.6 (TIC)
+# BGS suite — TIC verification layer
 #
 # BISS: Axis A = GIC (read-only observation — no convergence side-effects)
 #       Axis B = Basic

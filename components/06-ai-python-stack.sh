@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Component: AI Python Stack (PyTorch MPS + LLM frameworks)
-# BGS: UCC + Basic  (bgs/SUITE.md §4.5 + §4.3) — bash 3.2 compatible (no declare -A)
+# BGS: UCC + Basic — bash 3.2 compatible (no declare -A)
 #
 # BISS: Axis A = UCC (state convergence — pip packages installed + launchd service loaded)
 #       Axis B = Basic

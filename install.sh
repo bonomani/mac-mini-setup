@@ -5,9 +5,9 @@
 # ============================================================
 #
 #  BGS Suite compliance — Boundary Governance Suite
-#  Adoption profile: D — Governed and verified execution
-#    BISS classification → UIC preflight → UCC convergence → TIC verification
-#  See: bgs/SUITE.md, bgs/SUITE-MAP.md
+#  BGS slice: BGS-Governed-Verified
+#    BISS classification -> UIC preflight -> UCC convergence -> TIC verification
+#  See: ./BGS.md and ./docs/bgs-decision.md
 #
 #  BISS (Boundary Interaction Semantic Standard)
 #  -----------------------------------------------
@@ -47,11 +47,11 @@
 #    - respect UCC_MODE (install | update) and UCC_DRY_RUN
 #  Component 10-verify runs TIC tests after all UCC components complete.
 #
-#  Immutable framework version refs (BGS-COMPLIANCE.md CR-7)
-#    BGS : bgs@c31f200
-#    UCC : ucc@1505204
-#    UIC : uic@a997340
-#    TIC : tic@5f125a3
+#  Immutable framework version refs (BGS decision record)
+#    BGS : bgs@c478e96
+#    UCC : ucc@da74277
+#    UIC : uic@11bd400
+#    TIC : tic@7cfba80
 # ============================================================
 set -euo pipefail
 
@@ -302,8 +302,9 @@ _refresh_brew_path() {
 }
 _refresh_brew_path
 
-# --- Structured result artifact (UCC/2.0 JSONL) -------------
-export UCC_RESULT_FILE="$HOME/.ai-stack/runs/${UCC_CORRELATION_ID}.jsonl"
+# --- Structured UCC artifacts (declaration + result JSONL) ---
+export UCC_DECLARATION_FILE="$HOME/.ai-stack/runs/${UCC_CORRELATION_ID}.declaration.jsonl"
+export UCC_RESULT_FILE="$HOME/.ai-stack/runs/${UCC_CORRELATION_ID}.result.jsonl"
 export UCC_SUMMARY_FILE="$HOME/.ai-stack/runs/${UCC_CORRELATION_ID}.summary"
 mkdir -p "$HOME/.ai-stack/runs"
 
@@ -384,7 +385,8 @@ echo "    Qdrant           → http://localhost:6333"
 echo "    aria2 RPC        → http://127.0.0.1:6800"
 echo "    ariaflow web UI  → http://127.0.0.1:8001"
 echo "  ──────────────────────────────────────────────────────"
-echo "  Result: $UCC_RESULT_FILE"
+echo "  Declarations: $UCC_DECLARATION_FILE"
+echo "  Results:      $UCC_RESULT_FILE"
 echo "========================================================"
 echo ""
 
