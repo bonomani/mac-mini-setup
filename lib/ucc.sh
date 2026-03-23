@@ -530,10 +530,22 @@ ucc_target() {
 }
 
 ucc_target_nonruntime() {
-  ucc_target \
-    --axes "$UCC_ASM_NONRUNTIME_AXES" \
-    --desired "$(ucc_asm_nonruntime_desired)" \
-    "$@"
+  local desired="" args=()
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --desired)
+        desired="$2"
+        args+=("$1" "$2")
+        shift 2
+        ;;
+      *)
+        args+=("$1")
+        shift
+        ;;
+    esac
+  done
+  [[ -z "$desired" ]] && args+=(--desired "$(ucc_asm_nonruntime_desired)")
+  ucc_target --axes "$UCC_ASM_NONRUNTIME_AXES" "${args[@]}"
 }
 
 # ============================================================
