@@ -178,11 +178,16 @@ def component_profile(manifest, component):
     return meta.get("primary_profile") or "configured"
 
 
+def component_order(manifest):
+    return list(manifest["components"].keys())
+
+
 def main():
     args = sys.argv[1:]
     deps_mode = False
     soft_deps_mode = False
     component_profile_mode = False
+    components_mode = False
     target_name = None
     if len(args) >= 2 and args[0] == "--deps":
         deps_mode = True
@@ -196,6 +201,9 @@ def main():
         component_profile_mode = True
         target_name = args[1]
         args = args[2:]
+    elif len(args) >= 1 and args[0] == "--components":
+        components_mode = True
+        args = args[1:]
 
     path = Path(args[0]) if args else Path("targets")
     try:
@@ -222,6 +230,11 @@ def main():
 
     if component_profile_mode:
         print(component_profile(manifest, target_name))
+        return 0
+
+    if components_mode:
+        for component in component_order(manifest):
+            print(component)
         return 0
 
     print(f"OK: {len(manifest['targets'])} orchestration targets validated")

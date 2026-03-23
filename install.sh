@@ -76,18 +76,23 @@ _gate_docker_settings() { [[ -f "$HOME/Library/Group Containers/group.com.docker
 _gate_ollama_api()      { curl -fsS http://127.0.0.1:11434/api/tags >/dev/null 2>&1; }
 _gate_sudo()            { sudo -n true 2>/dev/null; }
 
-COMPONENTS=(
-  "01-homebrew"
-  "02-git"
-  "03-docker"
-  "04-python"
-  "05-ollama"
-  "06-ai-python-stack"
-  "07-ai-apps"
-  "08-dev-tools"
-  "09-macos-defaults"
-  "10-verify"
-)
+_load_components() {
+  local manifest_dir="$DIR/targets"
+  local query_script="$DIR/tools/validate_targets_manifest.py"
+  local components=()
+  if [[ -d "$manifest_dir" && -x "$(command -v python3)" && -f "$query_script" ]]; then
+    while IFS= read -r component; do
+      [[ -n "$component" ]] && components+=("$component")
+    done < <(python3 "$query_script" --components "$manifest_dir" 2>/dev/null || true)
+  fi
+  components+=("10-verify")
+  printf '%s\n' "${components[@]}"
+}
+
+COMPONENTS=()
+while IFS= read -r _component; do
+  [[ -n "$_component" ]] && COMPONENTS+=("$_component")
+done < <(_load_components)
 
 usage() {
   cat <<EOF
