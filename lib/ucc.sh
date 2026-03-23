@@ -328,9 +328,106 @@ ucc_asm_service_state() {
   esac
 }
 
-UCC_ASM_PRESENCE_AXES="installation_state"
-UCC_ASM_CONFIGURED_AXES="installation_state,health_state,dependency_state"
-UCC_ASM_RUNTIME_AXES="installation_state,runtime_state,health_state,dependency_state"
+_UCC_PROFILE_IDS=()
+_UCC_PROFILE_LABELS=()
+_UCC_PROFILE_ALIASES=()
+_UCC_PROFILE_AXES=()
+_UCC_PROFILE_EXPECTED_TEXT=()
+_UCC_PROFILE_INSTALLATION=()
+_UCC_PROFILE_RUNTIME=()
+_UCC_PROFILE_HEALTH=()
+_UCC_PROFILE_ADMIN=()
+_UCC_PROFILE_DEPENDENCIES=()
+
+_ucc_load_profiles() {
+  local profile_file="" line="" current_id="" current_label="" current_aliases="" current_axes="" current_expected="" current_installation="" current_runtime="" current_health="" current_admin="" current_dependencies=""
+  profile_file="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/policy/profiles.yaml"
+  [[ -f "$profile_file" ]] || return 0
+
+  while IFS= read -r line; do
+    case "$line" in
+      "  - id: "*)
+        if [[ -n "$current_id" ]]; then
+          _UCC_PROFILE_IDS+=("$current_id")
+          _UCC_PROFILE_LABELS+=("$current_label")
+          _UCC_PROFILE_ALIASES+=("$current_aliases")
+          _UCC_PROFILE_AXES+=("$current_axes")
+          _UCC_PROFILE_EXPECTED_TEXT+=("$current_expected")
+          _UCC_PROFILE_INSTALLATION+=("$current_installation")
+          _UCC_PROFILE_RUNTIME+=("$current_runtime")
+          _UCC_PROFILE_HEALTH+=("$current_health")
+          _UCC_PROFILE_ADMIN+=("$current_admin")
+          _UCC_PROFILE_DEPENDENCIES+=("$current_dependencies")
+        fi
+        current_id="${line#  - id: }"
+        current_label=""
+        current_aliases=""
+        current_axes=""
+        current_expected=""
+        current_installation=""
+        current_runtime=""
+        current_health=""
+        current_admin=""
+        current_dependencies=""
+        ;;
+      "    label: "*)
+        current_label="${line#    label: }"
+        ;;
+      "    aliases: "*)
+        current_aliases="${line#    aliases: }"
+        ;;
+      "    axes: "*)
+        current_axes="${line#    axes: }"
+        ;;
+      "    expected_text: "*)
+        current_expected="${line#    expected_text: }"
+        ;;
+      "    installation: "*)
+        current_installation="${line#    installation: }"
+        ;;
+      "    runtime: "*)
+        current_runtime="${line#    runtime: }"
+        ;;
+      "    health: "*)
+        current_health="${line#    health: }"
+        ;;
+      "    admin: "*)
+        current_admin="${line#    admin: }"
+        ;;
+      "    dependencies: "*)
+        current_dependencies="${line#    dependencies: }"
+        ;;
+    esac
+  done < "$profile_file"
+
+  if [[ -n "$current_id" ]]; then
+    _UCC_PROFILE_IDS+=("$current_id")
+    _UCC_PROFILE_LABELS+=("$current_label")
+    _UCC_PROFILE_ALIASES+=("$current_aliases")
+    _UCC_PROFILE_AXES+=("$current_axes")
+    _UCC_PROFILE_EXPECTED_TEXT+=("$current_expected")
+    _UCC_PROFILE_INSTALLATION+=("$current_installation")
+    _UCC_PROFILE_RUNTIME+=("$current_runtime")
+    _UCC_PROFILE_HEALTH+=("$current_health")
+    _UCC_PROFILE_ADMIN+=("$current_admin")
+    _UCC_PROFILE_DEPENDENCIES+=("$current_dependencies")
+  fi
+}
+
+_ucc_load_profiles
+
+_ucc_profile_index() {
+  local profile="$1" i aliases alias
+  for i in "${!_UCC_PROFILE_IDS[@]}"; do
+    [[ "${_UCC_PROFILE_IDS[$i]}" == "$profile" ]] && { printf '%s' "$i"; return 0; }
+    aliases="${_UCC_PROFILE_ALIASES[$i]}"
+    IFS='|' read -r -a _ucc_alias_list <<< "$aliases"
+    for alias in "${_ucc_alias_list[@]}"; do
+      [[ -n "$alias" && "$alias" == "$profile" ]] && { printf '%s' "$i"; return 0; }
+    done
+  done
+  printf ''
+}
 
 ucc_asm_presence_desired() {
   ucc_asm_state \
@@ -360,68 +457,38 @@ ucc_asm_runtime_desired() {
 }
 
 _ucc_profile_axes() {
-  case "$1" in
-    presence|package)
-      printf '%s' "$UCC_ASM_PRESENCE_AXES"
-      ;;
-    configured|config|precondition|nonruntime)
-      printf '%s' "$UCC_ASM_CONFIGURED_AXES"
-      ;;
-    runtime|service)
-      printf '%s' "$UCC_ASM_RUNTIME_AXES"
-      ;;
-    *)
-      printf ''
-      ;;
-  esac
+  local idx
+  idx="$(_ucc_profile_index "$1")"
+  [[ -n "$idx" ]] && printf '%s' "${_UCC_PROFILE_AXES[$idx]}" || printf ''
 }
 
 _ucc_profile_desired() {
-  case "$1" in
-    presence|package)
-      ucc_asm_presence_desired
-      ;;
-    configured|config|precondition|nonruntime)
-      ucc_asm_configured_desired
-      ;;
-    runtime|service)
-      ucc_asm_runtime_desired
-      ;;
-    *)
-      printf ''
-      ;;
-  esac
+  local idx
+  idx="$(_ucc_profile_index "$1")"
+  [[ -n "$idx" ]] || { printf ''; return 0; }
+  ucc_asm_state \
+    --installation "${_UCC_PROFILE_INSTALLATION[$idx]}" \
+    --runtime "${_UCC_PROFILE_RUNTIME[$idx]}" \
+    --health "${_UCC_PROFILE_HEALTH[$idx]}" \
+    --admin "${_UCC_PROFILE_ADMIN[$idx]}" \
+    --dependencies "${_UCC_PROFILE_DEPENDENCIES[$idx]}"
 }
 
 ucc_profile_label() {
-  case "$1" in
-    presence|package) printf 'Presence' ;;
-    configured|config|precondition|nonruntime|"") printf 'Configured' ;;
-    runtime|service) printf 'Runtime' ;;
-    verification) printf 'Verification' ;;
-    *) printf 'Configured' ;;
-  esac
+  local idx
+  idx="$(_ucc_profile_index "${1:-configured}")"
+  [[ -n "$idx" ]] && printf '%s' "${_UCC_PROFILE_LABELS[$idx]}" || printf 'Configured'
 }
 
 ucc_profile_expected_text() {
-  case "$1" in
-    presence|package)
-      printf 'installation=Configured'
-      ;;
-    configured|config|precondition|nonruntime)
-      printf 'installation=Configured health=Healthy dependencies=DepsReady'
-      ;;
-    runtime|service)
-      printf 'installation=Configured runtime=Running health=Healthy dependencies=DepsReady'
-      ;;
-    verification)
-      printf ''
-      ;;
-    *)
-      printf ''
-      ;;
-  esac
+  local idx
+  idx="$(_ucc_profile_index "$1")"
+  [[ -n "$idx" ]] && printf '%s' "${_UCC_PROFILE_EXPECTED_TEXT[$idx]}" || printf ''
 }
+
+UCC_ASM_PRESENCE_AXES="$(_ucc_profile_axes presence)"
+UCC_ASM_CONFIGURED_AXES="$(_ucc_profile_axes configured)"
+UCC_ASM_RUNTIME_AXES="$(_ucc_profile_axes runtime)"
 
 ucc_component_profile() {
   local component="$1" profile=""

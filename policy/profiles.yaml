@@ -1,0 +1,36 @@
+profiles:
+  - id: presence
+    label: Presence
+    aliases: package
+    axes: installation_state
+    expected_text: installation=Configured
+    installation: Configured
+    runtime: Stopped
+    health: Healthy
+    admin: Enabled
+    dependencies: DepsReady
+  - id: configured
+    label: Configured
+    aliases: config|precondition|nonruntime
+    axes: installation_state,health_state,dependency_state
+    expected_text: installation=Configured health=Healthy dependencies=DepsReady
+    installation: Configured
+    runtime: Stopped
+    health: Healthy
+    admin: Enabled
+    dependencies: DepsReady
+  - id: runtime
+    label: Runtime
+    aliases: service
+    axes: installation_state,runtime_state,health_state,dependency_state
+    expected_text: installation=Configured runtime=Running health=Healthy dependencies=DepsReady
+    installation: Configured
+    runtime: Running
+    health: Healthy
+    admin: Enabled
+    dependencies: DepsReady
+  - id: verification
+    label: Verification
+    aliases:
+    axes:
+    expected_text:
