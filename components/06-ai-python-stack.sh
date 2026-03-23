@@ -183,7 +183,7 @@ ucc_target_service \
 # Verify Metal/MPS availability
 if [[ "$UCC_DRY_RUN" != "1" ]] && is_installed python3; then
   _mps=$(python3 -c "import torch; print('available' if torch.backends.mps.is_available() else 'not available (CPU only)')" 2>/dev/null || true)
-  [[ -n "$_mps" ]] && log_info "MPS (Metal) GPU: $_mps"
+  [[ -n "$_mps" ]] && ucc_profile_note runtime "MPS (Metal) GPU: $_mps"
 fi
 
 ucc_summary "06-ai-python-stack"

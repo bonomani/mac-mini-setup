@@ -342,12 +342,6 @@ _profile_bump() {
   esac
 }
 
-_print_component_header() {
-  local component="$1" profile
-  profile="$(ucc_component_profile "$component")"
-  printf '\n── %s [%s]\n' "$component" "$(ucc_profile_label "$profile")"
-}
-
 _print_profile_contracts() {
   local profile expected
   for profile in presence configured runtime; do
@@ -388,7 +382,26 @@ export UCC_DECLARATION_FILE="$HOME/.ai-stack/runs/${UCC_CORRELATION_ID}.declarat
 export UCC_RESULT_FILE="$HOME/.ai-stack/runs/${UCC_CORRELATION_ID}.result.jsonl"
 export UCC_SUMMARY_FILE="$HOME/.ai-stack/runs/${UCC_CORRELATION_ID}.summary"
 export UCC_PROFILE_SUMMARY_FILE="$HOME/.ai-stack/runs/${UCC_CORRELATION_ID}.profile-summary"
+export UCC_PROFILE_REPORT_DIR="$HOME/.ai-stack/runs/${UCC_CORRELATION_ID}.profiles"
+export UCC_VERIFICATION_REPORT_FILE="$HOME/.ai-stack/runs/${UCC_CORRELATION_ID}.verification.report"
 mkdir -p "$HOME/.ai-stack/runs"
+mkdir -p "$UCC_PROFILE_REPORT_DIR"
+
+_print_profile_section() {
+  local profile="$1" path=""
+  path="$UCC_PROFILE_REPORT_DIR/${profile}.report"
+  [[ -s "$path" ]] || return 0
+  echo ""
+  printf '── %s\n' "$(ucc_profile_label "$profile")"
+  cat "$path"
+}
+
+_print_verification_section() {
+  [[ -s "$UCC_VERIFICATION_REPORT_FILE" ]] || return 0
+  echo ""
+  printf '── %s\n' "$(ucc_profile_label verification)"
+  cat "$UCC_VERIFICATION_REPORT_FILE"
+}
 
 # --- Run components -----------------------------------------
 FAILED_COMPONENTS=()
@@ -407,9 +420,14 @@ for comp in "${TO_RUN[@]}"; do
     continue
   fi
 
-  _print_component_header "$comp"
-
-  if ! bash \
+  if [[ "$comp" == "10-verify" ]]; then
+    if ! bash \
+        -c "source \"$DIR/lib/ucc.sh\"; source \"$DIR/lib/uic.sh\"; source \"$DIR/lib/utils.sh\"; source \"$SCRIPT\"" \
+        -- "$SCRIPT" > "$UCC_VERIFICATION_REPORT_FILE"; then
+      log_warn "Component failed: $comp"
+      FAILED_COMPONENTS+=("$comp")
+    fi
+  elif ! bash \
       -c "source \"$DIR/lib/ucc.sh\"; source \"$DIR/lib/uic.sh\"; source \"$DIR/lib/utils.sh\"; source \"$SCRIPT\"" \
       -- "$SCRIPT"; then
     log_warn "Component failed: $comp"
@@ -418,6 +436,11 @@ for comp in "${TO_RUN[@]}"; do
   # Refresh brew PATH in case it was just installed by this component
   _refresh_brew_path
 done
+
+_print_profile_section presence
+_print_profile_section configured
+_print_profile_section runtime
+_print_verification_section
 
 # --- Final summary ------------------------------------------
 echo ""
