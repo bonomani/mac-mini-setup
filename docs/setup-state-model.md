@@ -178,6 +178,7 @@ Host-level interpretation:
 This model is evidenced by:
 - this state-model document
 - the concrete state artifact in `./setup-state-artifact.yaml`
+- the executable validator in `../tools/validate_setup_state_artifact.py`
 - UIC gate and preference logic in `../install.sh` and `../lib/uic.sh`
 - UCC declaration/result artifacts emitted by `../lib/ucc.sh`
 - TIC verification oracles in `../components/10-verify.sh`

@@ -23,6 +23,7 @@ overlays_used:
 
 member_version_refs:
   asm: asm@5ca20bd
+  # BISS is hosted in the UCC repo and is pinned through the same ref.
   ucc: ucc@da74277
   uic: uic@11bd400
   tic: tic@7cfba80
@@ -52,6 +53,7 @@ evidence_refs:
   - ./biss-classification.md     # explicit BISS boundary inventory for this scope
   - ./setup-state-model.md       # ASM-aligned setup state model
   - ./setup-state-artifact.yaml  # concrete state artifact
+  - ../tools/validate_setup_state_artifact.py  # executable ASM artifact validator
   - ./evidence/ollama-service.declaration.json
   - ./evidence/ollama-service.result.json
   - ../install.sh                # UIC gates + preferences + orchestration
