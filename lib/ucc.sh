@@ -251,6 +251,43 @@ ucc_asm_nonruntime_desired() {
     --dependencies DepsReady
 }
 
+ucc_asm_service_desired() {
+  ucc_asm_state \
+    --installation Configured \
+    --runtime Running \
+    --health Healthy \
+    --admin Enabled \
+    --dependencies DepsReady
+}
+
+_ucc_kind_axes() {
+  case "$1" in
+    package|config|precondition|nonruntime)
+      printf '%s' "$UCC_ASM_NONRUNTIME_AXES"
+      ;;
+    service)
+      printf ''
+      ;;
+    *)
+      printf ''
+      ;;
+  esac
+}
+
+_ucc_kind_desired() {
+  case "$1" in
+    package|config|precondition|nonruntime)
+      ucc_asm_nonruntime_desired
+      ;;
+    service)
+      ucc_asm_service_desired
+      ;;
+    *)
+      printf ''
+      ;;
+  esac
+}
+
 _ucc_meta_in() {
   local id="$1" ts="$2"
   printf '"meta":{"contract":"ucc","version":"2.0","id":"%s","timestamp":"%s","scope":"operation"}' \
@@ -311,8 +348,8 @@ ucc_brew_target() {
   eval "_ubt_obs_${fn}() { local raw; raw=\$(brew_observe '${pkg}'); ucc_asm_package_state \"\$raw\"; }"
   eval "_ubt_ins_${fn}() { brew_install  '${pkg}'; }"
   eval "_ubt_upd_${fn}() { brew_upgrade  '${pkg}'; }"
-  ucc_target_nonruntime --name "$tname" --observe "_ubt_obs_${fn}" \
-                        --install "_ubt_ins_${fn}" --update "_ubt_upd_${fn}"
+  ucc_target --kind package --name "$tname" --observe "_ubt_obs_${fn}" \
+             --install "_ubt_ins_${fn}" --update "_ubt_upd_${fn}"
 }
 
 # ucc_brew_cask_target <target-name> <cask-pkg>
@@ -323,8 +360,8 @@ ucc_brew_cask_target() {
   eval "_ubct_obs_${fn}() { local raw; raw=\$(brew_cask_observe '${pkg}'); ucc_asm_package_state \"\$raw\"; }"
   eval "_ubct_ins_${fn}() { brew_cask_install '${pkg}'; }"
   eval "_ubct_upd_${fn}() { brew_cask_upgrade '${pkg}'; }"
-  ucc_target_nonruntime --name "$tname" --observe "_ubct_obs_${fn}" \
-                        --install "_ubct_ins_${fn}" --update "_ubct_upd_${fn}"
+  ucc_target --kind package --name "$tname" --observe "_ubct_obs_${fn}" \
+             --install "_ubct_ins_${fn}" --update "_ubct_upd_${fn}"
 }
 
 # ucc_npm_target <npm-pkg>
@@ -335,15 +372,15 @@ ucc_npm_target() {
   eval "_unt_obs_${fn}() { local raw; raw=\$(npm ls -g '${pkg}' --depth=0 --json 2>/dev/null | python3 -c \"import sys,json; d=json.load(sys.stdin); deps=d.get('dependencies',{}); k=next(iter(deps),''); print(deps[k].get('version','present') if k else 'absent')\" 2>/dev/null || echo 'absent'); ucc_asm_package_state \"\$raw\"; }"
   eval "_unt_ins_${fn}() { ucc_run npm install -g '${pkg}'; }"
   eval "_unt_upd_${fn}() { ucc_run npm update  -g '${pkg}'; }"
-  ucc_target_nonruntime --name "npm-global-${pkg}" --observe "_unt_obs_${fn}" \
-                        --install "_unt_ins_${fn}" --update "_unt_upd_${fn}"
+  ucc_target --kind package --name "npm-global-${pkg}" --observe "_unt_obs_${fn}" \
+             --install "_unt_ins_${fn}" --update "_unt_upd_${fn}"
 }
 
 # ============================================================
 #  ucc_target — full UCC Steps 0-6 lifecycle per target
 # ============================================================
 ucc_target() {
-  local name="" observe_fn="" desired="" install_fn="" update_fn="" axes=""
+  local name="" observe_fn="" desired="" install_fn="" update_fn="" axes="" kind=""
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -353,9 +390,13 @@ ucc_target() {
       --install) install_fn="$2"; shift 2 ;;
       --update)  update_fn="$2";  shift 2 ;;
       --axes)    axes="$2";       shift 2 ;;
+      --kind)    kind="$2";       shift 2 ;;
       *) shift ;;
     esac
   done
+
+  [[ -z "$axes" && -n "$kind" ]] && axes="$(_ucc_kind_axes "$kind")"
+  [[ -z "$desired" && -n "$kind" ]] && desired="$(_ucc_kind_desired "$kind")"
 
   local started_at declaration_ts mode target_id msg_id duration_ms
   started_at=$(date +%s 2>/dev/null || echo 0)
@@ -544,8 +585,8 @@ ucc_target_nonruntime() {
         ;;
     esac
   done
-  [[ -z "$desired" ]] && args+=(--desired "$(ucc_asm_nonruntime_desired)")
-  ucc_target --axes "$UCC_ASM_NONRUNTIME_AXES" "${args[@]}"
+  [[ -z "$desired" ]] && args+=(--kind nonruntime)
+  ucc_target "${args[@]}"
 }
 
 # ============================================================
