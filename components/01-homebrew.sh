@@ -10,7 +10,9 @@
 
 # --- Step 0: Precondition — Xcode Command Line Tools --------
 _observe_xcode_clt() {
-  xcode-select -p >/dev/null 2>&1 && echo "installed" || echo "absent"
+  xcode-select -p >/dev/null 2>&1 \
+    && (pkgutil --pkg-info=com.apple.pkg.CLTools_Executables 2>/dev/null | awk '/^version:/ {print $2}') \
+    || echo "absent"
 }
 
 _install_xcode_clt() {
@@ -23,7 +25,7 @@ _install_xcode_clt() {
 ucc_target \
   --name    "xcode-command-line-tools" \
   --observe _observe_xcode_clt \
-  --desired "installed" \
+  --desired "@present" \
   --install _install_xcode_clt
 
 # Abort if CLT just got triggered (install_fn returned 1)
@@ -31,7 +33,7 @@ xcode-select -p >/dev/null 2>&1 || { ucc_summary "01-homebrew"; exit 1; }
 
 # --- Homebrew -----------------------------------------------
 _observe_brew() {
-  is_installed brew && echo "installed" || echo "absent"
+  is_installed brew && brew --version 2>/dev/null | awk 'NR==1 {print $2}' || echo "absent"
 }
 
 _install_brew() {
@@ -62,7 +64,7 @@ _update_brew() {
 ucc_target \
   --name    "homebrew" \
   --observe _observe_brew \
-  --desired "installed" \
+  --desired "@present" \
   --install _install_brew \
   --update  _update_brew
 

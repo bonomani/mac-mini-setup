@@ -12,14 +12,14 @@ _pip_group() {
   local name="$1" first="$2" pkgs="$3"
   local fn="${name//[^a-zA-Z0-9]/_}"
 
-  eval "_observe_grp_${fn}() { pip_is_installed '${first}' && echo 'current' || echo 'absent'; }"
+  eval "_observe_grp_${fn}() { pip_is_installed '${first}' && pip show '${first}' 2>/dev/null | awk '/^Version:/ {print \$2}' || echo 'absent'; }"
   eval "_install_grp_${fn}() { ucc_run pip install -q ${pkgs}; }"
   eval "_update_grp_${fn}()  { ucc_run pip install -q --upgrade ${pkgs}; }"
 
   ucc_target \
     --name    "pip-group-$name" \
     --observe "_observe_grp_${fn}" \
-    --desired "current" \
+    --desired "@present" \
     --install "_install_grp_${fn}" \
     --update  "_update_grp_${fn}"
 }
@@ -41,7 +41,7 @@ if importlib.util.find_spec('langchain_core') is None: sys.exit(1)
 import langchain_core
 from packaging.version import Version
 sys.exit(0 if Version(langchain_core.__version__) >= Version('1.0.0') else 1)
-" 2>/dev/null && echo "current" || echo "absent"
+" 2>/dev/null && python3 -c "import langchain_core; print(langchain_core.__version__)" 2>/dev/null || echo "absent"
 }
 _install_grp_langchain() {
   ucc_run pip install -q "langchain-core>=1.0.0" langchain langchain-community langchain-ollama langgraph
@@ -52,7 +52,7 @@ _update_grp_langchain() {
 ucc_target \
   --name    "pip-group-langchain" \
   --observe _observe_grp_langchain \
-  --desired "current" \
+  --desired "@present" \
   --install _install_grp_langchain \
   --update  _update_grp_langchain
 
@@ -96,7 +96,7 @@ _pip_group "optimum" \
 
 # --- Unsloth Studio setup (downloads frontend, creates venv) ---
 _observe_unsloth_studio_setup() {
-  [[ -d "$HOME/.unsloth/studio" ]] && echo "done" || echo "absent"
+  [[ -d "$HOME/.unsloth/studio" ]] && echo "present" || echo "absent"
 }
 _run_unsloth_studio_setup() {
   ucc_run unsloth studio setup
@@ -105,7 +105,7 @@ _run_unsloth_studio_setup() {
 ucc_target \
   --name    "unsloth-studio-setup" \
   --observe _observe_unsloth_studio_setup \
-  --desired "done" \
+  --desired "@present" \
   --install _run_unsloth_studio_setup \
   --update  _run_unsloth_studio_setup
 

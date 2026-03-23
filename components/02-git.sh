@@ -7,7 +7,7 @@
 # Boundary: local filesystem · brew (git binary)
 
 _observe_git() {
-  is_installed git && echo "installed" || echo "absent"
+  is_installed git && git --version 2>/dev/null | awk '{print $3}' || echo "absent"
 }
 
 _install_git() { brew_install git; }
@@ -16,7 +16,7 @@ _update_git()  { brew_upgrade  git; }
 ucc_target \
   --name    "git" \
   --observe _observe_git \
-  --desired "installed" \
+  --desired "@present" \
   --install _install_git \
   --update  _update_git
 

@@ -65,23 +65,25 @@ _brew_refresh_if_stale() {
 }
 
 brew_observe() {
-  local pkg="$1"
+  local pkg="$1" ver
   brew_is_installed "$pkg" || { echo "absent"; return; }
   if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-always-upgrade}" == "always-upgrade" ]]; then
     _brew_refresh_if_stale
     _brew_is_outdated "$pkg" && { echo "outdated"; return; }
   fi
-  echo "current"
+  ver=$(brew list --versions "$pkg" 2>/dev/null | awk '{print $NF}')
+  echo "${ver:-present}"
 }
 
 brew_cask_observe() {
-  local pkg="$1"
+  local pkg="$1" ver
   brew_cask_is_installed "$pkg" || { echo "absent"; return; }
   if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-always-upgrade}" == "always-upgrade" ]]; then
     _brew_refresh_if_stale
     _brew_cask_is_outdated "$pkg" && { echo "outdated"; return; }
   fi
-  echo "current"
+  ver=$(brew list --cask --versions "$pkg" 2>/dev/null | awk '{print $NF}')
+  echo "${ver:-present}"
 }
 
 # ============================================================
@@ -125,7 +127,7 @@ ucc_brew_target() {
   eval "_ubt_obs_${fn}() { brew_observe '${pkg}'; }"
   eval "_ubt_ins_${fn}() { brew_install  '${pkg}'; }"
   eval "_ubt_upd_${fn}() { brew_upgrade  '${pkg}'; }"
-  ucc_target --name "$tname" --observe "_ubt_obs_${fn}" --desired "current" \
+  ucc_target --name "$tname" --observe "_ubt_obs_${fn}" --desired "@present" \
              --install "_ubt_ins_${fn}" --update "_ubt_upd_${fn}"
 }
 
@@ -137,7 +139,7 @@ ucc_brew_cask_target() {
   eval "_ubct_obs_${fn}() { brew_cask_observe '${pkg}'; }"
   eval "_ubct_ins_${fn}() { brew_cask_install '${pkg}'; }"
   eval "_ubct_upd_${fn}() { brew_cask_upgrade '${pkg}'; }"
-  ucc_target --name "$tname" --observe "_ubct_obs_${fn}" --desired "current" \
+  ucc_target --name "$tname" --observe "_ubct_obs_${fn}" --desired "@present" \
              --install "_ubct_ins_${fn}" --update "_ubct_upd_${fn}"
 }
 
@@ -146,10 +148,10 @@ ucc_brew_cask_target() {
 ucc_npm_target() {
   local pkg="$1"
   local fn; fn="${pkg//[@\/]/_}"
-  eval "_unt_obs_${fn}() { npm ls -g '${pkg}' --depth=0 &>/dev/null 2>&1 && echo 'current' || echo 'absent'; }"
+  eval "_unt_obs_${fn}() { npm ls -g '${pkg}' --depth=0 --json 2>/dev/null | python3 -c \"import sys,json; d=json.load(sys.stdin); deps=d.get('dependencies',{}); k=next(iter(deps),''); print(deps[k].get('version','present') if k else 'absent')\" 2>/dev/null || echo 'absent'; }"
   eval "_unt_ins_${fn}() { ucc_run npm install -g '${pkg}'; }"
   eval "_unt_upd_${fn}() { ucc_run npm update  -g '${pkg}'; }"
-  ucc_target --name "npm-global-${pkg}" --observe "_unt_obs_${fn}" --desired "current" \
+  ucc_target --name "npm-global-${pkg}" --observe "_unt_obs_${fn}" --desired "@present" \
              --install "_unt_ins_${fn}" --update "_unt_upd_${fn}"
 }
 
@@ -193,8 +195,17 @@ ucc_target() {
 
   log_debug "observed=\"$observed\" desired=\"$desired\" mode=$UCC_MODE"
 
+  # Helper: is observed state satisfying desired?
+  # @present wildcard: any value other than "absent" or "outdated" counts as present
+  _ucc_satisfied() {
+    local obs="$1" des="$2"
+    [[ "$obs" == "$des" ]] && return 0
+    [[ "$des" == "@present" && "$obs" != "absent" && "$obs" != "outdated" ]] && return 0
+    return 1
+  }
+
   # Step 3 – Diff: is observed state == desired?
-  if [[ "$observed" == "$desired" ]]; then
+  if _ucc_satisfied "$observed" "$desired"; then
 
     if [[ "$UCC_MODE" == "update" && -n "$update_fn" ]]; then
       # Update mode: run upgrade even when state already matches
@@ -234,15 +245,23 @@ ucc_target() {
     return 0
   fi
 
-  if $install_fn; then
+  # Route outdated → update_fn (upgrade), absent → install_fn (fresh install)
+  local action_fn="$install_fn"
+  local action_label="installed"
+  if [[ "$observed" == "outdated" && -n "$update_fn" ]]; then
+    action_fn="$update_fn"
+    action_label="upgraded"
+  fi
+
+  if $action_fn; then
     _BREW_OUTDATED_STALE=1  # invalidate cache so verify sees post-upgrade state
     # Step 5 – Verify: re-observe after transition
     local verified ver_exit
     verified=$($observe_fn 2>/dev/null)
     ver_exit=$?
     log_debug "post-install observed=\"$verified\""
-    if [[ $ver_exit -eq 0 && "$verified" == "$desired" ]]; then
-      printf '  %-46s  installed  "%s" → "%s"\n' "$name" "$observed" "$verified"
+    if [[ $ver_exit -eq 0 ]] && _ucc_satisfied "$verified" "$desired"; then
+      printf '  %-46s  %s  "%s" → "%s"\n' "$name" "$action_label" "$observed" "$verified"
       _UCC_CHANGED=$(( _UCC_CHANGED + 1 ))
       _ucc_record "{$(_ucc_meta),\"target\":\"$(_ucc_jstr "$name")\",\"result\":{\"observation\":\"ok\",\"outcome\":\"changed\",\"completion\":\"complete\",\"proof\":\"verify_pass\",\"observed_before\":\"$(_ucc_jstr "$observed")\",\"observed_after\":\"$(_ucc_jstr "$verified")\"}}"
     else

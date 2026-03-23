@@ -9,13 +9,7 @@
 # UIC preference: python-version (safe default = 3.12.3)
 PYTHON_VERSION="${UIC_PREF_PYTHON_VERSION:-3.12.3}"
 
-_observe_pyenv() {
-  is_installed pyenv || { echo "absent"; return; }
-  if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-always-upgrade}" == "always-upgrade" ]]; then
-    _brew_is_outdated pyenv && { echo "outdated"; return; }
-  fi
-  echo "current"
-}
+_observe_pyenv() { brew_observe pyenv; }
 
 _install_pyenv() {
   brew_install pyenv pyenv-virtualenv
@@ -35,7 +29,7 @@ _update_pyenv() { brew_upgrade pyenv pyenv-virtualenv; }
 ucc_target \
   --name    "pyenv" \
   --observe _observe_pyenv \
-  --desired "current" \
+  --desired "@present" \
   --install _install_pyenv \
   --update  _update_pyenv
 
@@ -81,7 +75,7 @@ ucc_target \
 
 # --- pip up-to-date -----------------------------------------
 _observe_pip() {
-  is_installed pip && echo "present" || echo "absent"
+  is_installed pip && pip --version 2>/dev/null | awk '{print $2}' || echo "absent"
 }
 
 _upgrade_pip() {
@@ -91,7 +85,7 @@ _upgrade_pip() {
 ucc_target \
   --name    "pip-latest" \
   --observe _observe_pip \
-  --desired "present" \
+  --desired "@present" \
   --install _upgrade_pip \
   --update  _upgrade_pip
 

@@ -15,9 +15,11 @@ done
 
 # --- VSCode -------------------------------------------------
 _observe_vscode() {
-  # Manual install (/Applications) counts as current — can't upgrade via brew
-  if [[ -d "/Applications/Visual Studio Code.app" ]]; then
-    echo "current"; return
+  # Manual install (/Applications) counts as present — can't upgrade via brew
+  if [[ -d "/Applications/Visual Studio Code.app" ]] && ! brew_cask_is_installed visual-studio-code; then
+    defaults read "/Applications/Visual Studio Code.app/Contents/Info" CFBundleShortVersionString 2>/dev/null \
+      || echo "present"
+    return
   fi
   brew_cask_observe visual-studio-code
 }
@@ -27,13 +29,13 @@ _update_vscode()  { brew_cask_upgrade visual-studio-code; }
 ucc_target \
   --name    "vscode" \
   --observe _observe_vscode \
-  --desired "current" \
+  --desired "@present" \
   --install _install_vscode \
   --update  _update_vscode
 
 # Ensure 'code' CLI is available in PATH
 _observe_code_cmd() {
-  is_installed code && echo "present" || echo "absent"
+  is_installed code && code --version 2>/dev/null | awk 'NR==1 {print $1}' || echo "absent"
 }
 _fix_code_symlink() {
   local vscode_bin="/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code"
@@ -51,7 +53,7 @@ _fix_code_symlink() {
 ucc_target \
   --name    "vscode-code-cmd" \
   --observe _observe_code_cmd \
-  --desired "present" \
+  --desired "@present" \
   --install _fix_code_symlink
 
 # --- VSCode extensions --------------------------------------
@@ -70,14 +72,14 @@ if is_installed code; then
   for ext in "${VSCODE_EXTENSIONS[@]}"; do
     _ext_id="${ext//./-}"
     eval "_observe_ext_${_ext_id//-/_}() {
-      code --list-extensions 2>/dev/null | grep -qi '^${ext}$' && echo 'installed' || echo 'absent'
+      code --list-extensions --show-versions 2>/dev/null | grep -i '^${ext}@' | awk -F@ '{print \$2}' | head -1 || echo 'absent'
     }"
     eval "_install_ext_${_ext_id//-/_}() { ucc_run code --install-extension '${ext}' --force; }"
 
     ucc_target \
       --name    "vscode-ext-$ext" \
       --observe "_observe_ext_${_ext_id//-/_}" \
-      --desired "installed" \
+      --desired "@present" \
       --install "_install_ext_${_ext_id//-/_}" \
       --update  "_install_ext_${_ext_id//-/_}"
   done
@@ -127,11 +129,13 @@ ucc_brew_cask_target "lm-studio" "lm-studio"
 # --- Node.js 24 LTS -----------------------------------------
 # node@24 required by Unsloth Studio; also compatible with Claude Code, Codex, BMAD
 _observe_node24() {
-  node --version 2>/dev/null | grep -q '^v24\.' || { echo "absent"; return; }
+  local ver
+  ver=$(node --version 2>/dev/null)
+  [[ "$ver" == v24.* ]] || { echo "absent"; return; }
   if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-always-upgrade}" == "always-upgrade" ]]; then
     _brew_is_outdated "node@24" && { echo "outdated"; return; }
   fi
-  echo "current"
+  echo "${ver#v}"
 }
 _install_node24() {
   brew unlink node@20 2>/dev/null || true
@@ -144,7 +148,7 @@ _update_node24() {
 ucc_target \
   --name    "node-24-lts" \
   --observe _observe_node24 \
-  --desired "current" \
+  --desired "@present" \
   --install _install_node24 \
   --update  _update_node24
 
@@ -266,7 +270,7 @@ _observe_ariaflow() {
   if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-always-upgrade}" == "always-upgrade" ]]; then
     _brew_is_outdated ariaflow && { echo "outdated"; return; }
   fi
-  echo "current"
+  brew list --versions ariaflow 2>/dev/null | awk '{print $NF}'
 }
 _install_ariaflow() {
   ucc_run brew tap bonomani/ariaflow
@@ -284,7 +288,7 @@ _update_ariaflow() {
 ucc_target \
   --name    "ariaflow" \
   --observe _observe_ariaflow \
-  --desired "current" \
+  --desired "@present" \
   --install _install_ariaflow \
   --update  _update_ariaflow
 

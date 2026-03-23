@@ -48,7 +48,7 @@ ucc_target \
 
 # --- Ollama binary ------------------------------------------
 _observe_ollama() {
-  is_installed ollama && echo "installed" || echo "absent"
+  is_installed ollama && ollama --version 2>/dev/null | awk '{print $NF}' || echo "absent"
 }
 
 _install_ollama() {
@@ -64,7 +64,7 @@ _update_ollama() {
 ucc_target \
   --name    "ollama" \
   --observe _observe_ollama \
-  --desired "installed" \
+  --desired "@present" \
   --install _install_ollama \
   --update  _update_ollama
 
