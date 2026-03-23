@@ -12,14 +12,14 @@ _pip_group() {
   local name="$1" first="$2" pkgs="$3"
   local fn="${name//[^a-zA-Z0-9]/_}"
 
-  eval "_observe_grp_${fn}() { pip_is_installed '${first}' && pip show '${first}' 2>/dev/null | awk '/^Version:/ {print \$2}' || echo 'absent'; }"
+  eval "_observe_grp_${fn}() { local raw; raw=\$(pip_is_installed '${first}' && pip show '${first}' 2>/dev/null | awk '/^Version:/ {print \$2}' || echo 'absent'); ucc_asm_package_state \"\$raw\"; }"
   eval "_install_grp_${fn}() { ucc_run pip install -q ${pkgs}; }"
   eval "_update_grp_${fn}()  { ucc_run pip install -q --upgrade ${pkgs}; }"
 
   ucc_target \
     --name    "pip-group-$name" \
     --observe "_observe_grp_${fn}" \
-    --desired "@present" \
+    --desired "$(ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady)" \
     --install "_install_grp_${fn}" \
     --update  "_update_grp_${fn}"
 }
@@ -35,13 +35,15 @@ _pip_group "huggingface" \
 # langchain-core must be >=1.0.0 for langgraph + langchain-ollama compatibility.
 # Custom observe checks version — forces upgrade if still on 0.x.
 _observe_grp_langchain() {
-  python3 -c "
+  local raw
+  raw=$(python3 -c "
 import importlib.util, sys
 if importlib.util.find_spec('langchain_core') is None: sys.exit(1)
 import langchain_core
 from packaging.version import Version
 sys.exit(0 if Version(langchain_core.__version__) >= Version('1.0.0') else 1)
-" 2>/dev/null && python3 -c "import langchain_core; print(langchain_core.__version__)" 2>/dev/null || echo "absent"
+" 2>/dev/null && python3 -c "import langchain_core; print(langchain_core.__version__)" 2>/dev/null || echo "absent")
+  ucc_asm_package_state "$raw"
 }
 _install_grp_langchain() {
   ucc_run pip install -q "langchain-core>=1.0.0" langchain langchain-community langchain-ollama langgraph
@@ -52,7 +54,7 @@ _update_grp_langchain() {
 ucc_target \
   --name    "pip-group-langchain" \
   --observe _observe_grp_langchain \
-  --desired "@present" \
+  --desired "$(ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady)" \
   --install _install_grp_langchain \
   --update  _update_grp_langchain
 
@@ -96,7 +98,9 @@ _pip_group "optimum" \
 
 # --- Unsloth Studio setup (downloads frontend, creates venv) ---
 _observe_unsloth_studio_setup() {
-  [[ -d "$HOME/.unsloth/studio" ]] && echo "present" || echo "absent"
+  local raw
+  raw=$([[ -d "$HOME/.unsloth/studio" ]] && echo "present" || echo "absent")
+  ucc_asm_package_state "$raw"
 }
 _run_unsloth_studio_setup() {
   ucc_run unsloth studio setup
@@ -105,7 +109,7 @@ _run_unsloth_studio_setup() {
 ucc_target \
   --name    "unsloth-studio-setup" \
   --observe _observe_unsloth_studio_setup \
-  --desired "@present" \
+  --desired "$(ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady)" \
   --install _run_unsloth_studio_setup \
   --update  _run_unsloth_studio_setup
 
@@ -118,9 +122,10 @@ UNSLOTH_BIN="$(pyenv which unsloth 2>/dev/null || command -v unsloth)"
 UNSLOTH_PLIST_MARKER="<!-- ai.unsloth.studio v2 -->"
 
 _observe_unsloth_studio_launchd() {
-  launchctl list 2>/dev/null | grep -q "ai.unsloth.studio" || { echo "absent"; return; }
-  grep -qF "$UNSLOTH_PLIST_MARKER" "$UNSLOTH_PLIST" 2>/dev/null || { echo "outdated"; return; }
-  echo "loaded"
+  local raw
+  launchctl list 2>/dev/null | grep -q "ai.unsloth.studio" || { ucc_asm_service_state "absent"; return; }
+  grep -qF "$UNSLOTH_PLIST_MARKER" "$UNSLOTH_PLIST" 2>/dev/null || { ucc_asm_service_state "outdated"; return; }
+  ucc_asm_service_state "loaded"
 }
 
 _install_unsloth_studio_launchd() {
@@ -158,7 +163,7 @@ _update_unsloth_studio_launchd() {
 ucc_target \
   --name    "unsloth-studio-launchd" \
   --observe _observe_unsloth_studio_launchd \
-  --desired "loaded" \
+  --desired "$(ucc_asm_state --installation Configured --runtime Running --health Healthy --admin Enabled --dependencies DepsReady)" \
   --install _install_unsloth_studio_launchd \
   --update  _update_unsloth_studio_launchd
 

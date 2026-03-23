@@ -10,9 +10,11 @@
 
 # --- Step 0: Precondition — Xcode Command Line Tools --------
 _observe_xcode_clt() {
-  xcode-select -p >/dev/null 2>&1 \
+  local raw
+  raw=$(xcode-select -p >/dev/null 2>&1 \
     && (pkgutil --pkg-info=com.apple.pkg.CLTools_Executables 2>/dev/null | awk '/^version:/ {print $2}') \
-    || echo "absent"
+    || echo "absent")
+  ucc_asm_package_state "$raw"
 }
 
 _install_xcode_clt() {
@@ -25,7 +27,7 @@ _install_xcode_clt() {
 ucc_target \
   --name    "xcode-command-line-tools" \
   --observe _observe_xcode_clt \
-  --desired "@present" \
+  --desired "$(ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady)" \
   --install _install_xcode_clt
 
 # Abort if CLT just got triggered (install_fn returned 1)
@@ -33,7 +35,9 @@ xcode-select -p >/dev/null 2>&1 || { ucc_summary "01-homebrew"; exit 1; }
 
 # --- Homebrew -----------------------------------------------
 _observe_brew() {
-  is_installed brew && brew --version 2>/dev/null | awk 'NR==1 {print $2}' || echo "absent"
+  local raw
+  raw=$(is_installed brew && brew --version 2>/dev/null | awk 'NR==1 {print $2}' || echo "absent")
+  ucc_asm_package_state "$raw"
 }
 
 _install_brew() {
@@ -64,7 +68,7 @@ _update_brew() {
 ucc_target \
   --name    "homebrew" \
   --observe _observe_brew \
-  --desired "@present" \
+  --desired "$(ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady)" \
   --install _install_brew \
   --update  _update_brew
 
@@ -82,7 +86,9 @@ fi
 
 # --- Disable analytics (observable state → ucc_target) -----
 _observe_brew_analytics() {
-  brew analytics state 2>/dev/null | grep -qi "disabled" && echo "off" || echo "on"
+  local raw
+  raw=$(brew analytics state 2>/dev/null | grep -qi "disabled" && echo "off" || echo "on")
+  ucc_asm_config_state "$raw"
 }
 _disable_brew_analytics() { ucc_run brew analytics off; }
 
@@ -90,7 +96,7 @@ if is_installed brew; then
   ucc_target \
     --name    "brew-analytics=off" \
     --observe _observe_brew_analytics \
-    --desired "off" \
+    --desired "$(ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady)" \
     --install _disable_brew_analytics \
     --update  _disable_brew_analytics
 fi

@@ -30,7 +30,11 @@ MODELS_LARGE=(
 
 # --- Step 0: Precondition — macOS 14+ (via ucc_target) ------
 _observe_macos_prereq() {
-  [[ "$MACOS_MAJOR" -ge 14 ]] && echo "supported" || echo "unsupported"
+  if [[ "$MACOS_MAJOR" -ge 14 ]]; then
+    ucc_asm_config_state "supported"
+  else
+    ucc_asm_config_state "absent"
+  fi
 }
 _fail_macos_prereq() {
   log_warn "Ollama requires macOS 14 (Sonoma) or later — current: macOS $MACOS_MAJOR"
@@ -40,7 +44,7 @@ _fail_macos_prereq() {
 ucc_target \
   --name    "macos-14-precondition" \
   --observe _observe_macos_prereq \
-  --desired "supported" \
+  --desired "$(ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady)" \
   --install _fail_macos_prereq
 
 # Abort if precondition not met
@@ -48,7 +52,9 @@ ucc_target \
 
 # --- Ollama binary ------------------------------------------
 _observe_ollama() {
-  is_installed ollama && ollama --version 2>/dev/null | awk '{print $NF}' || echo "absent"
+  local raw
+  raw=$(is_installed ollama && ollama --version 2>/dev/null | awk '{print $NF}' || echo "absent")
+  ucc_asm_package_state "$raw"
 }
 
 _install_ollama() {
@@ -64,7 +70,7 @@ _update_ollama() {
 ucc_target \
   --name    "ollama" \
   --observe _observe_ollama \
-  --desired "@present" \
+  --desired "$(ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady)" \
   --install _install_ollama \
   --update  _update_ollama
 
@@ -133,12 +139,12 @@ _ollama_pull_set() {
   for model in "${models[@]}"; do
     _name="ollama-model-${model//:/-}"
     _fn="${_name//[^a-zA-Z0-9_]/_}"
-    eval "_observe_${_fn}() { ollama_model_present '${model}' && echo 'present' || echo 'absent'; }"
+    eval "_observe_${_fn}() { local raw; raw=\$(ollama_model_present '${model}' && echo 'present' || echo 'absent'); ucc_asm_package_state \"\$raw\"; }"
     eval "_pull_${_fn}()    { log_info 'Pulling model: ${model}'; ucc_run ollama pull '${model}'; }"
     ucc_target \
       --name    "$_name" \
       --observe "_observe_${_fn}" \
-      --desired "present" \
+      --desired "$(ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady)" \
       --install "_pull_${_fn}" \
       --update  "_pull_${_fn}"
   done

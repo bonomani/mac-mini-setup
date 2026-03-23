@@ -7,7 +7,9 @@
 # Boundary: local filesystem · brew (git binary)
 
 _observe_git() {
-  is_installed git && git --version 2>/dev/null | awk '{print $3}' || echo "absent"
+  local raw
+  raw=$(is_installed git && git --version 2>/dev/null | awk '{print $3}' || echo "absent")
+  ucc_asm_package_state "$raw"
 }
 
 _install_git() { brew_install git; }
@@ -16,13 +18,15 @@ _update_git()  { brew_upgrade  git; }
 ucc_target \
   --name    "git" \
   --observe _observe_git \
-  --desired "@present" \
+  --desired "$(ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady)" \
   --install _install_git \
   --update  _update_git
 
 # --- Git global config (interactive, skipped in dry-run) ----
 _observe_git_user() {
-  git config --global user.name &>/dev/null && echo "configured" || echo "absent"
+  local raw
+  raw=$(git config --global user.name &>/dev/null && echo "configured" || echo "absent")
+  ucc_asm_config_state "$raw"
 }
 
 _configure_git() {
@@ -47,7 +51,7 @@ if [[ "$UCC_DRY_RUN" != "1" ]]; then
   ucc_target \
     --name    "git-global-config" \
     --observe _observe_git_user \
-    --desired "configured" \
+    --desired "$(ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady)" \
     --install _configure_git
 fi
 

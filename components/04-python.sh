@@ -9,7 +9,11 @@
 # UIC preference: python-version (safe default = 3.12.3)
 PYTHON_VERSION="${UIC_PREF_PYTHON_VERSION:-3.12.3}"
 
-_observe_pyenv() { brew_observe pyenv; }
+_observe_pyenv() {
+  local raw
+  raw=$(brew_observe pyenv)
+  ucc_asm_package_state "$raw"
+}
 
 _install_pyenv() {
   brew_install pyenv pyenv-virtualenv
@@ -29,19 +33,23 @@ _update_pyenv() { brew_upgrade pyenv pyenv-virtualenv; }
 ucc_target \
   --name    "pyenv" \
   --observe _observe_pyenv \
-  --desired "@present" \
+  --desired "$(ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady)" \
   --install _install_pyenv \
   --update  _update_pyenv
 
 # --- xz (required to avoid lzma warning when building Python) --
-_observe_xz() { brew_observe xz; }
+_observe_xz() {
+  local raw
+  raw=$(brew_observe xz)
+  ucc_asm_package_state "$raw"
+}
 _install_xz()  { brew_install xz; }
 _update_xz()   { brew_upgrade  xz; }
 
 ucc_target \
   --name    "xz" \
   --observe _observe_xz \
-  --desired "current" \
+  --desired "$(ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady)" \
   --install _install_xz \
   --update  _update_xz
 
@@ -52,7 +60,9 @@ eval "$(pyenv init -)" 2>/dev/null || true
 
 # --- Python version -----------------------------------------
 _observe_python_version() {
-  pyenv versions 2>/dev/null | grep -q "$PYTHON_VERSION" && echo "$PYTHON_VERSION" || echo "absent"
+  local raw
+  raw=$(pyenv versions 2>/dev/null | grep -q "$PYTHON_VERSION" && echo "$PYTHON_VERSION" || echo "absent")
+  ucc_asm_package_state "$raw"
 }
 
 _install_python_version() {
@@ -69,13 +79,15 @@ _update_python_version() {
 ucc_target \
   --name    "python-$PYTHON_VERSION" \
   --observe _observe_python_version \
-  --desired "$PYTHON_VERSION" \
+  --desired "$(ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady)" \
   --install _install_python_version \
   --update  _update_python_version
 
 # --- pip up-to-date -----------------------------------------
 _observe_pip() {
-  is_installed pip && pip --version 2>/dev/null | awk '{print $2}' || echo "absent"
+  local raw
+  raw=$(is_installed pip && pip --version 2>/dev/null | awk '{print $2}' || echo "absent")
+  ucc_asm_package_state "$raw"
 }
 
 _upgrade_pip() {
@@ -85,7 +97,7 @@ _upgrade_pip() {
 ucc_target \
   --name    "pip-latest" \
   --observe _observe_pip \
-  --desired "@present" \
+  --desired "$(ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady)" \
   --install _upgrade_pip \
   --update  _upgrade_pip
 

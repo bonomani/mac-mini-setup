@@ -188,6 +188,51 @@ ucc_asm_state() {
     "$(_ucc_jstr "$dependency")"
 }
 
+ucc_asm_package_state() {
+  case "$1" in
+    absent)
+      ucc_asm_state --installation Absent --runtime NeverStarted --health Unknown --admin Enabled --dependencies DepsUnknown
+      ;;
+    outdated)
+      ucc_asm_state --installation Installed --runtime Stopped --health Degraded --admin Enabled --dependencies DepsReady
+      ;;
+    *)
+      ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady
+      ;;
+  esac
+}
+
+ucc_asm_config_state() {
+  case "$1" in
+    absent|unset)
+      ucc_asm_state --installation Installed --runtime NeverStarted --health Unknown --admin Enabled --dependencies DepsUnknown
+      ;;
+    needs-update|outdated)
+      ucc_asm_state --installation Installed --runtime Stopped --health Degraded --admin Enabled --dependencies DepsReady
+      ;;
+    *)
+      ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady
+      ;;
+  esac
+}
+
+ucc_asm_service_state() {
+  case "$1" in
+    absent|stopped)
+      ucc_asm_state --installation Configured --runtime Stopped --health Unavailable --admin Enabled --dependencies DepsReady
+      ;;
+    outdated)
+      ucc_asm_state --installation Configured --runtime Running --health Degraded --admin Enabled --dependencies DepsReady
+      ;;
+    loaded|started|running)
+      ucc_asm_state --installation Configured --runtime Running --health Healthy --admin Enabled --dependencies DepsReady
+      ;;
+    *)
+      ucc_asm_state --installation Configured --runtime Running --health Healthy --admin Enabled --dependencies DepsReady
+      ;;
+  esac
+}
+
 _ucc_meta_in() {
   local id="$1" ts="$2"
   printf '"meta":{"contract":"ucc","version":"2.0","id":"%s","timestamp":"%s","scope":"operation"}' \
@@ -245,10 +290,11 @@ ucc_run() {
 ucc_brew_target() {
   local tname="$1" pkg="$2"
   local fn; fn="${pkg//[^a-zA-Z0-9]/_}"
-  eval "_ubt_obs_${fn}() { brew_observe '${pkg}'; }"
+  eval "_ubt_obs_${fn}() { local raw; raw=\$(brew_observe '${pkg}'); ucc_asm_package_state \"\$raw\"; }"
   eval "_ubt_ins_${fn}() { brew_install  '${pkg}'; }"
   eval "_ubt_upd_${fn}() { brew_upgrade  '${pkg}'; }"
-  ucc_target --name "$tname" --observe "_ubt_obs_${fn}" --desired "@present" \
+  ucc_target --name "$tname" --observe "_ubt_obs_${fn}" \
+             --desired "$(ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady)" \
              --install "_ubt_ins_${fn}" --update "_ubt_upd_${fn}"
 }
 
@@ -257,10 +303,11 @@ ucc_brew_target() {
 ucc_brew_cask_target() {
   local tname="$1" pkg="$2"
   local fn; fn="${pkg//[^a-zA-Z0-9]/_}"
-  eval "_ubct_obs_${fn}() { brew_cask_observe '${pkg}'; }"
+  eval "_ubct_obs_${fn}() { local raw; raw=\$(brew_cask_observe '${pkg}'); ucc_asm_package_state \"\$raw\"; }"
   eval "_ubct_ins_${fn}() { brew_cask_install '${pkg}'; }"
   eval "_ubct_upd_${fn}() { brew_cask_upgrade '${pkg}'; }"
-  ucc_target --name "$tname" --observe "_ubct_obs_${fn}" --desired "@present" \
+  ucc_target --name "$tname" --observe "_ubct_obs_${fn}" \
+             --desired "$(ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady)" \
              --install "_ubct_ins_${fn}" --update "_ubct_upd_${fn}"
 }
 
@@ -269,10 +316,11 @@ ucc_brew_cask_target() {
 ucc_npm_target() {
   local pkg="$1"
   local fn; fn="${pkg//[@\/]/_}"
-  eval "_unt_obs_${fn}() { npm ls -g '${pkg}' --depth=0 --json 2>/dev/null | python3 -c \"import sys,json; d=json.load(sys.stdin); deps=d.get('dependencies',{}); k=next(iter(deps),''); print(deps[k].get('version','present') if k else 'absent')\" 2>/dev/null || echo 'absent'; }"
+  eval "_unt_obs_${fn}() { local raw; raw=\$(npm ls -g '${pkg}' --depth=0 --json 2>/dev/null | python3 -c \"import sys,json; d=json.load(sys.stdin); deps=d.get('dependencies',{}); k=next(iter(deps),''); print(deps[k].get('version','present') if k else 'absent')\" 2>/dev/null || echo 'absent'); ucc_asm_package_state \"\$raw\"; }"
   eval "_unt_ins_${fn}() { ucc_run npm install -g '${pkg}'; }"
   eval "_unt_upd_${fn}() { ucc_run npm update  -g '${pkg}'; }"
-  ucc_target --name "npm-global-${pkg}" --observe "_unt_obs_${fn}" --desired "@present" \
+  ucc_target --name "npm-global-${pkg}" --observe "_unt_obs_${fn}" \
+             --desired "$(ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady)" \
              --install "_unt_ins_${fn}" --update "_unt_upd_${fn}"
 }
 

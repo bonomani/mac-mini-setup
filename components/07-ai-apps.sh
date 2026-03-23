@@ -68,8 +68,10 @@ STACK_SERVICES=5                 # open-webui, flowise, openhands, n8n, qdrant
 # Compose file — deploy from repo into ~/.ai-stack/
 # ============================================================
 _observe_compose_file() {
-  [[ -f "$COMPOSE_FILE" ]] && grep -q "$COMPOSE_MARKER" "$COMPOSE_FILE" \
-    && echo "present" || echo "absent"
+  local raw
+  raw=$([[ -f "$COMPOSE_FILE" ]] && grep -q "$COMPOSE_MARKER" "$COMPOSE_FILE" \
+    && echo "present" || echo "absent")
+  ucc_asm_config_state "$raw"
 }
 
 _write_compose_file() {
@@ -82,7 +84,8 @@ _write_compose_file() {
 }
 
 ucc_target --name "ai-stack-compose-file" \
-  --observe _observe_compose_file --desired "present" \
+  --observe _observe_compose_file \
+  --desired "$(ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady)" \
   --install _write_compose_file --update _write_compose_file
 
 # ============================================================
