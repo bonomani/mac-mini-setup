@@ -1,3 +1,5 @@
+component: 04-python
+primary_profile: configured
 targets:
   pyenv:
     component: 04-python

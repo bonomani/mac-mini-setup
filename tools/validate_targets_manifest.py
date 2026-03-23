@@ -14,16 +14,8 @@ KNOWN_GATES = {
     "sudo-available",
 }
 
-PROFILE_PRECEDENCE = {
-    "presence": 1,
-    "configured": 2,
-    "runtime": 3,
-    "verification": 4,
-}
-
-
 def parse_manifest_file(path: Path):
-    targets = {}
+    manifest = {"component": None, "primary_profile": None, "targets": {}}
     current = None
     current_list = None
     in_targets = False
@@ -37,17 +29,25 @@ def parse_manifest_file(path: Path):
         text = raw.strip()
 
         if indent == 0:
-            if text != "targets:":
-                raise ValueError(f"{path}:{lineno}: expected 'targets:'")
-            in_targets = True
-            continue
+            if text == "targets:":
+                in_targets = True
+                continue
+            if ":" in text:
+                key, value = text.split(":", 1)
+                key = key.strip()
+                value = value.strip()
+                if key not in {"component", "primary_profile"}:
+                    raise ValueError(f"{path}:{lineno}: unsupported top-level field '{key}'")
+                manifest[key] = value
+                continue
+            raise ValueError(f"{path}:{lineno}: unsupported top-level structure")
 
         if not in_targets:
             raise ValueError(f"{path}:{lineno}: content before 'targets:'")
 
         if indent == 2 and text.endswith(":"):
             current = text[:-1]
-            targets[current] = {}
+            manifest["targets"][current] = {}
             current_list = None
             continue
 
@@ -58,43 +58,55 @@ def parse_manifest_file(path: Path):
             key = text[:-1]
             if key not in {"depends_on", "soft_depends_on"}:
                 raise ValueError(f"{path}:{lineno}: unsupported list field '{key}'")
-            targets[current][key] = []
+            manifest["targets"][current][key] = []
             current_list = key
             continue
 
         if indent == 4 and ":" in text:
             key, value = text.split(":", 1)
-            targets[current][key.strip()] = value.strip()
+            manifest["targets"][current][key.strip()] = value.strip()
             current_list = None
             continue
 
         if indent == 6 and text.startswith("- "):
             if current_list is None:
                 raise ValueError(f"{path}:{lineno}: list item without active list")
-            targets[current][current_list].append(text[2:].strip())
+            manifest["targets"][current][current_list].append(text[2:].strip())
             continue
 
         raise ValueError(f"{path}:{lineno}: unsupported structure")
 
-    return targets
+    return manifest
 
 
 def parse_manifest(path: Path):
     if path.is_dir():
-        merged = {}
+        merged = {"targets": {}, "components": {}}
         files = sorted(path.glob("*.yaml"))
         if not files:
             raise ValueError(f"{path}: no *.yaml files found")
         for file in files:
-            for name, data in parse_manifest_file(file).items():
-                if name in merged:
+            manifest = parse_manifest_file(file)
+            component = manifest.get("component")
+            if component:
+                if component in merged["components"]:
+                    raise ValueError(f"{file}: duplicate component '{component}'")
+                merged["components"][component] = {
+                    "primary_profile": manifest.get("primary_profile", ""),
+                    "file": str(file),
+                }
+            for name, data in manifest["targets"].items():
+                if name in merged["targets"]:
                     raise ValueError(f"{file}: duplicate target '{name}'")
-                merged[name] = data
+                merged["targets"][name] = data
         return merged
-    return parse_manifest_file(path)
+    manifest = parse_manifest_file(path)
+    return {"targets": manifest["targets"], "components": {}}
 
 
-def validate(targets):
+def validate(manifest):
+    targets = manifest["targets"]
+    components = manifest["components"]
     errors = []
 
     for name, data in targets.items():
@@ -118,6 +130,24 @@ def validate(targets):
                     errors.append(f"target '{name}' soft_depends_on unknown gate '{gate}'")
             elif dep not in targets:
                 errors.append(f"target '{name}' soft_depends_on unknown target '{dep}'")
+
+    for component, meta in components.items():
+        primary_profile = meta.get("primary_profile")
+        if not primary_profile:
+            errors.append(f"component '{component}' missing primary_profile")
+        elif primary_profile not in KNOWN_PROFILES:
+            errors.append(f"component '{component}' has unknown primary_profile '{primary_profile}'")
+
+        component_targets = [name for name, data in targets.items() if data.get("component") == component]
+        if not component_targets:
+            errors.append(f"component '{component}' has no targets")
+
+    for name, data in targets.items():
+        component = data.get("component")
+        if component and component in components:
+            continue
+        if component and components:
+            errors.append(f"target '{name}' references undeclared component '{component}'")
 
     graph = defaultdict(list)
     indegree = {name: 0 for name in targets}
@@ -143,17 +173,9 @@ def validate(targets):
     return errors, ordered
 
 
-def component_profile(targets, component):
-    profiles = {
-        data.get("profile")
-        for data in targets.values()
-        if data.get("component") == component and data.get("profile")
-    }
-    if not profiles:
-        return "configured"
-    if profiles == {"verification"}:
-        return "verification"
-    return max(profiles, key=lambda profile: PROFILE_PRECEDENCE.get(profile, 0))
+def component_profile(manifest, component):
+    meta = manifest["components"].get(component, {})
+    return meta.get("primary_profile") or "configured"
 
 
 def main():
@@ -177,8 +199,8 @@ def main():
 
     path = Path(args[0]) if args else Path("targets")
     try:
-        targets = parse_manifest(path)
-        errors, ordered = validate(targets)
+        manifest = parse_manifest(path)
+        errors, ordered = validate(manifest)
     except Exception as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
@@ -189,20 +211,20 @@ def main():
         return 1
 
     if deps_mode:
-        for dep in targets.get(target_name, {}).get("depends_on", []):
+        for dep in manifest["targets"].get(target_name, {}).get("depends_on", []):
             print(dep)
         return 0
 
     if soft_deps_mode:
-        for dep in targets.get(target_name, {}).get("soft_depends_on", []):
+        for dep in manifest["targets"].get(target_name, {}).get("soft_depends_on", []):
             print(dep)
         return 0
 
     if component_profile_mode:
-        print(component_profile(targets, target_name))
+        print(component_profile(manifest, target_name))
         return 0
 
-    print(f"OK: {len(targets)} orchestration targets validated")
+    print(f"OK: {len(manifest['targets'])} orchestration targets validated")
     print("Topological order:")
     for name in ordered:
         print(f"  - {name}")

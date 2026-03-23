@@ -1,3 +1,5 @@
+component: 01-homebrew
+primary_profile: configured
 targets:
   xcode-command-line-tools:
     component: 01-homebrew

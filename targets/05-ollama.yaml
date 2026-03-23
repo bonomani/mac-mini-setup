@@ -1,3 +1,5 @@
+component: 05-ollama
+primary_profile: runtime
 targets:
   macos-14-precondition:
     component: 05-ollama

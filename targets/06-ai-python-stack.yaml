@@ -1,3 +1,5 @@
+component: 06-ai-python-stack
+primary_profile: runtime
 targets:
   unsloth-studio-setup:
     component: 06-ai-python-stack

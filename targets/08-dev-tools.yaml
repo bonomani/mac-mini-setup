@@ -1,3 +1,5 @@
+component: 08-dev-tools
+primary_profile: runtime
 targets:
   vscode:
     component: 08-dev-tools

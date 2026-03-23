@@ -1,3 +1,5 @@
+component: 09-macos-defaults
+primary_profile: configured
 targets:
   pmset-ac-sleep=0:
     component: 09-macos-defaults

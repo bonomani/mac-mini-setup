@@ -1,3 +1,5 @@
+component: 03-docker
+primary_profile: configured
 targets:
   docker-desktop:
     component: 03-docker

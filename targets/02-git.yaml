@@ -1,3 +1,5 @@
+component: 02-git
+primary_profile: configured
 targets:
   git:
     component: 02-git
