@@ -32,6 +32,7 @@ _UIC_GATE_CONDS=()
 _UIC_GATE_SCOPES=()
 _UIC_GATE_CLASSES=()
 _UIC_GATE_BLOCKS=()
+_UIC_GATE_TARGETS=()
 
 _UIC_PREF_NAMES=()
 _UIC_PREF_VALUES=()
@@ -67,16 +68,18 @@ _uic_file_val() {
 #    uic_gate --name <name> --condition <fn> \
 #             [--scope global|component:<name>|target:<name>] \
 #             [--class readiness|authorization|integrity] \
+#             [--target-state <asm-target-description>] \
 #             [--blocking hard|soft]
 # ============================================================
 uic_gate() {
-  local name="" cond="" scope="global" class="readiness" blocking="hard"
+  local name="" cond="" scope="global" class="readiness" blocking="hard" target_state=""
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --name)      name="$2";     shift 2 ;;
       --condition) cond="$2";     shift 2 ;;
       --scope)     scope="$2";    shift 2 ;;
       --class)     class="$2";    shift 2 ;;
+      --target-state) target_state="$2"; shift 2 ;;
       --blocking)  blocking="$2"; shift 2 ;;
       *) shift ;;
     esac
@@ -86,6 +89,7 @@ uic_gate() {
   _UIC_GATE_SCOPES+=("$scope")
   _UIC_GATE_CLASSES+=("$class")
   _UIC_GATE_BLOCKS+=("$blocking")
+  _UIC_GATE_TARGETS+=("$target_state")
 }
 
 # ============================================================
@@ -205,13 +209,16 @@ _uic_eval_gate() {
   local blocking="${_UIC_GATE_BLOCKS[$i]}"
   local class="${_UIC_GATE_CLASSES[$i]}"
   local scope="${_UIC_GATE_SCOPES[$i]}"
+  local target_state="${_UIC_GATE_TARGETS[$i]}"
 
   local scope_short="${scope/component:/}"
+  local target_suffix=""
+  [[ -n "$target_state" ]] && target_suffix=" target=${target_state}"
   if $cond 2>/dev/null; then
-    printf '[GATE]  %-36s ok    [%s/%s] →%s\n' "$name" "$blocking" "$class" "$scope_short"
+    printf '[GATE]  %-36s ok    [%s/%s] →%s%s\n' "$name" "$blocking" "$class" "$scope_short" "$target_suffix"
     return 0
   else
-    printf '[GATE]  %-36s WARN  [%s/%s] →%s\n' "$name" "$blocking" "$class" "$scope_short"
+    printf '[GATE]  %-36s WARN  [%s/%s] →%s%s\n' "$name" "$blocking" "$class" "$scope_short" "$target_suffix"
     if [[ "$blocking" == "hard" ]]; then
       log_warn "UIC hard gate '$name' failed — scope=$scope, failure_class=permanent"
     fi

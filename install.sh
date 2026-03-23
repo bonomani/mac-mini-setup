@@ -149,6 +149,7 @@ uic_gate \
   --condition _gate_macos \
   --scope     "global" \
   --class     "readiness" \
+  --target-state "host installation_state=Configured" \
   --blocking  "hard"
 
 uic_gate \
@@ -156,6 +157,7 @@ uic_gate \
   --condition _gate_arm64 \
   --scope     "global" \
   --class     "readiness" \
+  --target-state "host dependency_state=DepsReady" \
   --blocking  "soft"
 
 uic_gate \
@@ -163,6 +165,7 @@ uic_gate \
   --condition _gate_docker_daemon \
   --scope     "component:07-ai-apps" \
   --class     "readiness" \
+  --target-state "07-ai-apps runtime_state=Running dependency_state=DepsReady" \
   --blocking  "soft"
 
 uic_gate \
@@ -170,6 +173,7 @@ uic_gate \
   --condition _gate_docker_settings \
   --scope     "component:03-docker" \
   --class     "readiness" \
+  --target-state "03-docker installation_state=Configured dependency_state=DepsReady" \
   --blocking  "soft"
 
 uic_gate \
@@ -177,6 +181,7 @@ uic_gate \
   --condition _gate_ollama_api \
   --scope     "component:05-ollama" \
   --class     "readiness" \
+  --target-state "05-ollama runtime_state=Running dependency_state=DepsReady" \
   --blocking  "soft"
 
 uic_gate \
@@ -184,6 +189,7 @@ uic_gate \
   --condition _gate_sudo \
   --scope     "component:09-macos-defaults" \
   --class     "authorization" \
+  --target-state "09-macos-defaults admin_state=Enabled dependency_state=DepsReady" \
   --blocking  "soft"
 
 # --- Preferences (safe defaults = most conservative choice) -

@@ -10,7 +10,30 @@ COMPOSE_DIR="$HOME/.ai-stack"
 
 # --- Docker running -----------------------------------------
 _observe_docker_running() {
-  docker info &>/dev/null 2>&1 && echo "running" || echo "stopped"
+  if [[ -d "/Applications/Docker.app" ]] || command -v docker >/dev/null 2>&1; then
+    if docker info &>/dev/null 2>&1; then
+      ucc_asm_state \
+        --installation Configured \
+        --runtime Running \
+        --health Healthy \
+        --admin Enabled \
+        --dependencies DepsReady
+    else
+      ucc_asm_state \
+        --installation Installed \
+        --runtime Stopped \
+        --health Unavailable \
+        --admin Enabled \
+        --dependencies DepsFailed
+    fi
+  else
+    ucc_asm_state \
+      --installation Absent \
+      --runtime NeverStarted \
+      --health Unavailable \
+      --admin Enabled \
+      --dependencies DepsUnknown
+  fi
 }
 _start_docker() {
   if [[ "${UIC_PREF_SERVICE_POLICY:-autostart}" != "autostart" ]]; then
@@ -31,7 +54,7 @@ _start_docker() {
 ucc_target \
   --name    "docker-running" \
   --observe _observe_docker_running \
-  --desired "running" \
+  --desired "$(ucc_asm_state --installation Configured --runtime Running --health Healthy --admin Enabled --dependencies DepsReady)" \
   --install _start_docker
 
 # Abort component if Docker still not running after attempting to start
@@ -66,15 +89,44 @@ ucc_target --name "ai-stack-compose-file" \
 # Stack running
 # ============================================================
 _observe_stack() {
-  [[ -f "$COMPOSE_FILE" ]] || { echo "stopped"; return; }
+  [[ -f "$COMPOSE_FILE" ]] || {
+    ucc_asm_state \
+      --installation Absent \
+      --runtime Stopped \
+      --health Unavailable \
+      --admin Enabled \
+      --dependencies DepsFailed
+    return
+  }
   # Check each service by name via docker inspect — avoids fragile wc -l
   # and does not depend on --status flag availability across compose versions
   local svc state
   for svc in open-webui flowise openhands n8n qdrant; do
-    state=$(docker inspect --format '{{.State.Status}}' "$svc" 2>/dev/null) || { echo "stopped"; return; }
-    [[ "$state" == "running" ]] || { echo "stopped"; return; }
+    state=$(docker inspect --format '{{.State.Status}}' "$svc" 2>/dev/null) || {
+      ucc_asm_state \
+        --installation Configured \
+        --runtime Stopped \
+        --health Unavailable \
+        --admin Enabled \
+        --dependencies DepsFailed
+      return
+    }
+    [[ "$state" == "running" ]] || {
+      ucc_asm_state \
+        --installation Configured \
+        --runtime Stopped \
+        --health Degraded \
+        --admin Enabled \
+        --dependencies DepsDegraded
+      return
+    }
   done
-  echo "running"
+  ucc_asm_state \
+    --installation Configured \
+    --runtime Running \
+    --health Healthy \
+    --admin Enabled \
+    --dependencies DepsReady
 }
 
 # Remove any legacy bare containers that would conflict with compose
@@ -100,7 +152,8 @@ _update_stack() {
 }
 
 ucc_target --name "ai-stack-running" \
-  --observe _observe_stack --desired "running" \
+  --observe _observe_stack \
+  --desired "$(ucc_asm_state --installation Configured --runtime Running --health Healthy --admin Enabled --dependencies DepsReady)" \
   --install _start_stack --update _update_stack
 
 ucc_summary "07-ai-apps"

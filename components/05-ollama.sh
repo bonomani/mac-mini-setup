@@ -70,7 +70,30 @@ ucc_target \
 
 # --- Ollama service -----------------------------------------
 _observe_ollama_service() {
-  curl -fsS http://127.0.0.1:11434/api/tags >/dev/null 2>&1 && echo "running" || echo "stopped"
+  if ! is_installed ollama; then
+    ucc_asm_state \
+      --installation Absent \
+      --runtime NeverStarted \
+      --health Unavailable \
+      --admin Enabled \
+      --dependencies DepsUnknown
+    return
+  fi
+  if curl -fsS http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
+    ucc_asm_state \
+      --installation Configured \
+      --runtime Running \
+      --health Healthy \
+      --admin Enabled \
+      --dependencies DepsReady
+  else
+    ucc_asm_state \
+      --installation Installed \
+      --runtime Stopped \
+      --health Unavailable \
+      --admin Enabled \
+      --dependencies DepsDegraded
+  fi
 }
 
 _start_ollama_service() {
@@ -86,7 +109,7 @@ _start_ollama_service() {
 ucc_target \
   --name    "ollama-service" \
   --observe _observe_ollama_service \
-  --desired "running" \
+  --desired "$(ucc_asm_state --installation Configured --runtime Running --health Healthy --admin Enabled --dependencies DepsReady)" \
   --install _start_ollama_service
 
 # --- API health check ---------------------------------------
