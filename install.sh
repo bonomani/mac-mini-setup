@@ -322,24 +322,34 @@ _summary_line() {
   printf '%s' "$line"
 }
 
-_kind_var_prefix() {
+_profile_var_prefix() {
   case "$1" in
-    Packages) printf '_kind_packages' ;;
-    Config) printf '_kind_config' ;;
-    Services) printf '_kind_services' ;;
+    presence) printf '_profile_presence' ;;
+    configured) printf '_profile_configured' ;;
+    runtime) printf '_profile_runtime' ;;
     *) printf '' ;;
   esac
 }
 
-_kind_bump() {
+_profile_bump() {
   local prefix
-  prefix="$(_kind_var_prefix "$1")"
+  prefix="$(_profile_var_prefix "$1")"
   [[ -z "$prefix" ]] && return 0
   case "$2" in
     ok) eval "${prefix}_ok=\$(( ${prefix}_ok + 1 ))" ;;
     changed) eval "${prefix}_chg=\$(( ${prefix}_chg + 1 ))" ;;
     failed) eval "${prefix}_fail=\$(( ${prefix}_fail + 1 ))" ;;
   esac
+}
+
+_print_component_header() {
+  local component="$1" profile expected
+  profile="$(ucc_component_profile "$component")"
+  printf '\n── %s [%s]\n' "$component" "$(ucc_profile_label "$profile")"
+  if [[ "$profile" != "verification" ]]; then
+    expected="$(ucc_profile_expected_text "$profile")"
+    [[ -n "$expected" ]] && printf '   expected: %s\n' "$expected"
+  fi
 }
 
 echo "========================================================"
@@ -371,7 +381,7 @@ _refresh_brew_path
 export UCC_DECLARATION_FILE="$HOME/.ai-stack/runs/${UCC_CORRELATION_ID}.declaration.jsonl"
 export UCC_RESULT_FILE="$HOME/.ai-stack/runs/${UCC_CORRELATION_ID}.result.jsonl"
 export UCC_SUMMARY_FILE="$HOME/.ai-stack/runs/${UCC_CORRELATION_ID}.summary"
-export UCC_KIND_SUMMARY_FILE="$HOME/.ai-stack/runs/${UCC_CORRELATION_ID}.kind-summary"
+export UCC_PROFILE_SUMMARY_FILE="$HOME/.ai-stack/runs/${UCC_CORRELATION_ID}.profile-summary"
 mkdir -p "$HOME/.ai-stack/runs"
 
 # --- Run components -----------------------------------------
@@ -391,7 +401,7 @@ for comp in "${TO_RUN[@]}"; do
     continue
   fi
 
-  printf '\n── %s\n' "$comp"
+  _print_component_header "$comp"
 
   if ! bash \
       -c "source \"$DIR/lib/ucc.sh\"; source \"$DIR/lib/uic.sh\"; source \"$DIR/lib/utils.sh\"; source \"$SCRIPT\"" \
@@ -412,9 +422,9 @@ echo "  $_hdr_sum"
 echo "  ──────────────────────────────────────────────────────"
 
 _total_ok=0; _total_chg=0; _total_fail=0
-_kind_packages_ok=0; _kind_packages_chg=0; _kind_packages_fail=0
-_kind_config_ok=0; _kind_config_chg=0; _kind_config_fail=0
-_kind_services_ok=0; _kind_services_chg=0; _kind_services_fail=0
+_profile_presence_ok=0; _profile_presence_chg=0; _profile_presence_fail=0
+_profile_configured_ok=0; _profile_configured_chg=0; _profile_configured_fail=0
+_profile_runtime_ok=0; _profile_runtime_chg=0; _profile_runtime_fail=0
 if [[ -f "$UCC_SUMMARY_FILE" ]]; then
   while IFS='|' read -r _comp _a _b _c _d; do
     if [[ "$_a" == "tic" ]]; then
@@ -434,15 +444,18 @@ if [[ -f "$UCC_SUMMARY_FILE" ]]; then
   printf '  %-22s  %s\n' "Total" "$(_summary_line "$_total_ok" "$_total_chg" "$_total_fail")"
 fi
 
-if [[ -f "$UCC_KIND_SUMMARY_FILE" ]]; then
-  while IFS='|' read -r _kind _outcome; do
-    _kind_bump "$_kind" "$_outcome"
-  done < "$UCC_KIND_SUMMARY_FILE"
+if [[ -f "$UCC_PROFILE_SUMMARY_FILE" ]]; then
+  while IFS='|' read -r _profile _outcome; do
+    _profile_bump "$_profile" "$_outcome"
+  done < "$UCC_PROFILE_SUMMARY_FILE"
   echo "  ──────────────────────────────────────────────────────"
-  echo "  By Kind"
-  printf '  %-22s  %s\n' "Packages" "$(_summary_line "$_kind_packages_ok" "$_kind_packages_chg" "$_kind_packages_fail")"
-  printf '  %-22s  %s\n' "Config" "$(_summary_line "$_kind_config_ok" "$_kind_config_chg" "$_kind_config_fail")"
-  printf '  %-22s  %s\n' "Services" "$(_summary_line "$_kind_services_ok" "$_kind_services_chg" "$_kind_services_fail")"
+  echo "  By Profile"
+  printf '  %-22s  %s\n' "$(ucc_profile_label presence)" "$(_summary_line "$_profile_presence_ok" "$_profile_presence_chg" "$_profile_presence_fail")"
+  printf '  %-22s  expected: %s\n' "" "$(ucc_profile_expected_text presence)"
+  printf '  %-22s  %s\n' "$(ucc_profile_label configured)" "$(_summary_line "$_profile_configured_ok" "$_profile_configured_chg" "$_profile_configured_fail")"
+  printf '  %-22s  expected: %s\n' "" "$(ucc_profile_expected_text configured)"
+  printf '  %-22s  %s\n' "$(ucc_profile_label runtime)" "$(_summary_line "$_profile_runtime_ok" "$_profile_runtime_chg" "$_profile_runtime_fail")"
+  printf '  %-22s  expected: %s\n' "" "$(ucc_profile_expected_text runtime)"
 fi
 
 if [[ ${#FAILED_COMPONENTS[@]} -gt 0 ]]; then

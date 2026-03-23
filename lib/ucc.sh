@@ -240,9 +240,11 @@ ucc_asm_service_state() {
   esac
 }
 
-UCC_ASM_NONRUNTIME_AXES="installation_state,health_state,dependency_state"
+UCC_ASM_PRESENCE_AXES="installation_state"
+UCC_ASM_CONFIGURED_AXES="installation_state,health_state,dependency_state"
+UCC_ASM_RUNTIME_AXES="installation_state,runtime_state,health_state,dependency_state"
 
-ucc_asm_nonruntime_desired() {
+ucc_asm_presence_desired() {
   ucc_asm_state \
     --installation Configured \
     --runtime Stopped \
@@ -251,7 +253,16 @@ ucc_asm_nonruntime_desired() {
     --dependencies DepsReady
 }
 
-ucc_asm_service_desired() {
+ucc_asm_configured_desired() {
+  ucc_asm_state \
+    --installation Configured \
+    --runtime Stopped \
+    --health Healthy \
+    --admin Enabled \
+    --dependencies DepsReady
+}
+
+ucc_asm_runtime_desired() {
   ucc_asm_state \
     --installation Configured \
     --runtime Running \
@@ -260,12 +271,62 @@ ucc_asm_service_desired() {
     --dependencies DepsReady
 }
 
-_ucc_kind_axes() {
+_ucc_profile_axes() {
   case "$1" in
-    package|config|precondition|nonruntime)
-      printf '%s' "$UCC_ASM_NONRUNTIME_AXES"
+    presence|package)
+      printf '%s' "$UCC_ASM_PRESENCE_AXES"
       ;;
-    service)
+    configured|config|precondition|nonruntime)
+      printf '%s' "$UCC_ASM_CONFIGURED_AXES"
+      ;;
+    runtime|service)
+      printf '%s' "$UCC_ASM_RUNTIME_AXES"
+      ;;
+    *)
+      printf ''
+      ;;
+  esac
+}
+
+_ucc_profile_desired() {
+  case "$1" in
+    presence|package)
+      ucc_asm_presence_desired
+      ;;
+    configured|config|precondition|nonruntime)
+      ucc_asm_configured_desired
+      ;;
+    runtime|service)
+      ucc_asm_runtime_desired
+      ;;
+    *)
+      printf ''
+      ;;
+  esac
+}
+
+ucc_profile_label() {
+  case "$1" in
+    presence|package) printf 'Presence' ;;
+    configured|config|precondition|nonruntime|"") printf 'Configured' ;;
+    runtime|service) printf 'Runtime' ;;
+    verification) printf 'Verification' ;;
+    *) printf 'Configured' ;;
+  esac
+}
+
+ucc_profile_expected_text() {
+  case "$1" in
+    presence|package)
+      printf 'installation=Configured'
+      ;;
+    configured|config|precondition|nonruntime)
+      printf 'installation=Configured health=Healthy dependencies=DepsReady'
+      ;;
+    runtime|service)
+      printf 'installation=Configured runtime=Running health=Healthy dependencies=DepsReady'
+      ;;
+    verification)
       printf ''
       ;;
     *)
@@ -274,17 +335,19 @@ _ucc_kind_axes() {
   esac
 }
 
-_ucc_kind_desired() {
+ucc_component_profile() {
   case "$1" in
-    package|config|precondition|nonruntime)
-      ucc_asm_nonruntime_desired
-      ;;
-    service)
-      ucc_asm_service_desired
-      ;;
-    *)
-      printf ''
-      ;;
+    01-homebrew) printf 'presence' ;;
+    02-git) printf 'configured' ;;
+    03-docker) printf 'configured' ;;
+    04-python) printf 'configured' ;;
+    05-ollama) printf 'runtime' ;;
+    06-ai-python-stack) printf 'runtime' ;;
+    07-ai-apps) printf 'runtime' ;;
+    08-dev-tools) printf 'configured' ;;
+    09-macos-defaults) printf 'configured' ;;
+    10-verify) printf 'verification' ;;
+    *) printf 'configured' ;;
   esac
 }
 
@@ -321,19 +384,10 @@ _ucc_record_result() {
   _ucc_record_file "${UCC_RESULT_FILE:-}" "$payload"
 }
 
-_ucc_kind_bucket() {
-  case "$1" in
-    package) printf 'Packages' ;;
-    service) printf 'Services' ;;
-    config|precondition|nonruntime|"") printf 'Config' ;;
-    *) printf 'Config' ;;
-  esac
-}
-
-_ucc_record_kind_summary() {
-  local kind="$1" outcome="$2"
-  [[ -z "${UCC_KIND_SUMMARY_FILE:-}" ]] && return 0
-  printf '%s|%s\n' "$(_ucc_kind_bucket "$kind")" "$outcome" >> "$UCC_KIND_SUMMARY_FILE" 2>/dev/null || true
+_ucc_record_profile_summary() {
+  local profile="$1" outcome="$2"
+  [[ -z "${UCC_PROFILE_SUMMARY_FILE:-}" ]] && return 0
+  printf '%s|%s\n' "${profile:-configured}" "$outcome" >> "$UCC_PROFILE_SUMMARY_FILE" 2>/dev/null || true
 }
 
 _ucc_duration_ms() {
@@ -363,7 +417,7 @@ ucc_brew_target() {
   eval "_ubt_obs_${fn}() { local raw; raw=\$(brew_observe '${pkg}'); ucc_asm_package_state \"\$raw\"; }"
   eval "_ubt_ins_${fn}() { brew_install  '${pkg}'; }"
   eval "_ubt_upd_${fn}() { brew_upgrade  '${pkg}'; }"
-  ucc_target --kind package --name "$tname" --observe "_ubt_obs_${fn}" \
+  ucc_target --profile presence --name "$tname" --observe "_ubt_obs_${fn}" \
              --install "_ubt_ins_${fn}" --update "_ubt_upd_${fn}"
 }
 
@@ -375,7 +429,7 @@ ucc_brew_cask_target() {
   eval "_ubct_obs_${fn}() { local raw; raw=\$(brew_cask_observe '${pkg}'); ucc_asm_package_state \"\$raw\"; }"
   eval "_ubct_ins_${fn}() { brew_cask_install '${pkg}'; }"
   eval "_ubct_upd_${fn}() { brew_cask_upgrade '${pkg}'; }"
-  ucc_target --kind package --name "$tname" --observe "_ubct_obs_${fn}" \
+  ucc_target --profile presence --name "$tname" --observe "_ubct_obs_${fn}" \
              --install "_ubct_ins_${fn}" --update "_ubct_upd_${fn}"
 }
 
@@ -387,7 +441,7 @@ ucc_npm_target() {
   eval "_unt_obs_${fn}() { local raw; raw=\$(npm ls -g '${pkg}' --depth=0 --json 2>/dev/null | python3 -c \"import sys,json; d=json.load(sys.stdin); deps=d.get('dependencies',{}); k=next(iter(deps),''); print(deps[k].get('version','present') if k else 'absent')\" 2>/dev/null || echo 'absent'); ucc_asm_package_state \"\$raw\"; }"
   eval "_unt_ins_${fn}() { ucc_run npm install -g '${pkg}'; }"
   eval "_unt_upd_${fn}() { ucc_run npm update  -g '${pkg}'; }"
-  ucc_target --kind package --name "npm-global-${pkg}" --observe "_unt_obs_${fn}" \
+  ucc_target --profile presence --name "npm-global-${pkg}" --observe "_unt_obs_${fn}" \
              --install "_unt_ins_${fn}" --update "_unt_upd_${fn}"
 }
 
@@ -395,7 +449,7 @@ ucc_npm_target() {
 #  ucc_target — full UCC Steps 0-6 lifecycle per target
 # ============================================================
 ucc_target() {
-  local name="" observe_fn="" desired="" install_fn="" update_fn="" axes="" kind=""
+  local name="" observe_fn="" desired="" install_fn="" update_fn="" axes="" profile=""
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -405,13 +459,14 @@ ucc_target() {
       --install) install_fn="$2"; shift 2 ;;
       --update)  update_fn="$2";  shift 2 ;;
       --axes)    axes="$2";       shift 2 ;;
-      --kind)    kind="$2";       shift 2 ;;
+      --kind)    profile="$2";    shift 2 ;;
+      --profile) profile="$2";    shift 2 ;;
       *) shift ;;
     esac
   done
 
-  [[ -z "$axes" && -n "$kind" ]] && axes="$(_ucc_kind_axes "$kind")"
-  [[ -z "$desired" && -n "$kind" ]] && desired="$(_ucc_kind_desired "$kind")"
+  [[ -z "$axes" && -n "$profile" ]] && axes="$(_ucc_profile_axes "$profile")"
+  [[ -z "$desired" && -n "$profile" ]] && desired="$(_ucc_profile_desired "$profile")"
 
   local started_at declaration_ts mode target_id msg_id duration_ms
   started_at=$(date +%s 2>/dev/null || echo 0)
@@ -431,7 +486,7 @@ ucc_target() {
   if [[ $obs_exit -ne 0 ]]; then
     printf '  %-46s  obs-failed  (observe fn exited non-zero)\n' "$name"
     _UCC_FAILED=$(( _UCC_FAILED + 1 ))
-    _ucc_record_kind_summary "$kind" "failed"
+    _ucc_record_profile_summary "$profile" "failed"
     duration_ms=$(_ucc_duration_ms "$started_at")
     _ucc_record_result "$msg_id" "$duration_ms" "{}" \
       "{\"observation\":\"failed\",\"message\":\"observe function exited non-zero\"}"
@@ -442,7 +497,7 @@ ucc_target() {
   if [[ -z "$observed" ]]; then
     printf '  %-46s  indeterminate  (observe returned no state)\n' "$name"
     _UCC_FAILED=$(( _UCC_FAILED + 1 ))
-    _ucc_record_kind_summary "$kind" "failed"
+    _ucc_record_profile_summary "$profile" "failed"
     duration_ms=$(_ucc_duration_ms "$started_at")
     _ucc_record_result "$msg_id" "$duration_ms" "{}" \
       "{\"observation\":\"indeterminate\",\"message\":\"observe returned empty state\"}"
@@ -471,7 +526,7 @@ ucc_target() {
       # Update mode: run upgrade even when state already matches
       if [[ "$UCC_DRY_RUN" == "1" ]]; then
         printf '  %-46s  dry-run  state="%s"  (update skipped)\n' "$name" "$(_ucc_display_state "$observed" "$axes")"
-        _ucc_record_kind_summary "$kind" "unchanged"
+        _ucc_record_profile_summary "$profile" "unchanged"
         duration_ms=$(_ucc_duration_ms "$started_at")
         _ucc_record_result "$msg_id" "$duration_ms" \
           "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":{}}" \
@@ -485,7 +540,7 @@ ucc_target() {
         if [[ $ver_exit -eq 0 ]] && _ucc_satisfied "$verified" "$desired"; then
           printf '  %-46s  updated  "%s" → "%s"\n' "$name" "$(_ucc_display_state "$observed" "$axes")" "$(_ucc_display_state "$verified" "$axes")"
           _UCC_CHANGED=$(( _UCC_CHANGED + 1 ))
-          _ucc_record_kind_summary "$kind" "changed"
+          _ucc_record_profile_summary "$profile" "changed"
           duration_ms=$(_ucc_duration_ms "$started_at")
           _ucc_record_result "$msg_id" "$duration_ms" \
             "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$verified" "$axes"),\"observed_after\":$(_ucc_state_obj "$verified")}" \
@@ -493,7 +548,7 @@ ucc_target() {
         else
           printf '  %-46s  FAILED — verify after update: "%s"\n' "$name" "$(_ucc_display_state "${verified:-?}" "$axes")"
           _UCC_FAILED=$(( _UCC_FAILED + 1 ))
-          _ucc_record_kind_summary "$kind" "failed"
+          _ucc_record_profile_summary "$profile" "failed"
           duration_ms=$(_ucc_duration_ms "$started_at")
           if [[ $ver_exit -eq 0 && -n "$verified" ]]; then
             _ucc_record_result "$msg_id" "$duration_ms" \
@@ -508,7 +563,7 @@ ucc_target() {
       else
         printf '  %-46s  FAILED — update error  state="%s"\n' "$name" "$(_ucc_display_state "$observed" "$axes")"
         _UCC_FAILED=$(( _UCC_FAILED + 1 ))
-        _ucc_record_kind_summary "$kind" "failed"
+        _ucc_record_profile_summary "$profile" "failed"
         duration_ms=$(_ucc_duration_ms "$started_at")
         _ucc_record_result "$msg_id" "$duration_ms" \
           "{}" \
@@ -518,7 +573,7 @@ ucc_target() {
       # Already at desired state
       printf '  %-46s  ok\n' "$name"
       _UCC_CONVERGED=$(( _UCC_CONVERGED + 1 ))
-      _ucc_record_kind_summary "$kind" "ok"
+      _ucc_record_profile_summary "$profile" "ok"
       duration_ms=$(_ucc_duration_ms "$started_at")
       _ucc_record_result "$msg_id" "$duration_ms" \
         "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":{}}" \
@@ -530,7 +585,7 @@ ucc_target() {
   # Step 4: Apply transition
   if [[ "$UCC_DRY_RUN" == "1" ]]; then
     printf '  %-46s  dry-run  "%s" → "%s"\n' "$name" "$(_ucc_display_state "$observed" "$axes")" "$(_ucc_display_state "$desired" "$axes")"
-    _ucc_record_kind_summary "$kind" "unchanged"
+    _ucc_record_profile_summary "$profile" "unchanged"
     duration_ms=$(_ucc_duration_ms "$started_at")
     _ucc_record_result "$msg_id" "$duration_ms" \
       "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$desired" "$axes")}" \
@@ -540,7 +595,7 @@ ucc_target() {
 
   if [[ -z "$install_fn" ]]; then
     printf '  %-46s  no-install (policy)  "%s" → "%s"\n' "$name" "$(_ucc_display_state "$observed" "$axes")" "$(_ucc_display_state "$desired" "$axes")"
-    _ucc_record_kind_summary "$kind" "unchanged"
+    _ucc_record_profile_summary "$profile" "unchanged"
     duration_ms=$(_ucc_duration_ms "$started_at")
     _ucc_record_result "$msg_id" "$duration_ms" \
       "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$desired" "$axes")}" \
@@ -566,7 +621,7 @@ ucc_target() {
     if [[ $ver_exit -eq 0 ]] && _ucc_satisfied "$verified" "$desired"; then
       printf '  %-46s  %s  "%s" → "%s"\n' "$name" "$action_label" "$(_ucc_display_state "$observed" "$axes")" "$(_ucc_display_state "$verified" "$axes")"
       _UCC_CHANGED=$(( _UCC_CHANGED + 1 ))
-      _ucc_record_kind_summary "$kind" "changed"
+      _ucc_record_profile_summary "$profile" "changed"
       duration_ms=$(_ucc_duration_ms "$started_at")
       _ucc_record_result "$msg_id" "$duration_ms" \
         "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$verified" "$axes"),\"observed_after\":$(_ucc_state_obj "$verified")}" \
@@ -574,7 +629,7 @@ ucc_target() {
     else
       printf '  %-46s  FAILED — verify after install: "%s"\n' "$name" "$(_ucc_display_state "${verified:-?}" "$axes")"
       _UCC_FAILED=$(( _UCC_FAILED + 1 ))
-      _ucc_record_kind_summary "$kind" "failed"
+      _ucc_record_profile_summary "$profile" "failed"
       duration_ms=$(_ucc_duration_ms "$started_at")
       if [[ $ver_exit -eq 0 && -n "$verified" ]]; then
         _ucc_record_result "$msg_id" "$duration_ms" \
@@ -589,7 +644,7 @@ ucc_target() {
   else
     printf '  %-46s  FAILED — install error  was="%s"\n' "$name" "$(_ucc_display_state "$observed" "$axes")"
     _UCC_FAILED=$(( _UCC_FAILED + 1 ))
-    _ucc_record_kind_summary "$kind" "failed"
+    _ucc_record_profile_summary "$profile" "failed"
     duration_ms=$(_ucc_duration_ms "$started_at")
     _ucc_record_result "$msg_id" "$duration_ms" \
       "{}" \
@@ -598,11 +653,16 @@ ucc_target() {
 }
 
 ucc_target_nonruntime() {
-  local desired="" args=()
+  local desired="" has_profile=0 args=()
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --desired)
         desired="$2"
+        args+=("$1" "$2")
+        shift 2
+        ;;
+      --kind|--profile)
+        has_profile=1
         args+=("$1" "$2")
         shift 2
         ;;
@@ -612,16 +672,21 @@ ucc_target_nonruntime() {
         ;;
     esac
   done
-  [[ -z "$desired" ]] && args+=(--kind config)
+  [[ "$has_profile" -eq 0 ]] && args+=(--profile configured)
   ucc_target "${args[@]}"
 }
 
 ucc_target_service() {
-  local desired="" args=()
+  local desired="" has_profile=0 args=()
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --desired)
         desired="$2"
+        args+=("$1" "$2")
+        shift 2
+        ;;
+      --kind|--profile)
+        has_profile=1
         args+=("$1" "$2")
         shift 2
         ;;
@@ -631,7 +696,7 @@ ucc_target_service() {
         ;;
     esac
   done
-  [[ -z "$desired" ]] && args+=(--kind service)
+  [[ "$has_profile" -eq 0 ]] && args+=(--profile runtime)
   ucc_target "${args[@]}"
 }
 
