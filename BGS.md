@@ -16,6 +16,8 @@ read_next:
   - "./docs/biss-classification.md"
   - "./docs/setup-state-model.md"
   - "./docs/setup-state-artifact.yaml"
+  - "./targets.yaml"
+  - "./tools/validate_targets_manifest.py"
   - "./install.sh"
   - "./lib/ucc.sh"
   - "./lib/uic.sh"
