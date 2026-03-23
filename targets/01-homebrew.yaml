@@ -4,11 +4,13 @@ targets:
   xcode-command-line-tools:
     component: 01-homebrew
     profile: configured
+    type: precondition
     provided_by_tool: macos-installer
 
   homebrew:
     component: 01-homebrew
     profile: configured
+    type: package
     depends_on:
       - xcode-command-line-tools
     provided_by_tool: brew-installer

@@ -4,6 +4,7 @@ targets:
   unsloth-studio-setup:
     component: 06-ai-python-stack
     profile: configured
+    type: config
     depends_on:
       - python-3.12.3
       - pip-latest
@@ -11,5 +12,6 @@ targets:
   unsloth-studio-launchd:
     component: 06-ai-python-stack
     profile: runtime
+    type: service
     depends_on:
       - unsloth-studio-setup

@@ -4,6 +4,7 @@ targets:
   docker-desktop:
     component: 03-docker
     profile: configured
+    type: package
     depends_on:
       - homebrew
     provided_by_tool: brew-cask
@@ -11,6 +12,7 @@ targets:
   docker-resources-48gb:
     component: 03-docker
     profile: configured
+    type: config
     depends_on:
       - docker-desktop
     soft_depends_on:

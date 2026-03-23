@@ -4,6 +4,7 @@ targets:
   pyenv:
     component: 04-python
     profile: configured
+    type: package
     depends_on:
       - homebrew
     provided_by_tool: brew
@@ -11,11 +12,13 @@ targets:
   python-3.12.3:
     component: 04-python
     profile: configured
+    type: package
     depends_on:
       - pyenv
 
   pip-latest:
     component: 04-python
     profile: configured
+    type: config
     depends_on:
       - python-3.12.3

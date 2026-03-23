@@ -6,8 +6,6 @@
 #       Axis B = Basic
 # Boundary: macOS system preferences API · pmset (requires sudo)
 
-# Each setting is a UCC target: observe current value → apply if different
-
 _macos_defaults_state() {
   local current="$1" desired="$2"
   local dep_state="DepsReady"
@@ -29,129 +27,86 @@ _macos_defaults_desired_state() {
     --dependencies "$dep_state"
 }
 
-# --- Power management (no sleep for long AI runs) -----------
-
-_observe_ac_sleep() {
-  local current
-  current=$(pmset -g | awk '/^[[:space:]]+sleep / {print $2}')
-  _macos_defaults_state "$current" "0"
+_macos_defaults_observe() {
+  local read_cmd="$1" desired="$2" current=""
+  current=$(eval "$read_cmd")
+  _macos_defaults_state "$current" "$desired"
 }
-_evidence_ac_sleep() { printf 'value=%s' "$(pmset -g | awk '/^[[:space:]]+sleep / {print $2}' | head -1)"; }
-_set_ac_sleep_0() { ucc_run sudo pmset -c sleep 0; }
 
-ucc_target_nonruntime \
-  --name    "pmset-ac-sleep=0" \
-  --observe _observe_ac_sleep \
-  --evidence _evidence_ac_sleep \
-  --desired "$(_macos_defaults_desired_state)" \
-  --install _set_ac_sleep_0 \
-  --update  _set_ac_sleep_0
-
-_observe_disksleep() {
-  local current
-  current=$(pmset -g | awk '/disksleep/ {print $2}')
-  _macos_defaults_state "$current" "0"
+_macos_defaults_evidence() {
+  local read_cmd="$1"
+  printf 'value=%s' "$(eval "$read_cmd" | head -1)"
 }
-_evidence_disksleep() { printf 'value=%s' "$(pmset -g | awk '/disksleep/ {print $2}' | head -1)"; }
-_set_disksleep_0() { ucc_run sudo pmset -c disksleep 0; }
 
-ucc_target_nonruntime \
-  --name    "pmset-disksleep=0" \
-  --observe _observe_disksleep \
-  --evidence _evidence_disksleep \
-  --desired "$(_macos_defaults_desired_state)" \
-  --install _set_disksleep_0 \
-  --update  _set_disksleep_0
-
-_observe_standby() {
-  local current
-  current=$(pmset -g | awk '/^[[:space:]]+standby / {print $2}')
-  _macos_defaults_state "$current" "0"
+_macos_defaults_apply() {
+  local apply_cmd="$1"
+  eval "$apply_cmd"
 }
-_evidence_standby() { printf 'value=%s' "$(pmset -g | awk '/^[[:space:]]+standby / {print $2}' | head -1)"; }
-_set_standby_0() { ucc_run sudo pmset -c standby 0; }
 
-ucc_target_nonruntime \
-  --name    "pmset-standby=0" \
-  --observe _observe_standby \
-  --evidence _evidence_standby \
-  --desired "$(_macos_defaults_desired_state)" \
-  --install _set_standby_0 \
-  --update  _set_standby_0
+_macos_defaults_target() {
+  local name="$1" read_cmd="$2" desired="$3" apply_cmd="$4"
+  local observe_fn="_obs_$(printf '%s' "$name" | tr -cs '[:alnum:]' '_')"
+  local evidence_fn="_evidence_$(printf '%s' "$name" | tr -cs '[:alnum:]' '_')"
+  local apply_fn="_apply_$(printf '%s' "$name" | tr -cs '[:alnum:]' '_')"
 
-# --- Disable App Nap ----------------------------------------
-_observe_app_nap() {
-  local current
-  current=$(defaults read NSGlobalDomain NSAppSleepDisabled 2>/dev/null || echo "0")
-  _macos_defaults_state "$current" "1"
+  eval "${observe_fn}() { _macos_defaults_observe '$read_cmd' '$desired'; }"
+  eval "${evidence_fn}() { _macos_defaults_evidence '$read_cmd'; }"
+  eval "${apply_fn}() { _macos_defaults_apply \"$apply_cmd\"; }"
+
+  ucc_target_nonruntime \
+    --name "$name" \
+    --observe "$observe_fn" \
+    --evidence "$evidence_fn" \
+    --desired "$(_macos_defaults_desired_state)" \
+    --install "$apply_fn" \
+    --update "$apply_fn"
 }
-_evidence_app_nap() { printf 'value=%s' "$(defaults read NSGlobalDomain NSAppSleepDisabled 2>/dev/null || echo 0)"; }
-_disable_app_nap() { ucc_run defaults write NSGlobalDomain NSAppSleepDisabled -bool YES; }
 
-ucc_target_nonruntime \
-  --name    "app-nap=disabled" \
-  --observe _observe_app_nap \
-  --evidence _evidence_app_nap \
-  --desired "$(_macos_defaults_desired_state)" \
-  --install _disable_app_nap \
-  --update  _disable_app_nap
+# Power management defaults for long AI runs.
+_macos_defaults_target \
+  "pmset-ac-sleep=0" \
+  "pmset -g | awk '/^[[:space:]]+sleep / {print \$2}'" \
+  "0" \
+  "ucc_run sudo pmset -c sleep 0"
 
-# --- Reduce transparency (performance) ----------------------
-# Note: com.apple.universalaccess is write-protected on macOS 14+ from scripts.
-# Set manually: System Settings → Accessibility → Display → Reduce Transparency
+_macos_defaults_target \
+  "pmset-disksleep=0" \
+  "pmset -g | awk '/disksleep/ {print \$2}'" \
+  "0" \
+  "ucc_run sudo pmset -c disksleep 0"
 
-# --- Show hidden files in Finder ----------------------------
-_observe_hidden_files() {
-  local current
-  current=$(defaults read com.apple.finder AppleShowAllFiles 2>/dev/null || echo "0")
-  _macos_defaults_state "$current" "1"
-}
-_evidence_hidden_files() { printf 'value=%s' "$(defaults read com.apple.finder AppleShowAllFiles 2>/dev/null || echo 0)"; }
-_show_hidden_files() { ucc_run defaults write com.apple.finder AppleShowAllFiles -bool true; }
+_macos_defaults_target \
+  "pmset-standby=0" \
+  "pmset -g | awk '/^[[:space:]]+standby / {print \$2}'" \
+  "0" \
+  "ucc_run sudo pmset -c standby 0"
 
-ucc_target_nonruntime \
-  --name    "finder-show-hidden=1" \
-  --observe _observe_hidden_files \
-  --evidence _evidence_hidden_files \
-  --desired "$(_macos_defaults_desired_state)" \
-  --install _show_hidden_files \
-  --update  _show_hidden_files
+# Note: com.apple.universalaccess reduce transparency is write-protected on macOS 14+ from scripts.
+# Set manually in System Settings if needed.
+_macos_defaults_target \
+  "app-nap=disabled" \
+  "defaults read NSGlobalDomain NSAppSleepDisabled 2>/dev/null || echo 0" \
+  "1" \
+  "ucc_run defaults write NSGlobalDomain NSAppSleepDisabled -bool YES"
 
-# --- Show all file extensions -------------------------------
-_observe_extensions() {
-  local current
-  current=$(defaults read NSGlobalDomain AppleShowAllExtensions 2>/dev/null || echo "0")
-  _macos_defaults_state "$current" "1"
-}
-_evidence_extensions() { printf 'value=%s' "$(defaults read NSGlobalDomain AppleShowAllExtensions 2>/dev/null || echo 0)"; }
-_show_extensions() { ucc_run defaults write NSGlobalDomain AppleShowAllExtensions -bool true; }
+_macos_defaults_target \
+  "finder-show-hidden=1" \
+  "defaults read com.apple.finder AppleShowAllFiles 2>/dev/null || echo 0" \
+  "1" \
+  "ucc_run defaults write com.apple.finder AppleShowAllFiles -bool true"
 
-ucc_target_nonruntime \
-  --name    "show-all-extensions=1" \
-  --observe _observe_extensions \
-  --evidence _evidence_extensions \
-  --desired "$(_macos_defaults_desired_state)" \
-  --install _show_extensions \
-  --update  _show_extensions
+_macos_defaults_target \
+  "show-all-extensions=1" \
+  "defaults read NSGlobalDomain AppleShowAllExtensions 2>/dev/null || echo 0" \
+  "1" \
+  "ucc_run defaults write NSGlobalDomain AppleShowAllExtensions -bool true"
 
-# --- Dock auto-hide -----------------------------------------
-_observe_dock_autohide() {
-  local current
-  current=$(defaults read com.apple.dock autohide 2>/dev/null || echo "0")
-  _macos_defaults_state "$current" "1"
-}
-_evidence_dock_autohide() { printf 'value=%s' "$(defaults read com.apple.dock autohide 2>/dev/null || echo 0)"; }
-_dock_autohide() { ucc_run defaults write com.apple.dock autohide -bool true; }
+_macos_defaults_target \
+  "dock-autohide=1" \
+  "defaults read com.apple.dock autohide 2>/dev/null || echo 0" \
+  "1" \
+  "ucc_run defaults write com.apple.dock autohide -bool true"
 
-ucc_target_nonruntime \
-  --name    "dock-autohide=1" \
-  --observe _observe_dock_autohide \
-  --evidence _evidence_dock_autohide \
-  --desired "$(_macos_defaults_desired_state)" \
-  --install _dock_autohide \
-  --update  _dock_autohide
-
-# Restart affected services (only if something changed and not dry-run)
 if [[ "$UCC_DRY_RUN" != "1" && $_UCC_CHANGED -gt 0 ]]; then
   killall Finder Dock SystemUIServer 2>/dev/null || true
   log_info "Finder/Dock/SystemUIServer restarted"

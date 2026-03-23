@@ -5,6 +5,13 @@ from pathlib import Path
 
 
 KNOWN_PROFILES = {"presence", "configured", "runtime", "verification"}
+KNOWN_TARGET_TYPES = {
+    "package",
+    "config",
+    "runtime",
+    "precondition",
+    "service",
+}
 
 
 def parse_gate_names(path: Path):
@@ -121,11 +128,16 @@ def validate(manifest, known_gates):
 
     for name, data in targets.items():
         profile = data.get("profile")
+        target_type = data.get("type")
         component = data.get("component")
         if not profile:
             errors.append(f"target '{name}' missing profile")
         elif profile not in KNOWN_PROFILES:
             errors.append(f"target '{name}' has unknown profile '{profile}'")
+        if not target_type:
+            errors.append(f"target '{name}' missing type")
+        elif target_type not in KNOWN_TARGET_TYPES:
+            errors.append(f"target '{name}' has unknown type '{target_type}'")
         if not component:
             errors.append(f"target '{name}' missing component")
 

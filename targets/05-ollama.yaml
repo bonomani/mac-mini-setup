@@ -4,10 +4,12 @@ targets:
   macos-14-precondition:
     component: 05-ollama
     profile: configured
+    type: precondition
 
   ollama:
     component: 05-ollama
     profile: configured
+    type: package
     depends_on:
       - macos-14-precondition
     provided_by_tool: ollama-installer
@@ -15,6 +17,7 @@ targets:
   ollama-service:
     component: 05-ollama
     profile: runtime
+    type: service
     depends_on:
       - ollama
     soft_depends_on:

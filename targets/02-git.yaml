@@ -4,6 +4,7 @@ targets:
   git:
     component: 02-git
     profile: configured
+    type: package
     depends_on:
       - homebrew
     provided_by_tool: brew
@@ -11,5 +12,6 @@ targets:
   git-global-config:
     component: 02-git
     profile: configured
+    type: config
     depends_on:
       - git

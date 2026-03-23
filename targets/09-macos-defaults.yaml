@@ -4,41 +4,48 @@ targets:
   pmset-ac-sleep=0:
     component: 09-macos-defaults
     profile: configured
+    type: config
     soft_depends_on:
       - gate:sudo-available
 
   pmset-disksleep=0:
     component: 09-macos-defaults
     profile: configured
+    type: config
     soft_depends_on:
       - gate:sudo-available
 
   pmset-standby=0:
     component: 09-macos-defaults
     profile: configured
+    type: config
     soft_depends_on:
       - gate:sudo-available
 
   app-nap=disabled:
     component: 09-macos-defaults
     profile: configured
+    type: config
     soft_depends_on:
       - gate:sudo-available
 
   finder-show-hidden=1:
     component: 09-macos-defaults
     profile: configured
+    type: config
     soft_depends_on:
       - gate:sudo-available
 
   show-all-extensions=1:
     component: 09-macos-defaults
     profile: configured
+    type: config
     soft_depends_on:
       - gate:sudo-available
 
   dock-autohide=1:
     component: 09-macos-defaults
     profile: configured
+    type: config
     soft_depends_on:
       - gate:sudo-available

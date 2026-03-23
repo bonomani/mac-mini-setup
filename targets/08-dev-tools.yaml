@@ -4,6 +4,7 @@ targets:
   vscode:
     component: 08-dev-tools
     profile: configured
+    type: package
     depends_on:
       - homebrew
     provided_by_tool: brew-cask
@@ -11,18 +12,21 @@ targets:
   vscode-code-cmd:
     component: 08-dev-tools
     profile: configured
+    type: config
     depends_on:
       - vscode
 
   vscode-settings:
     component: 08-dev-tools
     profile: configured
+    type: config
     depends_on:
       - vscode
 
   node-24-lts:
     component: 08-dev-tools
     profile: configured
+    type: package
     depends_on:
       - homebrew
     provided_by_tool: brew
@@ -30,26 +34,31 @@ targets:
   oh-my-zsh:
     component: 08-dev-tools
     profile: configured
+    type: config
 
   omz-theme-agnoster:
     component: 08-dev-tools
     profile: configured
+    type: config
     depends_on:
       - oh-my-zsh
 
   home-bin-in-path:
     component: 08-dev-tools
     profile: configured
+    type: config
 
   ai-healthcheck:
     component: 08-dev-tools
     profile: configured
+    type: config
     depends_on:
       - home-bin-in-path
 
   ariaflow:
     component: 08-dev-tools
     profile: configured
+    type: package
     depends_on:
       - homebrew
     provided_by_tool: brew
@@ -57,12 +66,14 @@ targets:
   aria2-launchd:
     component: 08-dev-tools
     profile: runtime
+    type: service
     depends_on:
       - ariaflow
 
   ariaflow-web:
     component: 08-dev-tools
     profile: configured
+    type: package
     depends_on:
       - ariaflow
     provided_by_tool: brew
@@ -70,5 +81,6 @@ targets:
   ariaflow-web-service:
     component: 08-dev-tools
     profile: runtime
+    type: service
     depends_on:
       - ariaflow-web
