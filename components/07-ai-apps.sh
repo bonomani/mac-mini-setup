@@ -51,8 +51,7 @@ _start_docker() {
   return 1
 }
 
-ucc_target \
-  --kind    "service" \
+ucc_target_service \
   --name    "docker-running" \
   --observe _observe_docker_running \
   --desired "$(ucc_asm_state --installation Configured --runtime Running --health Healthy --admin Enabled --dependencies DepsReady)" \
@@ -154,8 +153,7 @@ _update_stack() {
   ucc_run docker compose -f "$COMPOSE_FILE" up -d
 }
 
-ucc_target --name "ai-stack-running" \
-  --kind    "service" \
+ucc_target_service --name "ai-stack-running" \
   --observe _observe_stack \
   --desired "$(ucc_asm_state --installation Configured --runtime Running --health Healthy --admin Enabled --dependencies DepsReady)" \
   --install _start_stack --update _update_stack

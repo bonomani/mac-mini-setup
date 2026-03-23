@@ -157,8 +157,7 @@ _update_unsloth_studio_launchd() {
   _install_unsloth_studio_launchd
 }
 
-ucc_target \
-  --kind    "service" \
+ucc_target_service \
   --name    "unsloth-studio-launchd" \
   --observe _observe_unsloth_studio_launchd \
   --desired "$(ucc_asm_state --installation Configured --runtime Running --health Healthy --admin Enabled --dependencies DepsReady)" \

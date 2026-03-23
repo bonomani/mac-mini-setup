@@ -314,6 +314,34 @@ _global_state_detail() {
   printf '%s' "$detail" | tr ' ' ','
 }
 
+_summary_line() {
+  local ok="${1:-0}" changed="${2:-0}" failed="${3:-0}" line=""
+  line="${ok} ok"
+  [[ "$changed" -gt 0 ]] && line="${line}  ${changed} changed"
+  [[ "$failed" -gt 0 ]] && line="${line}  ${failed} FAILED"
+  printf '%s' "$line"
+}
+
+_kind_var_prefix() {
+  case "$1" in
+    Packages) printf '_kind_packages' ;;
+    Config) printf '_kind_config' ;;
+    Services) printf '_kind_services' ;;
+    *) printf '' ;;
+  esac
+}
+
+_kind_bump() {
+  local prefix
+  prefix="$(_kind_var_prefix "$1")"
+  [[ -z "$prefix" ]] && return 0
+  case "$2" in
+    ok) eval "${prefix}_ok=\$(( ${prefix}_ok + 1 ))" ;;
+    changed) eval "${prefix}_chg=\$(( ${prefix}_chg + 1 ))" ;;
+    failed) eval "${prefix}_fail=\$(( ${prefix}_fail + 1 ))" ;;
+  esac
+}
+
 echo "========================================================"
 _hdr_flags="mode=$UCC_MODE"; [[ "$UCC_DRY_RUN" == "1" ]] && _hdr_flags="$_hdr_flags dry_run=1"
 echo "  Mac Mini AI Setup | $_hdr_flags | $(date '+%Y-%m-%d %H:%M')"
@@ -403,34 +431,18 @@ if [[ -f "$UCC_SUMMARY_FILE" ]]; then
     fi
   done < "$UCC_SUMMARY_FILE"
   echo "  ──────────────────────────────────────────────────────"
-  _totline="${_total_ok} ok"
-  [[ $_total_chg  -gt 0 ]] && _totline="${_totline}  ${_total_chg} changed"
-  [[ $_total_fail -gt 0 ]] && _totline="${_totline}  ${_total_fail} FAILED"
-  printf '  %-22s  %s\n' "Total" "$_totline"
+  printf '  %-22s  %s\n' "Total" "$(_summary_line "$_total_ok" "$_total_chg" "$_total_fail")"
 fi
 
 if [[ -f "$UCC_KIND_SUMMARY_FILE" ]]; then
   while IFS='|' read -r _kind _outcome; do
-    case "$_kind|$_outcome" in
-      Packages|ok) _kind_packages_ok=$(( _kind_packages_ok + 1 )) ;;
-      Packages|changed) _kind_packages_chg=$(( _kind_packages_chg + 1 )) ;;
-      Packages|failed) _kind_packages_fail=$(( _kind_packages_fail + 1 )) ;;
-      Config|ok) _kind_config_ok=$(( _kind_config_ok + 1 )) ;;
-      Config|changed) _kind_config_chg=$(( _kind_config_chg + 1 )) ;;
-      Config|failed) _kind_config_fail=$(( _kind_config_fail + 1 )) ;;
-      Services|ok) _kind_services_ok=$(( _kind_services_ok + 1 )) ;;
-      Services|changed) _kind_services_chg=$(( _kind_services_chg + 1 )) ;;
-      Services|failed) _kind_services_fail=$(( _kind_services_fail + 1 )) ;;
-    esac
+    _kind_bump "$_kind" "$_outcome"
   done < "$UCC_KIND_SUMMARY_FILE"
   echo "  ──────────────────────────────────────────────────────"
   echo "  By Kind"
-  _line="${_kind_packages_ok} ok"; [[ $_kind_packages_chg -gt 0 ]] && _line="${_line}  ${_kind_packages_chg} changed"; [[ $_kind_packages_fail -gt 0 ]] && _line="${_line}  ${_kind_packages_fail} FAILED"
-  printf '  %-22s  %s\n' "Packages" "$_line"
-  _line="${_kind_config_ok} ok"; [[ $_kind_config_chg -gt 0 ]] && _line="${_line}  ${_kind_config_chg} changed"; [[ $_kind_config_fail -gt 0 ]] && _line="${_line}  ${_kind_config_fail} FAILED"
-  printf '  %-22s  %s\n' "Config" "$_line"
-  _line="${_kind_services_ok} ok"; [[ $_kind_services_chg -gt 0 ]] && _line="${_line}  ${_kind_services_chg} changed"; [[ $_kind_services_fail -gt 0 ]] && _line="${_line}  ${_kind_services_fail} FAILED"
-  printf '  %-22s  %s\n' "Services" "$_line"
+  printf '  %-22s  %s\n' "Packages" "$(_summary_line "$_kind_packages_ok" "$_kind_packages_chg" "$_kind_packages_fail")"
+  printf '  %-22s  %s\n' "Config" "$(_summary_line "$_kind_config_ok" "$_kind_config_chg" "$_kind_config_fail")"
+  printf '  %-22s  %s\n' "Services" "$(_summary_line "$_kind_services_ok" "$_kind_services_chg" "$_kind_services_fail")"
 fi
 
 if [[ ${#FAILED_COMPONENTS[@]} -gt 0 ]]; then

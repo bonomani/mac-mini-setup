@@ -312,8 +312,7 @@ _observe_aria2_launchd() {
 # install and update both use ariaflow install — it is idempotent and handles both cases
 _install_aria2_launchd() { ucc_run ariaflow install --with-aria2; }
 
-ucc_target \
-  --kind    "service" \
+ucc_target_service \
   --name    "aria2-launchd" \
   --observe _observe_aria2_launchd \
   --desired "$(ucc_asm_state --installation Configured --runtime Running --health Healthy --admin Enabled --dependencies DepsReady)" \
@@ -357,8 +356,7 @@ _restart_ariaflow_web_service() {
   ucc_run brew services restart bonomani/ariaflow/ariaflow-web
 }
 
-ucc_target \
-  --kind    "service" \
+ucc_target_service \
   --name    "ariaflow-web-service" \
   --observe _observe_ariaflow_web_service \
   --desired "$(ucc_asm_state --installation Configured --runtime Running --health Healthy --admin Enabled --dependencies DepsReady)" \

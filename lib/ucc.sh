@@ -616,6 +616,25 @@ ucc_target_nonruntime() {
   ucc_target "${args[@]}"
 }
 
+ucc_target_service() {
+  local desired="" args=()
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --desired)
+        desired="$2"
+        args+=("$1" "$2")
+        shift 2
+        ;;
+      *)
+        args+=("$1")
+        shift
+        ;;
+    esac
+  done
+  [[ -z "$desired" ]] && args+=(--kind service)
+  ucc_target "${args[@]}"
+}
+
 # ============================================================
 #  ucc_summary — write per-component counts to summary file
 # ============================================================
