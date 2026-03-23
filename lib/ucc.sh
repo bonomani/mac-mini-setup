@@ -195,12 +195,9 @@ _ucc_profile_report_path() {
 
 _ucc_emit_profile_line() {
   local profile="$1" line="$2" path=""
+  printf '%s\n' "$line"
   path=$(_ucc_profile_report_path "$profile" 2>/dev/null || true)
-  if [[ -n "$path" ]]; then
-    printf '%s\n' "$line" >> "$path" 2>/dev/null || printf '%s\n' "$line"
-  else
-    printf '%s\n' "$line"
-  fi
+  [[ -n "$path" ]] && printf '%s\n' "$line" >> "$path" 2>/dev/null || true
 }
 
 ucc_profile_note() {
