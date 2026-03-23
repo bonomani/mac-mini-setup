@@ -264,23 +264,36 @@ ucc_profile_note() {
 }
 
 ucc_asm_state() {
-  local installation="" runtime="" health="" admin="" dependency=""
+  local installation="" runtime="" health="" admin="" dependency="" config_value=""
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      --installation) installation="$2"; shift 2 ;;
-      --runtime) runtime="$2"; shift 2 ;;
-      --health) health="$2"; shift 2 ;;
-      --admin) admin="$2"; shift 2 ;;
-      --dependencies) dependency="$2"; shift 2 ;;
+      --installation)  installation="$2";  shift 2 ;;
+      --runtime)       runtime="$2";       shift 2 ;;
+      --health)        health="$2";        shift 2 ;;
+      --admin)         admin="$2";         shift 2 ;;
+      --dependencies)  dependency="$2";    shift 2 ;;
+      --config-value)  config_value="$2";  shift 2 ;;
       *) shift ;;
     esac
   done
-  printf '{"installation_state":"%s","runtime_state":"%s","health_state":"%s","admin_state":"%s","dependency_state":"%s"}' \
-    "$(_ucc_jstr "$installation")" \
-    "$(_ucc_jstr "$runtime")" \
-    "$(_ucc_jstr "$health")" \
-    "$(_ucc_jstr "$admin")" \
-    "$(_ucc_jstr "$dependency")"
+  if [[ -n "$config_value" ]]; then
+    # ASM parametric state (SOFTWARE-MODEL.md §3b): carry config_value alongside
+    # installation_state so convergence comparison distinguishes distinct values.
+    printf '{"installation_state":"%s","runtime_state":"%s","health_state":"%s","admin_state":"%s","dependency_state":"%s","config_value":"%s"}' \
+      "$(_ucc_jstr "$installation")" \
+      "$(_ucc_jstr "$runtime")" \
+      "$(_ucc_jstr "$health")" \
+      "$(_ucc_jstr "$admin")" \
+      "$(_ucc_jstr "$dependency")" \
+      "$(_ucc_jstr "$config_value")"
+  else
+    printf '{"installation_state":"%s","runtime_state":"%s","health_state":"%s","admin_state":"%s","dependency_state":"%s"}' \
+      "$(_ucc_jstr "$installation")" \
+      "$(_ucc_jstr "$runtime")" \
+      "$(_ucc_jstr "$health")" \
+      "$(_ucc_jstr "$admin")" \
+      "$(_ucc_jstr "$dependency")"
+  fi
 }
 
 ucc_asm_package_state() {
@@ -297,8 +310,14 @@ ucc_asm_package_state() {
   esac
 }
 
+# ucc_asm_config_state <raw-value> [<desired-value>]
+# Parametric config state per ASM SOFTWARE-MODEL.md §3b.
+# When a desired-value is supplied both observed and desired carry config_value,
+# so convergence requires the value to match — not just installation=Configured.
+# When no desired-value is supplied (presence-only check), config_value is omitted.
 ucc_asm_config_state() {
-  case "$1" in
+  local raw="$1" desired_val="${2:-}"
+  case "$raw" in
     absent|unset)
       ucc_asm_state --installation Installed --runtime NeverStarted --health Unknown --admin Enabled --dependencies DepsUnknown
       ;;
@@ -306,9 +325,22 @@ ucc_asm_config_state() {
       ucc_asm_state --installation Installed --runtime Stopped --health Degraded --admin Enabled --dependencies DepsReady
       ;;
     *)
-      ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady
+      if [[ -n "$desired_val" ]]; then
+        ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady \
+          --config-value "$raw"
+      else
+        ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady
+      fi
       ;;
   esac
+}
+
+# ucc_asm_config_desired <desired-value>
+# Produce the desired parametric state for a config target.
+# Always pairs with ucc_asm_config_state called with the same desired-value arg.
+ucc_asm_config_desired() {
+  ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady \
+    --config-value "$1"
 }
 
 ucc_asm_service_state() {

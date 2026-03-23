@@ -9,14 +9,20 @@
 _macos_defaults_state() {
   local current="$1" desired="$2"
   local dep_state="DepsReady"
-  local install_state="Configured"
   [[ "${UIC_GATE_FAILED_SUDO_AVAILABLE:-0}" == "1" ]] && dep_state="DepsDegraded"
-  [[ "$current" == "$desired" ]] \
-    && ucc_asm_state --installation "$install_state" --runtime Stopped --health Healthy --admin Enabled --dependencies "$dep_state" \
-    || ucc_asm_state --installation Installed --runtime Stopped --health Degraded --admin Enabled --dependencies "$dep_state"
+  # Parametric state (ASM SOFTWARE-MODEL.md §3b): carry config_value so
+  # convergence comparison distinguishes distinct values (e.g. "0" vs "1").
+  if [[ "$current" == "$desired" ]]; then
+    ucc_asm_state --installation Configured --runtime Stopped --health Healthy \
+      --admin Enabled --dependencies "$dep_state" --config-value "$current"
+  else
+    ucc_asm_state --installation Installed --runtime Stopped --health Degraded \
+      --admin Enabled --dependencies "$dep_state" --config-value "$current"
+  fi
 }
 
 _macos_defaults_desired_state() {
+  local desired="$1"
   local dep_state="DepsReady"
   [[ "${UIC_GATE_FAILED_SUDO_AVAILABLE:-0}" == "1" ]] && dep_state="DepsDegraded"
   ucc_asm_state \
@@ -24,12 +30,13 @@ _macos_defaults_desired_state() {
     --runtime Stopped \
     --health Healthy \
     --admin Enabled \
-    --dependencies "$dep_state"
+    --dependencies "$dep_state" \
+    --config-value "$desired"
 }
 
 _macos_defaults_observe() {
   local read_cmd="$1" desired="$2" current=""
-  current=$(eval "$read_cmd")
+  current=$(eval "$read_cmd" 2>/dev/null | head -1 | tr -d '[:space:]')
   _macos_defaults_state "$current" "$desired"
 }
 
@@ -63,7 +70,7 @@ _macos_defaults_target() {
     --name "$name" \
     --observe "$observe_fn" \
     --evidence "$evidence_fn" \
-    --desired "$(_macos_defaults_desired_state)" \
+    --desired "$(_macos_defaults_desired_state "$desired")" \
     --install "$apply_fn" \
     --update "$apply_fn"
 }

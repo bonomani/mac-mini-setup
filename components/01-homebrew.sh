@@ -102,9 +102,13 @@ fi
 _observe_brew_analytics() {
   local raw
   raw=$(brew analytics state 2>/dev/null | grep -qi "disabled" && echo "off" || echo "on")
-  ucc_asm_config_state "$raw"
+  ucc_asm_config_state "$raw" "off"   # parametric: desired value "off" embedded in state
 }
-_evidence_brew_analytics() { printf 'analytics=off'; }
+_evidence_brew_analytics() {
+  local val
+  val=$(brew analytics state 2>/dev/null | grep -qi "disabled" && echo "off" || echo "on")
+  printf 'analytics=%s' "$val"
+}
 _disable_brew_analytics() { ucc_run brew analytics off; }
 
 if is_installed brew; then
@@ -112,7 +116,8 @@ if is_installed brew; then
     --name    "brew-analytics=off" \
     --observe _observe_brew_analytics \
     --evidence _evidence_brew_analytics \
-        --install _disable_brew_analytics \
+    --desired "$(ucc_asm_config_desired "off")" \
+    --install _disable_brew_analytics \
     --update  _disable_brew_analytics
 fi
 
