@@ -45,13 +45,19 @@ _macos_defaults_apply() {
 
 _macos_defaults_target() {
   local name="$1" read_cmd="$2" desired="$3" apply_cmd="$4"
-  local observe_fn="_obs_$(printf '%s' "$name" | tr -cs '[:alnum:]' '_')"
-  local evidence_fn="_evidence_$(printf '%s' "$name" | tr -cs '[:alnum:]' '_')"
-  local apply_fn="_apply_$(printf '%s' "$name" | tr -cs '[:alnum:]' '_')"
+  local fn; fn="$(printf '%s' "$name" | tr -cs '[:alnum:]' '_')"
+  local observe_fn="_obs_${fn}"
+  local evidence_fn="_evidence_${fn}"
+  local apply_fn="_apply_${fn}"
 
-  eval "${observe_fn}() { _macos_defaults_observe '$read_cmd' '$desired'; }"
-  eval "${evidence_fn}() { _macos_defaults_evidence '$read_cmd'; }"
-  eval "${apply_fn}() { _macos_defaults_apply \"$apply_cmd\"; }"
+  # Store commands in globals to avoid single-quote quoting conflicts in eval
+  # (read_cmd contains awk patterns with single quotes)
+  eval "_MDRD_${fn}=\$read_cmd"
+  eval "_MDAP_${fn}=\$apply_cmd"
+
+  eval "${observe_fn}()  { _macos_defaults_observe  \"\${_MDRD_${fn}}\" '${desired}'; }"
+  eval "${evidence_fn}() { _macos_defaults_evidence \"\${_MDRD_${fn}}\"; }"
+  eval "${apply_fn}()    { _macos_defaults_apply    \"\${_MDAP_${fn}}\"; }"
 
   ucc_target_nonruntime \
     --name "$name" \
