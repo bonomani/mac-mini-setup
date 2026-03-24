@@ -1,5 +1,7 @@
 component: 08-dev-tools
 primary_profile: runtime
+libs: vscode_ext dev_tools
+runner: run_dev_tools_from_yaml
 node_version: 24
 node_previous_version: 20
 omz_theme: agnoster

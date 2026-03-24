@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -r [^]* /home/bc/repos/github/bonomani/mac-mini-setup/*.py /home/bc/repos/github/bonomani/mac-mini-setup/lib/*.sh /home/bc/repos/github/bonomani/mac-mini-setup/components/*.sh)",
+      "Bash(grep -rE \"\\(http|ftp|://|3\\\\.12|24|20|14|11434|8001|6800|agnoster|pyenv|ollama|docker|node\\)\" /home/bc/repos/github/bonomani/mac-mini-setup/lib/*.sh /home/bc/repos/github/bonomani/mac-mini-setup/components/*.sh /home/bc/repos/github/bonomani/mac-mini-setup/*.py)",
+      "Bash(wc -l /home/bc/repos/github/bonomani/mac-mini-setup/lib/*.sh)",
+      "Bash(head -30 grep -n \"_observe_\\\\|_evidence_\\\\|_install_\\\\|_update_\\\\|ucc_target\" /home/bc/repos/github/bonomani/mac-mini-setup/lib/python.sh)",
+      "Bash(head -20 grep -n \"_observe_\\\\|_evidence_\\\\|_install_\\\\|_update_\\\\|ucc_target\" /home/bc/repos/github/bonomani/mac-mini-setup/lib/homebrew.sh)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(wc -l /home/bc/repos/github/bonomani/mac-mini-setup/components/*.sh)",
+      "Bash(python3 tools/validate_targets_manifest.py targets/)",
+      "Bash(python3 tools/validate_targets_manifest.py --dispatch 01-homebrew targets/)",
+      "Bash(python3 tools/validate_targets_manifest.py --dispatch 06-ai-python-stack targets/)",
+      "Bash(python3 tools/validate_targets_manifest.py --dispatch 05-ollama targets/)"
+    ]
+  }
+}

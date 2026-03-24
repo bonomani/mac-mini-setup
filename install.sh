@@ -65,6 +65,7 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$DIR/lib/ucc.sh"
 source "$DIR/lib/uic.sh"
 source "$DIR/lib/tic.sh"
+source "$DIR/lib/utils.sh"
 
 # ============================================================
 #  UIC gate condition functions (read-only, no side effects)
@@ -439,14 +440,12 @@ fi
 
 # --- Run components -----------------------------------------
 FAILED_COMPONENTS=()
+_MANIFEST_DIR="$DIR/targets"
+_QUERY_SCRIPT="$DIR/tools/validate_targets_manifest.py"
+
+_comp_prelude="source \"${DIR}/lib/ucc.sh\"; source \"${DIR}/lib/uic.sh\"; source \"${DIR}/lib/utils.sh\""
 
 for comp in "${TO_RUN[@]}"; do
-  SCRIPT="$DIR/components/${comp}.sh"
-  if [[ ! -f "$SCRIPT" ]]; then
-    log_warn "Component not found: ${comp}.sh — skipping"
-    continue
-  fi
-
   # UIC: skip component if a hard gate scoped to it has failed
   if uic_component_blocked "$comp"; then
     log_warn "Component $comp blocked by UIC hard gate — outcome=failed, failure_class=permanent, reason=gate_failed"
@@ -455,17 +454,41 @@ for comp in "${TO_RUN[@]}"; do
   fi
 
   if [[ "$comp" == "10-verify" ]]; then
-    if ! bash \
-        -c "source \"$DIR/lib/ucc.sh\"; source \"$DIR/lib/uic.sh\"; source \"$DIR/lib/utils.sh\"; source \"$SCRIPT\"" \
-        -- "$SCRIPT" > "$UCC_VERIFICATION_REPORT_FILE"; then
+    SCRIPT="$DIR/components/10-verify.sh"
+    if ! bash -c "${_comp_prelude}; source \"${SCRIPT}\"" -- "$SCRIPT" > "$UCC_VERIFICATION_REPORT_FILE"; then
       log_warn "Component failed: $comp"
       FAILED_COMPONENTS+=("$comp")
     fi
-  elif ! bash \
-      -c "source \"$DIR/lib/ucc.sh\"; source \"$DIR/lib/uic.sh\"; source \"$DIR/lib/utils.sh\"; source \"$SCRIPT\"" \
-      -- "$SCRIPT"; then
-    log_warn "Component failed: $comp"
-    FAILED_COMPONENTS+=("$comp")
+  else
+    # Read dispatch info from targets manifest
+    _dispatch=$(python3 "$_QUERY_SCRIPT" --dispatch "$comp" "$_MANIFEST_DIR" 2>/dev/null || true)
+    _libs=$(echo "$_dispatch" | sed -n '1p')
+    _runner=$(echo "$_dispatch" | sed -n '2p')
+    _on_fail=$(echo "$_dispatch" | sed -n '3p')
+
+    if [[ -z "$_libs" || -z "$_runner" ]]; then
+      log_warn "Component $comp has no dispatch info in manifest — skipping"
+      continue
+    fi
+
+    # Build source lines for each lib
+    _src=""
+    for _lib in $_libs; do
+      _src="${_src}source \"${DIR}/lib/${_lib}.sh\"; "
+    done
+
+    # Build runner call with on_fail handling
+    _config="${DIR}/config/${comp}.yaml"
+    case "$_on_fail" in
+      exit)   _run="${_runner} \"${DIR}\" \"${_config}\" || { ucc_summary \"${comp}\"; exit 1; }" ;;
+      ignore) _run="${_runner} \"${DIR}\" \"${_config}\" || true" ;;
+      *)      _run="${_runner} \"${DIR}\" \"${_config}\"" ;;
+    esac
+
+    if ! bash -c "${_comp_prelude}; ${_src}${_run}; ucc_summary \"${comp}\""; then
+      log_warn "Component failed: $comp"
+      FAILED_COMPONENTS+=("$comp")
+    fi
   fi
   # Refresh brew PATH in case it was just installed by this component
   _refresh_brew_path

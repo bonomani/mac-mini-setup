@@ -49,3 +49,16 @@ load_pip_groups_from_yaml() {
     _pip_group "$grp_name" "$grp_probe" "$grp_pkgs" "$grp_minver"
   done < <(yaml_records "$cfg_dir" "$yaml" pip_groups name probe packages min_version)
 }
+
+# Combined runner for 06-ai-python-stack: pip groups + unsloth studio + MPS note.
+# Usage: run_ai_python_stack_from_yaml <cfg_dir> <yaml_path>
+run_ai_python_stack_from_yaml() {
+  local cfg_dir="$1" yaml="$2"
+  load_pip_groups_from_yaml "$cfg_dir" "$yaml"
+  register_unsloth_studio_targets "$cfg_dir" "$yaml"
+  if [[ "$UCC_DRY_RUN" != "1" ]] && is_installed python3; then
+    local _mps
+    _mps=$(python3 -c "import torch; print('available' if torch.backends.mps.is_available() else 'not available (CPU only)')" 2>/dev/null || true)
+    [[ -n "$_mps" ]] && ucc_profile_note runtime "MPS (Metal) GPU: $_mps"
+  fi
+}

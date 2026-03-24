@@ -1,5 +1,7 @@
 component: 09-macos-defaults
 primary_profile: configured
+libs: macos_defaults
+runner: run_macos_defaults_from_yaml
 targets:
   pmset-ac-sleep=0:
     component: 09-macos-defaults

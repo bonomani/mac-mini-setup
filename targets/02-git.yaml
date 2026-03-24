@@ -1,5 +1,7 @@
 component: 02-git
 primary_profile: configured
+libs: git
+runner: run_git_from_yaml
 targets:
   git:
     component: 02-git

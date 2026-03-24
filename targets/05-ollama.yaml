@@ -1,5 +1,8 @@
 component: 05-ollama
 primary_profile: runtime
+libs: ollama_models ollama
+runner: run_ollama_from_yaml
+on_fail: ignore
 macos_min_version: 14
 installer_url: https://ollama.com/install.sh
 api_host: 127.0.0.1

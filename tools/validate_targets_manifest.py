@@ -55,6 +55,8 @@ def parse_manifest_file(path: Path):
                 value = value.strip()
                 _ALLOWED_TOP_LEVEL = {
                     "component", "primary_profile",
+                    # dispatch fields (used by install.sh dynamic runner)
+                    "libs", "runner", "on_fail",
                     # version/config fields (single source of truth)
                     "python_version", "node_version", "node_previous_version",
                     "macos_min_version", "installer_url", "api_host", "api_port", "log_file",
@@ -118,6 +120,9 @@ def parse_manifest(path: Path):
                     raise ValueError(f"{file}: duplicate component '{component}'")
                 merged["components"][component] = {
                     "primary_profile": manifest.get("primary_profile", ""),
+                    "libs": manifest.get("libs", ""),
+                    "runner": manifest.get("runner", ""),
+                    "on_fail": manifest.get("on_fail", ""),
                     "file": str(file),
                 }
             for name, data in manifest["targets"].items():
@@ -218,6 +223,7 @@ def main():
     soft_deps_mode = False
     component_profile_mode = False
     components_mode = False
+    dispatch_mode = False
     target_name = None
     if len(args) >= 2 and args[0] == "--deps":
         deps_mode = True
@@ -229,6 +235,10 @@ def main():
         args = args[2:]
     elif len(args) >= 2 and args[0] == "--component-profile":
         component_profile_mode = True
+        target_name = args[1]
+        args = args[2:]
+    elif len(args) >= 2 and args[0] == "--dispatch":
+        dispatch_mode = True
         target_name = args[1]
         args = args[2:]
     elif len(args) >= 1 and args[0] == "--components":
@@ -261,6 +271,13 @@ def main():
 
     if component_profile_mode:
         print(component_profile(manifest, target_name))
+        return 0
+
+    if dispatch_mode:
+        meta = manifest["components"].get(target_name, {})
+        print(meta.get("libs", ""))
+        print(meta.get("runner", ""))
+        print(meta.get("on_fail", ""))
         return 0
 
     if components_mode:

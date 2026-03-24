@@ -1,5 +1,7 @@
 component: 04-python
 primary_profile: configured
+libs: python
+runner: run_python_from_yaml
 python_version: 3.12.3
 targets:
   pyenv:

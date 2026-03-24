@@ -1,5 +1,8 @@
 component: 07-ai-apps
 primary_profile: runtime
+libs: ai_apps
+runner: run_ai_apps_from_yaml
+on_fail: ignore
 targets:
   docker-running:
     component: 07-ai-apps

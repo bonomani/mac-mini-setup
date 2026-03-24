@@ -1,5 +1,8 @@
 component: 01-homebrew
 primary_profile: configured
+libs: homebrew
+runner: run_homebrew_from_yaml
+on_fail: exit
 targets:
   xcode-command-line-tools:
     component: 01-homebrew

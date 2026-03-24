@@ -1,5 +1,7 @@
 component: 03-docker
 primary_profile: configured
+libs: docker
+runner: run_docker_from_yaml
 memory_gb: 48
 cpu_count: 10
 swap_mib: 4096
