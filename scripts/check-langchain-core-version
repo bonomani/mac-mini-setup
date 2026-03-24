@@ -1,0 +1,9 @@
+#!/usr/bin/env python3
+"""Exit 0 if langchain-core >= 1.0.0, else exit 1."""
+import sys
+try:
+    from importlib.metadata import version
+    from packaging.version import Version
+    sys.exit(0 if Version(version("langchain-core")) >= Version("1.0.0") else 1)
+except Exception:
+    sys.exit(1)
