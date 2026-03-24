@@ -75,7 +75,7 @@ PLIST
     --name    "unsloth-studio-launchd" \
     --observe _observe_unsloth_launchd \
     --evidence _evidence_unsloth_launchd \
-    --desired "$(ucc_asm_state --installation Configured --runtime Running --health Healthy --admin Enabled --dependencies DepsReady)" \
+    --desired "$(ucc_asm_runtime_desired)" \
     --install _install_unsloth_launchd \
     --update  _update_unsloth_launchd
 }

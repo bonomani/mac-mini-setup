@@ -7,17 +7,11 @@ run_docker_from_yaml() {
   local cfg_dir="$1" yaml="$2"
 
   # Resource settings — UIC preferences take precedence; YAML provides defaults
-  local _cfg_mem_gb _cfg_cpus _cfg_swap _cfg_disk
-  _cfg_mem_gb="$(python3 "$cfg_dir/tools/read_config.py" --get "$yaml" memory_gb   2>/dev/null)"
-  _cfg_cpus="$(  python3 "$cfg_dir/tools/read_config.py" --get "$yaml" cpu_count   2>/dev/null)"
-  _cfg_swap="$(  python3 "$cfg_dir/tools/read_config.py" --get "$yaml" swap_mib    2>/dev/null)"
-  _cfg_disk="$(  python3 "$cfg_dir/tools/read_config.py" --get "$yaml" disk_mib    2>/dev/null)"
-
-  local _DOCKER_MEM_GB="${UIC_PREF_DOCKER_MEMORY_GB:-${_cfg_mem_gb:-48}}"
+  local _DOCKER_MEM_GB="${UIC_PREF_DOCKER_MEMORY_GB:-$(yaml_get "$cfg_dir" "$yaml" memory_gb 48)}"
   local _DOCKER_MEM_MIB=$(( _DOCKER_MEM_GB * 1024 ))
-  local _DOCKER_CPUS="${UIC_PREF_DOCKER_CPU_COUNT:-${_cfg_cpus:-10}}"
-  local _DOCKER_SWAP_MIB="${UIC_PREF_DOCKER_SWAP_MIB:-${_cfg_swap:-4096}}"
-  local _DOCKER_DISK_MIB="${UIC_PREF_DOCKER_DISK_MIB:-${_cfg_disk:-204800}}"
+  local _DOCKER_CPUS="${UIC_PREF_DOCKER_CPU_COUNT:-$(yaml_get "$cfg_dir" "$yaml" cpu_count 10)}"
+  local _DOCKER_SWAP_MIB="${UIC_PREF_DOCKER_SWAP_MIB:-$(yaml_get "$cfg_dir" "$yaml" swap_mib 4096)}"
+  local _DOCKER_DISK_MIB="${UIC_PREF_DOCKER_DISK_MIB:-$(yaml_get "$cfg_dir" "$yaml" disk_mib 204800)}"
 
   # ---- Docker Desktop app ----
   _observe_docker_app() {

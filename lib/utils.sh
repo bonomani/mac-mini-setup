@@ -28,6 +28,14 @@ brew_is_installed() { brew list "$1" &>/dev/null 2>&1; }
 # Check if a brew cask is installed
 brew_cask_is_installed() { brew list --cask "$1" &>/dev/null 2>&1; }
 
+# yaml_get <cfg_dir> <yaml_path> <key> [<default>]
+# Read a scalar value from a YAML config file, with optional default.
+yaml_get() {
+  local val
+  val="$(python3 "$1/tools/read_config.py" --get "$2" "$3" 2>/dev/null)"
+  echo "${val:-${4:-}}"
+}
+
 # Check if a Docker container is running
 docker_is_running() { docker inspect -f '{{.State.Running}}' "$1" 2>/dev/null | grep -q true; }
 

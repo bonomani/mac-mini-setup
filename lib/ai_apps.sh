@@ -6,11 +6,9 @@
 run_ai_apps_from_yaml() {
   local cfg_dir="$1" yaml="$2"
 
-  local _raw_compose_dir
-  _raw_compose_dir="$(python3 "$cfg_dir/tools/read_config.py" --get "$yaml" compose_dir 2>/dev/null)"
-  COMPOSE_DIR="$HOME/${_raw_compose_dir:-.ai-stack}"
+  COMPOSE_DIR="$HOME/$(yaml_get "$cfg_dir" "$yaml" compose_dir .ai-stack)"
   COMPOSE_FILE="$COMPOSE_DIR/docker-compose.yml"
-  COMPOSE_MARKER="$(python3 "$cfg_dir/tools/read_config.py" --get "$yaml" compose_marker 2>/dev/null)"
+  COMPOSE_MARKER="$(yaml_get "$cfg_dir" "$yaml" compose_marker "")"
 
   AI_SERVICES=()
   while IFS= read -r _svc; do [[ -n "$_svc" ]] && AI_SERVICES+=("$_svc"); done \
@@ -60,8 +58,7 @@ run_ai_apps_from_yaml() {
     --name    "docker-running" \
     --observe _observe_docker_running \
     --evidence _evidence_docker_running \
-    --desired "$(ucc_asm_state --installation Configured --runtime Running \
-                               --health Healthy --admin Enabled --dependencies DepsReady)" \
+    --desired "$(ucc_asm_runtime_desired)" \
     --install _start_docker
 
   # Abort if Docker still not running
@@ -141,7 +138,6 @@ run_ai_apps_from_yaml() {
   ucc_target_service --name "ai-stack-running" \
     --observe _observe_stack \
     --evidence _evidence_stack \
-    --desired "$(ucc_asm_state --installation Configured --runtime Running \
-                               --health Healthy --admin Enabled --dependencies DepsReady)" \
+    --desired "$(ucc_asm_runtime_desired)" \
     --install _start_stack --update _update_stack
 }

@@ -7,8 +7,7 @@ run_homebrew_from_yaml() {
   local cfg_dir="$1" yaml="$2"
 
   local _hb_installer_url
-  _hb_installer_url="$(python3 "$cfg_dir/tools/read_config.py" --get "$yaml" installer_url 2>/dev/null)"
-  _hb_installer_url="${_hb_installer_url:-https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh}"
+  _hb_installer_url="$(yaml_get "$cfg_dir" "$yaml" installer_url "https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh")"
 
   # ---- Step 0: Xcode Command Line Tools ----
   _observe_xcode_clt() {
@@ -92,8 +91,7 @@ run_homebrew_from_yaml() {
   # ---- Disable analytics ----
   if is_installed brew; then
     local _analytics_desired
-    _analytics_desired="$(python3 "$cfg_dir/tools/read_config.py" --get "$yaml" analytics_desired 2>/dev/null)"
-    _analytics_desired="${_analytics_desired:-off}"
+    _analytics_desired="$(yaml_get "$cfg_dir" "$yaml" analytics_desired off)"
 
     _observe_brew_analytics() {
       local raw
