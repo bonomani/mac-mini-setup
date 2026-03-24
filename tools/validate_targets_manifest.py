@@ -213,8 +213,47 @@ def component_profile(manifest, component):
     return meta.get("primary_profile") or "configured"
 
 
-def component_order(manifest):
-    return list(manifest["components"].keys())
+def component_order(manifest, topo_ordered=None):
+    """Return components in an order consistent with target dependencies.
+
+    Builds a component-level dependency graph by inspecting which component
+    owns each target's depends_on entries, then runs Kahn's topo sort on
+    components.  Ties are broken alphabetically for determinism.
+    """
+    targets = manifest["targets"]
+    components = list(manifest["components"].keys())
+
+    # Build component → set-of-component-deps from target depends_on edges
+    comp_deps = {c: set() for c in components}
+    comp_graph = defaultdict(list)
+    comp_indegree = {c: 0 for c in components}
+
+    for tname, tdata in targets.items():
+        comp = tdata.get("component")
+        if not comp or comp not in comp_deps:
+            continue
+        for dep_target in tdata.get("depends_on", []):
+            dep_comp = targets.get(dep_target, {}).get("component")
+            if dep_comp and dep_comp != comp and dep_comp not in comp_deps[comp]:
+                comp_deps[comp].add(dep_comp)
+                comp_graph[dep_comp].append(comp)
+                comp_indegree[comp] += 1
+
+    queue = sorted(c for c, deg in comp_indegree.items() if deg == 0)
+    ordered = []
+    while queue:
+        node = queue.pop(0)
+        ordered.append(node)
+        children = sorted(comp_graph[node])
+        for child in children:
+            comp_indegree[child] -= 1
+            if comp_indegree[child] == 0:
+                queue.append(child)
+                queue.sort()
+    for c in components:
+        if c not in ordered:
+            ordered.append(c)
+    return ordered
 
 
 def main():
@@ -281,7 +320,7 @@ def main():
         return 0
 
     if components_mode:
-        for component in component_order(manifest):
+        for component in component_order(manifest, ordered):
             print(component)
         return 0
 
