@@ -1,5 +1,12 @@
 component: 08-dev-tools
 primary_profile: runtime
+node_version: 24
+node_previous_version: 20
+omz_theme: agnoster
+omz_installer_url: https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh
+ariaflow_tap: bonomani/ariaflow
+aria2_port: 6800
+ariaflow_web_port: 8001
 targets:
   vscode:
     component: 08-dev-tools
@@ -23,7 +30,7 @@ targets:
     depends_on:
       - vscode
 
-  node-24-lts:
+  node-lts:
     component: 08-dev-tools
     profile: configured
     type: package

@@ -37,22 +37,20 @@ run_dev_tools_from_yaml() {
     ver=$(defaults read "/Applications/Visual Studio Code.app/Contents/Info" CFBundleShortVersionString 2>/dev/null || true)
     [[ -n "$ver" ]] && printf 'version=%s' "$ver"
   }
+
   _install_vscode() { brew_cask_install visual-studio-code; }
   _update_vscode()  { brew_cask_upgrade visual-studio-code; }
 
   ucc_target_nonruntime \
-    --name    "vscode" \
-    --observe _observe_vscode \
+    --name     "vscode" \
+    --observe  _observe_vscode \
     --evidence _evidence_vscode \
-    --install _install_vscode \
-    --update  _update_vscode
+    --install  _install_vscode \
+    --update   _update_vscode
 
   # ---- code CLI symlink ----
-  _observe_code_cmd() { ucc_asm_package_state "$(is_installed code && code --version 2>/dev/null | awk 'NR==1 {print $1}' || echo "absent")"; }
-  _evidence_code_cmd() {
-    local path; path=$(command -v code 2>/dev/null || true)
-    [[ -n "$path" ]] && printf 'path=%s' "$path"
-  }
+  _observe_code_cmd()  { ucc_asm_package_state "$(is_installed code && code --version 2>/dev/null | awk 'NR==1 {print $1}' || echo "absent")"; }
+  _evidence_code_cmd() { local p; p=$(command -v code 2>/dev/null || true); [[ -n "$p" ]] && printf 'path=%s' "$p"; }
   _fix_code_symlink() {
     local vscode_bin="/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code"
     if [[ -x "$vscode_bin" ]]; then
@@ -67,10 +65,10 @@ run_dev_tools_from_yaml() {
   }
 
   ucc_target_nonruntime \
-    --name    "vscode-code-cmd" \
-    --observe _observe_code_cmd \
+    --name     "vscode-code-cmd" \
+    --observe  _observe_code_cmd \
     --evidence _evidence_code_cmd \
-    --install _fix_code_symlink
+    --install  _fix_code_symlink
 
   # ---- VSCode extensions ----
   load_vscode_extensions_from_yaml "$cfg_dir" "$yaml"
@@ -88,9 +86,7 @@ run_dev_tools_from_yaml() {
       ucc_asm_config_state "needs-update"
     fi
   }
-  _evidence_vscode_settings() {
-    printf 'path=%s' "$HOME/Library/Application Support/Code/User/settings.json"
-  }
+  _evidence_vscode_settings() { printf 'path=%s' "$HOME/Library/Application Support/Code/User/settings.json"; }
   _apply_vscode_settings() {
     local f="$HOME/Library/Application Support/Code/User/settings.json"
     local patch_file="$cfg_dir/config/vscode-settings.json"
@@ -107,11 +103,11 @@ run_dev_tools_from_yaml() {
   }
 
   ucc_target_nonruntime \
-    --name    "vscode-settings" \
-    --observe _observe_vscode_settings \
+    --name     "vscode-settings" \
+    --observe  _observe_vscode_settings \
     --evidence _evidence_vscode_settings \
-    --install _apply_vscode_settings \
-    --update  _apply_vscode_settings
+    --install  _apply_vscode_settings \
+    --update   _apply_vscode_settings
 
   # ---- GUI tools (brew cask) ----
   local _cask_name _cask_id
@@ -121,7 +117,7 @@ run_dev_tools_from_yaml() {
 
   # ---- Node.js LTS ----
   _observe_node_lts() {
-    local ver raw
+    local ver
     ver=$(node --version 2>/dev/null)
     [[ "$ver" == v${_NODE_VER}.* ]] || { ucc_asm_package_state "absent"; return; }
     if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-always-upgrade}" == "always-upgrade" ]]; then
@@ -145,11 +141,11 @@ run_dev_tools_from_yaml() {
   }
 
   ucc_target_nonruntime \
-    --name    "node-${_NODE_VER}-lts" \
-    --observe _observe_node_lts \
+    --name     "node-lts" \
+    --observe  _observe_node_lts \
     --evidence _evidence_node_lts \
-    --install _install_node_lts \
-    --update  _update_node_lts
+    --install  _install_node_lts \
+    --update   _update_node_lts
 
   # Ensure node is in PATH for subsequent steps
   if [[ -d "/opt/homebrew/opt/node@${_NODE_VER}/bin" ]]; then
@@ -165,20 +161,20 @@ run_dev_tools_from_yaml() {
   done < <(yaml_list "$cfg_dir" "$yaml" npm_packages)
 
   # ---- Oh My Zsh ----
-  _observe_omz() { ucc_asm_package_state "$([[ -d "$HOME/.oh-my-zsh" ]] && echo "installed" || echo "absent")"; }
+  _observe_omz()  { ucc_asm_package_state "$([[ -d "$HOME/.oh-my-zsh" ]] && echo "installed" || echo "absent")"; }
   _evidence_omz() { printf 'folder=%s' "$HOME/.oh-my-zsh"; }
-  _install_omz() { sh -c "$(curl -fsSL "$_OMZ_INSTALLER_URL")" "" --unattended; }
-  _update_omz()  { [[ -f "$HOME/.oh-my-zsh/tools/upgrade.sh" ]] && bash "$HOME/.oh-my-zsh/tools/upgrade.sh" || true; }
+  _install_omz()  { sh -c "$(curl -fsSL "$_OMZ_INSTALLER_URL")" "" --unattended; }
+  _update_omz()   { [[ -f "$HOME/.oh-my-zsh/tools/upgrade.sh" ]] && bash "$HOME/.oh-my-zsh/tools/upgrade.sh" || true; }
 
   ucc_target_nonruntime \
-    --name    "oh-my-zsh" \
-    --observe _observe_omz \
+    --name     "oh-my-zsh" \
+    --observe  _observe_omz \
     --evidence _evidence_omz \
-    --install _install_omz \
-    --update  _update_omz
+    --install  _install_omz \
+    --update   _update_omz
 
   # ---- Oh My Zsh theme ----
-  _observe_omz_theme() { ucc_asm_config_state "$(grep -q "^ZSH_THEME=\"${_OMZ_THEME}\"" "$HOME/.zshrc" 2>/dev/null && echo "set" || echo "unset")"; }
+  _observe_omz_theme()  { ucc_asm_config_state "$(grep -q "^ZSH_THEME=\"${_OMZ_THEME}\"" "$HOME/.zshrc" 2>/dev/null && echo "set" || echo "unset")"; }
   _evidence_omz_theme() { printf 'theme=%s file=%s' "$_OMZ_THEME" "$HOME/.zshrc"; }
   _apply_omz_theme() {
     if grep -q '^ZSH_THEME=' "$HOME/.zshrc" 2>/dev/null; then
@@ -189,14 +185,14 @@ run_dev_tools_from_yaml() {
   }
 
   ucc_target_nonruntime \
-    --name    "omz-theme-${_OMZ_THEME}" \
-    --observe _observe_omz_theme \
+    --name     "omz-theme-${_OMZ_THEME}" \
+    --observe  _observe_omz_theme \
     --evidence _evidence_omz_theme \
-    --install _apply_omz_theme \
-    --update  _apply_omz_theme
+    --install  _apply_omz_theme \
+    --update   _apply_omz_theme
 
   # ---- $HOME/bin in PATH ----
-  _observe_home_bin_path() { ucc_asm_config_state "$(grep -q 'export PATH="$HOME/bin:$PATH"' "$HOME/.zprofile" 2>/dev/null && echo "present" || echo "absent")"; }
+  _observe_home_bin_path()  { ucc_asm_config_state "$(grep -q 'export PATH="$HOME/bin:$PATH"' "$HOME/.zprofile" 2>/dev/null && echo "present" || echo "absent")"; }
   _evidence_home_bin_path() { printf 'path=%s' "$HOME/bin"; }
   _add_home_bin_path() {
     mkdir -p "$HOME/bin"
@@ -205,13 +201,13 @@ run_dev_tools_from_yaml() {
   }
 
   ucc_target_nonruntime \
-    --name    "home-bin-in-path" \
-    --observe _observe_home_bin_path \
+    --name     "home-bin-in-path" \
+    --observe  _observe_home_bin_path \
     --evidence _evidence_home_bin_path \
-    --install _add_home_bin_path
+    --install  _add_home_bin_path
 
   # ---- ai-healthcheck script ----
-  _observe_healthcheck() { ucc_asm_package_state "$([[ -x "$HOME/bin/ai-healthcheck" ]] && echo "present" || echo "absent")"; }
+  _observe_healthcheck()  { ucc_asm_package_state "$([[ -x "$HOME/bin/ai-healthcheck" ]] && echo "present" || echo "absent")"; }
   _evidence_healthcheck() { printf 'path=%s' "$HOME/bin/ai-healthcheck"; }
   _install_healthcheck() {
     mkdir -p "$HOME/bin"
@@ -219,11 +215,11 @@ run_dev_tools_from_yaml() {
   }
 
   ucc_target_nonruntime \
-    --name    "ai-healthcheck" \
-    --observe _observe_healthcheck \
+    --name     "ai-healthcheck" \
+    --observe  _observe_healthcheck \
     --evidence _evidence_healthcheck \
-    --install _install_healthcheck \
-    --update  _install_healthcheck
+    --install  _install_healthcheck \
+    --update   _install_healthcheck
 
   # ---- ariaflow ----
   _observe_ariaflow() {
@@ -248,11 +244,11 @@ run_dev_tools_from_yaml() {
   }
 
   ucc_target_nonruntime \
-    --name    "ariaflow" \
-    --observe _observe_ariaflow \
+    --name     "ariaflow" \
+    --observe  _observe_ariaflow \
     --evidence _evidence_ariaflow \
-    --install _install_ariaflow \
-    --update  _update_ariaflow
+    --install  _install_ariaflow \
+    --update   _update_ariaflow
 
   # ---- aria2 daemon (launchd) ----
   _observe_aria2_launchd() {
@@ -264,18 +260,19 @@ run_dev_tools_from_yaml() {
     local pid; pid=$(lsof -ti "tcp:${_ARIA2_PORT}" 2>/dev/null | head -1 || true)
     [[ -n "$pid" ]] && printf 'pid=%s port=%s' "$pid" "$_ARIA2_PORT" || printf 'port=%s' "$_ARIA2_PORT"
   }
+
   _install_aria2_launchd() { ucc_run ariaflow install --with-aria2; }
 
   ucc_target_service \
-    --name    "aria2-launchd" \
-    --observe _observe_aria2_launchd \
+    --name     "aria2-launchd" \
+    --observe  _observe_aria2_launchd \
     --evidence _evidence_aria2_launchd \
-    --desired "$(ucc_asm_runtime_desired)" \
-    --install _install_aria2_launchd \
-    --update  _install_aria2_launchd
+    --desired  "$(ucc_asm_runtime_desired)" \
+    --install  _install_aria2_launchd \
+    --update   _install_aria2_launchd
 
   # ---- ariaflow-web (brew formula) ----
-  _observe_ariaflow_web() { ucc_asm_package_state "$(brew_observe ariaflow-web)"; }
+  _observe_ariaflow_web()  { ucc_asm_package_state "$(brew_observe ariaflow-web)"; }
   _evidence_ariaflow_web() {
     local ver; ver=$(brew list --versions ariaflow-web 2>/dev/null | awk '{print $NF}')
     [[ -n "$ver" ]] && printf 'version=%s' "$ver"
@@ -284,11 +281,11 @@ run_dev_tools_from_yaml() {
   _update_ariaflow_web()  { ucc_run brew tap "$_ARIAFLOW_TAP"; brew_upgrade ariaflow-web; }
 
   ucc_target_nonruntime \
-    --name    "ariaflow-web" \
-    --observe _observe_ariaflow_web \
+    --name     "ariaflow-web" \
+    --observe  _observe_ariaflow_web \
     --evidence _evidence_ariaflow_web \
-    --install _install_ariaflow_web \
-    --update  _update_ariaflow_web
+    --install  _install_ariaflow_web \
+    --update   _update_ariaflow_web
 
   # ---- ariaflow-web service ----
   _observe_ariaflow_web_service() {
@@ -307,10 +304,10 @@ run_dev_tools_from_yaml() {
   _restart_ariaflow_web_service() { ucc_run brew services restart "${_ARIAFLOW_TAP}/ariaflow-web"; }
 
   ucc_target_service \
-    --name    "ariaflow-web-service" \
-    --observe _observe_ariaflow_web_service \
+    --name     "ariaflow-web-service" \
+    --observe  _observe_ariaflow_web_service \
     --evidence _evidence_ariaflow_web_service \
-    --desired "$(ucc_asm_runtime_desired)" \
-    --install _start_ariaflow_web_service \
-    --update  _restart_ariaflow_web_service
+    --desired  "$(ucc_asm_runtime_desired)" \
+    --install  _start_ariaflow_web_service \
+    --update   _restart_ariaflow_web_service
 }

@@ -32,7 +32,7 @@ run_ollama_from_yaml() {
   }
 
   ucc_target_nonruntime \
-    --name    "macos-${_OLLAMA_MACOS_MIN}-precondition" \
+    --name    "macos-precondition" \
     --observe _observe_macos_prereq \
     --evidence _evidence_macos_prereq \
     --install _fail_macos_prereq

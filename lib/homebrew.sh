@@ -89,20 +89,16 @@ run_homebrew_from_yaml() {
     local _analytics_desired
     _analytics_desired="$(yaml_get "$cfg_dir" "$yaml" analytics_desired off)"
 
-    _observe_brew_analytics() { ucc_asm_config_state "$(brew analytics state 2>/dev/null | grep -qi "disabled" && echo "off" || echo "on")" "$_analytics_desired"; }
-    _evidence_brew_analytics() {
-      local val
-      val=$(brew analytics state 2>/dev/null | grep -qi "disabled" && echo "off" || echo "on")
-      printf 'analytics=%s' "$val"
-    }
-    _disable_brew_analytics() { ucc_run brew analytics off; }
+    eval "_obs_ba()  { ucc_asm_config_state \"\$(brew analytics state 2>/dev/null | grep -qi disabled && echo off || echo on)\" '${_analytics_desired}'; }"
+    eval "_evd_ba()  { printf 'analytics=%s' \"\$(brew analytics state 2>/dev/null | grep -qi disabled && echo off || echo on)\"; }"
+    eval "_fix_ba()  { ucc_run brew analytics off; }"
 
     ucc_target_nonruntime \
       --name    "brew-analytics=${_analytics_desired}" \
-      --observe _observe_brew_analytics \
-      --evidence _evidence_brew_analytics \
-      --desired "$(ucc_asm_config_desired "$_analytics_desired")" \
-      --install _disable_brew_analytics \
-      --update  _disable_brew_analytics
+      --observe  _obs_ba \
+      --evidence _evd_ba \
+      --desired  "$(ucc_asm_config_desired "$_analytics_desired")" \
+      --install  _fix_ba \
+      --update   _fix_ba
   fi
 }

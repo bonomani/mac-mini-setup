@@ -15,10 +15,10 @@ run_python_from_yaml() {
     < <(yaml_list "$cfg_dir" "$yaml" pip_bootstrap)
   [[ ${#_pip_bootstrap[@]} -gt 0 ]] || _pip_bootstrap=(pip setuptools wheel)
 
-  local python_version="${UIC_PREF_PYTHON_VERSION:-3.12.3}"
+  local python_version="${UIC_PREF_PYTHON_VERSION:-$(yaml_get "$cfg_dir" "$yaml" python_version 3.12.3)}"
 
-  # ---- pyenv ----
-  _observe_pyenv() { ucc_asm_package_state "$(brew_observe pyenv)"; }
+  # ---- pyenv (custom install: also appends zshrc snippet) ----
+  _observe_pyenv()  { ucc_asm_package_state "$(brew_observe pyenv)"; }
   _evidence_pyenv() {
     local ver path
     ver=$(pyenv --version 2>/dev/null | awk '{print $2}')
@@ -28,34 +28,19 @@ run_python_from_yaml() {
   }
   _install_pyenv() {
     brew_install "${_pyenv_pkgs[@]}"
-    if ! grep -q 'pyenv init' ~/.zshrc 2>/dev/null; then
-      cat "$cfg_dir/scripts/pyenv-zshrc-snippet" >> ~/.zshrc
-    fi
+    grep -q 'pyenv init' ~/.zshrc 2>/dev/null || cat "$cfg_dir/scripts/pyenv-zshrc-snippet" >> ~/.zshrc
   }
   _update_pyenv() { brew_upgrade "${_pyenv_pkgs[@]}"; }
 
   ucc_target_nonruntime \
-    --name    "pyenv" \
-    --observe _observe_pyenv \
+    --name     "pyenv" \
+    --observe  _observe_pyenv \
     --evidence _evidence_pyenv \
-    --install _install_pyenv \
-    --update  _update_pyenv
+    --install  _install_pyenv \
+    --update   _update_pyenv
 
   # ---- xz (lzma dependency) ----
-  _observe_xz() { ucc_asm_package_state "$(brew_observe xz)"; }
-  _evidence_xz() {
-    local ver; ver=$(xz --version 2>/dev/null | awk 'NR==1 {print $4}')
-    [[ -n "$ver" ]] && printf 'version=%s' "$ver"
-  }
-  _install_xz() { brew_install xz; }
-  _update_xz()  { brew_upgrade  xz; }
-
-  ucc_target_nonruntime \
-    --name    "xz" \
-    --observe _observe_xz \
-    --evidence _evidence_xz \
-    --install _install_xz \
-    --update  _update_xz
+  ucc_brew_target "xz" "xz"
 
   # Load pyenv for subsequent steps
   export PYENV_ROOT="$HOME/.pyenv"
@@ -63,28 +48,10 @@ run_python_from_yaml() {
   eval "$(pyenv init -)" 2>/dev/null || true
 
   # ---- Python version ----
-  _observe_python_version() { ucc_asm_package_state "$(pyenv versions 2>/dev/null | grep -q "$python_version" && echo "$python_version" || echo "absent")"; }
-  _evidence_python_version() {
-    local ver path
-    ver=$(python3 --version 2>/dev/null | awk '{print $2}')
-    path=$(pyenv which python3 2>/dev/null || command -v python3 2>/dev/null || true)
-    [[ -n "$ver" ]] && printf 'version=%s' "$ver"
-    [[ -n "$path" ]] && printf '%s path=%s' "${ver:+ }" "$path"
-  }
-  _install_python_version() { pyenv install "$python_version"; pyenv global "$python_version"; }
-  _update_python_version()  { pyenv install --skip-existing "$python_version"; pyenv global "$python_version"; }
-
-  ucc_target_nonruntime \
-    --name    "python-$python_version" \
-    --observe _observe_python_version \
-    --evidence _evidence_python_version \
-    --install _install_python_version \
-    --update  _update_python_version
+  ucc_pyenv_version_target "python" "$python_version"
 
   # ---- pip up-to-date ----
-  _observe_pip() {
-    ucc_asm_package_state "$(is_installed pip && pip --version 2>/dev/null | awk '{print $2}' || echo "absent")"
-  }
+  _observe_pip()  { ucc_asm_package_state "$(is_installed pip && pip --version 2>/dev/null | awk '{print $2}' || echo "absent")"; }
   _evidence_pip() {
     local ver path
     ver=$(pip --version 2>/dev/null | awk '{print $2}')
@@ -96,8 +63,8 @@ run_python_from_yaml() {
 
   ucc_target_nonruntime \
     --name    "pip-latest" \
-    --observe _observe_pip \
+    --observe  _observe_pip \
     --evidence _evidence_pip \
-    --install _upgrade_pip \
-    --update  _upgrade_pip
+    --install  _upgrade_pip \
+    --update   _upgrade_pip
 }

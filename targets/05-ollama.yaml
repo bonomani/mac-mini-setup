@@ -1,7 +1,12 @@
 component: 05-ollama
 primary_profile: runtime
+macos_min_version: 14
+installer_url: https://ollama.com/install.sh
+api_host: 127.0.0.1
+api_port: 11434
+log_file: /tmp/ollama.log
 targets:
-  macos-14-precondition:
+  macos-precondition:
     component: 05-ollama
     profile: configured
     type: precondition
@@ -11,7 +16,7 @@ targets:
     profile: configured
     type: package
     depends_on:
-      - macos-14-precondition
+      - macos-precondition
     provided_by_tool: ollama-installer
 
   ollama-service:

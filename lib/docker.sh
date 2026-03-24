@@ -122,7 +122,7 @@ EOF
   }
 
   ucc_target \
-    --name    "docker-resources-${_DOCKER_MEM_GB}gb" \
+    --name    "docker-resources" \
     --observe _observe_docker_settings \
     --evidence _evidence_docker_settings \
     --axes    "$UCC_ASM_CONFIGURED_AXES" \

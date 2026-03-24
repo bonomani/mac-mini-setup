@@ -1,5 +1,6 @@
 component: 04-python
 primary_profile: configured
+python_version: 3.12.3
 targets:
   pyenv:
     component: 04-python
@@ -9,7 +10,7 @@ targets:
       - homebrew
     provided_by_tool: brew
 
-  python-3.12.3:
+  python:
     component: 04-python
     profile: configured
     type: package
@@ -21,4 +22,4 @@ targets:
     profile: configured
     type: config
     depends_on:
-      - python-3.12.3
+      - python

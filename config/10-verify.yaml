@@ -46,11 +46,11 @@ tests:
   - name: python-installed
     intent: "python3 must be present via pyenv"
     oracle: "python3 --version >/dev/null 2>&1"
-    trace: "component:04-python / ucc-target:python-3.12.3"
+    trace: "component:04-python / ucc-target:python"
   - name: python-lzma
     intent: "lzma C extension must be compiled into Python (requires xz at build time)"
     oracle: "python3 -c 'import lzma'"
-    trace: "component:04-python / ucc-target:xz + python-3.12.3"
+    trace: "component:04-python / ucc-target:xz + python"
   - name: pip-installed
     intent: "pip must be present and functional"
     oracle: "pip --version >/dev/null 2>&1"

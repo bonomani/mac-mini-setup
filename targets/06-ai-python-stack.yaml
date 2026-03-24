@@ -6,7 +6,7 @@ targets:
     profile: configured
     type: config
     depends_on:
-      - python-3.12.3
+      - python
       - pip-latest
 
   unsloth-studio-launchd:

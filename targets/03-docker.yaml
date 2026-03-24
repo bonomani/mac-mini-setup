@@ -1,5 +1,9 @@
 component: 03-docker
 primary_profile: configured
+memory_gb: 48
+cpu_count: 10
+swap_mib: 4096
+disk_mib: 204800
 targets:
   docker-desktop:
     component: 03-docker
@@ -9,7 +13,7 @@ targets:
       - homebrew
     provided_by_tool: brew-cask
 
-  docker-resources-48gb:
+  docker-resources:
     component: 03-docker
     profile: configured
     type: config
