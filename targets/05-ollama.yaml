@@ -1,4 +1,4 @@
-component: 05-ollama
+component: ollama
 primary_profile: runtime
 libs: ollama_models ollama
 runner: run_ollama_from_yaml
@@ -10,12 +10,12 @@ api_port: 11434
 log_file: /tmp/ollama.log
 targets:
   macos-precondition:
-    component: 05-ollama
+    component: ollama
     profile: configured
     type: precondition
 
   ollama:
-    component: 05-ollama
+    component: ollama
     profile: configured
     type: package
     depends_on:
@@ -23,7 +23,7 @@ targets:
     provided_by_tool: ollama-installer
 
   ollama-service:
-    component: 05-ollama
+    component: ollama
     profile: runtime
     type: service
     depends_on:

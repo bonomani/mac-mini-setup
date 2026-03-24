@@ -1,4 +1,4 @@
-component: 08-dev-tools
+component: dev-tools
 primary_profile: runtime
 libs: vscode_ext dev_tools
 runner: run_dev_tools_from_yaml
@@ -11,7 +11,7 @@ aria2_port: 6800
 ariaflow_web_port: 8001
 targets:
   vscode:
-    component: 08-dev-tools
+    component: dev-tools
     profile: configured
     type: package
     depends_on:
@@ -19,21 +19,21 @@ targets:
     provided_by_tool: brew-cask
 
   vscode-code-cmd:
-    component: 08-dev-tools
+    component: dev-tools
     profile: configured
     type: config
     depends_on:
       - vscode
 
   vscode-settings:
-    component: 08-dev-tools
+    component: dev-tools
     profile: configured
     type: config
     depends_on:
       - vscode
 
   node-lts:
-    component: 08-dev-tools
+    component: dev-tools
     profile: configured
     type: package
     depends_on:
@@ -41,31 +41,31 @@ targets:
     provided_by_tool: brew
 
   oh-my-zsh:
-    component: 08-dev-tools
+    component: dev-tools
     profile: configured
     type: config
 
   omz-theme-agnoster:
-    component: 08-dev-tools
+    component: dev-tools
     profile: configured
     type: config
     depends_on:
       - oh-my-zsh
 
   home-bin-in-path:
-    component: 08-dev-tools
+    component: dev-tools
     profile: configured
     type: config
 
   ai-healthcheck:
-    component: 08-dev-tools
+    component: dev-tools
     profile: configured
     type: config
     depends_on:
       - home-bin-in-path
 
   ariaflow:
-    component: 08-dev-tools
+    component: dev-tools
     profile: configured
     type: package
     depends_on:
@@ -73,14 +73,14 @@ targets:
     provided_by_tool: brew
 
   aria2-launchd:
-    component: 08-dev-tools
+    component: dev-tools
     profile: runtime
     type: service
     depends_on:
       - ariaflow
 
   ariaflow-web:
-    component: 08-dev-tools
+    component: dev-tools
     profile: configured
     type: package
     depends_on:
@@ -88,7 +88,7 @@ targets:
     provided_by_tool: brew
 
   ariaflow-web-service:
-    component: 08-dev-tools
+    component: dev-tools
     profile: runtime
     type: service
     depends_on:

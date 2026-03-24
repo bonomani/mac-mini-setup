@@ -1,4 +1,4 @@
-component: 03-docker
+component: docker
 primary_profile: configured
 libs: docker
 runner: run_docker_from_yaml
@@ -8,7 +8,7 @@ swap_mib: 4096
 disk_mib: 204800
 targets:
   docker-desktop:
-    component: 03-docker
+    component: docker
     profile: configured
     type: package
     depends_on:
@@ -16,7 +16,7 @@ targets:
     provided_by_tool: brew-cask
 
   docker-resources:
-    component: 03-docker
+    component: docker
     profile: configured
     type: config
     depends_on:

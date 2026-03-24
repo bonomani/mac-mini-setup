@@ -1,10 +1,10 @@
-component: 06-ai-python-stack
+component: ai-python-stack
 primary_profile: runtime
 libs: pip_group unsloth_studio
 runner: run_ai_python_stack_from_yaml
 targets:
   unsloth-studio-setup:
-    component: 06-ai-python-stack
+    component: ai-python-stack
     profile: configured
     type: config
     depends_on:
@@ -12,7 +12,7 @@ targets:
       - pip-latest
 
   unsloth-studio-launchd:
-    component: 06-ai-python-stack
+    component: ai-python-stack
     profile: runtime
     type: service
     depends_on:

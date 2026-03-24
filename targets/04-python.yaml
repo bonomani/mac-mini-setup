@@ -1,11 +1,11 @@
-component: 04-python
+component: python
 primary_profile: configured
 libs: python
 runner: run_python_from_yaml
 python_version: 3.12.3
 targets:
   pyenv:
-    component: 04-python
+    component: python
     profile: configured
     type: package
     depends_on:
@@ -13,14 +13,14 @@ targets:
     provided_by_tool: brew
 
   python:
-    component: 04-python
+    component: python
     profile: configured
     type: package
     depends_on:
       - pyenv
 
   pip-latest:
-    component: 04-python
+    component: python
     profile: configured
     type: config
     depends_on:

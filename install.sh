@@ -50,7 +50,7 @@
 #    - declare intent with ucc_target (observe / desired / install / update)
 #    - emit structured NOTICE lines (observation / outcome / diff / proof)
 #    - respect UCC_MODE (install | update) and UCC_DRY_RUN
-#  Component 10-verify runs TIC tests after all UCC components complete.
+#  Component verify runs TIC tests after all UCC components complete.
 #
 #  Immutable framework version refs (BGS decision record)
 #    BGS : bgs@73adc3f
@@ -86,7 +86,7 @@ _load_components() {
       [[ -n "$component" ]] && components+=("$component")
     done < <(python3 "$query_script" --components "$manifest_dir" 2>/dev/null || true)
   fi
-  components+=("10-verify")
+  components+=("verify")
   printf '%s\n' "${components[@]}"
 }
 
@@ -453,7 +453,7 @@ for comp in "${TO_RUN[@]}"; do
     continue
   fi
 
-  if [[ "$comp" == "10-verify" ]]; then
+  if [[ "$comp" == "verify" ]]; then
     SCRIPT="$DIR/components/10-verify.sh"
     if ! bash -c "${_comp_prelude}; source \"${SCRIPT}\"" -- "$SCRIPT" > "$UCC_VERIFICATION_REPORT_FILE"; then
       log_warn "Component failed: $comp"

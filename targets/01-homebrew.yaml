@@ -1,17 +1,17 @@
-component: 01-homebrew
+component: homebrew
 primary_profile: configured
 libs: homebrew
 runner: run_homebrew_from_yaml
 on_fail: exit
 targets:
   xcode-command-line-tools:
-    component: 01-homebrew
+    component: homebrew
     profile: configured
     type: precondition
     provided_by_tool: macos-installer
 
   homebrew:
-    component: 01-homebrew
+    component: homebrew
     profile: configured
     type: package
     depends_on:
