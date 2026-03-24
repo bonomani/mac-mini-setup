@@ -1,0 +1,7 @@
+{
+  "editor.inlineSuggest.enabled": true,
+  "extensions.autoUpdate": true,
+  "update.mode": "default",
+  "python.createEnvironment.trigger": "off",
+  "terminal.integrated.defaultProfile.osx": "zsh"
+}

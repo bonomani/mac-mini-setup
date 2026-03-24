@@ -79,10 +79,12 @@ ucc_target \
   --update  _upgrade_docker
 
 # --- Docker resource settings (48 GB RAM for AI workloads) --
-# UIC preferences: docker-memory-gb (safe default=48) and docker-cpu-count (safe default=10)
+# UIC preferences: docker-memory-gb, docker-cpu-count, docker-swap-mib, docker-disk-mib
 _DOCKER_MEM_GB="${UIC_PREF_DOCKER_MEMORY_GB:-48}"
 _DOCKER_MEM_MIB=$(( _DOCKER_MEM_GB * 1024 ))
 _DOCKER_CPUS="${UIC_PREF_DOCKER_CPU_COUNT:-10}"
+_DOCKER_SWAP_MIB="${UIC_PREF_DOCKER_SWAP_MIB:-4096}"
+_DOCKER_DISK_MIB="${UIC_PREF_DOCKER_DISK_MIB:-204800}"
 
 _docker_settings_desired_state() {
   if [[ "${UIC_GATE_FAILED_DOCKER_SETTINGS_FILE:-0}" == "1" ]]; then
@@ -144,20 +146,21 @@ _evidence_docker_settings() {
 _configure_docker_settings() {
   local f="$HOME/Library/Group Containers/group.com.docker/settings.json"
   [[ -f "$f" ]] || { log_warn "Docker settings file not found yet — launch Docker first"; return 1; }
-  MEM_MIB="$_DOCKER_MEM_MIB" CPU_COUNT="$_DOCKER_CPUS" python3 - <<'EOF'
+  MEM_MIB="$_DOCKER_MEM_MIB" CPU_COUNT="$_DOCKER_CPUS" \
+  SWAP_MIB="$_DOCKER_SWAP_MIB" DISK_MIB="$_DOCKER_DISK_MIB" python3 - <<'EOF'
 import json, os
 path = os.path.expanduser("~/Library/Group Containers/group.com.docker/settings.json")
 with open(path) as f:
     s = json.load(f)
 s["memoryMiB"]   = int(os.environ["MEM_MIB"])
 s["cpus"]        = int(os.environ["CPU_COUNT"])
-s["swapMiB"]     = 4096
-s["diskSizeMiB"] = 204800  # 200 GB
+s["swapMiB"]     = int(os.environ["SWAP_MIB"])
+s["diskSizeMiB"] = int(os.environ["DISK_MIB"])
 with open(path, "w") as f:
     json.dump(s, f, indent=2)
 EOF
   log_warn "Restart Docker Desktop to apply new resource settings"
-  log_info "Docker resources set: memory=${_DOCKER_MEM_GB}GB cpus=${_DOCKER_CPUS}"
+  log_info "Docker resources set: memory=${_DOCKER_MEM_GB}GB cpus=${_DOCKER_CPUS} swap=${_DOCKER_SWAP_MIB}MiB disk=${_DOCKER_DISK_MIB}MiB"
 }
 
 ucc_target \

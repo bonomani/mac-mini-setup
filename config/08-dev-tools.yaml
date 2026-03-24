@@ -1,0 +1,47 @@
+# Dev tools configuration — used by component 08-dev-tools
+
+# Homebrew formula CLI tools
+cli_tools:
+  - jq
+  - wget
+  - curl
+  - htop
+  - tmux
+  - fzf
+  - ripgrep
+  - fd
+  - tree
+  - uv
+  - pnpm
+  - gcc
+  - gh
+  - llama.cpp
+  - opencode
+  - aria2
+  - xz
+  - cmake
+
+# VSCode marketplace extensions
+# Note: Claude Code is a CLI tool (npm), not a VSCode marketplace extension
+vscode_extensions:
+  - ms-python.python
+  - ms-python.vscode-pylance
+  - ms-toolsai.jupyter
+  - ms-vscode.cpptools
+  - continue.continue
+  - eamodio.gitlens
+  - ms-vscode-remote.remote-containers
+
+# npm global packages
+npm_packages:
+  - "@openai/codex"
+  - "@anthropic-ai/claude-code"
+  - bmad-method
+
+# Homebrew cask GUI tools
+# Fields: name (ucc-target name), id (brew cask identifier)
+casks:
+  - name: iterm2
+    id: iterm2
+  - name: lm-studio
+    id: lm-studio

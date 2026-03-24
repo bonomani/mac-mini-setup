@@ -7,12 +7,31 @@
 # Boundary: local filesystem · pip/PyPI (network) · macOS launchd (Unsloth Studio service)
 
 # Helper: define one pip group as a ucc_target
-# Usage: _pip_group <name> <first_pkg_to_observe> "<space-separated packages>"
+# Usage: _pip_group <name> <probe_pkg> "<space-separated packages>" [<min_version>]
+# When min_version is set, the observe uses importlib.metadata + packaging.version
+# to enforce a minimum version of the probe package (triggers upgrade if below).
 _pip_group() {
-  local name="$1" first="$2" pkgs="$3"
+  local name="$1" first="$2" pkgs="$3" minver="${4:-}"
   local fn="${name//[^a-zA-Z0-9]/_}"
 
-  eval "_observe_grp_${fn}() { local raw; raw=\$(pip_is_installed '${first}' && pip show '${first}' 2>/dev/null | awk '/^Version:/ {print \$2}' || echo 'absent'); ucc_asm_package_state \"\$raw\"; }"
+  if [[ -n "$minver" ]]; then
+    eval "_observe_grp_${fn}() {
+      local raw
+      raw=\$(python3 -c \"
+import sys
+try:
+    import importlib.metadata
+    ver = importlib.metadata.version('${first}')
+    from packaging.version import Version
+    sys.exit(0 if Version(ver) >= Version('${minver}') else 1)
+except Exception:
+    sys.exit(1)
+\" 2>/dev/null && pip show '${first}' 2>/dev/null | awk '/^Version:/ {print \$2}' || echo 'absent')
+      ucc_asm_package_state \"\$raw\"
+    }"
+  else
+    eval "_observe_grp_${fn}() { local raw; raw=\$(pip_is_installed '${first}' && pip show '${first}' 2>/dev/null | awk '/^Version:/ {print \$2}' || echo 'absent'); ucc_asm_package_state \"\$raw\"; }"
+  fi
   eval "_evidence_grp_${fn}() { local ver; ver=\$(pip show '${first}' 2>/dev/null | awk '/^Version:/ {print \$2}'); [[ -n \"\$ver\" ]] && printf 'version=%s pkg=${first}' \"\$ver\"; }"
   eval "_install_grp_${fn}() { ucc_run pip install -q ${pkgs}; }"
   eval "_update_grp_${fn}()  { ucc_run pip install -q --upgrade ${pkgs}; }"
@@ -21,81 +40,19 @@ _pip_group() {
     --name    "pip-group-$name" \
     --observe "_observe_grp_${fn}" \
     --evidence "_evidence_grp_${fn}" \
-        --install "_install_grp_${fn}" \
+    --install "_install_grp_${fn}" \
     --update  "_update_grp_${fn}"
 }
 
-_pip_group "pytorch" \
-  "torch" \
-  "torch torchvision torchaudio"
-
-_pip_group "huggingface" \
-  "transformers" \
-  "transformers diffusers accelerate datasets tokenizers sentencepiece huggingface-hub peft trl"
-
-# langchain-core must be >=1.0.0 for langgraph + langchain-ollama compatibility.
-# Custom observe checks version — forces upgrade if still on 0.x.
-_observe_grp_langchain() {
-  local raw
-  raw=$(python3 -c "
-import importlib.util, sys
-if importlib.util.find_spec('langchain_core') is None: sys.exit(1)
-import langchain_core
-from packaging.version import Version
-sys.exit(0 if Version(langchain_core.__version__) >= Version('1.0.0') else 1)
-" 2>/dev/null && python3 -c "import langchain_core; print(langchain_core.__version__)" 2>/dev/null || echo "absent")
-  ucc_asm_package_state "$raw"
-}
-_evidence_grp_langchain() {
-  local ver
-  ver=$(python3 -c "import langchain_core; print(langchain_core.__version__)" 2>/dev/null || true)
-  [[ -n "$ver" ]] && printf 'version=%s pkg=langchain-core' "$ver"
-}
-_install_grp_langchain() {
-  ucc_run pip install -q "langchain-core>=1.0.0" langchain langchain-community langchain-ollama langgraph
-}
-_update_grp_langchain() {
-  ucc_run pip install -q --upgrade "langchain-core>=1.0.0" langchain langchain-community langchain-ollama langgraph
-}
-ucc_target_nonruntime \
-  --name    "pip-group-langchain" \
-  --observe _observe_grp_langchain \
-  --evidence _evidence_grp_langchain \
-  --install _install_grp_langchain \
-  --update  _update_grp_langchain
-
-_pip_group "llamaindex" \
-  "llama-index" \
-  "llama-index llama-index-llms-ollama llama-index-embeddings-ollama"
-
-_pip_group "llm-clients" \
-  "openai" \
-  "openai anthropic"
-
-_pip_group "vector-dbs" \
-  "chromadb" \
-  "chromadb faiss-cpu qdrant-client"
-
-_pip_group "jupyter" \
-  "jupyterlab" \
-  "jupyterlab ipywidgets nbformat"
-# Note: jupyter-ai removed — it pins langchain<0.4.0, incompatible with langchain>=1.0.0
-
-_pip_group "serving" \
-  "fastapi" \
-  "fastapi uvicorn gradio"
-
-_pip_group "data-science" \
-  "numpy" \
-  "numpy pandas scipy scikit-learn matplotlib seaborn"
-
-_pip_group "utilities" \
-  "python-dotenv" \
-  "python-dotenv rich tqdm"
-
-_pip_group "optimum" \
-  "optimum" \
-  "optimum"
+# Load pip groups from config — see config/06-ai-python-stack.yaml
+# Note: jupyter-ai is intentionally absent — it pins langchain<0.4.0, incompatible with langchain>=1.0.0
+_PY_CFG_DIR="${DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+_PY_CFG="$_PY_CFG_DIR/config/06-ai-python-stack.yaml"
+while IFS='|' read -r grp_name grp_probe grp_pkgs grp_minver; do
+  [[ -n "$grp_name" ]] || continue
+  _pip_group "$grp_name" "$grp_probe" "$grp_pkgs" "$grp_minver"
+done < <(python3 "$_PY_CFG_DIR/tools/read_config.py" --records \
+    "$_PY_CFG" pip_groups name probe packages min_version 2>/dev/null)
 
 # Note: the unsloth Python package cannot be imported on Apple Silicon —
 # it raises NotImplementedError at import time (NVIDIA/AMD/Intel GPUs only).

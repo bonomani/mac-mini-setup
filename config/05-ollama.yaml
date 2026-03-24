@@ -1,0 +1,19 @@
+# Ollama model sets — used by component 05-ollama
+# Controlled by UIC preference: ollama-model-autopull (none|small|medium|large)
+# Default is none — no automatic downloads.
+
+# small: models <= 3B (fast, low memory)
+small:
+  - llama3.2
+  - nomic-embed-text
+
+# medium: models <= 8B (balanced)
+medium:
+  - qwen3:latest
+  - llama3.1:8b
+  - mistral:7b
+
+# large: all models (requires ~60 GB free disk)
+large:
+  - qwen2.5-coder:32b
+  - llama3.1:70b

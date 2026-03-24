@@ -6,8 +6,12 @@
 #       Axis B = Basic
 # Boundary: local filesystem · brew · npm · macOS launchd · network (package downloads)
 
-# --- CLI tools (brew) ---------------------------------------
-CLI_TOOLS=(jq wget curl htop tmux fzf ripgrep fd tree uv pnpm gcc gh llama.cpp opencode aria2 xz cmake)
+# --- CLI tools (brew) — list sourced from config/08-dev-tools.yaml
+_DT_CFG_DIR="${DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+_DT_CFG="$_DT_CFG_DIR/config/08-dev-tools.yaml"
+CLI_TOOLS=()
+while IFS= read -r t; do [[ -n "$t" ]] && CLI_TOOLS+=("$t"); done \
+  < <(python3 "$_DT_CFG_DIR/tools/read_config.py" --list "$_DT_CFG" cli_tools 2>/dev/null)
 
 for tool in "${CLI_TOOLS[@]}"; do
   ucc_brew_target "cli-$tool" "$tool"
@@ -98,22 +102,12 @@ ucc_target_nonruntime \
   --evidence _evidence_code_cmd \
   --install _fix_code_symlink
 
-# --- VSCode extensions --------------------------------------
-VSCODE_EXTENSIONS=(
-  "ms-python.python"
-  "ms-python.vscode-pylance"
-  "ms-toolsai.jupyter"
-  "ms-vscode.cpptools"
-  "continue.continue"
-  "eamodio.gitlens"
-  "ms-vscode-remote.remote-containers"
-)
+# --- VSCode extensions — list sourced from config/08-dev-tools.yaml
 # Note: Claude Code is a CLI tool (npm), not a VSCode marketplace extension
-
 if is_installed code; then
-  for ext in "${VSCODE_EXTENSIONS[@]}"; do
-    _devtools_vscode_extension_target "$ext"
-  done
+  while IFS= read -r ext; do
+    [[ -n "$ext" ]] && _devtools_vscode_extension_target "$ext"
+  done < <(python3 "$_DT_CFG_DIR/tools/read_config.py" --list "$_DT_CFG" vscode_extensions 2>/dev/null)
 fi
 
 # --- VSCode settings.json (merge, not overwrite) ------------
@@ -133,16 +127,11 @@ _evidence_vscode_settings() {
 
 _apply_vscode_settings() {
   local f="$HOME/Library/Application Support/Code/User/settings.json"
+  local patch_file="$_DT_CFG_DIR/config/vscode-settings.json"
   mkdir -p "$(dirname "$f")"
-  local tmp
+  local tmp patch
   tmp="$(mktemp)"
-  local patch='{
-    "editor.inlineSuggest.enabled": true,
-    "extensions.autoUpdate": true,
-    "update.mode": "default",
-    "python.createEnvironment.trigger": "off",
-    "terminal.integrated.defaultProfile.osx": "zsh"
-  }'
+  patch=$(cat "$patch_file")
   if [[ -f "$f" ]] && jq empty "$f" >/dev/null 2>&1; then
     jq --argjson p "$patch" '. + $p' "$f" > "$tmp"
   else
@@ -158,15 +147,10 @@ ucc_target_nonruntime \
   --install _apply_vscode_settings \
   --update  _apply_vscode_settings
 
-# --- GUI tools (brew cask) ---------------------------------
-DEVTOOLS_CASKS=(
-  "iterm2:iterm2"
-  "lm-studio:lm-studio"
-)
-
-for cask_spec in "${DEVTOOLS_CASKS[@]}"; do
-  _devtools_brew_cask_target "${cask_spec%%:*}" "${cask_spec#*:}"
-done
+# --- GUI tools (brew cask) — list sourced from config/08-dev-tools.yaml
+while IFS='|' read -r cask_name cask_id; do
+  [[ -n "$cask_name" ]] && _devtools_brew_cask_target "$cask_name" "$cask_id"
+done < <(python3 "$_DT_CFG_DIR/tools/read_config.py" --records "$_DT_CFG" casks name id 2>/dev/null)
 
 # --- Node.js 24 LTS -----------------------------------------
 # node@24 required by Unsloth Studio; also compatible with Claude Code, Codex, BMAD
@@ -209,17 +193,10 @@ elif [[ -d /usr/local/opt/node@24/bin ]]; then
   export PATH="/usr/local/opt/node@24/bin:$PATH"
 fi
 
-# --- npm global AI CLI tools --------------------------------
-# Each is a ucc_target: observe via npm ls -g, install via npm install -g
-NPM_GLOBAL_PKGS=(
-  "@openai/codex"             # OpenAI Codex CLI
-  "@anthropic-ai/claude-code" # Claude Code CLI
-  "bmad-method"               # BMAD — Breakthrough Method for Agile AI-Driven Development
-)
-
-for pkg in "${NPM_GLOBAL_PKGS[@]}"; do
-  ucc_npm_target "$pkg"
-done
+# --- npm global AI CLI tools — list sourced from config/08-dev-tools.yaml
+while IFS= read -r pkg; do
+  [[ -n "$pkg" ]] && ucc_npm_target "$pkg"
+done < <(python3 "$_DT_CFG_DIR/tools/read_config.py" --list "$_DT_CFG" npm_packages 2>/dev/null)
 
 # --- Oh My Zsh ----------------------------------------------
 _observe_omz() {

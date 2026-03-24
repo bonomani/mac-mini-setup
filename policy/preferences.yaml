@@ -14,6 +14,16 @@ preferences:
     options: 4|6|8|10|12
     scope: component:03-docker
     rationale: 10 cores leaves 2 for macOS scheduler; 12 (all) risks UI unresponsiveness during heavy container workloads
+  - name: docker-swap-mib
+    default: 4096
+    options: 1024|2048|4096|8192
+    scope: component:03-docker
+    rationale: 4096 MiB swap is adequate for most AI workloads; increase if you see out-of-memory errors under heavy load
+  - name: docker-disk-mib
+    default: 204800
+    options: 102400|204800|307200|512000
+    scope: component:03-docker
+    rationale: 200 GB (204800 MiB) covers large AI models and containers; increase for multi-model or large-dataset setups
   - name: ollama-model-autopull
     default: none
     options: none|small|medium|large

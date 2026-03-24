@@ -56,9 +56,12 @@ _configure_git() {
   read -rp "Git email:    " GIT_EMAIL
   git config --global user.name  "$GIT_USER"
   git config --global user.email "$GIT_EMAIL"
-  git config --global init.defaultBranch main
-  git config --global pull.rebase false
-  git config --global core.autocrlf input
+  # Apply non-interactive defaults from config YAML
+  local _cfg_dir="${DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+  while IFS='|' read -r cfg_key cfg_val; do
+    [[ -n "$cfg_key" ]] && git config --global "$cfg_key" "$cfg_val"
+  done < <(python3 "$_cfg_dir/tools/read_config.py" --records \
+      "$_cfg_dir/config/02-git.yaml" global_config key value 2>/dev/null)
 }
 
 if [[ "$UCC_DRY_RUN" != "1" ]]; then

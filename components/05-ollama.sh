@@ -14,19 +14,20 @@ MACOS_MAJOR="$(sw_vers -productVersion | awk -F. '{print $1}')"
 # large  = all models    (requires ~60 GB free disk)
 _OLLAMA_AUTOPULL="${UIC_PREF_OLLAMA_MODEL_AUTOPULL:-none}"
 
-MODELS_SMALL=(
-  "llama3.2"               # 3B  — fast, everyday tasks
-  "nomic-embed-text"       # embedding (small)
-)
-MODELS_MEDIUM=(
-  "qwen3:latest"           # reasoning, varies
-  "llama3.1:8b"            # 8B  — good balance
-  "mistral:7b"             # 7B  — fast and capable
-)
-MODELS_LARGE=(
-  "qwen2.5-coder:32b"      # 32B — excellent for coding
-  "llama3.1:70b"           # 70B — high quality (~40 GB)
-)
+# Load model sets from config — see config/05-ollama.yaml
+_OLLAMA_CFG_DIR="${DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+_OLLAMA_CFG="$_OLLAMA_CFG_DIR/config/05-ollama.yaml"
+MODELS_SMALL=()
+MODELS_MEDIUM=()
+MODELS_LARGE=()
+if [[ -f "$_OLLAMA_CFG" ]] && command -v python3 >/dev/null 2>&1; then
+  while IFS= read -r m; do [[ -n "$m" ]] && MODELS_SMALL+=("$m"); done \
+    < <(python3 "$_OLLAMA_CFG_DIR/tools/read_config.py" --list "$_OLLAMA_CFG" small 2>/dev/null)
+  while IFS= read -r m; do [[ -n "$m" ]] && MODELS_MEDIUM+=("$m"); done \
+    < <(python3 "$_OLLAMA_CFG_DIR/tools/read_config.py" --list "$_OLLAMA_CFG" medium 2>/dev/null)
+  while IFS= read -r m; do [[ -n "$m" ]] && MODELS_LARGE+=("$m"); done \
+    < <(python3 "$_OLLAMA_CFG_DIR/tools/read_config.py" --list "$_OLLAMA_CFG" large 2>/dev/null)
+fi
 
 # --- Step 0: Precondition — macOS 14+ (via ucc_target) ------
 _observe_macos_prereq() {
