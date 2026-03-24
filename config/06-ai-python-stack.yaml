@@ -49,6 +49,10 @@ pip_groups:
     probe: python-dotenv
     packages: python-dotenv rich tqdm
 
+  - name: dev-tools
+    probe: ruff
+    packages: ruff
+
   - name: optimum
     probe: optimum
     packages: optimum
