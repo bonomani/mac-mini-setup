@@ -53,7 +53,15 @@ def parse_manifest_file(path: Path):
                 key, value = text.split(":", 1)
                 key = key.strip()
                 value = value.strip()
-                if key not in {"component", "primary_profile"}:
+                _ALLOWED_TOP_LEVEL = {
+                    "component", "primary_profile",
+                    # version/config fields (single source of truth)
+                    "python_version", "node_version", "node_previous_version",
+                    "macos_min_version", "installer_url", "api_host", "api_port", "log_file",
+                    "omz_theme", "omz_installer_url", "ariaflow_tap", "aria2_port", "ariaflow_web_port",
+                    "memory_gb", "cpu_count", "swap_mib", "disk_mib",
+                }
+                if key not in _ALLOWED_TOP_LEVEL:
                     raise ValueError(f"{path}:{lineno}: unsupported top-level field '{key}'")
                 manifest[key] = value
                 continue
