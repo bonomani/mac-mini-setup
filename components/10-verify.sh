@@ -16,22 +16,14 @@ while IFS= read -r _s; do [[ -n "$_s" ]] && _AI_SERVICES+=("$_s"); done \
   < <(yaml_list "$DIR" "$DIR/config/07-ai-apps.yaml" services)
 [[ ${#_AI_SERVICES[@]} -gt 0 ]] || _AI_SERVICES=(open-webui flowise openhands n8n qdrant)
 
-_NODE_VER="$(python3 "$DIR/tools/read_config.py" --get "$DIR/config/08-dev-tools.yaml" node_version 2>/dev/null)"
-_NODE_VER="${_NODE_VER:-24}"
-_ARIA2_PORT="$(python3 "$DIR/tools/read_config.py" --get "$DIR/config/08-dev-tools.yaml" aria2_port 2>/dev/null)"
-_ARIA2_PORT="${_ARIA2_PORT:-6800}"
-_ARIAFLOW_WEB_PORT="$(python3 "$DIR/tools/read_config.py" --get "$DIR/config/08-dev-tools.yaml" ariaflow_web_port 2>/dev/null)"
-_ARIAFLOW_WEB_PORT="${_ARIAFLOW_WEB_PORT:-8001}"
-_OLLAMA_API_HOST="$(python3 "$DIR/tools/read_config.py" --get "$DIR/config/05-ollama.yaml" api_host 2>/dev/null)"
-_OLLAMA_API_HOST="${_OLLAMA_API_HOST:-127.0.0.1}"
-_OLLAMA_API_PORT="$(python3 "$DIR/tools/read_config.py" --get "$DIR/config/05-ollama.yaml" api_port 2>/dev/null)"
-_OLLAMA_API_PORT="${_OLLAMA_API_PORT:-11434}"
-_UNSLOTH_PORT="$(python3 "$DIR/tools/read_config.py" --get "$DIR/config/06-ai-python-stack.yaml" unsloth_studio.port 2>/dev/null)"
-_UNSLOTH_PORT="${_UNSLOTH_PORT:-8888}"
-_UNSLOTH_LABEL="$(python3 "$DIR/tools/read_config.py" --get "$DIR/config/06-ai-python-stack.yaml" unsloth_studio.label 2>/dev/null)"
-_UNSLOTH_LABEL="${_UNSLOTH_LABEL:-ai.unsloth.studio}"
-_UNSLOTH_STUDIO_DIR="$HOME/$(python3 "$DIR/tools/read_config.py" --get "$DIR/config/06-ai-python-stack.yaml" unsloth_studio.studio_dir 2>/dev/null)"
-_UNSLOTH_STUDIO_DIR="${_UNSLOTH_STUDIO_DIR:-$HOME/.unsloth/studio}"
+_NODE_VER="$(          yaml_get "$DIR" "$DIR/config/08-dev-tools.yaml"       node_version          24)"
+_ARIA2_PORT="$(        yaml_get "$DIR" "$DIR/config/08-dev-tools.yaml"       aria2_port            6800)"
+_ARIAFLOW_WEB_PORT="$( yaml_get "$DIR" "$DIR/config/08-dev-tools.yaml"       ariaflow_web_port     8001)"
+_OLLAMA_API_HOST="$(   yaml_get "$DIR" "$DIR/config/05-ollama.yaml"          api_host              127.0.0.1)"
+_OLLAMA_API_PORT="$(   yaml_get "$DIR" "$DIR/config/05-ollama.yaml"          api_port              11434)"
+_UNSLOTH_PORT="$(      yaml_get "$DIR" "$DIR/config/06-ai-python-stack.yaml" unsloth_studio.port   8888)"
+_UNSLOTH_LABEL="$(     yaml_get "$DIR" "$DIR/config/06-ai-python-stack.yaml" unsloth_studio.label  ai.unsloth.studio)"
+_UNSLOTH_STUDIO_DIR="$HOME/$(yaml_get "$DIR" "$DIR/config/06-ai-python-stack.yaml" unsloth_studio.studio_dir .unsloth/studio)"
 
 # Ensure pyenv and node are in PATH so oracle commands resolve correctly
 export PYENV_ROOT="$HOME/.pyenv"
