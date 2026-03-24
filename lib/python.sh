@@ -8,11 +8,11 @@ run_python_from_yaml() {
 
   local _pyenv_pkgs=() _pip_bootstrap=()
   while IFS= read -r p; do [[ -n "$p" ]] && _pyenv_pkgs+=("$p"); done \
-    < <(python3 "$cfg_dir/tools/read_config.py" --list "$yaml" pyenv_packages 2>/dev/null)
+    < <(yaml_list "$cfg_dir" "$yaml" pyenv_packages)
   [[ ${#_pyenv_pkgs[@]} -gt 0 ]] || _pyenv_pkgs=(pyenv pyenv-virtualenv)
 
   while IFS= read -r p; do [[ -n "$p" ]] && _pip_bootstrap+=("$p"); done \
-    < <(python3 "$cfg_dir/tools/read_config.py" --list "$yaml" pip_bootstrap 2>/dev/null)
+    < <(yaml_list "$cfg_dir" "$yaml" pip_bootstrap)
   [[ ${#_pip_bootstrap[@]} -gt 0 ]] || _pip_bootstrap=(pip setuptools wheel)
 
   local python_version="${UIC_PREF_PYTHON_VERSION:-3.12.3}"
@@ -63,11 +63,7 @@ run_python_from_yaml() {
   eval "$(pyenv init -)" 2>/dev/null || true
 
   # ---- Python version ----
-  _observe_python_version() {
-    local raw
-    raw=$(pyenv versions 2>/dev/null | grep -q "$python_version" && echo "$python_version" || echo "absent")
-    ucc_asm_package_state "$raw"
-  }
+  _observe_python_version() { ucc_asm_package_state "$(pyenv versions 2>/dev/null | grep -q "$python_version" && echo "$python_version" || echo "absent")"; }
   _evidence_python_version() {
     local ver path
     ver=$(python3 --version 2>/dev/null | awk '{print $2}')

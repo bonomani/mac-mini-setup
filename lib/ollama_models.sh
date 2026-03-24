@@ -29,11 +29,11 @@ load_ollama_models_from_yaml() {
   local models_small=() models_medium=() models_large=()
 
   while IFS= read -r m; do [[ -n "$m" ]] && models_small+=("$m"); done \
-    < <(python3 "$cfg_dir/tools/read_config.py" --list "$yaml" small 2>/dev/null)
+    < <(yaml_list "$cfg_dir" "$yaml" small)
   while IFS= read -r m; do [[ -n "$m" ]] && models_medium+=("$m"); done \
-    < <(python3 "$cfg_dir/tools/read_config.py" --list "$yaml" medium 2>/dev/null)
+    < <(yaml_list "$cfg_dir" "$yaml" medium)
   while IFS= read -r m; do [[ -n "$m" ]] && models_large+=("$m"); done \
-    < <(python3 "$cfg_dir/tools/read_config.py" --list "$yaml" large 2>/dev/null)
+    < <(yaml_list "$cfg_dir" "$yaml" large)
 
   case "$autopull" in
     small)

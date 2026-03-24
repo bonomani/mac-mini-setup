@@ -40,11 +40,7 @@ run_ollama_from_yaml() {
   [[ "$MACOS_MAJOR" -ge "$_OLLAMA_MACOS_MIN" ]] || return 1
 
   # ---- Ollama binary ----
-  _observe_ollama() {
-    local raw
-    raw=$(is_installed ollama && ollama --version 2>/dev/null | awk '{print $NF}' || echo "absent")
-    ucc_asm_package_state "$raw"
-  }
+  _observe_ollama() { ucc_asm_package_state "$(is_installed ollama && ollama --version 2>/dev/null | awk '{print $NF}' || echo "absent")"; }
   _evidence_ollama() {
     local ver path
     ver=$(ollama --version 2>/dev/null | awk '{print $NF}')

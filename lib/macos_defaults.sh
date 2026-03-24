@@ -77,13 +77,12 @@ run_macos_defaults_from_yaml() {
   while IFS=$'\t' read -r md_name md_desired md_read md_apply; do
     [[ -n "$md_name" ]] || continue
     _macos_defaults_target "$md_name" "$md_read" "$md_desired" "$md_apply"
-  done < <(python3 "$cfg_dir/tools/read_config.py" --records \
-      "$yaml" defaults name desired read apply 2>/dev/null)
+  done < <(yaml_records "$cfg_dir" "$yaml" defaults name desired read apply)
 
   if [[ "$UCC_DRY_RUN" != "1" && ${_UCC_CHANGED:-0} -gt 0 ]]; then
     while IFS= read -r _proc; do
       [[ -n "$_proc" ]] && { killall "$_proc" 2>/dev/null || true; }
-    done < <(python3 "$cfg_dir/tools/read_config.py" --list "$yaml" restart_processes 2>/dev/null)
+    done < <(yaml_list "$cfg_dir" "$yaml" restart_processes)
     log_info "UI processes restarted"
   fi
 }

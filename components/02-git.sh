@@ -60,8 +60,7 @@ _configure_git() {
   local _cfg_dir="${DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
   while IFS=$'\t' read -r cfg_key cfg_val; do
     [[ -n "$cfg_key" ]] && git config --global "$cfg_key" "$cfg_val"
-  done < <(python3 "$_cfg_dir/tools/read_config.py" --records \
-      "$_cfg_dir/config/02-git.yaml" global_config key value 2>/dev/null)
+  done < <(yaml_records "$_cfg_dir" "$_cfg_dir/config/02-git.yaml" global_config key value)
 }
 
 if [[ "$UCC_DRY_RUN" != "1" ]]; then

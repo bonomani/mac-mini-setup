@@ -47,6 +47,5 @@ load_pip_groups_from_yaml() {
   while IFS=$'\t' read -r grp_name grp_probe grp_pkgs grp_minver; do
     [[ -n "$grp_name" ]] || continue
     _pip_group "$grp_name" "$grp_probe" "$grp_pkgs" "$grp_minver"
-  done < <(python3 "$cfg_dir/tools/read_config.py" --records \
-      "$yaml" pip_groups name probe packages min_version 2>/dev/null)
+  done < <(yaml_records "$cfg_dir" "$yaml" pip_groups name probe packages min_version)
 }

@@ -20,7 +20,7 @@ run_dev_tools_from_yaml() {
   local _tool
   while IFS= read -r _tool; do
     [[ -n "$_tool" ]] && ucc_brew_target "cli-$_tool" "$_tool"
-  done < <(python3 "$cfg_dir/tools/read_config.py" --list "$yaml" cli_tools 2>/dev/null)
+  done < <(yaml_list "$cfg_dir" "$yaml" cli_tools)
 
   # ---- VSCode ----
   _observe_vscode() {
@@ -48,9 +48,7 @@ run_dev_tools_from_yaml() {
     --update  _update_vscode
 
   # ---- code CLI symlink ----
-  _observe_code_cmd() {
-    ucc_asm_package_state "$(is_installed code && code --version 2>/dev/null | awk 'NR==1 {print $1}' || echo "absent")"
-  }
+  _observe_code_cmd() { ucc_asm_package_state "$(is_installed code && code --version 2>/dev/null | awk 'NR==1 {print $1}' || echo "absent")"; }
   _evidence_code_cmd() {
     local path; path=$(command -v code 2>/dev/null || true)
     [[ -n "$path" ]] && printf 'path=%s' "$path"
@@ -119,7 +117,7 @@ run_dev_tools_from_yaml() {
   local _cask_name _cask_id
   while IFS=$'\t' read -r _cask_name _cask_id; do
     [[ -n "$_cask_name" ]] && ucc_brew_cask_target "$_cask_name" "$_cask_id"
-  done < <(python3 "$cfg_dir/tools/read_config.py" --records "$yaml" casks name id 2>/dev/null)
+  done < <(yaml_records "$cfg_dir" "$yaml" casks name id)
 
   # ---- Node.js LTS ----
   _observe_node_lts() {
@@ -164,12 +162,10 @@ run_dev_tools_from_yaml() {
   local _pkg
   while IFS= read -r _pkg; do
     [[ -n "$_pkg" ]] && ucc_npm_target "$_pkg"
-  done < <(python3 "$cfg_dir/tools/read_config.py" --list "$yaml" npm_packages 2>/dev/null)
+  done < <(yaml_list "$cfg_dir" "$yaml" npm_packages)
 
   # ---- Oh My Zsh ----
-  _observe_omz() {
-    ucc_asm_package_state "$([[ -d "$HOME/.oh-my-zsh" ]] && echo "installed" || echo "absent")"
-  }
+  _observe_omz() { ucc_asm_package_state "$([[ -d "$HOME/.oh-my-zsh" ]] && echo "installed" || echo "absent")"; }
   _evidence_omz() { printf 'folder=%s' "$HOME/.oh-my-zsh"; }
   _install_omz() { sh -c "$(curl -fsSL "$_OMZ_INSTALLER_URL")" "" --unattended; }
   _update_omz()  { [[ -f "$HOME/.oh-my-zsh/tools/upgrade.sh" ]] && bash "$HOME/.oh-my-zsh/tools/upgrade.sh" || true; }
@@ -182,9 +178,7 @@ run_dev_tools_from_yaml() {
     --update  _update_omz
 
   # ---- Oh My Zsh theme ----
-  _observe_omz_theme() {
-    ucc_asm_config_state "$(grep -q "^ZSH_THEME=\"${_OMZ_THEME}\"" "$HOME/.zshrc" 2>/dev/null && echo "set" || echo "unset")"
-  }
+  _observe_omz_theme() { ucc_asm_config_state "$(grep -q "^ZSH_THEME=\"${_OMZ_THEME}\"" "$HOME/.zshrc" 2>/dev/null && echo "set" || echo "unset")"; }
   _evidence_omz_theme() { printf 'theme=%s file=%s' "$_OMZ_THEME" "$HOME/.zshrc"; }
   _apply_omz_theme() {
     if grep -q '^ZSH_THEME=' "$HOME/.zshrc" 2>/dev/null; then
@@ -202,9 +196,7 @@ run_dev_tools_from_yaml() {
     --update  _apply_omz_theme
 
   # ---- $HOME/bin in PATH ----
-  _observe_home_bin_path() {
-    ucc_asm_config_state "$(grep -q 'export PATH="$HOME/bin:$PATH"' "$HOME/.zprofile" 2>/dev/null && echo "present" || echo "absent")"
-  }
+  _observe_home_bin_path() { ucc_asm_config_state "$(grep -q 'export PATH="$HOME/bin:$PATH"' "$HOME/.zprofile" 2>/dev/null && echo "present" || echo "absent")"; }
   _evidence_home_bin_path() { printf 'path=%s' "$HOME/bin"; }
   _add_home_bin_path() {
     mkdir -p "$HOME/bin"
@@ -219,9 +211,7 @@ run_dev_tools_from_yaml() {
     --install _add_home_bin_path
 
   # ---- ai-healthcheck script ----
-  _observe_healthcheck() {
-    ucc_asm_package_state "$([[ -x "$HOME/bin/ai-healthcheck" ]] && echo "present" || echo "absent")"
-  }
+  _observe_healthcheck() { ucc_asm_package_state "$([[ -x "$HOME/bin/ai-healthcheck" ]] && echo "present" || echo "absent")"; }
   _evidence_healthcheck() { printf 'path=%s' "$HOME/bin/ai-healthcheck"; }
   _install_healthcheck() {
     mkdir -p "$HOME/bin"

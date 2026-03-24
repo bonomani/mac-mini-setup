@@ -36,6 +36,14 @@ yaml_get() {
   echo "${val:-${4:-}}"
 }
 
+# yaml_list <cfg_dir> <yaml_path> <section>
+# Output each item in a YAML list section, one per line.
+yaml_list() { python3 "$1/tools/read_config.py" --list "$2" "$3" 2>/dev/null; }
+
+# yaml_records <cfg_dir> <yaml_path> <section> <field1> [field2 ...]
+# Output tab-delimited records from a YAML list-of-dicts section.
+yaml_records() { local d="$1" y="$2" s="$3"; shift 3; python3 "$d/tools/read_config.py" --records "$y" "$s" "$@" 2>/dev/null; }
+
 # Check if a Docker container is running
 docker_is_running() { docker inspect -f '{{.State.Running}}' "$1" 2>/dev/null | grep -q true; }
 

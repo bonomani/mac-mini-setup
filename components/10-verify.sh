@@ -13,7 +13,7 @@ source "$DIR/lib/tic_runner.sh"
 # Load runtime variables used by oracle strings at eval time
 _AI_SERVICES=()
 while IFS= read -r _s; do [[ -n "$_s" ]] && _AI_SERVICES+=("$_s"); done \
-  < <(python3 "$DIR/tools/read_config.py" --list "$DIR/config/07-ai-apps.yaml" services 2>/dev/null)
+  < <(yaml_list "$DIR" "$DIR/config/07-ai-apps.yaml" services)
 [[ ${#_AI_SERVICES[@]} -gt 0 ]] || _AI_SERVICES=(open-webui flowise openhands n8n qdrant)
 
 _NODE_VER="$(python3 "$DIR/tools/read_config.py" --get "$DIR/config/08-dev-tools.yaml" node_version 2>/dev/null)"

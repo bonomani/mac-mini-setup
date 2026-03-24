@@ -14,8 +14,7 @@ run_tic_tests_from_yaml() {
     else
       tic_test --name "$t_name" --intent "$t_intent" --oracle "$t_oracle" --trace "$t_trace"
     fi
-  done < <(python3 "$cfg_dir/tools/read_config.py" --records \
-      "$yaml" tests name intent oracle trace skip 2>/dev/null)
+  done < <(yaml_records "$cfg_dir" "$yaml" tests name intent oracle trace skip)
 }
 
 # Run docker container-running tests for services listed under a YAML section.
@@ -33,5 +32,5 @@ run_container_tic_tests_from_yaml() {
       --intent "${_svc} container must be running" \
       --oracle "_docker_container_running '${_svc}'" \
       --trace  "component:07-ai-apps / ucc-target:ai-stack-running"
-  done < <(python3 "$cfg_dir/tools/read_config.py" --list "$yaml" services 2>/dev/null)
+  done < <(yaml_list "$cfg_dir" "$yaml" services)
 }

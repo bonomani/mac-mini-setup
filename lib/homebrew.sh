@@ -41,11 +41,7 @@ run_homebrew_from_yaml() {
   xcode-select -p >/dev/null 2>&1 || return 1
 
   # ---- Homebrew ----
-  _observe_brew() {
-    local raw
-    raw=$(is_installed brew && brew --version 2>/dev/null | awk 'NR==1 {print $2}' || echo "absent")
-    ucc_asm_package_state "$raw"
-  }
+  _observe_brew() { ucc_asm_package_state "$(is_installed brew && brew --version 2>/dev/null | awk 'NR==1 {print $2}' || echo "absent")"; }
   _evidence_brew() {
     local ver path
     ver=$(brew --version 2>/dev/null | awk 'NR==1 {print $2}')
@@ -93,11 +89,7 @@ run_homebrew_from_yaml() {
     local _analytics_desired
     _analytics_desired="$(yaml_get "$cfg_dir" "$yaml" analytics_desired off)"
 
-    _observe_brew_analytics() {
-      local raw
-      raw=$(brew analytics state 2>/dev/null | grep -qi "disabled" && echo "off" || echo "on")
-      ucc_asm_config_state "$raw" "$_analytics_desired"
-    }
+    _observe_brew_analytics() { ucc_asm_config_state "$(brew analytics state 2>/dev/null | grep -qi "disabled" && echo "off" || echo "on")" "$_analytics_desired"; }
     _evidence_brew_analytics() {
       local val
       val=$(brew analytics state 2>/dev/null | grep -qi "disabled" && echo "off" || echo "on")

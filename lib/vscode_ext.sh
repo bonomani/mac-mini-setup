@@ -32,6 +32,6 @@ load_vscode_extensions_from_yaml() {
   if is_installed code; then
     while IFS= read -r ext; do
       [[ -n "$ext" ]] && _vscode_ext_target "$ext"
-    done < <(python3 "$cfg_dir/tools/read_config.py" --list "$yaml" vscode_extensions 2>/dev/null)
+    done < <(yaml_list "$cfg_dir" "$yaml" vscode_extensions)
   fi
 }

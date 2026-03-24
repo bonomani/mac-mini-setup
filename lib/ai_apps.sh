@@ -12,7 +12,7 @@ run_ai_apps_from_yaml() {
 
   AI_SERVICES=()
   while IFS= read -r _svc; do [[ -n "$_svc" ]] && AI_SERVICES+=("$_svc"); done \
-    < <(python3 "$cfg_dir/tools/read_config.py" --list "$yaml" services 2>/dev/null)
+    < <(yaml_list "$cfg_dir" "$yaml" services)
   STACK_SERVICES="${#AI_SERVICES[@]}"
 
   # Store cfg_dir for use by _write_compose_file (bash functions are global)
