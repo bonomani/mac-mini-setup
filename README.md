@@ -20,15 +20,15 @@ Scripts to set up a Mac mini (Apple Silicon, 64 GB) as an AI workstation.
 
 | Component | Script | Description |
 |-----------|--------|-------------|
-| Homebrew | `01-homebrew.sh` | Package manager |
-| Git | `02-git.sh` | Version control |
-| Docker | `03-docker.sh` | Containers (48 GB RAM allocated) |
-| Python | `04-python.sh` | Python 3.12 via pyenv |
-| Ollama | `05-ollama.sh` | Local LLMs via Apple Metal (llama3, mistral, qwen-coder…) |
-| AI Python Stack | `06-ai-python-stack.sh` | PyTorch (MPS), transformers, LangChain, LlamaIndex, ChromaDB… |
-| AI Apps | `07-ai-apps.sh` | Open WebUI, Flowise, n8n, Qdrant (via Docker) |
-| Dev Tools | `08-dev-tools.sh` | Node, VSCode, Oh My Zsh, CLI utilities |
-| macOS Defaults | `09-macos-defaults.sh` | System tuning (no sleep, performance) |
+| Homebrew | `homebrew.sh` | Package manager |
+| Git | `git.sh` | Version control |
+| Docker | `docker.sh` | Containers (48 GB RAM allocated) |
+| Python | `python.sh` | Python 3.12 via pyenv |
+| Ollama | `ollama.sh` | Local LLMs via Apple Metal (llama3, mistral, qwen-coder…) |
+| AI Python Stack | `ai-python-stack.sh` | PyTorch (MPS), transformers, LangChain, LlamaIndex, ChromaDB… |
+| AI Apps | `ai-apps.sh` | Open WebUI, Flowise, n8n, Qdrant (via Docker) |
+| Dev Tools | `dev-tools.sh` | Node, VSCode, Oh My Zsh, CLI utilities |
+| macOS Defaults | `macos-defaults.sh` | System tuning (no sleep, performance) |
 
 ## Usage
 
@@ -38,10 +38,10 @@ chmod +x install.sh
 ./install.sh
 
 # Single component
-./install.sh 05-ollama
+./install.sh ollama
 
 # Multiple components
-./install.sh 04-python 06-ai-python-stack
+./install.sh python ai-python-stack
 ```
 
 ## Services

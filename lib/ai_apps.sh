@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # lib/ai_apps.sh — Docker Compose AI stack targets
-# Sourced by components/07-ai-apps.sh
+# Sourced by components/ai-apps.sh
 
 # Usage: run_ai_apps_from_yaml <cfg_dir> <yaml_path>
 run_ai_apps_from_yaml() {

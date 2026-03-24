@@ -1,4 +1,4 @@
-# Pip package groups — used by component 06-ai-python-stack
+# Pip package groups — used by component ai-python-stack
 #
 # Fields:
 #   name        ucc-target suffix and _pip_group identifier

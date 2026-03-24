@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # lib/tic_runner.sh — YAML-driven TIC test runner
-# Sourced by components/10-verify.sh
+# Sourced by components/verify.sh
 
 # Run all tic_tests declared in a YAML file.
 # Usage: run_tic_tests_from_yaml <cfg_dir> <yaml_path>
@@ -31,6 +31,6 @@ run_container_tic_tests_from_yaml() {
       --name   "docker-container-${_svc}" \
       --intent "${_svc} container must be running" \
       --oracle "_docker_container_running '${_svc}'" \
-      --trace  "component:07-ai-apps / ucc-target:ai-stack-running"
+      --trace  "component:ai-apps / ucc-target:ai-stack-running"
   done < <(yaml_list "$cfg_dir" "$yaml" services)
 }

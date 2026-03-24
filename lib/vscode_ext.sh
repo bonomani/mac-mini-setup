@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # lib/vscode_ext.sh — helper for YAML-driven VSCode extension targets
-# Sourced by components/08-dev-tools.sh
+# Sourced by components/dev-tools.sh
 
 # Helper: define one VSCode extension as a ucc_target
 # Usage: _vscode_ext_target <extension-id>

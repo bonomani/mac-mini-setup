@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # lib/docker.sh — Docker Desktop + resource settings targets
-# Sourced by components/03-docker.sh
+# Sourced by components/docker.sh
 
 # Usage: run_docker_from_yaml <cfg_dir> <yaml_path>
 run_docker_from_yaml() {

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # lib/ollama.sh — Ollama install + service + model pull targets
-# Sourced by components/05-ollama.sh
+# Sourced by components/ollama.sh
 
 # Usage: run_ollama_from_yaml <cfg_dir> <yaml_path>
 # Returns 1 if macOS precondition fails or API is unreachable (models not pulled).

@@ -1,6 +1,6 @@
 profile_layer: extended_operational
 scope: mac-mini-setup
-component: 05-ollama
+component: ollama
 description: Example concrete component state for the configured Ollama service.
 
 installation_state: Configured

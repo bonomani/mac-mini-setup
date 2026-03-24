@@ -410,7 +410,7 @@ ucc_component_profile() {
     printf '%s' "$profile"
     return 0
   fi
-  [[ "$component" == "10-verify" ]] && printf 'verification' || printf 'configured'
+  [[ "$component" == "verify" ]] && printf 'verification' || printf 'configured'
 }
 
 # ── Profile report helpers ────────────────────────────────────────────────────

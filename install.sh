@@ -43,7 +43,7 @@
 #  TIC  Test Intent Contract
 #       Repo  : https://github.com/bonomani/tic
 #       WSL   : /home/bc/repos/github/bonomani/tic
-#       Impl  : lib/tic.sh + components/10-verify.sh
+#       Impl  : lib/tic.sh + components/verify.sh
 #
 #  All components MUST be UCC + Basic compliant:
 #    - declare BISS classification (Axis A + Axis B + Boundary) in header
@@ -249,8 +249,8 @@ Examples:
   $0 --dry-run                          # preview full install
   $0 --mode update                      # update everything
   $0 --mode update --dry-run            # preview updates
-  $0 05-ollama 06-ai-python-stack       # run specific components
-  $0 --mode update 05-ollama            # update Ollama only
+  $0 ollama ai-python-stack       # run specific components
+  $0 --mode update ollama            # update Ollama only
 
 EOF
   exit 0
@@ -454,7 +454,7 @@ for comp in "${TO_RUN[@]}"; do
   fi
 
   if [[ "$comp" == "verify" ]]; then
-    SCRIPT="$DIR/components/10-verify.sh"
+    SCRIPT="$DIR/components/verify.sh"
     if ! bash -c "${_comp_prelude}; source \"${SCRIPT}\"" -- "$SCRIPT" > "$UCC_VERIFICATION_REPORT_FILE"; then
       log_warn "Component failed: $comp"
       FAILED_COMPONENTS+=("$comp")

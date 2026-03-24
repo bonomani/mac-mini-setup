@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # lib/macos_defaults.sh — helpers for YAML-driven macOS defaults targets
-# Sourced by components/09-macos-defaults.sh
+# Sourced by components/macos-defaults.sh
 
 _macos_defaults_state() {
   local current="$1" desired="$2"

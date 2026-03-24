@@ -34,7 +34,7 @@ external_controls:
   # the upstream toolchain. A sudo availability gate (UIC soft gate
   # 'sudo-available') guards components that require elevated privileges.
   sandboxing or runtime isolation: implemented
-  # AI app services run in Docker containers (07-ai-apps).
+  # AI app services run in Docker containers (ai-apps).
   # Unsloth Studio runs in an isolated Python venv via launchd.
   # All launchd services are user-scoped (no root daemons).
   secret and token lifecycle: delegated
@@ -42,12 +42,12 @@ external_controls:
   # npm use their own authentication. API keys are operator-supplied.
   rate limiting and budget control: implemented
   # Docker resource limits enforced: memory capped at 48 GB, CPU at 10
-  # cores (03-docker.sh). Ollama model autopull defaults to 'none' to
+  # cores (docker.sh). Ollama model autopull defaults to 'none' to
   # prevent unintended bandwidth use (UIC preference ollama-model-autopull).
   privacy and data-boundary control: delegated
   # Network calls go to upstream registries (brew, PyPI, Docker Hub,
   # Ollama, npm). No telemetry is emitted by this installer. Brew
-  # analytics are explicitly disabled (01-homebrew.sh).
+  # analytics are explicitly disabled (homebrew.sh).
 
 evidence_refs:
   - ./biss-classification.md     # explicit BISS boundary inventory for this scope
@@ -60,7 +60,7 @@ evidence_refs:
   - ../lib/ucc.sh                # UCC/2.0 declaration/result artifact engine
   - ../lib/uic.sh                # UIC preflight engine
   - ../lib/tic.sh                # TIC test engine
-  - ../components/10-verify.sh   # TIC tests covering all components
+  - ../components/verify.sh   # TIC tests covering all components
   - ~/.ai-stack/runs/*.declaration.jsonl  # runtime evidence outside the repo
   - ~/.ai-stack/runs/*.result.jsonl       # runtime evidence outside the repo
 
@@ -69,7 +69,7 @@ limitations:
     all network calls reach upstream public registries.
   - Does not manage credentials or API tokens.
   - TIC tests are read-only probes (GIC); they do not re-run convergence.
-  - Sudo gate is soft (not hard); 09-macos-defaults is skipped if sudo
+  - Sudo gate is soft (not hard); macos-defaults is skipped if sudo
     is unavailable rather than aborting the full install.
   - The claimed BGS slice is `BGS-State-Modeled-Governed`; `TIC` is used
     as additional verification evidence because the suite does not yet

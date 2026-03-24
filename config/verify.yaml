@@ -1,158 +1,158 @@
-# TIC verification tests — sourced by components/10-verify.sh via lib/tic_runner.sh
+# TIC verification tests — sourced by components/verify.sh via lib/tic_runner.sh
 # oracle strings: evaluated via bash eval — $VAR references expand at test time
 # quote rule: outer YAML double-quotes allow inner single-quotes (and vice-versa)
 
 tests:
-  # ── 01-homebrew ──────────────────────────────────────────────
+  # ── homebrew ──────────────────────────────────────────────
   - name: brew-installed
     intent: "brew must be present and functional"
     oracle: "brew --version >/dev/null 2>&1"
-    trace: "component:01-homebrew / ucc-target:homebrew"
+    trace: "component:homebrew / ucc-target:homebrew"
   - name: xcode-clt-installed
     intent: "Xcode Command Line Tools must be present (brew dependency)"
     oracle: "xcode-select -p >/dev/null 2>&1"
-    trace: "component:01-homebrew / ucc-target:xcode-command-line-tools"
+    trace: "component:homebrew / ucc-target:xcode-command-line-tools"
   - name: brew-analytics-off
     intent: "brew analytics must be disabled"
     oracle: "brew analytics state 2>/dev/null | grep -qi disabled"
-    trace: "component:01-homebrew / ucc-target:brew-analytics=off"
-  # ── 02-git ───────────────────────────────────────────────────
+    trace: "component:homebrew / ucc-target:brew-analytics=off"
+  # ── git ───────────────────────────────────────────────────
   - name: git-installed
     intent: "git must be present"
     oracle: "git --version >/dev/null 2>&1"
-    trace: "component:02-git / ucc-target:git"
+    trace: "component:git / ucc-target:git"
   - name: git-user-configured
     intent: "git global user.name must be set"
     oracle: "git config --global user.name >/dev/null 2>&1"
-    trace: "component:02-git / ucc-target:git-global-config"
-  # ── 03-docker ────────────────────────────────────────────────
+    trace: "component:git / ucc-target:git-global-config"
+  # ── docker ────────────────────────────────────────────────
   - name: docker-app-installed
     intent: "Docker Desktop must be installed"
     oracle: "[[ -d /Applications/Docker.app ]]"
-    trace: "component:03-docker / ucc-target:docker-desktop"
+    trace: "component:docker / ucc-target:docker-desktop"
   - name: docker-daemon-running
     intent: "Docker daemon must be running"
     oracle: "docker info >/dev/null 2>&1"
-    trace: "component:03-docker / ucc-target:docker-desktop"
-  # ── 04-python ────────────────────────────────────────────────
+    trace: "component:docker / ucc-target:docker-desktop"
+  # ── python ────────────────────────────────────────────────
   - name: xz-installed
     intent: "xz must be installed before Python is compiled (lzma dependency)"
     oracle: "brew list xz >/dev/null 2>&1"
-    trace: "component:04-python / ucc-target:xz"
+    trace: "component:python / ucc-target:xz"
   - name: pyenv-installed
     intent: "pyenv must be present"
     oracle: "pyenv --version >/dev/null 2>&1"
-    trace: "component:04-python / ucc-target:pyenv"
+    trace: "component:python / ucc-target:pyenv"
   - name: python-installed
     intent: "python3 must be present via pyenv"
     oracle: "python3 --version >/dev/null 2>&1"
-    trace: "component:04-python / ucc-target:python"
+    trace: "component:python / ucc-target:python"
   - name: python-lzma
     intent: "lzma C extension must be compiled into Python (requires xz at build time)"
     oracle: "python3 -c 'import lzma'"
-    trace: "component:04-python / ucc-target:xz + python"
+    trace: "component:python / ucc-target:xz + python"
   - name: pip-installed
     intent: "pip must be present and functional"
     oracle: "pip --version >/dev/null 2>&1"
-    trace: "component:04-python / ucc-target:pip-latest"
-  # ── 05-ollama ────────────────────────────────────────────────
+    trace: "component:python / ucc-target:pip-latest"
+  # ── ollama ────────────────────────────────────────────────
   - name: ollama-installed
     intent: "ollama CLI must be present"
     oracle: "ollama --version >/dev/null 2>&1"
-    trace: "component:05-ollama / ucc-target:ollama"
+    trace: "component:ollama / ucc-target:ollama"
   - name: ollama-api-reachable
     intent: "ollama HTTP API must respond on configured port"
     oracle: 'curl -fsS "http://${_OLLAMA_API_HOST}:${_OLLAMA_API_PORT}/api/tags" >/dev/null 2>&1'
-    trace: "component:05-ollama / ucc-target:ollama-service"
-  # ── 06-ai-python-stack ───────────────────────────────────────
+    trace: "component:ollama / ucc-target:ollama-service"
+  # ── ai-python-stack ───────────────────────────────────────
   - name: torch-importable
     intent: "torch must be importable"
     oracle: "python3 -c 'import torch'"
-    trace: "component:06-ai-python-stack / ucc-target:pip-group-pytorch"
+    trace: "component:ai-python-stack / ucc-target:pip-group-pytorch"
   - name: torch-mps-available
     intent: "MPS (Metal) GPU acceleration must be available on Apple Silicon"
     oracle: "python3 -c 'import torch; assert torch.backends.mps.is_available()'"
-    trace: "component:06-ai-python-stack / ucc-target:pip-group-pytorch"
+    trace: "component:ai-python-stack / ucc-target:pip-group-pytorch"
   - name: transformers-importable
     intent: "transformers must be importable"
     oracle: "python3 -c 'import transformers'"
-    trace: "component:06-ai-python-stack / ucc-target:pip-group-huggingface"
+    trace: "component:ai-python-stack / ucc-target:pip-group-huggingface"
   - name: langchain-importable
     intent: "langchain must be importable"
     oracle: "python3 -c 'import langchain'"
-    trace: "component:06-ai-python-stack / ucc-target:pip-group-langchain"
+    trace: "component:ai-python-stack / ucc-target:pip-group-langchain"
   - name: langchain-core-version
     intent: "langchain-core must be >=1.0.0 (required by langgraph and langchain-ollama)"
     oracle: 'python3 "$DIR/scripts/check-langchain-core-version"'
-    trace: "component:06-ai-python-stack / ucc-target:pip-group-langchain"
+    trace: "component:ai-python-stack / ucc-target:pip-group-langchain"
   - name: unsloth-importable
     intent: "unsloth Python package is not importable on Apple Silicon (NVIDIA/AMD only)"
     oracle: "true"
-    trace: "component:06-ai-python-stack / ucc-target:unsloth-studio-setup"
+    trace: "component:ai-python-stack / ucc-target:unsloth-studio-setup"
     skip: "not importable on Apple Silicon (NVIDIA only) — Studio runs in its own venv"
   - name: unsloth-studio-setup-dir
     intent: "unsloth studio setup must have completed"
     oracle: '[[ -d "${_UNSLOTH_STUDIO_DIR}" ]]'
-    trace: "component:06-ai-python-stack / ucc-target:unsloth-studio-setup"
+    trace: "component:ai-python-stack / ucc-target:unsloth-studio-setup"
   - name: unsloth-studio-launchd-loaded
     intent: "unsloth studio launchd service must be loaded"
     oracle: 'launchctl list 2>/dev/null | grep -q "${_UNSLOTH_LABEL}"'
-    trace: "component:06-ai-python-stack / ucc-target:unsloth-studio-launchd"
+    trace: "component:ai-python-stack / ucc-target:unsloth-studio-launchd"
   - name: unsloth-studio-port
     intent: "unsloth studio must be listening on configured port"
     oracle: 'curl -fsS --max-time 5 "http://127.0.0.1:${_UNSLOTH_PORT}" >/dev/null 2>&1'
-    trace: "component:06-ai-python-stack / ucc-target:unsloth-studio-launchd"
-  # ── 08-dev-tools ─────────────────────────────────────────────
+    trace: "component:ai-python-stack / ucc-target:unsloth-studio-launchd"
+  # ── dev-tools ─────────────────────────────────────────────
   - name: node-lts-installed
     intent: "node must be the configured LTS version (required by Unsloth Studio, Claude Code, BMAD)"
     oracle: 'node --version 2>/dev/null | grep -q "^v${_NODE_VER}\."'
-    trace: "component:08-dev-tools / ucc-target:node-lts"
+    trace: "component:dev-tools / ucc-target:node-lts"
   - name: cmake-installed
     intent: "cmake must be present (required for Unsloth GGUF inference)"
     oracle: "cmake --version >/dev/null 2>&1"
-    trace: "component:08-dev-tools / cli-cmake"
+    trace: "component:dev-tools / cli-cmake"
   - name: claude-code-installed
     intent: "claude-code npm global must be installed"
     oracle: "npm ls -g @anthropic-ai/claude-code --depth=0 >/dev/null 2>&1"
-    trace: "component:08-dev-tools / ucc-target:npm-global-@anthropic-ai/claude-code"
+    trace: "component:dev-tools / ucc-target:npm-global-@anthropic-ai/claude-code"
   - name: bmad-method-installed
     intent: "bmad-method npm global must be installed"
     oracle: "npm ls -g bmad-method --depth=0 >/dev/null 2>&1"
-    trace: "component:08-dev-tools / ucc-target:npm-global-bmad-method"
+    trace: "component:dev-tools / ucc-target:npm-global-bmad-method"
   - name: ariaflow-installed
     intent: "ariaflow CLI must be present"
     oracle: "ariaflow --version >/dev/null 2>&1 || ariaflow lifecycle >/dev/null 2>&1"
-    trace: "component:08-dev-tools / ucc-target:ariaflow"
+    trace: "component:dev-tools / ucc-target:ariaflow"
   - name: ariaflow-web-installed
     intent: "ariaflow-web brew formula must be installed"
     oracle: "brew list ariaflow-web >/dev/null 2>&1"
-    trace: "component:08-dev-tools / ucc-target:ariaflow-web"
+    trace: "component:dev-tools / ucc-target:ariaflow-web"
   - name: ariaflow-web-service-started
     intent: "ariaflow-web brew service must be running"
     oracle: "brew services list 2>/dev/null | awk '/^ariaflow-web/ {print $2}' | grep -q '^started$'"
-    trace: "component:08-dev-tools / ucc-target:ariaflow-web-service"
+    trace: "component:dev-tools / ucc-target:ariaflow-web-service"
   - name: ariaflow-web-port
     intent: "ariaflow web UI must be listening on configured port"
     oracle: 'curl -fsS --max-time 5 "http://127.0.0.1:${_ARIAFLOW_WEB_PORT}" >/dev/null 2>&1'
-    trace: "component:08-dev-tools / ucc-target:ariaflow-web-service"
+    trace: "component:dev-tools / ucc-target:ariaflow-web-service"
   - name: vscode-installed
     intent: "Visual Studio Code must be installed"
     oracle: "[[ -d '/Applications/Visual Studio Code.app' ]] || is_installed code"
-    trace: "component:08-dev-tools / ucc-target:vscode"
+    trace: "component:dev-tools / ucc-target:vscode"
   - name: omz-installed
     intent: "Oh My Zsh must be installed"
     oracle: '[[ -d "$HOME/.oh-my-zsh" ]]'
-    trace: "component:08-dev-tools / ucc-target:oh-my-zsh"
+    trace: "component:dev-tools / ucc-target:oh-my-zsh"
   - name: healthcheck-script-present
     intent: "ai-healthcheck script must be present and executable"
     oracle: '[[ -x "$HOME/bin/ai-healthcheck" ]]'
-    trace: "component:08-dev-tools / ucc-target:ai-healthcheck"
-  # ── 09-macos-defaults ────────────────────────────────────────
+    trace: "component:dev-tools / ucc-target:ai-healthcheck"
+  # ── macos-defaults ────────────────────────────────────────
   - name: pmset-ac-sleep-0
     intent: "AC sleep must be 0 to prevent interruption during long AI runs"
     oracle: "pmset -g | grep -E '^ +sleep ' | awk '{print $2}' | grep -q '^0$'"
-    trace: "component:09-macos-defaults / ucc-target:pmset-ac-sleep=0"
+    trace: "component:macos-defaults / ucc-target:pmset-ac-sleep=0"
   - name: app-nap-disabled
     intent: "App Nap must be disabled to keep background AI processes active"
     oracle: "defaults read NSGlobalDomain NSAppSleepDisabled 2>/dev/null | grep -q '^1$'"
-    trace: "component:09-macos-defaults / ucc-target:app-nap=disabled"
+    trace: "component:macos-defaults / ucc-target:app-nap=disabled"

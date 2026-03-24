@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # lib/dev_tools.sh — Node, VSCode, CLI tools, Oh My Zsh, ariaflow targets
-# Sourced by components/08-dev-tools.sh
+# Sourced by components/dev-tools.sh
 
 # Usage: run_dev_tools_from_yaml <cfg_dir> <yaml_path>
 run_dev_tools_from_yaml() {

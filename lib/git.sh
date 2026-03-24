@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # lib/git.sh — Git install + global config targets
-# Sourced by components/02-git.sh
+# Sourced by components/git.sh
 
 # Usage: run_git_from_yaml <cfg_dir> <yaml_path>
 run_git_from_yaml() {

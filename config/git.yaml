@@ -1,4 +1,4 @@
-# Git global config defaults — applied by component 02-git
+# Git global config defaults — applied by component git
 # Applied once when git-global-config is absent; skipped in non-interactive shells.
 
 global_config:

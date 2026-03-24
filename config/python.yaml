@@ -1,4 +1,4 @@
-# Python configuration — used by component 04-python
+# Python configuration — used by component python
 #
 # python_version is a UIC preference (default: 3.12.3); override in preferences.env
 # pyenv_packages are the brew formulae installed alongside pyenv

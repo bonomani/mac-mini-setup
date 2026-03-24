@@ -1,4 +1,4 @@
-# Ollama configuration — used by component 05-ollama
+# Ollama configuration — used by component ollama
 macos_min_version: "14"
 installer_url: "https://ollama.com/install.sh"
 api_host: "127.0.0.1"

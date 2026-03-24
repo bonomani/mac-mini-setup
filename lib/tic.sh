@@ -26,7 +26,7 @@ TIC_SKIP=0
 #     --name   "python-lzma" \
 #     --intent "lzma C extension must compile into Python (requires xz at build time)" \
 #     --oracle "python3 -c 'import lzma'" \
-#     --trace  "component:04-python / ucc-target:xz" \
+#     --trace  "component:python / ucc-target:xz" \
 #     [--skip  "reason"]
 tic_test() {
   local name="" intent="" oracle="" trace="" skip_reason=""
@@ -73,7 +73,7 @@ tic_summary() {
   printf '  %-46s  pass=%-3d  fail=%-3d  skip=%d\n' \
     "TIC" "$TIC_PASS" "$TIC_FAIL" "$TIC_SKIP"
   if [[ -n "${UCC_SUMMARY_FILE:-}" ]]; then
-    printf '10-verify|tic|%d|%d|%d\n' "$TIC_PASS" "$TIC_FAIL" "$TIC_SKIP" \
+    printf 'verify|tic|%d|%d|%d\n' "$TIC_PASS" "$TIC_FAIL" "$TIC_SKIP" \
       >> "$UCC_SUMMARY_FILE" 2>/dev/null || true
   fi
   [[ "$TIC_FAIL" -eq 0 ]]

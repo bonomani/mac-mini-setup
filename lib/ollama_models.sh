@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # lib/ollama_models.sh — helpers for YAML-driven Ollama model pull targets
-# Sourced by components/05-ollama.sh
+# Sourced by components/ollama.sh
 
 # Helper: register ucc_targets for a list of models.
 # Usage: _ollama_pull_set <model> [<model> ...]

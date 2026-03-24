@@ -22,5 +22,5 @@ read_next:
   - "./lib/ucc.sh"
   - "./lib/uic.sh"
   - "./lib/tic.sh"
-  - "./components/10-verify.sh"
+  - "./components/verify.sh"
   - "./docs/bgs-decision.md"

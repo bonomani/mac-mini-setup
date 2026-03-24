@@ -12,16 +12,16 @@ bounded lifecycle and explicit admissible transitions.
 Scope:
 - Mac mini AI workstation setup
 - 10 governed components:
-  - `01-homebrew`
-  - `02-git`
-  - `03-docker`
-  - `04-python`
-  - `05-ollama`
-  - `06-ai-python-stack`
-  - `07-ai-apps`
-  - `08-dev-tools`
-  - `09-macos-defaults`
-  - `10-verify`
+  - `homebrew`
+  - `git`
+  - `docker`
+  - `python`
+  - `ollama`
+  - `ai-python-stack`
+  - `ai-apps`
+  - `dev-tools`
+  - `macos-defaults`
+  - `verify`
 
 Modeling rule:
 - the host setup state is a composition of component states
@@ -31,7 +31,7 @@ Modeling rule:
   - `health_state`
   - `admin_state`
   - `dependency_state`
-- `10-verify` is verification-only and does not converge state itself
+- `verify` is verification-only and does not converge state itself
 
 ## 2. Component state axes
 
@@ -181,4 +181,4 @@ This model is evidenced by:
 - the executable validator in `../tools/validate_setup_state_artifact.py`
 - UIC gate and preference logic in `../install.sh` and `../lib/uic.sh`
 - UCC declaration/result artifacts emitted by `../lib/ucc.sh`
-- TIC verification oracles in `../components/10-verify.sh`
+- TIC verification oracles in `../components/verify.sh`

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # lib/pip_group.sh — helper for YAML-driven pip package group targets
-# Sourced by components/06-ai-python-stack.sh
+# Sourced by components/ai-python-stack.sh
 
 # Helper: define one pip group as a ucc_target
 # Usage: _pip_group <name> <probe_pkg> "<space-separated packages>" [<min_version>]
@@ -50,7 +50,7 @@ load_pip_groups_from_yaml() {
   done < <(yaml_records "$cfg_dir" "$yaml" pip_groups name probe packages min_version)
 }
 
-# Combined runner for 06-ai-python-stack: pip groups + unsloth studio + MPS note.
+# Combined runner for ai-python-stack: pip groups + unsloth studio + MPS note.
 # Usage: run_ai_python_stack_from_yaml <cfg_dir> <yaml_path>
 run_ai_python_stack_from_yaml() {
   local cfg_dir="$1" yaml="$2"

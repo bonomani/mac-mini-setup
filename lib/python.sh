@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # lib/python.sh — pyenv + Python + pip targets
-# Sourced by components/04-python.sh
+# Sourced by components/python.sh
 
 # Usage: run_python_from_yaml <cfg_dir> <yaml_path>
 run_python_from_yaml() {

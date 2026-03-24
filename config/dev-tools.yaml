@@ -1,4 +1,4 @@
-# Dev tools configuration — used by component 08-dev-tools
+# Dev tools configuration — used by component dev-tools
 
 # Homebrew formula CLI tools
 cli_tools:

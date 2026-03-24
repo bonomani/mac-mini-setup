@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # lib/unsloth_studio.sh — Unsloth Studio setup + launchd targets
-# Sourced by components/06-ai-python-stack.sh
+# Sourced by components/ai-python-stack.sh
 
 # Usage: register_unsloth_studio_targets <cfg_dir> <yaml_path>
 register_unsloth_studio_targets() {

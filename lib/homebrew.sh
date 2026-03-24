@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # lib/homebrew.sh — Homebrew + Xcode CLT targets
-# Sourced by components/01-homebrew.sh
+# Sourced by components/homebrew.sh
 
 # Usage: run_homebrew_from_yaml <cfg_dir> <yaml_path>
 run_homebrew_from_yaml() {

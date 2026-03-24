@@ -11,9 +11,9 @@
       "Bash(git push:*)",
       "Bash(wc -l /home/bc/repos/github/bonomani/mac-mini-setup/components/*.sh)",
       "Bash(python3 tools/validate_targets_manifest.py targets/)",
-      "Bash(python3 tools/validate_targets_manifest.py --dispatch 01-homebrew targets/)",
-      "Bash(python3 tools/validate_targets_manifest.py --dispatch 06-ai-python-stack targets/)",
-      "Bash(python3 tools/validate_targets_manifest.py --dispatch 05-ollama targets/)"
+      "Bash(python3 tools/validate_targets_manifest.py --dispatch homebrew targets/)",
+      "Bash(python3 tools/validate_targets_manifest.py --dispatch ai-python-stack targets/)",
+      "Bash(python3 tools/validate_targets_manifest.py --dispatch ollama targets/)"
     ]
   }
 }
