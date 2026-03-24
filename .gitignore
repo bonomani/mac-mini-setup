@@ -1,0 +1,70 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# --- Environnements Virtuels (CRITIQUE pour le quota Claude) ---
+.venv/
+venv/
+ENV/
+env/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# --- Tests & Couverture ---
+htmlcov/
+.tox/
+.noseresults/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# --- Jupyter Notebooks ---
+.ipynb_checkpoints
+
+# --- Configuration IDE ---
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- Variables d'environnement (Sécurité) ---
+.env
+.venv
+env.ini
+.env.test
+
+# --- Scripts locaux ---
+clean.py
+
+# --- Fichiers système ---
+.DS_Store
+Thumbs.db
+
