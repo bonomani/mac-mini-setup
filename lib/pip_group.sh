@@ -39,3 +39,14 @@ except Exception:
     --install "_install_grp_${fn}" \
     --update  "_update_grp_${fn}"
 }
+
+# Runner: load all pip group targets from a YAML config file.
+# Usage: load_pip_groups_from_yaml <cfg_dir> <yaml_path>
+load_pip_groups_from_yaml() {
+  local cfg_dir="$1" yaml="$2"
+  while IFS=$'\t' read -r grp_name grp_probe grp_pkgs grp_minver; do
+    [[ -n "$grp_name" ]] || continue
+    _pip_group "$grp_name" "$grp_probe" "$grp_pkgs" "$grp_minver"
+  done < <(python3 "$cfg_dir/tools/read_config.py" --records \
+      "$yaml" pip_groups name probe packages min_version 2>/dev/null)
+}

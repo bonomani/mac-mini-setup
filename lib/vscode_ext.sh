@@ -24,3 +24,14 @@ _vscode_ext_target() {
     --install "_install_ext_${fn}" \
     --update  "_install_ext_${fn}"
 }
+
+# Runner: load all VSCode extension targets from a YAML config file.
+# Usage: load_vscode_extensions_from_yaml <cfg_dir> <yaml_path>
+load_vscode_extensions_from_yaml() {
+  local cfg_dir="$1" yaml="$2"
+  if is_installed code; then
+    while IFS= read -r ext; do
+      [[ -n "$ext" ]] && _vscode_ext_target "$ext"
+    done < <(python3 "$cfg_dir/tools/read_config.py" --list "$yaml" vscode_extensions 2>/dev/null)
+  fi
+}

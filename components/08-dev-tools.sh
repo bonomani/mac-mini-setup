@@ -96,11 +96,7 @@ ucc_target_nonruntime \
 
 # --- VSCode extensions — list sourced from config/08-dev-tools.yaml
 # Note: Claude Code is a CLI tool (npm), not a VSCode marketplace extension
-if is_installed code; then
-  while IFS= read -r ext; do
-    [[ -n "$ext" ]] && _vscode_ext_target "$ext"
-  done < <(python3 "$_DT_CFG_DIR/tools/read_config.py" --list "$_DT_CFG" vscode_extensions 2>/dev/null)
-fi
+load_vscode_extensions_from_yaml "$_DT_CFG_DIR" "$_DT_CFG"
 
 # --- VSCode settings.json (merge, not overwrite) ------------
 _observe_vscode_settings() {

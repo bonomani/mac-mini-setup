@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# lib/macos_defaults.sh — helper for YAML-driven macOS defaults targets
+# lib/macos_defaults.sh — helpers for YAML-driven macOS defaults targets
 # Sourced by components/09-macos-defaults.sh
 
 _macos_defaults_state() {
@@ -67,4 +67,23 @@ _macos_defaults_target() {
     --desired "$(_macos_defaults_desired_state "$desired")" \
     --install "$apply_fn" \
     --update "$apply_fn"
+}
+
+# Runner: load all defaults targets + restart-process list from a YAML config file.
+# Usage: run_macos_defaults_from_yaml <cfg_dir> <yaml_path>
+run_macos_defaults_from_yaml() {
+  local cfg_dir="$1" yaml="$2"
+
+  while IFS=$'\t' read -r md_name md_desired md_read md_apply; do
+    [[ -n "$md_name" ]] || continue
+    _macos_defaults_target "$md_name" "$md_read" "$md_desired" "$md_apply"
+  done < <(python3 "$cfg_dir/tools/read_config.py" --records \
+      "$yaml" defaults name desired read apply 2>/dev/null)
+
+  if [[ "$UCC_DRY_RUN" != "1" && ${_UCC_CHANGED:-0} -gt 0 ]]; then
+    while IFS= read -r _proc; do
+      [[ -n "$_proc" ]] && { killall "$_proc" 2>/dev/null || true; }
+    done < <(python3 "$cfg_dir/tools/read_config.py" --list "$yaml" restart_processes 2>/dev/null)
+    log_info "UI processes restarted"
+  fi
 }

@@ -28,18 +28,7 @@ _OLLAMA_LOG="${_OLLAMA_LOG:-/tmp/ollama.log}"
 # large  = all models    (requires ~60 GB free disk)
 _OLLAMA_AUTOPULL="${UIC_PREF_OLLAMA_MODEL_AUTOPULL:-none}"
 
-# Load model sets from config — see config/05-ollama.yaml
-MODELS_SMALL=()
-MODELS_MEDIUM=()
-MODELS_LARGE=()
-if [[ -f "$_OLLAMA_CFG" ]] && command -v python3 >/dev/null 2>&1; then
-  while IFS= read -r m; do [[ -n "$m" ]] && MODELS_SMALL+=("$m"); done \
-    < <(python3 "$_OLLAMA_CFG_DIR/tools/read_config.py" --list "$_OLLAMA_CFG" small 2>/dev/null)
-  while IFS= read -r m; do [[ -n "$m" ]] && MODELS_MEDIUM+=("$m"); done \
-    < <(python3 "$_OLLAMA_CFG_DIR/tools/read_config.py" --list "$_OLLAMA_CFG" medium 2>/dev/null)
-  while IFS= read -r m; do [[ -n "$m" ]] && MODELS_LARGE+=("$m"); done \
-    < <(python3 "$_OLLAMA_CFG_DIR/tools/read_config.py" --list "$_OLLAMA_CFG" large 2>/dev/null)
-fi
+source "$_OLLAMA_CFG_DIR/lib/ollama_models.sh"
 
 # --- Step 0: Precondition — macOS 14+ (via ucc_target) ------
 _observe_macos_prereq() {
@@ -160,39 +149,6 @@ fi
 # --- Pull models (gated by UIC preference ollama-model-autopull) ----
 # Default = none (safe: no automatic downloads)
 # Override in ~/.ai-stack/preferences.env:  OLLAMA_MODEL_AUTOPULL=small|medium|large
-_ollama_pull_set() {
-  local models=("$@")
-  local model _name _fn
-  for model in "${models[@]}"; do
-    _name="ollama-model-${model//:/-}"
-    _fn="${_name//[^a-zA-Z0-9_]/_}"
-    eval "_observe_${_fn}() { local raw; raw=\$(ollama_model_present '${model}' && echo 'present' || echo 'absent'); ucc_asm_package_state \"\$raw\"; }"
-    eval "_evidence_${_fn}() { printf 'model=${model}'; }"
-    eval "_pull_${_fn}()    { log_info 'Pulling model: ${model}'; ucc_run ollama pull '${model}'; }"
-    ucc_target_nonruntime \
-      --name    "$_name" \
-      --observe "_observe_${_fn}" \
-      --evidence "_evidence_${_fn}" \
-              --install "_pull_${_fn}" \
-      --update  "_pull_${_fn}"
-  done
-}
-
-case "$_OLLAMA_AUTOPULL" in
-  small)
-    log_info "ollama-model-autopull=small — pulling models ≤ 3B"
-    _ollama_pull_set "${MODELS_SMALL[@]}"
-    ;;
-  medium)
-    log_info "ollama-model-autopull=medium — pulling models ≤ 8B"
-    _ollama_pull_set "${MODELS_SMALL[@]}" "${MODELS_MEDIUM[@]}"
-    ;;
-  large)
-    log_info "ollama-model-autopull=large — pulling all models (may take a long time)"
-    _ollama_pull_set "${MODELS_SMALL[@]}" "${MODELS_MEDIUM[@]}" "${MODELS_LARGE[@]}"
-    ;;
-  none|*)
-    ;;
-esac
+load_ollama_models_from_yaml "$_OLLAMA_CFG_DIR" "$_OLLAMA_CFG" "$_OLLAMA_AUTOPULL"
 
 ucc_summary "05-ollama"
