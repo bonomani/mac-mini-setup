@@ -12,14 +12,14 @@
 #       Unsloth Studio runs in its own isolated venv and works on Mac via the CLI.
 #       Do NOT install the pip package — it is unused and untestable on this platform.
 
-_PY_CFG_DIR="${DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
-_PY_CFG="$_PY_CFG_DIR/config/06-ai-python-stack.yaml"
+DIR="${DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+_PY_CFG="$DIR/config/06-ai-python-stack.yaml"
 
-source "$_PY_CFG_DIR/lib/pip_group.sh"
-source "$_PY_CFG_DIR/lib/unsloth_studio.sh"
+source "$DIR/lib/pip_group.sh"
+source "$DIR/lib/unsloth_studio.sh"
 
-load_pip_groups_from_yaml "$_PY_CFG_DIR" "$_PY_CFG"
-register_unsloth_studio_targets "$_PY_CFG_DIR" "$_PY_CFG"
+load_pip_groups_from_yaml "$DIR" "$_PY_CFG"
+register_unsloth_studio_targets "$DIR" "$_PY_CFG"
 
 # Verify Metal/MPS availability
 if [[ "$UCC_DRY_RUN" != "1" ]] && is_installed python3; then

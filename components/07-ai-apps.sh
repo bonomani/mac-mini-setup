@@ -6,7 +6,7 @@
 #       Axis B = Basic
 # Boundary: local filesystem · Docker daemon API · network (image pulls)
 
-_AI_CFG_DIR="${DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
-source "$_AI_CFG_DIR/lib/ai_apps.sh"
-run_ai_apps_from_yaml "$_AI_CFG_DIR" "$_AI_CFG_DIR/config/07-ai-apps.yaml" || true
+DIR="${DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+source "$DIR/lib/ai_apps.sh"
+run_ai_apps_from_yaml "$DIR" "$DIR/config/07-ai-apps.yaml" || true
 ucc_summary "07-ai-apps"

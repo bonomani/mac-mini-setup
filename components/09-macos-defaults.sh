@@ -8,7 +8,7 @@
 # Note: com.apple.universalaccess reduce transparency is write-protected on macOS 14+.
 #       Set manually in System Settings if needed.
 
-_MD_CFG_DIR="${DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
-source "$_MD_CFG_DIR/lib/macos_defaults.sh"
-run_macos_defaults_from_yaml "$_MD_CFG_DIR" "$_MD_CFG_DIR/config/09-macos-defaults.yaml"
+DIR="${DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+source "$DIR/lib/macos_defaults.sh"
+run_macos_defaults_from_yaml "$DIR" "$DIR/config/09-macos-defaults.yaml"
 ucc_summary "09-macos-defaults"
