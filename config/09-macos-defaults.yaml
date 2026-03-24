@@ -1,0 +1,40 @@
+restart_processes:
+  - Finder
+  - Dock
+  - SystemUIServer
+
+defaults:
+  - name: pmset-ac-sleep=0
+    desired: "0"
+    read: "pmset -g | awk '/^[[:space:]]+sleep / {print $2}'"
+    apply: "ucc_run sudo pmset -c sleep 0"
+
+  - name: pmset-disksleep=0
+    desired: "0"
+    read: "pmset -g | awk '/disksleep/ {print $2}'"
+    apply: "ucc_run sudo pmset -c disksleep 0"
+
+  - name: pmset-standby=0
+    desired: "0"
+    read: "pmset -g | awk '/^[[:space:]]+standby / {print $2}'"
+    apply: "ucc_run sudo pmset -c standby 0"
+
+  - name: app-nap=disabled
+    desired: "1"
+    read: "defaults read NSGlobalDomain NSAppSleepDisabled 2>/dev/null || echo 0"
+    apply: "ucc_run defaults write NSGlobalDomain NSAppSleepDisabled -bool YES"
+
+  - name: finder-show-hidden=1
+    desired: "1"
+    read: "defaults read com.apple.finder AppleShowAllFiles 2>/dev/null || echo 0"
+    apply: "ucc_run defaults write com.apple.finder AppleShowAllFiles -bool true"
+
+  - name: show-all-extensions=1
+    desired: "1"
+    read: "defaults read NSGlobalDomain AppleShowAllExtensions 2>/dev/null || echo 0"
+    apply: "ucc_run defaults write NSGlobalDomain AppleShowAllExtensions -bool true"
+
+  - name: dock-autohide=1
+    desired: "1"
+    read: "defaults read com.apple.dock autohide 2>/dev/null || echo 0"
+    apply: "ucc_run defaults write com.apple.dock autohide -bool true"

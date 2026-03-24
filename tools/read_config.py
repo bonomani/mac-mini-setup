@@ -6,8 +6,12 @@ Usage:
       Outputs each list item on its own line.
 
   read_config.py --records <file> <section> <field1> [field2 ...]
-      Outputs pipe-delimited records, one per list entry.
+      Outputs tab-delimited records, one per list entry.
       Missing fields are output as empty strings.
+
+  read_config.py --get <file> <key>
+      Outputs a scalar value.  key may be a top-level key ("foo") or
+      a two-level dotted path ("section.key") for nested mappings.
 """
 import sys
 from pathlib import Path
@@ -86,16 +90,80 @@ def read_records(path: Path, section: str, fields: list) -> list:
     if in_section and current is not None:
         records.append(current)
 
-    return ["|".join(str(r.get(f, "")) for f in fields) for r in records]
+    return ["\t".join(str(r.get(f, "")) for f in fields) for r in records]
+
+
+def read_scalar(path: Path, key: str) -> str:
+    """Return a scalar value from the config file.
+
+    key may be:
+      - "foo"           → top-level   foo: value
+      - "section.key"   → two-level   section:\n  key: value  (indent 2)
+    """
+    parts = key.split(".", 1)
+    if len(parts) == 1:
+        # Top-level scalar
+        for line in path.read_text().splitlines():
+            s = line.rstrip()
+            if not s or s.lstrip().startswith("#"):
+                continue
+            if len(s) - len(s.lstrip()) == 0 and ":" in s:
+                k, v = s.split(":", 1)
+                if k.strip() == parts[0]:
+                    v = v.strip()
+                    if len(v) >= 2 and v[0] == v[-1] and v[0] in ('"', "'"):
+                        v = v[1:-1]
+                    return v
+    else:
+        section, subkey = parts
+        in_section = False
+        for line in path.read_text().splitlines():
+            s = line.rstrip()
+            if not s or s.lstrip().startswith("#"):
+                continue
+            indent = len(s) - len(s.lstrip())
+            text = s.strip()
+            if indent == 0:
+                in_section = text == f"{section}:"
+                continue
+            if in_section and indent == 2 and ":" in text:
+                k, v = text.split(":", 1)
+                if k.strip() == subkey:
+                    v = v.strip()
+                    if len(v) >= 2 and v[0] == v[-1] and v[0] in ('"', "'"):
+                        v = v[1:-1]
+                    return v
+    return ""
 
 
 def main() -> int:
     args = sys.argv[1:]
-    if len(args) < 3:
+    if not args:
         print(__doc__, file=sys.stderr)
         return 1
 
     mode = args[0]
+
+    if mode == "--get":
+        if len(args) < 3:
+            print(__doc__, file=sys.stderr)
+            return 1
+        path = Path(args[1])
+        key = args[2]
+        if not path.exists():
+            print(f"ERROR: {path} not found", file=sys.stderr)
+            return 1
+        try:
+            print(read_scalar(path, key))
+        except Exception as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 1
+        return 0
+
+    if len(args) < 3:
+        print(__doc__, file=sys.stderr)
+        return 1
+
     path = Path(args[1])
     section = args[2]
     fields = args[3:]

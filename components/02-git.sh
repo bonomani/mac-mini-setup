@@ -58,7 +58,7 @@ _configure_git() {
   git config --global user.email "$GIT_EMAIL"
   # Apply non-interactive defaults from config YAML
   local _cfg_dir="${DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
-  while IFS='|' read -r cfg_key cfg_val; do
+  while IFS=$'\t' read -r cfg_key cfg_val; do
     [[ -n "$cfg_key" ]] && git config --global "$cfg_key" "$cfg_val"
   done < <(python3 "$_cfg_dir/tools/read_config.py" --records \
       "$_cfg_dir/config/02-git.yaml" global_config key value 2>/dev/null)

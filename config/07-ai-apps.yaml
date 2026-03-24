@@ -1,0 +1,9 @@
+compose_dir: ".ai-stack"
+compose_marker: "# ai-stack v2"
+
+services:
+  - open-webui
+  - flowise
+  - openhands
+  - n8n
+  - qdrant

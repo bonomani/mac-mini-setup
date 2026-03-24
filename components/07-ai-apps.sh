@@ -6,7 +6,17 @@
 #       Axis B = Basic
 # Boundary: local filesystem · Docker daemon API · network (image pulls)
 
-COMPOSE_DIR="$HOME/.ai-stack"
+# Load compose config from YAML — see config/07-ai-apps.yaml
+_AI_CFG_DIR="${DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+_AI_CFG="$_AI_CFG_DIR/config/07-ai-apps.yaml"
+
+_raw_compose_dir="$(python3 "$_AI_CFG_DIR/tools/read_config.py" --get "$_AI_CFG" compose_dir 2>/dev/null)"
+COMPOSE_DIR="$HOME/${_raw_compose_dir:-.ai-stack}"
+
+AI_SERVICES=()
+while IFS= read -r _svc; do [[ -n "$_svc" ]] && AI_SERVICES+=("$_svc"); done \
+  < <(python3 "$_AI_CFG_DIR/tools/read_config.py" --list "$_AI_CFG" services 2>/dev/null)
+STACK_SERVICES="${#AI_SERVICES[@]}"
 
 # --- Docker running -----------------------------------------
 _observe_docker_running() {
@@ -67,8 +77,7 @@ ucc_target_service \
 docker info &>/dev/null 2>&1 || { log_warn "Docker not running — skipping AI stack"; ucc_summary "07-ai-apps"; exit 0; }
 
 COMPOSE_FILE="$COMPOSE_DIR/docker-compose.yml"
-COMPOSE_MARKER="# ai-stack v2"   # bump to force re-deploy
-STACK_SERVICES=5                 # open-webui, flowise, openhands, n8n, qdrant
+COMPOSE_MARKER="$(python3 "$_AI_CFG_DIR/tools/read_config.py" --get "$_AI_CFG" compose_marker 2>/dev/null)"
 
 # ============================================================
 # Compose file — deploy from repo into ~/.ai-stack/
@@ -111,7 +120,7 @@ _observe_stack() {
   # Check each service by name via docker inspect — avoids fragile wc -l
   # and does not depend on --status flag availability across compose versions
   local svc state
-  for svc in open-webui flowise openhands n8n qdrant; do
+  for svc in "${AI_SERVICES[@]}"; do
     state=$(docker inspect --format '{{.State.Status}}' "$svc" 2>/dev/null) || {
       ucc_asm_state \
         --installation Configured \
@@ -140,7 +149,7 @@ _observe_stack() {
 }
 _evidence_stack() {
   local running=0 svc state
-  for svc in open-webui flowise openhands n8n qdrant; do
+  for svc in "${AI_SERVICES[@]}"; do
     state=$(docker inspect --format '{{.State.Status}}' "$svc" 2>/dev/null || true)
     [[ "$state" == "running" ]] && running=$((running + 1))
   done
@@ -150,7 +159,7 @@ _evidence_stack() {
 # Remove any legacy bare containers that would conflict with compose
 _remove_legacy_containers() {
   local name
-  for name in open-webui flowise openhands n8n qdrant; do
+  for name in "${AI_SERVICES[@]}"; do
     if docker inspect "$name" &>/dev/null 2>&1; then
       log_info "Removing legacy container: $name"
       docker stop "$name" 2>/dev/null || true

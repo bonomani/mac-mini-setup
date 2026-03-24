@@ -52,3 +52,12 @@ pip_groups:
   - name: optimum
     probe: optimum
     packages: optimum
+
+# Unsloth Studio service configuration
+unsloth_studio:
+  label: "ai.unsloth.studio"
+  plist_marker: "<!-- ai.unsloth.studio v2 -->"
+  port: "8888"
+  host: "0.0.0.0"
+  studio_dir: ".unsloth/studio"
+  log_file: ".unsloth-studio.log"

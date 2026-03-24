@@ -75,53 +75,22 @@ _macos_defaults_target() {
     --update "$apply_fn"
 }
 
-# Power management defaults for long AI runs.
-_macos_defaults_target \
-  "pmset-ac-sleep=0" \
-  "pmset -g | awk '/^[[:space:]]+sleep / {print \$2}'" \
-  "0" \
-  "ucc_run sudo pmset -c sleep 0"
-
-_macos_defaults_target \
-  "pmset-disksleep=0" \
-  "pmset -g | awk '/disksleep/ {print \$2}'" \
-  "0" \
-  "ucc_run sudo pmset -c disksleep 0"
-
-_macos_defaults_target \
-  "pmset-standby=0" \
-  "pmset -g | awk '/^[[:space:]]+standby / {print \$2}'" \
-  "0" \
-  "ucc_run sudo pmset -c standby 0"
-
+# Load defaults and restart_processes from config — see config/09-macos-defaults.yaml
 # Note: com.apple.universalaccess reduce transparency is write-protected on macOS 14+ from scripts.
 # Set manually in System Settings if needed.
-_macos_defaults_target \
-  "app-nap=disabled" \
-  "defaults read NSGlobalDomain NSAppSleepDisabled 2>/dev/null || echo 0" \
-  "1" \
-  "ucc_run defaults write NSGlobalDomain NSAppSleepDisabled -bool YES"
+_MD_CFG_DIR="${DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+_MD_CFG="$_MD_CFG_DIR/config/09-macos-defaults.yaml"
 
-_macos_defaults_target \
-  "finder-show-hidden=1" \
-  "defaults read com.apple.finder AppleShowAllFiles 2>/dev/null || echo 0" \
-  "1" \
-  "ucc_run defaults write com.apple.finder AppleShowAllFiles -bool true"
-
-_macos_defaults_target \
-  "show-all-extensions=1" \
-  "defaults read NSGlobalDomain AppleShowAllExtensions 2>/dev/null || echo 0" \
-  "1" \
-  "ucc_run defaults write NSGlobalDomain AppleShowAllExtensions -bool true"
-
-_macos_defaults_target \
-  "dock-autohide=1" \
-  "defaults read com.apple.dock autohide 2>/dev/null || echo 0" \
-  "1" \
-  "ucc_run defaults write com.apple.dock autohide -bool true"
+while IFS=$'\t' read -r md_name md_desired md_read md_apply; do
+  [[ -n "$md_name" ]] || continue
+  _macos_defaults_target "$md_name" "$md_read" "$md_desired" "$md_apply"
+done < <(python3 "$_MD_CFG_DIR/tools/read_config.py" --records \
+    "$_MD_CFG" defaults name desired read apply 2>/dev/null)
 
 if [[ "$UCC_DRY_RUN" != "1" && $_UCC_CHANGED -gt 0 ]]; then
-  killall Finder Dock SystemUIServer 2>/dev/null || true
+  while IFS= read -r _proc; do
+    [[ -n "$_proc" ]] && { killall "$_proc" 2>/dev/null || true; }
+  done < <(python3 "$_MD_CFG_DIR/tools/read_config.py" --list "$_MD_CFG" restart_processes 2>/dev/null)
   log_info "Finder/Dock/SystemUIServer restarted"
 fi
 

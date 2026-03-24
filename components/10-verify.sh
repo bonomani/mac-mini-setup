@@ -18,15 +18,26 @@
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$DIR/lib/tic.sh"
 
+# Load AI service list from config (shared with 07-ai-apps)
+_AI_SERVICES=()
+while IFS= read -r _s; do [[ -n "$_s" ]] && _AI_SERVICES+=("$_s"); done \
+  < <(python3 "$DIR/tools/read_config.py" --list "$DIR/config/07-ai-apps.yaml" services 2>/dev/null)
+# Fallback if config unavailable
+[[ ${#_AI_SERVICES[@]} -gt 0 ]] || _AI_SERVICES=(open-webui flowise openhands n8n qdrant)
+
+# Load node version from config
+_NODE_VER="$(python3 "$DIR/tools/read_config.py" --get "$DIR/config/08-dev-tools.yaml" node_version 2>/dev/null)"
+_NODE_VER="${_NODE_VER:-24}"
+
 # Load pyenv shims so python3/pip/unsloth resolve correctly
 export PYENV_ROOT="$HOME/.pyenv"
 export PATH="$PYENV_ROOT/bin:$PYENV_ROOT/shims:$PATH"
 
-# Load node@24 path
-if [[ -d /opt/homebrew/opt/node@24/bin ]]; then
-  export PATH="/opt/homebrew/opt/node@24/bin:$PATH"
-elif [[ -d /usr/local/opt/node@24/bin ]]; then
-  export PATH="/usr/local/opt/node@24/bin:$PATH"
+# Load node path
+if [[ -d "/opt/homebrew/opt/node@${_NODE_VER}/bin" ]]; then
+  export PATH="/opt/homebrew/opt/node@${_NODE_VER}/bin:$PATH"
+elif [[ -d "/usr/local/opt/node@${_NODE_VER}/bin" ]]; then
+  export PATH="/usr/local/opt/node@${_NODE_VER}/bin:$PATH"
 fi
 
 # ──────────────────────────────────────────────────────────────
@@ -198,7 +209,7 @@ _docker_container_running() {
   docker inspect --format '{{.State.Status}}' "$1" 2>/dev/null | grep -q "^running$"
 }
 
-for _svc in open-webui flowise openhands n8n qdrant; do
+for _svc in "${_AI_SERVICES[@]}"; do
   _svc_fn="${_svc//-/_}"
   eval "
 tic_test \
@@ -213,10 +224,10 @@ done
 # 08-dev-tools
 # ──────────────────────────────────────────────────────────────
 tic_test \
-  --name   "node-24-installed" \
-  --intent "node must be v24.x (required by Unsloth Studio, Claude Code, BMAD)" \
-  --oracle "node --version 2>/dev/null | grep -q '^v24\.'" \
-  --trace  "component:08-dev-tools / ucc-target:node-24-lts"
+  --name   "node-${_NODE_VER}-installed" \
+  --intent "node must be v${_NODE_VER}.x (required by Unsloth Studio, Claude Code, BMAD)" \
+  --oracle "node --version 2>/dev/null | grep -q '^v${_NODE_VER}\.'" \
+  --trace  "component:08-dev-tools / ucc-target:node-${_NODE_VER}-lts"
 
 tic_test \
   --name   "cmake-installed" \

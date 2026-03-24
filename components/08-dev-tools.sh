@@ -9,6 +9,8 @@
 # --- CLI tools (brew) — list sourced from config/08-dev-tools.yaml
 _DT_CFG_DIR="${DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 _DT_CFG="$_DT_CFG_DIR/config/08-dev-tools.yaml"
+_NODE_VER="$(python3 "$_DT_CFG_DIR/tools/read_config.py" --get "$_DT_CFG" node_version 2>/dev/null)"
+_NODE_VER="${_NODE_VER:-24}"
 CLI_TOOLS=()
 while IFS= read -r t; do [[ -n "$t" ]] && CLI_TOOLS+=("$t"); done \
   < <(python3 "$_DT_CFG_DIR/tools/read_config.py" --list "$_DT_CFG" cli_tools 2>/dev/null)
@@ -148,18 +150,18 @@ ucc_target_nonruntime \
   --update  _apply_vscode_settings
 
 # --- GUI tools (brew cask) — list sourced from config/08-dev-tools.yaml
-while IFS='|' read -r cask_name cask_id; do
+while IFS=$'\t' read -r cask_name cask_id; do
   [[ -n "$cask_name" ]] && _devtools_brew_cask_target "$cask_name" "$cask_id"
 done < <(python3 "$_DT_CFG_DIR/tools/read_config.py" --records "$_DT_CFG" casks name id 2>/dev/null)
 
-# --- Node.js 24 LTS -----------------------------------------
-# node@24 required by Unsloth Studio; also compatible with Claude Code, Codex, BMAD
+# --- Node.js LTS (version from config/08-dev-tools.yaml) ---
+# node@${_NODE_VER} required by Unsloth Studio; also compatible with Claude Code, Codex, BMAD
 _observe_node24() {
   local ver raw
   ver=$(node --version 2>/dev/null)
-  [[ "$ver" == v24.* ]] || { ucc_asm_package_state "absent"; return; }
+  [[ "$ver" == v${_NODE_VER}.* ]] || { ucc_asm_package_state "absent"; return; }
   if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-always-upgrade}" == "always-upgrade" ]]; then
-    _brew_is_outdated "node@24" && { ucc_asm_package_state "outdated"; return; }
+    _brew_is_outdated "node@${_NODE_VER}" && { ucc_asm_package_state "outdated"; return; }
   fi
   raw="${ver#v}"
   ucc_asm_package_state "$raw"
@@ -172,11 +174,11 @@ _evidence_node24() {
   [[ -n "$path" ]] && printf '%s path=%s' "${ver:+ }" "$path"
 }
 _install_node24() {
-  brew unlink node@20 2>/dev/null || true
-  ucc_run brew install node@24 && ucc_run brew link --overwrite --force node@24
+  brew unlink "node@$(( _NODE_VER - 4 ))" 2>/dev/null || true
+  ucc_run brew install "node@${_NODE_VER}" && ucc_run brew link --overwrite --force "node@${_NODE_VER}"
 }
 _update_node24() {
-  ucc_run brew upgrade node@24 && ucc_run brew link --overwrite --force node@24
+  ucc_run brew upgrade "node@${_NODE_VER}" && ucc_run brew link --overwrite --force "node@${_NODE_VER}"
 }
 
 ucc_target_nonruntime \

@@ -38,6 +38,8 @@ npm_packages:
   - "@anthropic-ai/claude-code"
   - bmad-method
 
+node_version: "24"
+
 # Homebrew cask GUI tools
 # Fields: name (ucc-target name), id (brew cask identifier)
 casks:
