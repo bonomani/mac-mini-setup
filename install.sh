@@ -478,7 +478,7 @@ for comp in "${TO_RUN[@]}"; do
     done
 
     # Build runner call with on_fail handling
-    _config="${DIR}/config/${comp}.yaml"
+    _config="${DIR}/targets/${comp}.yaml"
     case "$_on_fail" in
       exit)   _run="${_runner} \"${DIR}\" \"${_config}\" || { ucc_summary \"${comp}\"; exit 1; }" ;;
       ignore) _run="${_runner} \"${DIR}\" \"${_config}\" || true" ;;

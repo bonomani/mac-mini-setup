@@ -76,7 +76,7 @@ run_dev_tools_from_yaml() {
   # ---- VSCode settings.json (merge, not overwrite) ----
   _observe_vscode_settings() {
     local f="$HOME/Library/Application Support/Code/User/settings.json"
-    local patch_file="$cfg_dir/config/vscode-settings.json"
+    local patch_file="$cfg_dir/targets/vscode-settings.json"
     [[ -f "$f" ]] || { ucc_asm_config_state "absent"; return; }
     local first_key
     first_key=$(jq -r 'keys[0]' "$patch_file" 2>/dev/null)
@@ -89,7 +89,7 @@ run_dev_tools_from_yaml() {
   _evidence_vscode_settings() { printf 'path=%s' "$HOME/Library/Application Support/Code/User/settings.json"; }
   _apply_vscode_settings() {
     local f="$HOME/Library/Application Support/Code/User/settings.json"
-    local patch_file="$cfg_dir/config/vscode-settings.json"
+    local patch_file="$cfg_dir/targets/vscode-settings.json"
     mkdir -p "$(dirname "$f")"
     local tmp patch
     tmp="$(mktemp)"

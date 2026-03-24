@@ -13,7 +13,11 @@
       "Bash(python3 tools/validate_targets_manifest.py targets/)",
       "Bash(python3 tools/validate_targets_manifest.py --dispatch homebrew targets/)",
       "Bash(python3 tools/validate_targets_manifest.py --dispatch ai-python-stack targets/)",
-      "Bash(python3 tools/validate_targets_manifest.py --dispatch ollama targets/)"
+      "Bash(python3 tools/validate_targets_manifest.py --dispatch ollama targets/)",
+      "Bash(cat /home/bc/repos/github/bonomani/mac-mini-setup/targets/*.yaml)",
+      "Bash(grep -A8 '  [a-z].*:$')",
+      "Read(//home/bc/repos/github/bonomani/mac-mini-setup/**)",
+      "Bash(git mv:*)"
     ]
   }
 }

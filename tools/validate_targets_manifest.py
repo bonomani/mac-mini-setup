@@ -36,6 +36,7 @@ def parse_manifest_file(path: Path):
     current = None
     current_list = None
     in_targets = False
+    in_top_block = False  # inside a non-targets top-level block (list/nested dict)
 
     for lineno, raw in enumerate(path.read_text().splitlines(), start=1):
         if not raw.strip() or raw.lstrip().startswith("#"):
@@ -46,6 +47,7 @@ def parse_manifest_file(path: Path):
         text = raw.strip()
 
         if indent == 0:
+            in_top_block = False
             if text == "targets:":
                 in_targets = True
                 continue
@@ -53,21 +55,16 @@ def parse_manifest_file(path: Path):
                 key, value = text.split(":", 1)
                 key = key.strip()
                 value = value.strip()
-                _ALLOWED_TOP_LEVEL = {
-                    "component", "primary_profile",
-                    # dispatch fields (used by install.sh dynamic runner)
-                    "libs", "runner", "on_fail",
-                    # version/config fields (single source of truth)
-                    "python_version", "node_version", "node_previous_version",
-                    "macos_min_version", "installer_url", "api_host", "api_port", "log_file",
-                    "omz_theme", "omz_installer_url", "ariaflow_tap", "aria2_port", "ariaflow_web_port",
-                    "memory_gb", "cpu_count", "swap_mib", "disk_mib",
-                }
-                if key not in _ALLOWED_TOP_LEVEL:
-                    raise ValueError(f"{path}:{lineno}: unsupported top-level field '{key}'")
-                manifest[key] = value
+                if not value:
+                    in_top_block = True  # list or nested dict — skip its content
+                    manifest[key] = None
+                else:
+                    manifest[key] = value
                 continue
             raise ValueError(f"{path}:{lineno}: unsupported top-level structure")
+
+        if in_top_block:
+            continue  # skip list/dict content of non-targets top-level blocks
 
         if not in_targets:
             raise ValueError(f"{path}:{lineno}: content before 'targets:'")

@@ -17,3 +17,11 @@ targets:
     type: config
     depends_on:
       - git
+
+global_config:
+  - key: init.defaultBranch
+    value: main
+  - key: pull.rebase
+    value: "false"
+  - key: core.autocrlf
+    value: input

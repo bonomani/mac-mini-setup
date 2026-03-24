@@ -30,3 +30,19 @@ targets:
       - ollama
     soft_depends_on:
       - gate:ollama-api
+
+# Model sets — controlled by UIC preference ollama-model-autopull (none|small|medium|large)
+# Default is none — no automatic downloads.
+
+small:
+  - llama3.2
+  - nomic-embed-text
+
+medium:
+  - qwen3:latest
+  - llama3.1:8b
+  - mistral:7b
+
+large:
+  - qwen2.5-coder:32b
+  - llama3.1:70b

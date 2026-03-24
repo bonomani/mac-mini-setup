@@ -17,3 +17,68 @@ targets:
     type: service
     depends_on:
       - unsloth-studio-setup
+# Fields:
+#   name        ucc-target suffix and _pip_group identifier
+#   probe       package name used for pip show / version detection
+#   packages    space-separated packages passed to pip install
+#   min_version (optional) minimum acceptable version of the probe package;
+#               triggers a version-aware observe that forces upgrade if below this
+
+pip_groups:
+  - name: pytorch
+    probe: torch
+    packages: torch torchvision torchaudio
+
+  - name: huggingface
+    probe: transformers
+    packages: transformers diffusers accelerate datasets tokenizers sentencepiece huggingface-hub peft trl
+
+  - name: langchain
+    probe: langchain-core
+    min_version: 1.0.0
+    packages: langchain-core>=1.0.0 langchain langchain-community langchain-ollama langgraph
+
+  - name: llamaindex
+    probe: llama-index
+    packages: llama-index llama-index-llms-ollama llama-index-embeddings-ollama
+
+  - name: llm-clients
+    probe: openai
+    packages: openai anthropic
+
+  - name: vector-dbs
+    probe: chromadb
+    packages: chromadb faiss-cpu qdrant-client
+
+  - name: jupyter
+    probe: jupyterlab
+    packages: jupyterlab ipywidgets nbformat
+
+  - name: serving
+    probe: fastapi
+    packages: fastapi uvicorn gradio
+
+  - name: data-science
+    probe: numpy
+    packages: numpy pandas scipy scikit-learn matplotlib seaborn
+
+  - name: utilities
+    probe: python-dotenv
+    packages: python-dotenv rich tqdm
+
+  - name: dev-tools
+    probe: ruff
+    packages: ruff
+
+  - name: optimum
+    probe: optimum
+    packages: optimum
+
+# Unsloth Studio service configuration
+unsloth_studio:
+  label: "ai.unsloth.studio"
+  plist_marker: "<!-- ai.unsloth.studio v2 -->"
+  port: "8888"
+  host: "0.0.0.0"
+  studio_dir: ".unsloth/studio"
+  log_file: ".unsloth-studio.log"

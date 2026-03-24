@@ -17,3 +17,6 @@ targets:
     depends_on:
       - xcode-command-line-tools
     provided_by_tool: brew-installer
+installer_url: "https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh"
+analytics_desired: "off"
+shell_config_file: ".zprofile"

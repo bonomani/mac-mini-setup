@@ -1,4 +1,0 @@
-# Homebrew configuration — used by component homebrew
-installer_url: "https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh"
-analytics_desired: "off"
-shell_config_file: ".zprofile"

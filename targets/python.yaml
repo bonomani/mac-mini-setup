@@ -34,3 +34,12 @@ targets:
     type: config
     depends_on:
       - python
+
+pyenv_packages:
+  - pyenv
+  - pyenv-virtualenv
+
+pip_bootstrap:
+  - pip
+  - setuptools
+  - wheel

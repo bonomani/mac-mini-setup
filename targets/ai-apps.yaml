@@ -26,3 +26,13 @@ targets:
       - docker-running
       - ai-stack-compose-file
     provided_by_tool: docker-compose
+
+compose_dir: ".ai-stack"
+compose_marker: "# ai-stack v2"
+
+services:
+  - open-webui
+  - flowise
+  - openhands
+  - n8n
+  - qdrant
