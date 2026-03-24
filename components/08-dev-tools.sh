@@ -21,6 +21,11 @@ _ARIA2_PORT="$(python3 "$_DT_CFG_DIR/tools/read_config.py" --get "$_DT_CFG" aria
 _ARIA2_PORT="${_ARIA2_PORT:-6800}"
 _ARIAFLOW_WEB_PORT="$(python3 "$_DT_CFG_DIR/tools/read_config.py" --get "$_DT_CFG" ariaflow_web_port 2>/dev/null)"
 _ARIAFLOW_WEB_PORT="${_ARIAFLOW_WEB_PORT:-8001}"
+_NODE_PREV_VER="$(python3 "$_DT_CFG_DIR/tools/read_config.py" --get "$_DT_CFG" node_previous_version 2>/dev/null)"
+_NODE_PREV_VER="${_NODE_PREV_VER:-20}"
+
+source "$_DT_CFG_DIR/lib/vscode_ext.sh"
+
 CLI_TOOLS=()
 while IFS= read -r t; do [[ -n "$t" ]] && CLI_TOOLS+=("$t"); done \
   < <(python3 "$_DT_CFG_DIR/tools/read_config.py" --list "$_DT_CFG" cli_tools 2>/dev/null)
@@ -29,31 +34,6 @@ for tool in "${CLI_TOOLS[@]}"; do
   ucc_brew_target "cli-$tool" "$tool"
 done
 
-_devtools_brew_cask_target() {
-  local target_name="$1" cask_pkg="$2"
-  ucc_brew_cask_target "$target_name" "$cask_pkg"
-}
-
-_devtools_vscode_extension_target() {
-  local ext="$1"
-  local ext_id fn
-  ext_id="${ext//./-}"
-  fn="${ext_id//-/_}"
-  eval "_observe_ext_${fn}() {
-    local raw; raw=\$(code --list-extensions --show-versions 2>/dev/null | grep -i '^${ext}@' | awk -F@ '{print \$2}' | head -1 || echo 'absent'); ucc_asm_package_state \"\$raw\"
-  }"
-  eval "_evidence_ext_${fn}() {
-    local ver; ver=\$(code --list-extensions --show-versions 2>/dev/null | grep -i '^${ext}@' | awk -F@ '{print \$2}' | head -1 || true); [[ -n \"\$ver\" ]] && printf 'version=%s' \"\$ver\";
-  }"
-  eval "_install_ext_${fn}() { ucc_run code --install-extension '${ext}' --force; }"
-
-  ucc_target_nonruntime \
-    --name "vscode-ext-$ext" \
-    --observe "_observe_ext_${fn}" \
-    --evidence "_evidence_ext_${fn}" \
-    --install "_install_ext_${fn}" \
-    --update "_install_ext_${fn}"
-}
 
 # --- VSCode -------------------------------------------------
 _observe_vscode() {
@@ -118,16 +98,19 @@ ucc_target_nonruntime \
 # Note: Claude Code is a CLI tool (npm), not a VSCode marketplace extension
 if is_installed code; then
   while IFS= read -r ext; do
-    [[ -n "$ext" ]] && _devtools_vscode_extension_target "$ext"
+    [[ -n "$ext" ]] && _vscode_ext_target "$ext"
   done < <(python3 "$_DT_CFG_DIR/tools/read_config.py" --list "$_DT_CFG" vscode_extensions 2>/dev/null)
 fi
 
 # --- VSCode settings.json (merge, not overwrite) ------------
 _observe_vscode_settings() {
   local f="$HOME/Library/Application Support/Code/User/settings.json"
+  local patch_file="$_DT_CFG_DIR/config/vscode-settings.json"
   [[ -f "$f" ]] || { ucc_asm_config_state "absent"; return; }
-  # Check if our key is already present
-  if jq -e '."terminal.integrated.defaultProfile.osx"' "$f" >/dev/null 2>&1; then
+  # Check if all keys from the patch are already present in settings
+  local first_key
+  first_key=$(jq -r 'keys[0]' "$patch_file" 2>/dev/null)
+  if [[ -n "$first_key" ]] && jq -e --arg k "$first_key" '.[$k]' "$f" >/dev/null 2>&1; then
     ucc_asm_config_state "configured"
   else
     ucc_asm_config_state "needs-update"
@@ -161,7 +144,7 @@ ucc_target_nonruntime \
 
 # --- GUI tools (brew cask) — list sourced from config/08-dev-tools.yaml
 while IFS=$'\t' read -r cask_name cask_id; do
-  [[ -n "$cask_name" ]] && _devtools_brew_cask_target "$cask_name" "$cask_id"
+  [[ -n "$cask_name" ]] && ucc_brew_cask_target "$cask_name" "$cask_id"
 done < <(python3 "$_DT_CFG_DIR/tools/read_config.py" --records "$_DT_CFG" casks name id 2>/dev/null)
 
 # --- Node.js LTS (version from config/08-dev-tools.yaml) ---
@@ -184,7 +167,7 @@ _evidence_node24() {
   [[ -n "$path" ]] && printf '%s path=%s' "${ver:+ }" "$path"
 }
 _install_node24() {
-  brew unlink "node@$(( _NODE_VER - 4 ))" 2>/dev/null || true
+  brew unlink "node@${_NODE_PREV_VER}" 2>/dev/null || true
   ucc_run brew install "node@${_NODE_VER}" && ucc_run brew link --overwrite --force "node@${_NODE_VER}"
 }
 _update_node24() {
@@ -198,11 +181,11 @@ ucc_target_nonruntime \
   --install _install_node24 \
   --update  _update_node24
 
-# Ensure node@24 is in PATH
-if [[ -d /opt/homebrew/opt/node@24/bin ]]; then
-  export PATH="/opt/homebrew/opt/node@24/bin:$PATH"
-elif [[ -d /usr/local/opt/node@24/bin ]]; then
-  export PATH="/usr/local/opt/node@24/bin:$PATH"
+# Ensure node is in PATH
+if [[ -d "/opt/homebrew/opt/node@${_NODE_VER}/bin" ]]; then
+  export PATH="/opt/homebrew/opt/node@${_NODE_VER}/bin:$PATH"
+elif [[ -d "/usr/local/opt/node@${_NODE_VER}/bin" ]]; then
+  export PATH="/usr/local/opt/node@${_NODE_VER}/bin:$PATH"
 fi
 
 # --- npm global AI CLI tools — list sourced from config/08-dev-tools.yaml

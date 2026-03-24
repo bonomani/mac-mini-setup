@@ -6,13 +6,26 @@
 #       Axis B = Basic
 # Boundary: local filesystem · brew · network (pyenv install downloads Python source)
 
+_PY4_CFG_DIR="${DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+_PY4_CFG="$_PY4_CFG_DIR/config/04-python.yaml"
+
 # UIC preference: python-version (safe default = 3.12.3)
 PYTHON_VERSION="${UIC_PREF_PYTHON_VERSION:-3.12.3}"
 
+# Load pyenv brew packages from config
+_PYENV_PKGS=()
+while IFS= read -r p; do [[ -n "$p" ]] && _PYENV_PKGS+=("$p"); done \
+  < <(python3 "$_PY4_CFG_DIR/tools/read_config.py" --list "$_PY4_CFG" pyenv_packages 2>/dev/null)
+[[ ${#_PYENV_PKGS[@]} -gt 0 ]] || _PYENV_PKGS=(pyenv pyenv-virtualenv)
+
+# Load pip bootstrap packages from config
+_PIP_BOOTSTRAP=()
+while IFS= read -r p; do [[ -n "$p" ]] && _PIP_BOOTSTRAP+=("$p"); done \
+  < <(python3 "$_PY4_CFG_DIR/tools/read_config.py" --list "$_PY4_CFG" pip_bootstrap 2>/dev/null)
+[[ ${#_PIP_BOOTSTRAP[@]} -gt 0 ]] || _PIP_BOOTSTRAP=(pip setuptools wheel)
+
 _observe_pyenv() {
-  local raw
-  raw=$(brew_observe pyenv)
-  ucc_asm_package_state "$raw"
+  ucc_asm_package_state "$(brew_observe pyenv)"
 }
 _evidence_pyenv() {
   local ver path
@@ -21,21 +34,13 @@ _evidence_pyenv() {
   [[ -n "$ver" ]] && printf 'version=%s' "$ver"
   [[ -n "$path" ]] && printf '%s root=%s' "${ver:+ }" "$path"
 }
-
 _install_pyenv() {
-  brew_install pyenv pyenv-virtualenv
+  brew_install "${_PYENV_PKGS[@]}"
   if ! grep -q 'pyenv init' ~/.zshrc 2>/dev/null; then
-    cat >> ~/.zshrc <<'EOF'
-
-# pyenv
-export PYENV_ROOT="$HOME/.pyenv"
-export PATH="$PYENV_ROOT/bin:$PATH"
-eval "$(pyenv init -)"
-eval "$(pyenv virtualenv-init -)"
-EOF
+    cat "$_PY4_CFG_DIR/scripts/pyenv-zshrc-snippet" >> ~/.zshrc
   fi
 }
-_update_pyenv() { brew_upgrade pyenv pyenv-virtualenv; }
+_update_pyenv() { brew_upgrade "${_PYENV_PKGS[@]}"; }
 
 ucc_target_nonruntime \
   --name    "pyenv" \
@@ -45,18 +50,13 @@ ucc_target_nonruntime \
   --update  _update_pyenv
 
 # --- xz (required to avoid lzma warning when building Python) --
-_observe_xz() {
-  local raw
-  raw=$(brew_observe xz)
-  ucc_asm_package_state "$raw"
-}
+_observe_xz() { ucc_asm_package_state "$(brew_observe xz)"; }
 _evidence_xz() {
-  local ver
-  ver=$(xz --version 2>/dev/null | awk 'NR==1 {print $4}')
+  local ver; ver=$(xz --version 2>/dev/null | awk 'NR==1 {print $4}')
   [[ -n "$ver" ]] && printf 'version=%s' "$ver"
 }
-_install_xz()  { brew_install xz; }
-_update_xz()   { brew_upgrade  xz; }
+_install_xz() { brew_install xz; }
+_update_xz()  { brew_upgrade  xz; }
 
 ucc_target_nonruntime \
   --name    "xz" \
@@ -83,17 +83,8 @@ _evidence_python_version() {
   [[ -n "$ver" ]] && printf 'version=%s' "$ver"
   [[ -n "$path" ]] && printf '%s path=%s' "${ver:+ }" "$path"
 }
-
-_install_python_version() {
-  pyenv install "$PYTHON_VERSION"
-  pyenv global "$PYTHON_VERSION"
-}
-
-_update_python_version() {
-  # Reinstall if needed, keep global
-  pyenv install --skip-existing "$PYTHON_VERSION"
-  pyenv global "$PYTHON_VERSION"
-}
+_install_python_version() { pyenv install "$PYTHON_VERSION"; pyenv global "$PYTHON_VERSION"; }
+_update_python_version()  { pyenv install --skip-existing "$PYTHON_VERSION"; pyenv global "$PYTHON_VERSION"; }
 
 ucc_target_nonruntime \
   --name    "python-$PYTHON_VERSION" \
@@ -104,9 +95,7 @@ ucc_target_nonruntime \
 
 # --- pip up-to-date -----------------------------------------
 _observe_pip() {
-  local raw
-  raw=$(is_installed pip && pip --version 2>/dev/null | awk '{print $2}' || echo "absent")
-  ucc_asm_package_state "$raw"
+  ucc_asm_package_state "$(is_installed pip && pip --version 2>/dev/null | awk '{print $2}' || echo "absent")"
 }
 _evidence_pip() {
   local ver path
@@ -115,10 +104,7 @@ _evidence_pip() {
   [[ -n "$ver" ]] && printf 'version=%s' "$ver"
   [[ -n "$path" ]] && printf '%s path=%s' "${ver:+ }" "$path"
 }
-
-_upgrade_pip() {
-  pip install --upgrade pip setuptools wheel
-}
+_upgrade_pip() { pip install --upgrade "${_PIP_BOOTSTRAP[@]}"; }
 
 ucc_target_nonruntime \
   --name    "pip-latest" \
