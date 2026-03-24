@@ -1,0 +1,20 @@
+#!/bin/bash
+set -euo pipefail
+echo "=== AI Mac Mini Healthcheck ==="
+echo "brew:    $(command -v brew   || echo 'missing')"
+echo "python:  $(python3 --version 2>/dev/null || echo 'missing')"
+echo "node:    $(node   --version 2>/dev/null || echo 'missing')"
+echo "uv:      $(uv     --version 2>/dev/null || echo 'missing')"
+echo "code:    $(code   --version 2>/dev/null | head -n1 || echo 'missing')"
+echo "ollama:  $(ollama --version 2>/dev/null || echo 'missing')"
+echo ""
+echo "--- VSCode extensions ---"
+code --list-extensions 2>/dev/null | sort || echo "code not available"
+echo ""
+echo "--- Ollama models ---"
+curl -fsS http://127.0.0.1:11434/api/tags 2>/dev/null \
+  | python3 -c "import sys,json; [print(m['name']) for m in json.load(sys.stdin).get('models',[])]" \
+  || echo "Ollama API not reachable"
+echo ""
+echo "--- Docker containers ---"
+docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' 2>/dev/null || echo "Docker not running"

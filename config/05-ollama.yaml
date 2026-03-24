@@ -1,5 +1,11 @@
-# Ollama model sets — used by component 05-ollama
-# Controlled by UIC preference: ollama-model-autopull (none|small|medium|large)
+# Ollama configuration — used by component 05-ollama
+macos_min_version: "14"
+installer_url: "https://ollama.com/install.sh"
+api_host: "127.0.0.1"
+api_port: "11434"
+log_file: "/tmp/ollama.log"
+
+# Model sets — controlled by UIC preference ollama-model-autopull (none|small|medium|large)
 # Default is none — no automatic downloads.
 
 # small: models <= 3B (fast, low memory)

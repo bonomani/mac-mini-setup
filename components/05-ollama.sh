@@ -8,6 +8,20 @@
 
 MACOS_MAJOR="$(sw_vers -productVersion | awk -F. '{print $1}')"
 
+# Load Ollama config from YAML — see config/05-ollama.yaml
+_OLLAMA_CFG_DIR="${DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+_OLLAMA_CFG="$_OLLAMA_CFG_DIR/config/05-ollama.yaml"
+_OLLAMA_MACOS_MIN="$(python3 "$_OLLAMA_CFG_DIR/tools/read_config.py" --get "$_OLLAMA_CFG" macos_min_version 2>/dev/null)"
+_OLLAMA_MACOS_MIN="${_OLLAMA_MACOS_MIN:-14}"
+_OLLAMA_INSTALLER_URL="$(python3 "$_OLLAMA_CFG_DIR/tools/read_config.py" --get "$_OLLAMA_CFG" installer_url 2>/dev/null)"
+_OLLAMA_INSTALLER_URL="${_OLLAMA_INSTALLER_URL:-https://ollama.com/install.sh}"
+_OLLAMA_API_HOST="$(python3 "$_OLLAMA_CFG_DIR/tools/read_config.py" --get "$_OLLAMA_CFG" api_host 2>/dev/null)"
+_OLLAMA_API_HOST="${_OLLAMA_API_HOST:-127.0.0.1}"
+_OLLAMA_API_PORT="$(python3 "$_OLLAMA_CFG_DIR/tools/read_config.py" --get "$_OLLAMA_CFG" api_port 2>/dev/null)"
+_OLLAMA_API_PORT="${_OLLAMA_API_PORT:-11434}"
+_OLLAMA_LOG="$(python3 "$_OLLAMA_CFG_DIR/tools/read_config.py" --get "$_OLLAMA_CFG" log_file 2>/dev/null)"
+_OLLAMA_LOG="${_OLLAMA_LOG:-/tmp/ollama.log}"
+
 # UIC preference: ollama-model-autopull (safe default=none)
 # small  = models ≤ 3B   (fast, low memory)
 # medium = models ≤ 8B   (balanced)
@@ -15,8 +29,6 @@ MACOS_MAJOR="$(sw_vers -productVersion | awk -F. '{print $1}')"
 _OLLAMA_AUTOPULL="${UIC_PREF_OLLAMA_MODEL_AUTOPULL:-none}"
 
 # Load model sets from config — see config/05-ollama.yaml
-_OLLAMA_CFG_DIR="${DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
-_OLLAMA_CFG="$_OLLAMA_CFG_DIR/config/05-ollama.yaml"
 MODELS_SMALL=()
 MODELS_MEDIUM=()
 MODELS_LARGE=()
@@ -31,7 +43,7 @@ fi
 
 # --- Step 0: Precondition — macOS 14+ (via ucc_target) ------
 _observe_macos_prereq() {
-  if [[ "$MACOS_MAJOR" -ge 14 ]]; then
+  if [[ "$MACOS_MAJOR" -ge "$_OLLAMA_MACOS_MIN" ]]; then
     ucc_asm_config_state "supported"
   else
     ucc_asm_config_state "absent"
@@ -39,18 +51,18 @@ _observe_macos_prereq() {
 }
 _evidence_macos_prereq() { printf 'macos=%s' "$(sw_vers -productVersion 2>/dev/null || echo unknown)"; }
 _fail_macos_prereq() {
-  log_warn "Ollama requires macOS 14 (Sonoma) or later — current: macOS $MACOS_MAJOR"
+  log_warn "Ollama requires macOS ${_OLLAMA_MACOS_MIN}+ — current: macOS $MACOS_MAJOR"
   return 1  # permanent failure — cannot install on this OS version
 }
 
 ucc_target_nonruntime \
-  --name    "macos-14-precondition" \
+  --name    "macos-${_OLLAMA_MACOS_MIN}-precondition" \
   --observe _observe_macos_prereq \
   --evidence _evidence_macos_prereq \
   --install _fail_macos_prereq
 
 # Abort if precondition not met
-[[ "$MACOS_MAJOR" -ge 14 ]] || { ucc_summary "05-ollama"; exit 0; }
+[[ "$MACOS_MAJOR" -ge "$_OLLAMA_MACOS_MIN" ]] || { ucc_summary "05-ollama"; exit 0; }
 
 # --- Ollama binary ------------------------------------------
 _observe_ollama() {
@@ -68,12 +80,12 @@ _evidence_ollama() {
 
 _install_ollama() {
   # Prefer official installer (supports both ARM and Intel)
-  curl -fsSL https://ollama.com/install.sh | sh
+  curl -fsSL "$_OLLAMA_INSTALLER_URL" | sh
 }
 
 _update_ollama() {
   # Re-run official installer — it handles upgrades
-  curl -fsSL https://ollama.com/install.sh | sh
+  curl -fsSL "$_OLLAMA_INSTALLER_URL" | sh
 }
 
 ucc_target_nonruntime \
@@ -94,7 +106,7 @@ _observe_ollama_service() {
       --dependencies DepsUnknown
     return
   fi
-  if curl -fsS http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
+  if curl -fsS http://${_OLLAMA_API_HOST}:${_OLLAMA_API_PORT}/api/tags >/dev/null 2>&1; then
     ucc_asm_state \
       --installation Configured \
       --runtime Running \
@@ -113,7 +125,7 @@ _observe_ollama_service() {
 _evidence_ollama_service() {
   local pid
   pid=$(pgrep -f 'ollama (serve|app)' 2>/dev/null | head -1 || true)
-  [[ -n "$pid" ]] && printf 'pid=%s port=11434' "$pid" || printf 'port=11434'
+  [[ -n "$pid" ]] && printf 'pid=%s port=%s' "$pid" "$_OLLAMA_API_PORT" || printf 'port=%s' "$_OLLAMA_API_PORT"
 }
 
 _start_ollama_service() {
@@ -121,7 +133,7 @@ _start_ollama_service() {
     brew services start ollama
   else
     # Fallback: start in background
-    nohup ollama serve >/tmp/ollama.log 2>&1 &
+    nohup ollama serve >"$_OLLAMA_LOG" 2>&1 &
   fi
   sleep 5
 }
@@ -136,10 +148,10 @@ ucc_target_service \
 # --- API health check ---------------------------------------
 if [[ "$UCC_DRY_RUN" != "1" ]]; then
   _observe_ollama_api() {
-    curl -fsS http://127.0.0.1:11434/api/tags >/dev/null 2>&1 && echo "ok" || echo "unreachable"
+    curl -fsS http://${_OLLAMA_API_HOST}:${_OLLAMA_API_PORT}/api/tags >/dev/null 2>&1 && echo "ok" || echo "unreachable"
   }
   if [[ "$(_observe_ollama_api)" != "ok" ]]; then
-    log_warn "Ollama API not responding at http://127.0.0.1:11434 — models will not be pulled"
+    log_warn "Ollama API not responding at http://${_OLLAMA_API_HOST}:${_OLLAMA_API_PORT} — models will not be pulled"
     ucc_summary "05-ollama"
     exit 1
   fi

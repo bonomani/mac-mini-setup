@@ -8,6 +8,11 @@
 #           · macOS system (xcode-select)
 # Note: "brew update" is GIC (observable side-effect, not a convergence target)
 
+_HB_CFG_DIR="${DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+_HB_CFG="$_HB_CFG_DIR/config/01-homebrew.yaml"
+_HB_INSTALLER_URL="$(python3 "$_HB_CFG_DIR/tools/read_config.py" --get "$_HB_CFG" installer_url 2>/dev/null)"
+_HB_INSTALLER_URL="${_HB_INSTALLER_URL:-https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh}"
+
 # --- Step 0: Precondition — Xcode Command Line Tools --------
 _observe_xcode_clt() {
   local raw
@@ -55,7 +60,7 @@ _evidence_brew() {
 }
 
 _install_brew() {
-  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  /bin/bash -c "$(curl -fsSL "$_HB_INSTALLER_URL")"
   _setup_brew_path
 }
 

@@ -11,6 +11,16 @@ _DT_CFG_DIR="${DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 _DT_CFG="$_DT_CFG_DIR/config/08-dev-tools.yaml"
 _NODE_VER="$(python3 "$_DT_CFG_DIR/tools/read_config.py" --get "$_DT_CFG" node_version 2>/dev/null)"
 _NODE_VER="${_NODE_VER:-24}"
+_OMZ_INSTALLER_URL="$(python3 "$_DT_CFG_DIR/tools/read_config.py" --get "$_DT_CFG" omz_installer_url 2>/dev/null)"
+_OMZ_INSTALLER_URL="${_OMZ_INSTALLER_URL:-https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh}"
+_OMZ_THEME="$(python3 "$_DT_CFG_DIR/tools/read_config.py" --get "$_DT_CFG" omz_theme 2>/dev/null)"
+_OMZ_THEME="${_OMZ_THEME:-agnoster}"
+_ARIAFLOW_TAP="$(python3 "$_DT_CFG_DIR/tools/read_config.py" --get "$_DT_CFG" ariaflow_tap 2>/dev/null)"
+_ARIAFLOW_TAP="${_ARIAFLOW_TAP:-bonomani/ariaflow}"
+_ARIA2_PORT="$(python3 "$_DT_CFG_DIR/tools/read_config.py" --get "$_DT_CFG" aria2_port 2>/dev/null)"
+_ARIA2_PORT="${_ARIA2_PORT:-6800}"
+_ARIAFLOW_WEB_PORT="$(python3 "$_DT_CFG_DIR/tools/read_config.py" --get "$_DT_CFG" ariaflow_web_port 2>/dev/null)"
+_ARIAFLOW_WEB_PORT="${_ARIAFLOW_WEB_PORT:-8001}"
 CLI_TOOLS=()
 while IFS= read -r t; do [[ -n "$t" ]] && CLI_TOOLS+=("$t"); done \
   < <(python3 "$_DT_CFG_DIR/tools/read_config.py" --list "$_DT_CFG" cli_tools 2>/dev/null)
@@ -208,7 +218,7 @@ _observe_omz() {
 }
 _evidence_omz() { printf 'folder=%s' "$HOME/.oh-my-zsh"; }
 _install_omz() {
-  sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+  sh -c "$(curl -fsSL "$_OMZ_INSTALLER_URL")" "" --unattended
 }
 _update_omz() {
   [[ -f "$HOME/.oh-my-zsh/tools/upgrade.sh" ]] && bash "$HOME/.oh-my-zsh/tools/upgrade.sh" || true
@@ -221,23 +231,23 @@ ucc_target_nonruntime \
   --install _install_omz \
   --update  _update_omz
 
-# --- Oh My Zsh theme (agnoster) -----------------------------
+# --- Oh My Zsh theme (from config) -----------------------------
 _observe_omz_theme() {
   local raw
-  raw=$(grep -q '^ZSH_THEME="agnoster"' "$HOME/.zshrc" 2>/dev/null && echo "set" || echo "unset")
+  raw=$(grep -q "^ZSH_THEME=\"${_OMZ_THEME}\"" "$HOME/.zshrc" 2>/dev/null && echo "set" || echo "unset")
   ucc_asm_config_state "$raw"
 }
-_evidence_omz_theme() { printf 'theme=agnoster file=%s' "$HOME/.zshrc"; }
+_evidence_omz_theme() { printf 'theme=%s file=%s' "$_OMZ_THEME" "$HOME/.zshrc"; }
 _apply_omz_theme() {
   if grep -q '^ZSH_THEME=' "$HOME/.zshrc" 2>/dev/null; then
-    sed -i '' 's/^ZSH_THEME=.*/ZSH_THEME="agnoster"/' "$HOME/.zshrc"
+    sed -i '' "s/^ZSH_THEME=.*/ZSH_THEME=\"${_OMZ_THEME}\"/" "$HOME/.zshrc"
   else
-    printf '\nZSH_THEME="agnoster"\n' >> "$HOME/.zshrc"
+    printf '\nZSH_THEME="%s"\n' "$_OMZ_THEME" >> "$HOME/.zshrc"
   fi
 }
 
 ucc_target_nonruntime \
-  --name    "omz-theme-agnoster" \
+  --name    "omz-theme-${_OMZ_THEME}" \
   --observe _observe_omz_theme \
   --evidence _evidence_omz_theme \
   --install _apply_omz_theme \
@@ -271,29 +281,7 @@ _observe_healthcheck() {
 _evidence_healthcheck() { printf 'path=%s' "$HOME/bin/ai-healthcheck"; }
 _install_healthcheck() {
   mkdir -p "$HOME/bin"
-  cat > "$HOME/bin/ai-healthcheck" <<'HCEOF'
-#!/bin/bash
-set -euo pipefail
-echo "=== AI Mac Mini Healthcheck ==="
-echo "brew:    $(command -v brew   || echo 'missing')"
-echo "python:  $(python3 --version 2>/dev/null || echo 'missing')"
-echo "node:    $(node   --version 2>/dev/null || echo 'missing')"
-echo "uv:      $(uv     --version 2>/dev/null || echo 'missing')"
-echo "code:    $(code   --version 2>/dev/null | head -n1 || echo 'missing')"
-echo "ollama:  $(ollama --version 2>/dev/null || echo 'missing')"
-echo ""
-echo "--- VSCode extensions ---"
-code --list-extensions 2>/dev/null | sort || echo "code not available"
-echo ""
-echo "--- Ollama models ---"
-curl -fsS http://127.0.0.1:11434/api/tags 2>/dev/null \
-  | python3 -c "import sys,json; [print(m['name']) for m in json.load(sys.stdin).get('models',[])]" \
-  || echo "Ollama API not reachable"
-echo ""
-echo "--- Docker containers ---"
-docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' 2>/dev/null || echo "Docker not running"
-HCEOF
-  chmod +x "$HOME/bin/ai-healthcheck"
+  install -m 755 "$_DT_CFG_DIR/scripts/ai-healthcheck" "$HOME/bin/ai-healthcheck"
 }
 
 ucc_target_nonruntime \
@@ -321,11 +309,11 @@ _evidence_ariaflow() {
   [[ -n "$ver" ]] && printf 'version=%s' "$ver"
 }
 _install_ariaflow() {
-  ucc_run brew tap bonomani/ariaflow
+  ucc_run brew tap "$_ARIAFLOW_TAP"
   brew_install ariaflow
 }
 _update_ariaflow() {
-  ucc_run brew tap bonomani/ariaflow
+  ucc_run brew tap "$_ARIAFLOW_TAP"
   # Unload running launchd agents before upgrade so they restart with the new binary
   for _plist in ~/Library/LaunchAgents/com.ariaflow.*.plist; do
     [[ -f "$_plist" ]] && ucc_run launchctl unload "$_plist" 2>/dev/null || true
@@ -348,8 +336,8 @@ _observe_aria2_launchd() {
 }
 _evidence_aria2_launchd() {
   local pid
-  pid=$(lsof -ti tcp:6800 2>/dev/null | head -1 || true)
-  [[ -n "$pid" ]] && printf 'pid=%s port=6800' "$pid" || printf 'port=6800'
+  pid=$(lsof -ti "tcp:${_ARIA2_PORT}" 2>/dev/null | head -1 || true)
+  [[ -n "$pid" ]] && printf 'pid=%s port=%s' "$pid" "$_ARIA2_PORT" || printf 'port=%s' "$_ARIA2_PORT"
 }
 # install and update both use ariaflow install — it is idempotent and handles both cases
 _install_aria2_launchd() { ucc_run ariaflow install --with-aria2; }
@@ -375,11 +363,11 @@ _evidence_ariaflow_web() {
   [[ -n "$ver" ]] && printf 'version=%s' "$ver"
 }
 _install_ariaflow_web() {
-  ucc_run brew tap bonomani/ariaflow
+  ucc_run brew tap "$_ARIAFLOW_TAP"
   brew_install ariaflow-web
 }
 _update_ariaflow_web() {
-  ucc_run brew tap bonomani/ariaflow
+  ucc_run brew tap "$_ARIAFLOW_TAP"
   brew_upgrade ariaflow-web
 }
 
@@ -400,14 +388,14 @@ _observe_ariaflow_web_service() {
 }
 _evidence_ariaflow_web_service() {
   local pid
-  pid=$(lsof -ti tcp:8001 2>/dev/null | head -1 || true)
-  [[ -n "$pid" ]] && printf 'pid=%s port=8001' "$pid" || printf 'port=8001'
+  pid=$(lsof -ti "tcp:${_ARIAFLOW_WEB_PORT}" 2>/dev/null | head -1 || true)
+  [[ -n "$pid" ]] && printf 'pid=%s port=%s' "$pid" "$_ARIAFLOW_WEB_PORT" || printf 'port=%s' "$_ARIAFLOW_WEB_PORT"
 }
 _start_ariaflow_web_service() {
-  ucc_run brew services start bonomani/ariaflow/ariaflow-web
+  ucc_run brew services start ${_ARIAFLOW_TAP}/ariaflow-web
 }
 _restart_ariaflow_web_service() {
-  ucc_run brew services restart bonomani/ariaflow/ariaflow-web
+  ucc_run brew services restart ${_ARIAFLOW_TAP}/ariaflow-web
 }
 
 ucc_target_service \

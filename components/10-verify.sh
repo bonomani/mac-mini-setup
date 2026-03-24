@@ -25,9 +25,27 @@ while IFS= read -r _s; do [[ -n "$_s" ]] && _AI_SERVICES+=("$_s"); done \
 # Fallback if config unavailable
 [[ ${#_AI_SERVICES[@]} -gt 0 ]] || _AI_SERVICES=(open-webui flowise openhands n8n qdrant)
 
-# Load node version from config
+# Load node version and ariaflow ports from config
 _NODE_VER="$(python3 "$DIR/tools/read_config.py" --get "$DIR/config/08-dev-tools.yaml" node_version 2>/dev/null)"
 _NODE_VER="${_NODE_VER:-24}"
+_ARIA2_PORT="$(python3 "$DIR/tools/read_config.py" --get "$DIR/config/08-dev-tools.yaml" aria2_port 2>/dev/null)"
+_ARIA2_PORT="${_ARIA2_PORT:-6800}"
+_ARIAFLOW_WEB_PORT="$(python3 "$DIR/tools/read_config.py" --get "$DIR/config/08-dev-tools.yaml" ariaflow_web_port 2>/dev/null)"
+_ARIAFLOW_WEB_PORT="${_ARIAFLOW_WEB_PORT:-8001}"
+
+# Load Ollama API config
+_OLLAMA_API_HOST="$(python3 "$DIR/tools/read_config.py" --get "$DIR/config/05-ollama.yaml" api_host 2>/dev/null)"
+_OLLAMA_API_HOST="${_OLLAMA_API_HOST:-127.0.0.1}"
+_OLLAMA_API_PORT="$(python3 "$DIR/tools/read_config.py" --get "$DIR/config/05-ollama.yaml" api_port 2>/dev/null)"
+_OLLAMA_API_PORT="${_OLLAMA_API_PORT:-11434}"
+
+# Load Unsloth Studio config
+_UNSLOTH_PORT="$(python3 "$DIR/tools/read_config.py" --get "$DIR/config/06-ai-python-stack.yaml" unsloth_studio.port 2>/dev/null)"
+_UNSLOTH_PORT="${_UNSLOTH_PORT:-8888}"
+_UNSLOTH_LABEL="$(python3 "$DIR/tools/read_config.py" --get "$DIR/config/06-ai-python-stack.yaml" unsloth_studio.label 2>/dev/null)"
+_UNSLOTH_LABEL="${_UNSLOTH_LABEL:-ai.unsloth.studio}"
+_UNSLOTH_STUDIO_DIR="$HOME/$(python3 "$DIR/tools/read_config.py" --get "$DIR/config/06-ai-python-stack.yaml" unsloth_studio.studio_dir 2>/dev/null)"
+_UNSLOTH_STUDIO_DIR="${_UNSLOTH_STUDIO_DIR:-$HOME/.unsloth/studio}"
 
 # Load pyenv shims so python3/pip/unsloth resolve correctly
 export PYENV_ROOT="$HOME/.pyenv"
@@ -135,8 +153,8 @@ tic_test \
 
 tic_test \
   --name   "ollama-api-reachable" \
-  --intent "ollama HTTP API must respond on port 11434" \
-  --oracle "curl -fsS http://127.0.0.1:11434/api/tags >/dev/null 2>&1" \
+  --intent "ollama HTTP API must respond on port ${_OLLAMA_API_PORT}" \
+  --oracle "curl -fsS http://${_OLLAMA_API_HOST}:${_OLLAMA_API_PORT}/api/tags >/dev/null 2>&1" \
   --trace  "component:05-ollama / ucc-target:ollama-service"
 
 # ──────────────────────────────────────────────────────────────
@@ -186,20 +204,20 @@ tic_test \
 
 tic_test \
   --name   "unsloth-studio-setup-dir" \
-  --intent "unsloth studio setup must have completed (~/.unsloth/studio must exist)" \
-  --oracle "[[ -d \"\$HOME/.unsloth/studio\" ]]" \
+  --intent "unsloth studio setup must have completed (${_UNSLOTH_STUDIO_DIR} must exist)" \
+  --oracle "[[ -d \"${_UNSLOTH_STUDIO_DIR}\" ]]" \
   --trace  "component:06-ai-python-stack / ucc-target:unsloth-studio-setup"
 
 tic_test \
   --name   "unsloth-studio-launchd-loaded" \
   --intent "unsloth studio launchd service must be loaded" \
-  --oracle "launchctl list 2>/dev/null | grep -q 'ai.unsloth.studio'" \
+  --oracle "launchctl list 2>/dev/null | grep -q '${_UNSLOTH_LABEL}'" \
   --trace  "component:06-ai-python-stack / ucc-target:unsloth-studio-launchd"
 
 tic_test \
-  --name   "unsloth-studio-port-8888" \
-  --intent "unsloth studio must be listening on port 8888" \
-  --oracle "curl -fsS --max-time 5 http://127.0.0.1:8888 >/dev/null 2>&1" \
+  --name   "unsloth-studio-port-${_UNSLOTH_PORT}" \
+  --intent "unsloth studio must be listening on port ${_UNSLOTH_PORT}" \
+  --oracle "curl -fsS --max-time 5 http://127.0.0.1:${_UNSLOTH_PORT} >/dev/null 2>&1" \
   --trace  "component:06-ai-python-stack / ucc-target:unsloth-studio-launchd"
 
 # ──────────────────────────────────────────────────────────────
@@ -261,14 +279,14 @@ tic_test \
 
 tic_test \
   --name   "ariaflow-web-service-started" \
-  --intent "ariaflow-web brew service must be running (port 8001)" \
+  --intent "ariaflow-web brew service must be running (port ${_ARIAFLOW_WEB_PORT})" \
   --oracle "brew services list 2>/dev/null | awk '/^ariaflow-web/ {print \$2}' | grep -q '^started$'" \
   --trace  "component:08-dev-tools / ucc-target:ariaflow-web-service"
 
 tic_test \
-  --name   "ariaflow-web-port-8001" \
-  --intent "ariaflow web UI must be listening on port 8001" \
-  --oracle "curl -fsS --max-time 5 http://127.0.0.1:8001 >/dev/null 2>&1" \
+  --name   "ariaflow-web-port-${_ARIAFLOW_WEB_PORT}" \
+  --intent "ariaflow web UI must be listening on port ${_ARIAFLOW_WEB_PORT}" \
+  --oracle "curl -fsS --max-time 5 http://127.0.0.1:${_ARIAFLOW_WEB_PORT} >/dev/null 2>&1" \
   --trace  "component:08-dev-tools / ucc-target:ariaflow-web-service"
 
 tic_test \
