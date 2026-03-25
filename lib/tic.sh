@@ -57,9 +57,8 @@ tic_test() {
   local exit_code=$?
 
   # Phase: report
-  # pass: compact single-word status — intent+trace omitted (noise on green runs)
-  # fail: full detail — intent, observed output, trace all shown for diagnosis
   if [[ $exit_code -eq 0 ]]; then
+    printf 'TIC %-45s | pass\n' "$name"
     TIC_PASS=$(( TIC_PASS + 1 ))
   else
     printf 'TIC %-45s | FAIL intent="%s" observed="%s"%s\n' \
