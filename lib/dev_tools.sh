@@ -116,6 +116,12 @@ run_dev_tools_from_yaml() {
   done < <(yaml_records "$cfg_dir" "$yaml" casks name id)
 
   # ---- Node.js LTS ----
+  # Ensure node@N is first in PATH before observe so version check sees the right binary
+  if [[ -d "/opt/homebrew/opt/node@${_NODE_VER}/bin" ]]; then
+    export PATH="/opt/homebrew/opt/node@${_NODE_VER}/bin:$PATH"
+  elif [[ -d "/usr/local/opt/node@${_NODE_VER}/bin" ]]; then
+    export PATH="/usr/local/opt/node@${_NODE_VER}/bin:$PATH"
+  fi
   _observe_node_lts() {
     local ver
     ver=$(node --version 2>/dev/null)
@@ -146,13 +152,6 @@ run_dev_tools_from_yaml() {
     --evidence _evidence_node_lts \
     --install  _install_node_lts \
     --update   _update_node_lts
-
-  # Ensure node is in PATH for subsequent steps
-  if [[ -d "/opt/homebrew/opt/node@${_NODE_VER}/bin" ]]; then
-    export PATH="/opt/homebrew/opt/node@${_NODE_VER}/bin:$PATH"
-  elif [[ -d "/usr/local/opt/node@${_NODE_VER}/bin" ]]; then
-    export PATH="/usr/local/opt/node@${_NODE_VER}/bin:$PATH"
-  fi
 
   # ---- npm global packages ----
   local _pkg
