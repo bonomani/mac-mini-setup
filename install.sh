@@ -427,8 +427,6 @@ mkdir -p "$HOME/.ai-stack/runs"
 
 _print_verification_section() {
   [[ -s "$UCC_VERIFICATION_REPORT_FILE" ]] || return 0
-  echo ""
-  printf '── TIC\n'
   cat "$UCC_VERIFICATION_REPORT_FILE"
 }
 
