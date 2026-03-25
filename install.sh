@@ -43,7 +43,7 @@
 #  TIC  Test Intent Contract
 #       Repo  : https://github.com/bonomani/tic
 #       WSL   : /home/bc/repos/github/bonomani/tic
-#       Impl  : lib/tic.sh + components/verify.sh
+#       Impl  : lib/tic.sh + lib/tic_runner.sh
 #
 #  All components MUST be UCC + Basic compliant:
 #    - declare BISS classification (Axis A + Axis B + Boundary) in header
@@ -545,8 +545,8 @@ for _i in "${!_DISP_COMPS[@]}"; do
   fi
   echo ""
   printf '── TIC\n'
-  SCRIPT="$DIR/components/verify.sh"
-  if ! bash -c "${_comp_prelude}; source \"${SCRIPT}\"" -- "$SCRIPT" > "$UCC_VERIFICATION_REPORT_FILE"; then
+  if ! bash -c "${_comp_prelude}; source \"${DIR}/lib/tic.sh\"; source \"${DIR}/lib/tic_runner.sh\"; run_verify \"${DIR}\"" \
+       > "$UCC_VERIFICATION_REPORT_FILE"; then
     log_warn "Component failed: $comp"
     FAILED_COMPONENTS+=("$comp")
   fi
