@@ -64,7 +64,7 @@ run_docker_config_from_yaml() {
   local cfg_dir="$1" yaml="$2"
 
   if [[ "${UIC_GATE_FAILED_DOCKER_SETTINGS_FILE:-0}" == "1" ]]; then
-    printf '  %-47s skip — gate=docker-settings-file:warn (launch Docker Desktop first)\n' "docker-resources"
+    ucc_skip_target "docker-resources" "gate=docker-settings-file:warn (launch Docker Desktop first)"
     return 0
   fi
 

@@ -31,7 +31,7 @@ _brew_refresh_if_stale() {
 
 # Lookup version from cache (no brew subprocess)
 _brew_cached_version()      { echo "${_BREW_VERSIONS_CACHE:-}"      | awk -v p="$1" '$1==p{print $NF}'; }
-_brew_cask_cached_version() { echo "${_BREW_CASK_VERSIONS_CACHE:-}" | awk -v p="$1" '$1==p{print $NF}'; }
+_brew_cask_cached_version() { echo "${_BREW_CASK_VERSIONS_CACHE:-}" | awk -v p="$1" '$1==p{v=$NF; sub(/,.*$/,"",v); print v}'; }
 
 brew_observe() {
   local pkg="$1" ver

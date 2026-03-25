@@ -174,7 +174,7 @@ run_dev_tools_from_yaml() {
 
   # ---- Oh My Zsh theme ----
   _observe_omz_theme()  { ucc_asm_config_state "$(grep -q "^ZSH_THEME=\"${_OMZ_THEME}\"" "$HOME/.zshrc" 2>/dev/null && echo "set" || echo "unset")"; }
-  _evidence_omz_theme() { printf 'theme=%s file=%s' "$_OMZ_THEME" "$HOME/.zshrc"; }
+  _evidence_omz_theme() { printf 'theme=%s  file=%s' "$_OMZ_THEME" "$HOME/.zshrc"; }
   _apply_omz_theme() {
     if grep -q '^ZSH_THEME=' "$HOME/.zshrc" 2>/dev/null; then
       sed -i '' "s/^ZSH_THEME=.*/ZSH_THEME=\"${_OMZ_THEME}\"/" "$HOME/.zshrc"

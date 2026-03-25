@@ -71,7 +71,7 @@ ucc_pyenv_version_target() {
   local tname="$1" ver="$2"
   local fn; fn="${tname//[^a-zA-Z0-9]/_}"
   eval "_upvt_obs_${fn}() { ucc_asm_package_state \"\$(pyenv versions 2>/dev/null | grep -q '${ver}' && echo '${ver}' || echo 'absent')\"; }"
-  eval "_upvt_evd_${fn}() { local v p; v=\$(python3 --version 2>/dev/null | awk '{print \$2}'); p=\$(pyenv which python3 2>/dev/null || command -v python3 2>/dev/null || true); [[ -n \"\$v\" ]] && printf 'version=%s' \"\$v\"; [[ -n \"\$p\" ]] && printf ' path=%s' \"\$p\"; }"
+  eval "_upvt_evd_${fn}() { local v p; v=\$(python3 --version 2>/dev/null | awk '{print \$2}'); p=\$(pyenv which python3 2>/dev/null || command -v python3 2>/dev/null || true); [[ -n \"\$v\" ]] && printf 'version=%s' \"\$v\"; [[ -n \"\$p\" ]] && printf '  path=%s' \"\$p\"; }"
   eval "_upvt_ins_${fn}() { pyenv install '${ver}'; pyenv global '${ver}'; }"
   eval "_upvt_upd_${fn}() { pyenv install --skip-existing '${ver}'; pyenv global '${ver}'; }"
   ucc_target_nonruntime --name "$tname" \
@@ -315,6 +315,12 @@ ucc_target_nonruntime() {
   ucc_target "${args[@]}"
 }
 
+ucc_skip_target() {
+  local name="$1" reason="$2"
+  printf '  %-47s skip — %s\n' "$name" "$reason"
+  _UCC_SKIPPED=$(( ${_UCC_SKIPPED:-0} + 1 ))
+}
+
 ucc_target_service() {
   local desired="" has_profile=0 args=()
   while [[ $# -gt 0 ]]; do
@@ -344,7 +350,7 @@ ucc_target_service() {
 ucc_summary() {
   local comp="${1:-}"
   if [[ -n "${UCC_SUMMARY_FILE:-}" && -n "$comp" ]]; then
-    printf '%s|%d|%d|%d\n' "$comp" "$_UCC_CONVERGED" "$_UCC_CHANGED" "$_UCC_FAILED" \
+    printf '%s|%d|%d|%d|%d\n' "$comp" "$_UCC_CONVERGED" "$_UCC_CHANGED" "$_UCC_FAILED" "${_UCC_SKIPPED:-0}" \
       >> "$UCC_SUMMARY_FILE" 2>/dev/null || true
   fi
 }
