@@ -81,6 +81,19 @@ ucc_pyenv_version_target() {
     --update   "_upvt_upd_${fn}"
 }
 
+# ── _ucc_record_outcome — shared emit+count+record for all outcome paths ───────
+# Usage: _ucc_record_outcome <profile> <name> <COUNTER|""> <target_status> \
+#                             <summary_status> <msg_id> <started_at> <diff_json> <result_json>
+# COUNTER: CONVERGED | CHANGED | FAILED | "" (unchanged / dry-run paths)
+_ucc_record_outcome() {
+  local _p="$1" _n="$2" _ctr="$3" _tst="$4" _sst="$5" _mid="$6" _sat="$7" _dif="$8" _res="$9"
+  [[ -n "$_ctr" ]] && eval "_UCC_${_ctr}=\$(( _UCC_${_ctr} + 1 ))"
+  _ucc_record_profile_summary "$_p" "$_sst"
+  _ucc_record_target_status "$_n" "$_tst"
+  local _dur; _dur=$(_ucc_duration_ms "$_sat")
+  _ucc_record_result "$_mid" "$_dur" "$_dif" "$_res"
+}
+
 # ── ucc_target — full UCC Steps 0-6 lifecycle per target ─────────────────────
 
 ucc_target() {
@@ -124,24 +137,16 @@ ucc_target() {
   # observation=failed: observe function crashed (non-zero exit)
   if [[ $obs_exit -ne 0 ]]; then
     _ucc_emit_profile_line "$profile" "$(printf '  %-46s  obs-failed  (observe fn exited non-zero)' "$name")"
-    _UCC_FAILED=$(( _UCC_FAILED + 1 ))
-    _ucc_record_profile_summary "$profile" "failed"
-    _ucc_record_target_status "$name" "failed"
-    duration_ms=$(_ucc_duration_ms "$started_at")
-    _ucc_record_result "$msg_id" "$duration_ms" "{}" \
-      "{\"observation\":\"failed\",\"message\":\"observe function exited non-zero\"}"
+    _ucc_record_outcome "$profile" "$name" "FAILED" "failed" "failed" "$msg_id" "$started_at" \
+      "{}" "{\"observation\":\"failed\",\"message\":\"observe function exited non-zero\"}"
     return 0
   fi
 
   # observation=indeterminate: observe ran (exit 0) but produced no usable state
   if [[ -z "$observed" ]]; then
     _ucc_emit_profile_line "$profile" "$(printf '  %-46s  indeterminate  (observe returned no state)' "$name")"
-    _UCC_FAILED=$(( _UCC_FAILED + 1 ))
-    _ucc_record_profile_summary "$profile" "failed"
-    _ucc_record_target_status "$name" "failed"
-    duration_ms=$(_ucc_duration_ms "$started_at")
-    _ucc_record_result "$msg_id" "$duration_ms" "{}" \
-      "{\"observation\":\"indeterminate\",\"message\":\"observe returned empty state\"}"
+    _ucc_record_outcome "$profile" "$name" "FAILED" "failed" "failed" "$msg_id" "$started_at" \
+      "{}" "{\"observation\":\"indeterminate\",\"message\":\"observe returned empty state\"}"
     return 0
   fi
 
@@ -167,10 +172,7 @@ ucc_target() {
       # Update mode: run upgrade even when state already matches
       if [[ "$UCC_DRY_RUN" == "1" ]]; then
         _ucc_emit_profile_line "$profile" "$(printf '  %-46s  dry-run  state=\"%s\"  (update skipped)' "$name" "$(_ucc_display_state "$observed" "$axes")")"
-        _ucc_record_profile_summary "$profile" "unchanged"
-        _ucc_record_target_status "$name" "unchanged"
-        duration_ms=$(_ucc_duration_ms "$started_at")
-        _ucc_record_result "$msg_id" "$duration_ms" \
+        _ucc_record_outcome "$profile" "$name" "" "unchanged" "unchanged" "$msg_id" "$started_at" \
           "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":{}}" \
           "{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"dry_run\",\"message\":\"update transition not applied due to dry-run mode\"}"
         return 0
@@ -181,41 +183,23 @@ ucc_target() {
         ver_exit=$?
         if [[ $ver_exit -eq 0 ]] && _ucc_satisfied "$verified" "$desired"; then
           _ucc_emit_profile_line "$profile" "$(printf '  %-46s  updated  \"%s\" → \"%s\"' "$name" "$(_ucc_display_state "$observed" "$axes")" "$(_ucc_display_state "$verified" "$axes")")"
-          _UCC_CHANGED=$(( _UCC_CHANGED + 1 ))
-          _ucc_record_profile_summary "$profile" "changed"
-          _ucc_record_target_status "$name" "ok"
-          duration_ms=$(_ucc_duration_ms "$started_at")
-          _ucc_record_result "$msg_id" "$duration_ms" \
+          _ucc_record_outcome "$profile" "$name" "CHANGED" "ok" "changed" "$msg_id" "$started_at" \
             "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$verified" "$axes"),\"observed_after\":$(_ucc_state_obj "$verified")}" \
             "{\"observation\":\"ok\",\"outcome\":\"changed\",\"completion\":\"complete\",\"proof\":{\"change\":\"update_applied\"}}"
         else
           _ucc_emit_profile_line "$profile" "$(printf '  %-46s  FAILED — verify after update: \"%s\"' "$name" "$(_ucc_display_state "${verified:-?}" "$axes")")"
-          _UCC_FAILED=$(( _UCC_FAILED + 1 ))
-          _ucc_record_profile_summary "$profile" "failed"
-          _ucc_record_target_status "$name" "failed"
-          duration_ms=$(_ucc_duration_ms "$started_at")
-          _ucc_record_result "$msg_id" "$duration_ms" \
-            "{}" \
-            "{\"observation\":\"failed\",\"message\":\"post-update verify did not reach desired state\"}"
+          _ucc_record_outcome "$profile" "$name" "FAILED" "failed" "failed" "$msg_id" "$started_at" \
+            "{}" "{\"observation\":\"failed\",\"message\":\"post-update verify did not reach desired state\"}"
         fi
       else
         _ucc_emit_profile_line "$profile" "$(printf '  %-46s  FAILED — update error  state=\"%s\"' "$name" "$(_ucc_display_state "$observed" "$axes")")"
-        _UCC_FAILED=$(( _UCC_FAILED + 1 ))
-        _ucc_record_profile_summary "$profile" "failed"
-        _ucc_record_target_status "$name" "failed"
-        duration_ms=$(_ucc_duration_ms "$started_at")
-        _ucc_record_result "$msg_id" "$duration_ms" \
-          "{}" \
-          "{\"observation\":\"failed\",\"message\":\"update function failed\"}"
+        _ucc_record_outcome "$profile" "$name" "FAILED" "failed" "failed" "$msg_id" "$started_at" \
+          "{}" "{\"observation\":\"failed\",\"message\":\"update function failed\"}"
       fi
     else
       # Already at desired state
       _ucc_emit_profile_line "$profile" "$(printf '  %-46s  ok  %s' "$name" "$(_ucc_compose_evidence "$name" "$observed" "$axes" "$evidence_fn")")"
-      _UCC_CONVERGED=$(( _UCC_CONVERGED + 1 ))
-      _ucc_record_profile_summary "$profile" "ok"
-      _ucc_record_target_status "$name" "ok"
-      duration_ms=$(_ucc_duration_ms "$started_at")
-      _ucc_record_result "$msg_id" "$duration_ms" \
+      _ucc_record_outcome "$profile" "$name" "CONVERGED" "ok" "ok" "$msg_id" "$started_at" \
         "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":{}}" \
         "{\"observation\":\"ok\",\"outcome\":\"converged\"}"
     fi
@@ -225,10 +209,7 @@ ucc_target() {
   # Step 4: Apply transition
   if [[ "$UCC_DRY_RUN" == "1" ]]; then
     _ucc_emit_profile_line "$profile" "$(printf '  %-46s  dry-run  \"%s\" → \"%s\"' "$name" "$(_ucc_display_state "$observed" "$axes")" "$(_ucc_display_state "$desired" "$axes")")"
-    _ucc_record_profile_summary "$profile" "unchanged"
-    _ucc_record_target_status "$name" "unchanged"
-    duration_ms=$(_ucc_duration_ms "$started_at")
-    _ucc_record_result "$msg_id" "$duration_ms" \
+    _ucc_record_outcome "$profile" "$name" "" "unchanged" "unchanged" "$msg_id" "$started_at" \
       "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$desired" "$axes")}" \
       "{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"dry_run\",\"message\":\"transition not applied due to dry-run mode\"}"
     return 0
@@ -236,10 +217,7 @@ ucc_target() {
 
   if [[ -z "$install_fn" ]]; then
     _ucc_emit_profile_line "$profile" "$(printf '  %-46s  no-install (policy)  \"%s\" → \"%s\"' "$name" "$(_ucc_display_state "$observed" "$axes")" "$(_ucc_display_state "$desired" "$axes")")"
-    _ucc_record_profile_summary "$profile" "unchanged"
-    _ucc_record_target_status "$name" "unchanged"
-    duration_ms=$(_ucc_duration_ms "$started_at")
-    _ucc_record_result "$msg_id" "$duration_ms" \
+    _ucc_record_outcome "$profile" "$name" "" "unchanged" "unchanged" "$msg_id" "$started_at" \
       "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$desired" "$axes")}" \
       "{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"policy\",\"message\":\"transition not applied - no install function declared\"}"
     return 0
@@ -262,32 +240,18 @@ ucc_target() {
     log_debug "post-install observed=\"$verified\""
     if [[ $ver_exit -eq 0 ]] && _ucc_satisfied "$verified" "$desired"; then
       _ucc_emit_profile_line "$profile" "$(printf '  %-46s  %s  \"%s\" → \"%s\"' "$name" "$action_label" "$(_ucc_display_state "$observed" "$axes")" "$(_ucc_display_state "$verified" "$axes")")"
-      _UCC_CHANGED=$(( _UCC_CHANGED + 1 ))
-      _ucc_record_profile_summary "$profile" "changed"
-      _ucc_record_target_status "$name" "ok"
-      duration_ms=$(_ucc_duration_ms "$started_at")
-      _ucc_record_result "$msg_id" "$duration_ms" \
+      _ucc_record_outcome "$profile" "$name" "CHANGED" "ok" "changed" "$msg_id" "$started_at" \
         "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$verified" "$axes"),\"observed_after\":$(_ucc_state_obj "$verified")}" \
         "{\"observation\":\"ok\",\"outcome\":\"changed\",\"completion\":\"complete\",\"proof\":{\"change\":\"verify_pass\"}}"
     else
       _ucc_emit_profile_line "$profile" "$(printf '  %-46s  FAILED — verify after install: \"%s\"' "$name" "$(_ucc_display_state "${verified:-?}" "$axes")")"
-      _UCC_FAILED=$(( _UCC_FAILED + 1 ))
-      _ucc_record_profile_summary "$profile" "failed"
-      _ucc_record_target_status "$name" "failed"
-      duration_ms=$(_ucc_duration_ms "$started_at")
-      _ucc_record_result "$msg_id" "$duration_ms" \
-        "{}" \
-        "{\"observation\":\"failed\",\"message\":\"post-install verify did not reach desired state\"}"
+      _ucc_record_outcome "$profile" "$name" "FAILED" "failed" "failed" "$msg_id" "$started_at" \
+        "{}" "{\"observation\":\"failed\",\"message\":\"post-install verify did not reach desired state\"}"
     fi
   else
     _ucc_emit_profile_line "$profile" "$(printf '  %-46s  FAILED — install error  was=\"%s\"' "$name" "$(_ucc_display_state "$observed" "$axes")")"
-    _UCC_FAILED=$(( _UCC_FAILED + 1 ))
-    _ucc_record_profile_summary "$profile" "failed"
-    _ucc_record_target_status "$name" "failed"
-    duration_ms=$(_ucc_duration_ms "$started_at")
-    _ucc_record_result "$msg_id" "$duration_ms" \
-      "{}" \
-      "{\"observation\":\"failed\",\"message\":\"install function failed\"}"
+    _ucc_record_outcome "$profile" "$name" "FAILED" "failed" "failed" "$msg_id" "$started_at" \
+      "{}" "{\"observation\":\"failed\",\"message\":\"install function failed\"}"
   fi
 }
 
