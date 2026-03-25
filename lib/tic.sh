@@ -69,8 +69,6 @@ tic_test() {
 
 # tic_summary: emit aggregated result and return non-zero if any test failed
 tic_summary() {
-  printf '  %-46s  pass=%-3d  fail=%-3d  skip=%d\n' \
-    "TIC" "$TIC_PASS" "$TIC_FAIL" "$TIC_SKIP"
   if [[ -n "${UCC_SUMMARY_FILE:-}" ]]; then
     printf 'verify|tic|%d|%d|%d\n' "$TIC_PASS" "$TIC_FAIL" "$TIC_SKIP" \
       >> "$UCC_SUMMARY_FILE" 2>/dev/null || true

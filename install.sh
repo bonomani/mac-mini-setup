@@ -476,6 +476,7 @@ for comp in "${TO_RUN[@]}"; do
 
   if [[ "$comp" == "verify" ]]; then
     _TIC_COMPS+=("$comp")
+    _print_section_header "TIC"
     SCRIPT="$DIR/components/verify.sh"
     if ! bash -c "${_comp_prelude}; source \"${SCRIPT}\"" -- "$SCRIPT" > "$UCC_VERIFICATION_REPORT_FILE"; then
       log_warn "Component failed: $comp"
@@ -497,8 +498,10 @@ for comp in "${TO_RUN[@]}"; do
     # Determine layer from config path
     if [[ "$_config" == */system/* ]]; then
       _SYSTEM_COMPS+=("$comp")
+      _print_section_header "UCC / system"
     else
       _SOFTWARE_COMPS+=("$comp")
+      _print_section_header "UCC / software"
     fi
 
     # Build source lines for each lib
