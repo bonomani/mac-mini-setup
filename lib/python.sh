@@ -20,11 +20,10 @@ run_python_from_yaml() {
   # ---- pyenv (custom install: also appends zshrc snippet) ----
   _observe_pyenv()  { ucc_asm_package_state "$(brew_observe pyenv)"; }
   _evidence_pyenv() {
-    local ver path
-    ver=$(pyenv --version 2>/dev/null | awk '{print $2}')
-    path=$(pyenv root 2>/dev/null || true)
-    [[ -n "$ver" ]] && printf 'version=%s' "$ver"
-    [[ -n "$path" ]] && printf '%s root=%s' "${ver:+ }" "$path"
+    _ucc_ver_path_evidence \
+      "$(pyenv --version 2>/dev/null | awk '{print $2}')" \
+      "$(pyenv root 2>/dev/null || true)" \
+      "root"
   }
   _install_pyenv() {
     brew_install "${_pyenv_pkgs[@]}"
@@ -53,11 +52,9 @@ run_python_from_yaml() {
   # ---- pip up-to-date ----
   _observe_pip()  { ucc_asm_package_state "$(is_installed pip && pip --version 2>/dev/null | awk '{print $2}' || echo "absent")"; }
   _evidence_pip() {
-    local ver path
-    ver=$(pip --version 2>/dev/null | awk '{print $2}')
-    path=$(command -v pip 2>/dev/null || true)
-    [[ -n "$ver" ]] && printf 'version=%s' "$ver"
-    [[ -n "$path" ]] && printf '%s path=%s' "${ver:+ }" "$path"
+    _ucc_ver_path_evidence \
+      "$(pip --version 2>/dev/null | awk '{print $2}')" \
+      "$(command -v pip 2>/dev/null || true)"
   }
   _upgrade_pip() { pip install --upgrade "${_pip_bootstrap[@]}"; }
 

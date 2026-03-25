@@ -255,58 +255,26 @@ ucc_target() {
   fi
 }
 
-ucc_target_nonruntime() {
-  local desired="" has_profile=0 args=()
+_ucc_target_with_default_profile() {
+  local _default="$1"; shift
+  local has_profile=0 args=()
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      --desired)
-        desired="$2"
-        args+=("$1" "$2")
-        shift 2
-        ;;
-      --kind|--profile)
-        has_profile=1
-        args+=("$1" "$2")
-        shift 2
-        ;;
-      *)
-        args+=("$1")
-        shift
-        ;;
+      --kind|--profile) has_profile=1; args+=("$1" "$2"); shift 2 ;;
+      *) args+=("$1"); shift ;;
     esac
   done
-  [[ "$has_profile" -eq 0 ]] && args+=(--profile configured)
+  [[ "$has_profile" -eq 0 ]] && args+=(--profile "$_default")
   ucc_target "${args[@]}"
 }
+
+ucc_target_nonruntime() { _ucc_target_with_default_profile configured "$@"; }
+ucc_target_service()    { _ucc_target_with_default_profile runtime    "$@"; }
 
 ucc_skip_target() {
   local name="$1" reason="$2"
   printf '  %-47s skip — %s\n' "$name" "$reason"
   _UCC_SKIPPED=$(( ${_UCC_SKIPPED:-0} + 1 ))
-}
-
-ucc_target_service() {
-  local desired="" has_profile=0 args=()
-  while [[ $# -gt 0 ]]; do
-    case "$1" in
-      --desired)
-        desired="$2"
-        args+=("$1" "$2")
-        shift 2
-        ;;
-      --kind|--profile)
-        has_profile=1
-        args+=("$1" "$2")
-        shift 2
-        ;;
-      *)
-        args+=("$1")
-        shift
-        ;;
-    esac
-  done
-  [[ "$has_profile" -eq 0 ]] && args+=(--profile runtime)
-  ucc_target "${args[@]}"
 }
 
 # ── ucc_summary — write per-component counts to summary file ──────────────────

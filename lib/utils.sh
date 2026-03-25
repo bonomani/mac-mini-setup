@@ -77,6 +77,13 @@ yaml_list() { python3 "$1/tools/read_config.py" --list "$2" "$3" 2>/dev/null; }
 # Output tab-delimited records from a YAML list-of-dicts section.
 yaml_records() { local d="$1" y="$2" s="$3"; shift 3; python3 "$d/tools/read_config.py" --records "$y" "$s" "$@" 2>/dev/null; }
 
+# _ucc_ver_path_evidence <ver> <path> [label=path]
+# Emit "version=V  label=P" evidence string (omits missing parts).
+_ucc_ver_path_evidence() {
+  [[ -n "$1" ]] && printf 'version=%s' "$1"
+  [[ -n "$2" ]] && printf '%s%s=%s' "${1:+  }" "${3:-path}" "$2"
+}
+
 # Check if a pip package is installed
 pip_is_installed() { pip show "$1" &>/dev/null 2>&1; }
 

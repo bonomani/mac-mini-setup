@@ -18,11 +18,9 @@ run_homebrew_from_yaml() {
     ucc_asm_package_state "$raw"
   }
   _evidence_xcode_clt() {
-    local ver path
-    ver=$(pkgutil --pkg-info=com.apple.pkg.CLTools_Executables 2>/dev/null | awk '/^version:/ {print $2}')
-    path=$(xcode-select -p 2>/dev/null || true)
-    [[ -n "$ver" ]] && printf 'version=%s' "$ver"
-    [[ -n "$path" ]] && printf '%s path=%s' "${ver:+ }" "$path"
+    _ucc_ver_path_evidence \
+      "$(pkgutil --pkg-info=com.apple.pkg.CLTools_Executables 2>/dev/null | awk '/^version:/ {print $2}')" \
+      "$(xcode-select -p 2>/dev/null || true)"
   }
   _install_xcode_clt() {
     log_info "Triggering Xcode Command Line Tools install..."
@@ -43,11 +41,9 @@ run_homebrew_from_yaml() {
   # ---- Homebrew ----
   _observe_brew() { ucc_asm_package_state "$(is_installed brew && brew --version 2>/dev/null | awk 'NR==1 {print $2}' || echo "absent")"; }
   _evidence_brew() {
-    local ver path
-    ver=$(brew --version 2>/dev/null | awk 'NR==1 {print $2}')
-    path=$(command -v brew 2>/dev/null || true)
-    [[ -n "$ver" ]] && printf 'version=%s' "$ver"
-    [[ -n "$path" ]] && printf '%s path=%s' "${ver:+ }" "$path"
+    _ucc_ver_path_evidence \
+      "$(brew --version 2>/dev/null | awk 'NR==1 {print $2}')" \
+      "$(command -v brew 2>/dev/null || true)"
   }
   _setup_brew_path() {
     if [[ -x /opt/homebrew/bin/brew ]]; then

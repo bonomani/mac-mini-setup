@@ -223,11 +223,6 @@ def validate(manifest, known_gates):
     return errors, ordered
 
 
-def component_profile(manifest, component):
-    meta = manifest["components"].get(component, {})
-    return meta.get("primary_profile") or "configured"
-
-
 def component_order(manifest, topo_ordered=None):
     """Return components in an order consistent with target dependencies.
 
@@ -275,7 +270,6 @@ def main():
     args = sys.argv[1:]
     deps_mode = False
     soft_deps_mode = False
-    component_profile_mode = False
     components_mode = False
     dispatch_mode = False
     oracles_mode = False
@@ -286,10 +280,6 @@ def main():
         args = args[2:]
     elif len(args) >= 2 and args[0] == "--soft-deps":
         soft_deps_mode = True
-        target_name = args[1]
-        args = args[2:]
-    elif len(args) >= 2 and args[0] == "--component-profile":
-        component_profile_mode = True
         target_name = args[1]
         args = args[2:]
     elif len(args) >= 2 and args[0] == "--dispatch":
@@ -325,10 +315,6 @@ def main():
     if soft_deps_mode:
         for dep in manifest["targets"].get(target_name, {}).get("soft_depends_on", []):
             print(dep)
-        return 0
-
-    if component_profile_mode:
-        print(component_profile(manifest, target_name))
         return 0
 
     if dispatch_mode:

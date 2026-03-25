@@ -132,11 +132,9 @@ run_dev_tools_from_yaml() {
     ucc_asm_package_state "${ver#v}"
   }
   _evidence_node_lts() {
-    local ver path
-    ver=$(node --version 2>/dev/null | sed 's/^v//')
-    path=$(command -v node 2>/dev/null || true)
-    [[ -n "$ver" ]] && printf 'version=%s' "$ver"
-    [[ -n "$path" ]] && printf '%s path=%s' "${ver:+ }" "$path"
+    _ucc_ver_path_evidence \
+      "$(node --version 2>/dev/null | sed 's/^v//')" \
+      "$(command -v node 2>/dev/null || true)"
   }
   _install_node_lts() {
     brew unlink "node@${_NODE_PREV_VER}" 2>/dev/null || true
