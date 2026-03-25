@@ -580,7 +580,10 @@ _print_summary_section() {
         _printed=1
       fi
       if [[ "$_a" == "tic" ]]; then
-        printf '  %-22s  TIC  pass=%-3s  fail=%-3s  skip=%s\n' "$_comp" "$_b" "$_c" "$_d"
+        local _tic_parts="${_b} pass"
+        [[ "$_c" -gt 0 ]] && _tic_parts="${_tic_parts}  ${_c} FAIL"
+        [[ "$_d" -gt 0 ]] && _tic_parts="${_tic_parts}  (skip=${_d})"
+        printf '  %-22s  %s\n' "$_comp" "$_tic_parts"
       else
         _total_ok=$(( _total_ok + _a ))
         _total_chg=$(( _total_chg + _b ))

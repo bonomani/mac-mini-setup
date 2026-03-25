@@ -57,8 +57,23 @@ run_ai_python_stack_from_yaml() {
   load_pip_groups_from_yaml "$cfg_dir" "$yaml"
   register_unsloth_studio_targets "$cfg_dir" "$yaml"
   if [[ "$UCC_DRY_RUN" != "1" ]] && is_installed python3; then
-    local _mps
-    _mps=$(python3 -c "import torch; print('available' if torch.backends.mps.is_available() else 'not available (CPU only)')" 2>/dev/null || true)
-    [[ -n "$_mps" ]] && ucc_profile_note runtime "MPS (Metal) GPU: $_mps"
+    _observe_mps() {
+      local ok
+      ok=$(python3 -c "import torch; print('ok' if torch.backends.mps.is_available() else 'fail')" 2>/dev/null || echo "fail")
+      if [[ "$ok" == "ok" ]]; then
+        ucc_asm_state --installation Configured --runtime Running --health Healthy --admin Enabled --dependencies DepsReady
+      else
+        ucc_asm_state --installation Configured --runtime Stopped --health Degraded --admin Enabled --dependencies DepsReady
+      fi
+    }
+    _evidence_mps() {
+      local ok
+      ok=$(python3 -c "import torch; print('ok' if torch.backends.mps.is_available() else 'fail')" 2>/dev/null || echo "fail")
+      [[ "$ok" == "ok" ]] && printf 'Metal GPU available' || printf 'Metal GPU not available (CPU only)'
+    }
+    ucc_target_service \
+      --name    "mps-available" \
+      --observe _observe_mps \
+      --evidence _evidence_mps
   fi
 }

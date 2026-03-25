@@ -129,7 +129,6 @@ cli_tools:
   - llama.cpp
   - opencode
   - aria2
-  - xz
   - cmake
 
 # VSCode marketplace extensions

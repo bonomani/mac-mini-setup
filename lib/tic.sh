@@ -46,7 +46,7 @@ tic_test() {
 
   # Phase: skip (oracle not evaluated — reason must be explicit per TIC SPEC)
   if [[ -n "$skip_reason" ]]; then
-    printf 'TIC %-45s | skip — %s\n' "$name" "$skip_reason"
+    printf '  %-47s skip — %s\n' "$name" "$skip_reason"
     TIC_SKIP=$(( TIC_SKIP + 1 ))
     return 0
   fi
@@ -58,10 +58,10 @@ tic_test() {
 
   # Phase: report
   if [[ $exit_code -eq 0 ]]; then
-    printf 'TIC %-45s | pass\n' "$name"
+    printf '  %-47s pass\n' "$name"
     TIC_PASS=$(( TIC_PASS + 1 ))
   else
-    printf 'TIC %-45s | FAIL intent="%s" observed="%s"%s\n' \
+    printf '  %-47s FAIL  intent="%s" observed="%s"%s\n' \
       "$name" "$intent" "$observed" "$trace_field"
     TIC_FAIL=$(( TIC_FAIL + 1 ))
   fi

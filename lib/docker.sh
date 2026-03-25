@@ -63,6 +63,11 @@ run_docker_from_yaml() {
 run_docker_config_from_yaml() {
   local cfg_dir="$1" yaml="$2"
 
+  if [[ "${UIC_GATE_FAILED_DOCKER_SETTINGS_FILE:-0}" == "1" ]]; then
+    printf '  %-47s skip — gate=docker-settings-file:warn (launch Docker Desktop first)\n' "docker-resources"
+    return 0
+  fi
+
   # Resource settings — UIC preferences take precedence; YAML provides defaults
   local _DOCKER_MEM_GB="${UIC_PREF_DOCKER_MEMORY_GB:-$(yaml_get "$cfg_dir" "$yaml" memory_gb 48)}"
   local _DOCKER_MEM_MIB=$(( _DOCKER_MEM_GB * 1024 ))
@@ -71,14 +76,9 @@ run_docker_config_from_yaml() {
   local _DOCKER_DISK_MIB="${UIC_PREF_DOCKER_DISK_MIB:-$(yaml_get "$cfg_dir" "$yaml" disk_mib 204800)}"
 
   _docker_settings_desired_state() {
-    if [[ "${UIC_GATE_FAILED_DOCKER_SETTINGS_FILE:-0}" == "1" ]]; then
-      ucc_asm_state --installation Installed --runtime Stopped \
-        --health Unavailable --admin Enabled --dependencies DepsFailed
-    else
-      ucc_asm_state --installation Configured --runtime Stopped \
-        --health Healthy --admin Enabled --dependencies DepsReady \
-        --config-value "mem=${_DOCKER_MEM_GB}GB cpu=${_DOCKER_CPUS}"
-    fi
+    ucc_asm_state --installation Configured --runtime Stopped \
+      --health Healthy --admin Enabled --dependencies DepsReady \
+      --config-value "mem=${_DOCKER_MEM_GB}GB cpu=${_DOCKER_CPUS}"
   }
   _observe_docker_settings() {
     local f="$HOME/Library/Group Containers/group.com.docker/settings.json"
