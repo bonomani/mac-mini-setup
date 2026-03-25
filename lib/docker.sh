@@ -107,7 +107,7 @@ run_docker_config_from_yaml() {
     [[ -f "$f" ]] || { printf 'gate=docker-settings-file:warn (launch Docker to create settings file)'; return; }
     mem=$(python3  -c "import json; d=json.load(open('$f')); print(d.get('memoryMiB',0)//1024)" 2>/dev/null)
     cpus=$(python3 -c "import json; d=json.load(open('$f')); print(d.get('cpus',0))" 2>/dev/null)
-    printf 'memory=%sGB cpus=%s' "${mem:-0}" "${cpus:-0}"
+    printf 'memory=%sGB  cpus=%s' "${mem:-0}" "${cpus:-0}"
   }
   _configure_docker_settings() {
     local f="$HOME/Library/Group Containers/group.com.docker/settings.json"

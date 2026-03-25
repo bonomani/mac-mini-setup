@@ -20,7 +20,7 @@ run_git_config_from_yaml() {
     name=$(git config --global user.name 2>/dev/null || true)
     email=$(git config --global user.email 2>/dev/null || true)
     [[ -n "$name" ]] && printf 'user=%s' "$name"
-    [[ -n "$email" ]] && printf '%s email=%s' "${name:+ }" "$email"
+    [[ -n "$email" ]] && printf '%s email=%s' "${name:+  }" "$email"
   }
   _configure_git() {
     if [[ ! -t 0 ]]; then

@@ -24,7 +24,7 @@ run_python_from_yaml() {
     ver=$(pyenv --version 2>/dev/null | awk '{print $2}')
     path=$(pyenv root 2>/dev/null || true)
     [[ -n "$ver" ]] && printf 'version=%s' "$ver"
-    [[ -n "$path" ]] && printf '%s root=%s' "${ver:+ }" "$path"
+    [[ -n "$path" ]] && printf '%s root=%s' "${ver:+  }" "$path"
   }
   _install_pyenv() {
     brew_install "${_pyenv_pkgs[@]}"
@@ -57,7 +57,7 @@ run_python_from_yaml() {
     ver=$(pip --version 2>/dev/null | awk '{print $2}')
     path=$(command -v pip 2>/dev/null || true)
     [[ -n "$ver" ]] && printf 'version=%s' "$ver"
-    [[ -n "$path" ]] && printf '%s path=%s' "${ver:+ }" "$path"
+    [[ -n "$path" ]] && printf '%s path=%s' "${ver:+  }" "$path"
   }
   _upgrade_pip() { pip install --upgrade "${_pip_bootstrap[@]}"; }
 

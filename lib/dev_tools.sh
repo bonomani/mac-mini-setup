@@ -136,7 +136,7 @@ run_dev_tools_from_yaml() {
     ver=$(node --version 2>/dev/null | sed 's/^v//')
     path=$(command -v node 2>/dev/null || true)
     [[ -n "$ver" ]] && printf 'version=%s' "$ver"
-    [[ -n "$path" ]] && printf '%s path=%s' "${ver:+ }" "$path"
+    [[ -n "$path" ]] && printf '%s path=%s' "${ver:+  }" "$path"
   }
   _install_node_lts() {
     brew unlink "node@${_NODE_PREV_VER}" 2>/dev/null || true

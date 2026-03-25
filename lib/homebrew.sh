@@ -22,7 +22,7 @@ run_homebrew_from_yaml() {
     ver=$(pkgutil --pkg-info=com.apple.pkg.CLTools_Executables 2>/dev/null | awk '/^version:/ {print $2}')
     path=$(xcode-select -p 2>/dev/null || true)
     [[ -n "$ver" ]] && printf 'version=%s' "$ver"
-    [[ -n "$path" ]] && printf '%s path=%s' "${ver:+ }" "$path"
+    [[ -n "$path" ]] && printf '%s path=%s' "${ver:+  }" "$path"
   }
   _install_xcode_clt() {
     log_info "Triggering Xcode Command Line Tools install..."
@@ -47,7 +47,7 @@ run_homebrew_from_yaml() {
     ver=$(brew --version 2>/dev/null | awk 'NR==1 {print $2}')
     path=$(command -v brew 2>/dev/null || true)
     [[ -n "$ver" ]] && printf 'version=%s' "$ver"
-    [[ -n "$path" ]] && printf '%s path=%s' "${ver:+ }" "$path"
+    [[ -n "$path" ]] && printf '%s path=%s' "${ver:+  }" "$path"
   }
   _setup_brew_path() {
     if [[ -x /opt/homebrew/bin/brew ]]; then

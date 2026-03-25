@@ -110,7 +110,7 @@ run_ai_apps_from_yaml() {
       state=$(docker inspect --format '{{.State.Status}}' "$svc" 2>/dev/null || true)
       [[ "$state" == "running" ]] && running=$((running + 1))
     done
-    printf 'running=%s/%s compose=%s' "$running" "$STACK_SERVICES" "$COMPOSE_FILE"
+    printf 'running=%s/%s  compose=%s' "$running" "$STACK_SERVICES" "$COMPOSE_FILE"
   }
   _remove_legacy_containers() {
     local name

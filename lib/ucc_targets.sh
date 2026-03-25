@@ -43,7 +43,7 @@ ucc_brew_cask_target() {
   local tname="$1" pkg="$2"
   local fn; fn="${pkg//[^a-zA-Z0-9]/_}"
   eval "_ubct_obs_${fn}() { local raw; raw=\$(brew_cask_observe '${pkg}'); ucc_asm_package_state \"\$raw\"; }"
-  eval "_ubct_evd_${fn}() { local ver; ver=\$(brew list --cask --versions '${pkg}' 2>/dev/null | awk '{print \$NF}'); [[ -n \"\$ver\" ]] && printf 'version=%s' \"\$ver\"; }"
+  eval "_ubct_evd_${fn}() { local ver; ver=\$(_brew_cask_cached_version '${pkg}'); [[ -n \"\$ver\" ]] && printf 'version=%s' \"\$ver\"; }"
   eval "_ubct_ins_${fn}() { brew_cask_install '${pkg}'; }"
   eval "_ubct_upd_${fn}() { brew_cask_upgrade '${pkg}'; }"
   ucc_target --profile presence --name "$tname" --observe "_ubct_obs_${fn}" \
