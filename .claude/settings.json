@@ -25,7 +25,8 @@
       "Bash(sed -i 's|\"\"./targets/\"\"|\"\"./ucc/\"\"|g; s|`./targets/`|`./ucc/`|g' /home/bc/repos/github/bonomani/mac-mini-setup/BGS.md /home/bc/repos/github/bonomani/mac-mini-setup/README.md)",
       "Bash(python3 tools/validate_targets_manifest.py)",
       "Bash(python3 tools/validate_targets_manifest.py --dispatch git-config ucc/)",
-      "Bash(python3 tools/validate_targets_manifest.py --dispatch macos-defaults ucc/)"
+      "Bash(python3 tools/validate_targets_manifest.py --dispatch macos-defaults ucc/)",
+      "Bash(python3 tools/validate_targets_manifest.py --dispatch docker-config ucc/)"
     ]
   }
 }

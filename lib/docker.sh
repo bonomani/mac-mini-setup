@@ -6,14 +6,6 @@
 run_docker_from_yaml() {
   local cfg_dir="$1" yaml="$2"
 
-  # Resource settings — UIC preferences take precedence; YAML provides defaults
-  local _DOCKER_MEM_GB="${UIC_PREF_DOCKER_MEMORY_GB:-$(yaml_get "$cfg_dir" "$yaml" memory_gb 48)}"
-  local _DOCKER_MEM_MIB=$(( _DOCKER_MEM_GB * 1024 ))
-  local _DOCKER_CPUS="${UIC_PREF_DOCKER_CPU_COUNT:-$(yaml_get "$cfg_dir" "$yaml" cpu_count 10)}"
-  local _DOCKER_SWAP_MIB="${UIC_PREF_DOCKER_SWAP_MIB:-$(yaml_get "$cfg_dir" "$yaml" swap_mib 4096)}"
-  local _DOCKER_DISK_MIB="${UIC_PREF_DOCKER_DISK_MIB:-$(yaml_get "$cfg_dir" "$yaml" disk_mib 204800)}"
-
-  # ---- Docker Desktop app ----
   _observe_docker_app() {
     if [[ -d "/Applications/Docker.app" ]] && ! brew_cask_is_installed docker; then
       ucc_asm_state \
@@ -65,8 +57,19 @@ run_docker_from_yaml() {
                                --health Unknown --admin Enabled --dependencies DepsUnknown)" \
     --install _install_docker \
     --update  _upgrade_docker
+}
 
-  # ---- Docker resource settings ----
+# Usage: run_docker_config_from_yaml <cfg_dir> <yaml_path>
+run_docker_config_from_yaml() {
+  local cfg_dir="$1" yaml="$2"
+
+  # Resource settings — UIC preferences take precedence; YAML provides defaults
+  local _DOCKER_MEM_GB="${UIC_PREF_DOCKER_MEMORY_GB:-$(yaml_get "$cfg_dir" "$yaml" memory_gb 48)}"
+  local _DOCKER_MEM_MIB=$(( _DOCKER_MEM_GB * 1024 ))
+  local _DOCKER_CPUS="${UIC_PREF_DOCKER_CPU_COUNT:-$(yaml_get "$cfg_dir" "$yaml" cpu_count 10)}"
+  local _DOCKER_SWAP_MIB="${UIC_PREF_DOCKER_SWAP_MIB:-$(yaml_get "$cfg_dir" "$yaml" swap_mib 4096)}"
+  local _DOCKER_DISK_MIB="${UIC_PREF_DOCKER_DISK_MIB:-$(yaml_get "$cfg_dir" "$yaml" disk_mib 204800)}"
+
   _docker_settings_desired_state() {
     if [[ "${UIC_GATE_FAILED_DOCKER_SETTINGS_FILE:-0}" == "1" ]]; then
       ucc_asm_state --installation Installed --runtime Stopped \

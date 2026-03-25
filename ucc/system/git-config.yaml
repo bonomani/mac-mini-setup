@@ -1,7 +1,7 @@
 component: git-config
 primary_profile: configured
 libs: git
-runner: run_git_from_yaml
+runner: run_git_config_from_yaml
 
 targets:
   git-global-config:

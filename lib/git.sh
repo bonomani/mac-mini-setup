@@ -5,11 +5,13 @@
 # Usage: run_git_from_yaml <cfg_dir> <yaml_path>
 run_git_from_yaml() {
   local cfg_dir="$1" yaml="$2"
-
-  # ---- Git binary ----
   ucc_brew_target "git" "git"
+}
 
-  # ---- Git global config (interactive, skipped in dry-run) ----
+# Usage: run_git_config_from_yaml <cfg_dir> <yaml_path>
+run_git_config_from_yaml() {
+  local cfg_dir="$1" yaml="$2"
+
   [[ "$UCC_DRY_RUN" == "1" ]] && return 0
 
   _observe_git_user()  { ucc_asm_config_state "$(git config --global user.name &>/dev/null && echo "configured" || echo "absent")"; }

@@ -445,6 +445,18 @@ _QUERY_SCRIPT="$DIR/tools/validate_targets_manifest.py"
 
 _comp_prelude="source \"${DIR}/lib/ucc.sh\"; source \"${DIR}/lib/uic.sh\"; source \"${DIR}/lib/utils.sh\""
 
+# Track component → layer (software|system|tic) for structured summary/output
+declare -A _COMP_LAYER
+_current_section=""
+
+_print_section_header() {
+  local section="$1"
+  [[ "$section" == "$_current_section" ]] && return
+  _current_section="$section"
+  echo ""
+  printf '── %s\n' "$section"
+}
+
 for comp in "${TO_RUN[@]}"; do
   # UIC: skip component if a hard gate scoped to it has failed
   if uic_component_blocked "$comp"; then
@@ -454,6 +466,8 @@ for comp in "${TO_RUN[@]}"; do
   fi
 
   if [[ "$comp" == "verify" ]]; then
+    _COMP_LAYER[$comp]="tic"
+    _print_section_header "TIC"
     SCRIPT="$DIR/components/verify.sh"
     if ! bash -c "${_comp_prelude}; source \"${SCRIPT}\"" -- "$SCRIPT" > "$UCC_VERIFICATION_REPORT_FILE"; then
       log_warn "Component failed: $comp"
@@ -470,6 +484,15 @@ for comp in "${TO_RUN[@]}"; do
     if [[ -z "$_libs" || -z "$_runner" || -z "$_config" ]]; then
       log_warn "Component $comp has no dispatch info in manifest — skipping"
       continue
+    fi
+
+    # Determine layer from config path
+    if [[ "$_config" == */system/* ]]; then
+      _COMP_LAYER[$comp]="system"
+      _print_section_header "UCC / system"
+    else
+      _COMP_LAYER[$comp]="software"
+      _print_section_header "UCC / software"
     fi
 
     # Build source lines for each lib
@@ -508,24 +531,38 @@ _total_ok=0; _total_chg=0; _total_fail=0
 _profile_presence_ok=0; _profile_presence_chg=0; _profile_presence_fail=0
 _profile_configured_ok=0; _profile_configured_chg=0; _profile_configured_fail=0
 _profile_runtime_ok=0; _profile_runtime_chg=0; _profile_runtime_fail=0
-if [[ -f "$UCC_SUMMARY_FILE" ]]; then
-  while IFS='|' read -r _comp _a _b _c _d; do
-    if [[ "$_a" == "tic" ]]; then
-      printf '  %-22s  TIC  pass=%-3s  fail=%-3s  skip=%s\n' "$_comp" "$_b" "$_c" "$_d"
-    else
-      _total_ok=$(( _total_ok + _a ))
-      _total_chg=$(( _total_chg + _b ))
-      _total_fail=$(( _total_fail + _c ))
-      _parts=""
-      [[ $_a -gt 0 ]] && _parts="${_a} ok"
-      [[ $_b -gt 0 ]] && _parts="${_parts:+$_parts  }${_b} changed"
-      [[ $_c -gt 0 ]] && _parts="${_parts:+$_parts  }${_c} FAILED"
-      printf '  %-22s  %s\n' "$_comp" "${_parts:----}"
-    fi
-  done < "$UCC_SUMMARY_FILE"
-  echo "  ──────────────────────────────────────────────────────"
-  printf '  %-22s  %s\n' "Total" "$(_summary_line "$_total_ok" "$_total_chg" "$_total_fail")"
-fi
+
+_print_summary_section() {
+  local section_label="$1" layer="$2"
+  local _printed=0
+  if [[ -f "$UCC_SUMMARY_FILE" ]]; then
+    while IFS='|' read -r _comp _a _b _c _d; do
+      [[ "${_COMP_LAYER[$_comp]:-}" == "$layer" ]] || continue
+      if [[ $_printed -eq 0 ]]; then
+        echo "  ── $section_label"
+        _printed=1
+      fi
+      if [[ "$_a" == "tic" ]]; then
+        printf '  %-22s  TIC  pass=%-3s  fail=%-3s  skip=%s\n' "$_comp" "$_b" "$_c" "$_d"
+      else
+        _total_ok=$(( _total_ok + _a ))
+        _total_chg=$(( _total_chg + _b ))
+        _total_fail=$(( _total_fail + _c ))
+        _parts=""
+        [[ $_a -gt 0 ]] && _parts="${_a} ok"
+        [[ $_b -gt 0 ]] && _parts="${_parts:+$_parts  }${_b} changed"
+        [[ $_c -gt 0 ]] && _parts="${_parts:+$_parts  }${_c} FAILED"
+        printf '  %-22s  %s\n' "$_comp" "${_parts:----}"
+      fi
+    done < "$UCC_SUMMARY_FILE"
+  fi
+}
+
+_print_summary_section "UCC / software" "software"
+_print_summary_section "UCC / system"   "system"
+_print_summary_section "TIC"            "tic"
+echo "  ──────────────────────────────────────────────────────"
+printf '  %-22s  %s\n' "Total" "$(_summary_line "$_total_ok" "$_total_chg" "$_total_fail")"
 
 if [[ -f "$UCC_PROFILE_SUMMARY_FILE" ]]; then
   while IFS='|' read -r _profile _outcome; do
