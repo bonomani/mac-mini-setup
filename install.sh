@@ -573,7 +573,7 @@ _print_summary_section() {
   local _printed=0
   [[ ${#_comps[@]} -eq 0 ]] && return
   if [[ -f "$UCC_SUMMARY_FILE" ]]; then
-    while IFS='|' read -r _comp _a _b _c _d _e; do
+    while IFS='|' read -r _comp _a _b _c _d; do
       _comp_in_list "$_comp" "${_comps[@]}" || continue
       if [[ $_printed -eq 0 ]]; then
         echo "  ── $section_label"
@@ -592,7 +592,7 @@ _print_summary_section() {
         [[ $_a -gt 0 ]] && _parts="${_a} ok"
         [[ $_b -gt 0 ]] && _parts="${_parts:+$_parts  }${_b} changed"
         [[ $_c -gt 0 ]] && _parts="${_parts:+$_parts  }${_c} FAILED"
-        [[ ${_e:-0} -gt 0 ]] && _parts="${_parts:+$_parts  }(skip=${_e})"
+        [[ ${_d:-0} -gt 0 ]] && _parts="${_parts:+$_parts  }(skip=${_d})"
         printf '  %-22s  %s\n' "$_comp" "${_parts:----}"
       fi
     done < "$UCC_SUMMARY_FILE"
