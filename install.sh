@@ -448,15 +448,6 @@ _comp_prelude="source \"${DIR}/lib/ucc.sh\"; source \"${DIR}/lib/uic.sh\"; sourc
 _SOFTWARE_COMPS=()
 _SYSTEM_COMPS=()
 _TIC_COMPS=()
-_current_section=""
-
-_print_section_header() {
-  local section="$1"
-  [[ "$section" == "$_current_section" ]] && return
-  _current_section="$section"
-  echo ""
-  printf '── %s\n' "$section"
-}
 
 _comp_in_list() {
   local needle="$1"; shift
@@ -465,67 +456,102 @@ _comp_in_list() {
   return 1
 }
 
+# Pre-collect dispatch info for all components (one query per component)
+_DISP_COMPS=()
+_DISP_LIBS=()
+_DISP_RUNNERS=()
+_DISP_ON_FAILS=()
+_DISP_CONFIGS=()
+
 for comp in "${TO_RUN[@]}"; do
-  # UIC: skip component if a hard gate scoped to it has failed
+  if [[ "$comp" == "verify" ]]; then
+    _DISP_COMPS+=("$comp")
+    _DISP_LIBS+=("")
+    _DISP_RUNNERS+=("")
+    _DISP_ON_FAILS+=("")
+    _DISP_CONFIGS+=("tic")
+    continue
+  fi
+  _dispatch=$(python3 "$_QUERY_SCRIPT" --dispatch "$comp" "$_MANIFEST_DIR" 2>/dev/null || true)
+  _libs=$(echo "$_dispatch" | sed -n '1p')
+  _runner=$(echo "$_dispatch" | sed -n '2p')
+  _on_fail=$(echo "$_dispatch" | sed -n '3p')
+  _config=$(echo "$_dispatch" | sed -n '4p')
+  if [[ -z "$_libs" || -z "$_runner" || -z "$_config" ]]; then
+    log_warn "Component $comp has no dispatch info in manifest — skipping"
+    continue
+  fi
+  _DISP_COMPS+=("$comp")
+  _DISP_LIBS+=("$_libs")
+  _DISP_RUNNERS+=("$_runner")
+  _DISP_ON_FAILS+=("$_on_fail")
+  _DISP_CONFIGS+=("$_config")
+done
+
+_run_comp() {
+  local comp="$1" _libs="$2" _runner="$3" _on_fail="$4" _config="$5"
   if uic_component_blocked "$comp"; then
     log_warn "Component $comp blocked by UIC hard gate — outcome=failed, failure_class=permanent, reason=gate_failed"
     FAILED_COMPONENTS+=("$comp")
-    continue
+    return
   fi
-
-  if [[ "$comp" == "verify" ]]; then
-    _TIC_COMPS+=("$comp")
-    _print_section_header "TIC"
-    SCRIPT="$DIR/components/verify.sh"
-    if ! bash -c "${_comp_prelude}; source \"${SCRIPT}\"" -- "$SCRIPT" > "$UCC_VERIFICATION_REPORT_FILE"; then
-      log_warn "Component failed: $comp"
-      FAILED_COMPONENTS+=("$comp")
-    fi
-  else
-    # Read dispatch info from targets manifest
-    _dispatch=$(python3 "$_QUERY_SCRIPT" --dispatch "$comp" "$_MANIFEST_DIR" 2>/dev/null || true)
-    _libs=$(echo "$_dispatch" | sed -n '1p')
-    _runner=$(echo "$_dispatch" | sed -n '2p')
-    _on_fail=$(echo "$_dispatch" | sed -n '3p')
-    _config=$(echo "$_dispatch" | sed -n '4p')
-
-    if [[ -z "$_libs" || -z "$_runner" || -z "$_config" ]]; then
-      log_warn "Component $comp has no dispatch info in manifest — skipping"
-      continue
-    fi
-
-    # Determine layer from config path
-    if [[ "$_config" == */system/* ]]; then
-      _SYSTEM_COMPS+=("$comp")
-      _print_section_header "UCC / system"
-    else
-      _SOFTWARE_COMPS+=("$comp")
-      _print_section_header "UCC / software"
-    fi
-
-    # Build source lines for each lib
-    _src=""
-    for _lib in $_libs; do
-      _src="${_src}source \"${DIR}/lib/${_lib}.sh\"; "
-    done
-
-    # Build runner call with on_fail handling
-    case "$_on_fail" in
-      exit)   _run="${_runner} \"${DIR}\" \"${_config}\" || { ucc_summary \"${comp}\"; exit 1; }" ;;
-      ignore) _run="${_runner} \"${DIR}\" \"${_config}\" || true" ;;
-      *)      _run="${_runner} \"${DIR}\" \"${_config}\"" ;;
-    esac
-
-    if ! bash -c "${_comp_prelude}; ${_src}${_run}; ucc_summary \"${comp}\""; then
-      log_warn "Component failed: $comp"
-      FAILED_COMPONENTS+=("$comp")
-    fi
+  local _src=""
+  for _lib in $_libs; do
+    _src="${_src}source \"${DIR}/lib/${_lib}.sh\"; "
+  done
+  local _run
+  case "$_on_fail" in
+    exit)   _run="${_runner} \"${DIR}\" \"${_config}\" || { ucc_summary \"${comp}\"; exit 1; }" ;;
+    ignore) _run="${_runner} \"${DIR}\" \"${_config}\" || true" ;;
+    *)      _run="${_runner} \"${DIR}\" \"${_config}\"" ;;
+  esac
+  if ! bash -c "${_comp_prelude}; ${_src}${_run}; ucc_summary \"${comp}\""; then
+    log_warn "Component failed: $comp"
+    FAILED_COMPONENTS+=("$comp")
   fi
-  # Refresh brew PATH in case it was just installed by this component
   _refresh_brew_path
+}
+
+# Pass 1 — software layer
+echo ""
+printf '── UCC / software\n'
+for _i in "${!_DISP_COMPS[@]}"; do
+  [[ "${_DISP_CONFIGS[$_i]}" == */system/* ]] && continue
+  [[ "${_DISP_CONFIGS[$_i]}" == "tic" ]]      && continue
+  comp="${_DISP_COMPS[$_i]}"
+  _SOFTWARE_COMPS+=("$comp")
+  _run_comp "$comp" "${_DISP_LIBS[$_i]}" "${_DISP_RUNNERS[$_i]}" "${_DISP_ON_FAILS[$_i]}" "${_DISP_CONFIGS[$_i]}"
 done
 
-_print_verification_section
+# Pass 2 — system layer
+echo ""
+printf '── UCC / system\n'
+for _i in "${!_DISP_COMPS[@]}"; do
+  [[ "${_DISP_CONFIGS[$_i]}" != */system/* ]] && continue
+  comp="${_DISP_COMPS[$_i]}"
+  _SYSTEM_COMPS+=("$comp")
+  _run_comp "$comp" "${_DISP_LIBS[$_i]}" "${_DISP_RUNNERS[$_i]}" "${_DISP_ON_FAILS[$_i]}" "${_DISP_CONFIGS[$_i]}"
+done
+
+# Pass 3 — TIC / verification
+for _i in "${!_DISP_COMPS[@]}"; do
+  [[ "${_DISP_CONFIGS[$_i]}" != "tic" ]] && continue
+  comp="${_DISP_COMPS[$_i]}"
+  _TIC_COMPS+=("$comp")
+  if uic_component_blocked "$comp"; then
+    log_warn "Component $comp blocked by UIC hard gate"
+    FAILED_COMPONENTS+=("$comp")
+    continue
+  fi
+  echo ""
+  printf '── TIC\n'
+  SCRIPT="$DIR/components/verify.sh"
+  if ! bash -c "${_comp_prelude}; source \"${SCRIPT}\"" -- "$SCRIPT" > "$UCC_VERIFICATION_REPORT_FILE"; then
+    log_warn "Component failed: $comp"
+    FAILED_COMPONENTS+=("$comp")
+  fi
+  _print_verification_section
+done
 
 # --- Final summary ------------------------------------------
 echo ""
