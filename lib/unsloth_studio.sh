@@ -20,7 +20,11 @@ register_unsloth_studio_targets() {
 
   # ---- setup target (downloads frontend, creates venv) ----
   eval "_observe_unsloth_setup()  { ucc_asm_package_state \"\$([[ -d '${studio_dir}' ]] && echo 'present' || echo 'absent')\"; }"
-  eval "_evidence_unsloth_setup() { printf 'folder=${studio_dir}'; }"
+  eval "_evidence_unsloth_setup() {
+    local ver; ver=\$(pip show unsloth 2>/dev/null | awk '/^Version:/{print \$2}')
+    [[ -n \"\$ver\" ]] && printf 'version=%s  ' \"\$ver\"
+    printf 'folder=${studio_dir}'
+  }"
   eval "_run_unsloth_setup()      { ucc_run unsloth studio setup; }"
 
   ucc_target_nonruntime \
@@ -40,8 +44,8 @@ register_unsloth_studio_targets() {
     local pid ver
     ver=\$(pip show unsloth 2>/dev/null | awk '/^Version:/{print \$2}')
     pid=\$(pgrep -f 'unsloth.*studio' 2>/dev/null | head -1 || true)
-    [[ -n \"\$ver\" ]] && printf 'version=%s ' \"\$ver\"
-    [[ -n \"\$pid\" ]] && printf 'pid=%s port=${port} plist=${plist}' \"\$pid\" || printf 'port=${port} plist=${plist}'
+    [[ -n \"\$ver\" ]] && printf 'version=%s' \"\$ver\"
+    [[ -n \"\$pid\" ]] && printf '  pid=%s  port=${port}  plist=${plist}' \"\$pid\" || printf '  port=${port}  plist=${plist}'
   }"
   eval "_install_unsloth_launchd() {
     mkdir -p '\$(dirname '${plist}')'

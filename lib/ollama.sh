@@ -76,9 +76,9 @@ run_ollama_from_yaml() {
     local pid ver
     ver=$(ollama --version 2>/dev/null | awk '{print $NF}')
     pid=$(pgrep -f 'ollama (serve|app)' 2>/dev/null | head -1 || true)
-    [[ -n "$ver" ]] && printf 'version=%s ' "$ver"
-    [[ -n "$pid" ]] && printf 'pid=%s port=%s' "$pid" "$_OLLAMA_API_PORT" \
-                    || printf 'port=%s' "$_OLLAMA_API_PORT"
+    [[ -n "$ver" ]] && printf 'version=%s' "$ver"
+    [[ -n "$pid" ]] && printf '  pid=%s  port=%s' "$pid" "$_OLLAMA_API_PORT" \
+                    || printf '  port=%s' "$_OLLAMA_API_PORT"
   }
   _start_ollama_service() {
     if is_installed brew && brew list ollama &>/dev/null 2>&1; then

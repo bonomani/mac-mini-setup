@@ -259,8 +259,8 @@ run_dev_tools_from_yaml() {
     local pid ver
     ver=$(_brew_cached_version aria2)
     pid=$(lsof -ti "tcp:${_ARIA2_PORT}" 2>/dev/null | head -1 || true)
-    [[ -n "$ver" ]] && printf 'version=%s ' "$ver"
-    [[ -n "$pid" ]] && printf 'pid=%s port=%s' "$pid" "$_ARIA2_PORT" || printf 'port=%s' "$_ARIA2_PORT"
+    [[ -n "$ver" ]] && printf 'version=%s' "$ver"
+    [[ -n "$pid" ]] && printf '  pid=%s  port=%s' "$pid" "$_ARIA2_PORT" || printf '  port=%s' "$_ARIA2_PORT"
   }
 
   _install_aria2_launchd() { ucc_run ariaflow install --with-aria2; }
@@ -301,9 +301,9 @@ run_dev_tools_from_yaml() {
     local pid ver
     ver=$(_brew_cached_version ariaflow-web)
     pid=$(lsof -ti "tcp:${_ARIAFLOW_WEB_PORT}" 2>/dev/null | head -1 || true)
-    [[ -n "$ver" ]] && printf 'version=%s ' "$ver"
-    [[ -n "$pid" ]] && printf 'pid=%s port=%s' "$pid" "$_ARIAFLOW_WEB_PORT" \
-                    || printf 'port=%s' "$_ARIAFLOW_WEB_PORT"
+    [[ -n "$ver" ]] && printf 'version=%s' "$ver"
+    [[ -n "$pid" ]] && printf '  pid=%s  port=%s' "$pid" "$_ARIAFLOW_WEB_PORT" \
+                    || printf '  port=%s' "$_ARIAFLOW_WEB_PORT"
   }
   _start_ariaflow_web_service()   { ucc_run brew services start   "${_ARIAFLOW_TAP}/ariaflow-web"; }
   _restart_ariaflow_web_service() { ucc_run brew services restart "${_ARIAFLOW_TAP}/ariaflow-web"; }

@@ -93,8 +93,9 @@ run_homebrew_from_yaml() {
     eval "_evd_ba()  { printf 'analytics=%s' \"\$(brew analytics state 2>/dev/null | grep -qi disabled && echo off || echo on)\"; }"
     eval "_fix_ba()  { ucc_run brew analytics off; }"
 
-    ucc_target_nonruntime \
+    ucc_target \
       --name    "brew-analytics=${_analytics_desired}" \
+      --profile  parametric \
       --observe  _obs_ba \
       --evidence _evd_ba \
       --desired  "$(ucc_asm_config_desired "$_analytics_desired")" \

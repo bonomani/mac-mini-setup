@@ -34,9 +34,11 @@ run_ai_apps_from_yaml() {
     fi
   }
   _evidence_docker_running() {
-    local ver
+    local ver pid
     ver=$(docker --version 2>/dev/null | awk '{print $3}' | tr -d ',')
-    [[ -n "$ver" ]] && printf 'version=%s daemon=running' "$ver" || printf 'daemon=running'
+    pid=$(pgrep -f 'Docker Desktop' 2>/dev/null | head -1 || true)
+    [[ -n "$ver" ]] && printf 'version=%s' "$ver"
+    [[ -n "$pid" ]] && printf '  pid=%s' "$pid"
   }
   _start_docker() {
     if [[ "${UIC_PREF_SERVICE_POLICY:-autostart}" != "autostart" ]]; then
