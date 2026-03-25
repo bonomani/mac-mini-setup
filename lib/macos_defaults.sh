@@ -45,13 +45,11 @@ _macos_defaults_apply() {
 }
 
 _macos_defaults_target() {
-  local name="$1" read_cmd="$2" desired="$3" apply_cmd="$4"
+  local name="$1" read_cmd="$2" desired="$3" apply_cmd="$4" evkey="${5:-${name%=*}}"
   local fn; fn="$(printf '%s' "$name" | tr -cs '[:alnum:]' '_')"
   local observe_fn="_obs_${fn}"
   local evidence_fn="_evidence_${fn}"
   local apply_fn="_apply_${fn}"
-  # Derive evidence key from target name: strip trailing =<value>
-  local evkey; evkey="${name%=*}"
 
   # Store commands in globals to avoid single-quote quoting conflicts in eval
   # (read_cmd contains awk patterns with single quotes)
@@ -77,10 +75,10 @@ _macos_defaults_target() {
 run_macos_defaults_from_yaml() {
   local cfg_dir="$1" yaml="$2"
 
-  while IFS=$'\t' read -r md_name md_desired md_read md_apply; do
+  while IFS=$'\t' read -r md_name md_desired md_read md_apply md_key; do
     [[ -n "$md_name" ]] || continue
-    _macos_defaults_target "$md_name" "$md_read" "$md_desired" "$md_apply"
-  done < <(yaml_records "$cfg_dir" "$yaml" defaults name desired read apply)
+    _macos_defaults_target "$md_name" "$md_read" "$md_desired" "$md_apply" "$md_key"
+  done < <(yaml_records "$cfg_dir" "$yaml" defaults name desired read apply key)
 
   if [[ "$UCC_DRY_RUN" != "1" && ${_UCC_CHANGED:-0} -gt 0 ]]; then
     while IFS= read -r _proc; do
