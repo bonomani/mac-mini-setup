@@ -22,7 +22,7 @@ tests:
     trace: "component:ai-python-stack / ucc-target:pip-group-langchain"
   - name: langchain-core-version
     intent: "langchain-core must be >=1.0.0 (required by langgraph and langchain-ollama)"
-    oracle: 'python3 "$DIR/scripts/check-langchain-core-version"'
+    oracle: "python3 -c 'from importlib.metadata import version; from packaging.version import Version; import sys; sys.exit(0 if Version(version(\"langchain-core\")) >= Version(\"1.0.0\") else 1)'"
     trace: "component:ai-python-stack / ucc-target:pip-group-langchain"
   - name: unsloth-importable
     intent: "unsloth Python package is not importable on Apple Silicon (NVIDIA/AMD only)"
