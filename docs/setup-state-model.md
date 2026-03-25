@@ -11,7 +11,9 @@ bounded lifecycle and explicit admissible transitions.
 
 Scope:
 - Mac mini AI workstation setup
-- 10 governed components:
+- 12 governed components across two layers:
+
+  Software layer (`ucc/software/`) — presence convergence:
   - `homebrew`
   - `git`
   - `docker`
@@ -20,11 +22,19 @@ Scope:
   - `ai-python-stack`
   - `ai-apps`
   - `dev-tools`
+
+  System layer (`ucc/system/`) — value convergence:
+  - `git-config`
+  - `docker-config`
   - `macos-defaults`
+
+  Verification (`tic/software/`, `tic/system/`):
   - `verify`
 
 Modeling rule:
 - the host setup state is a composition of component states
+- software-layer components use the `presence` or `configured` ASM profile
+- system-layer components use the `parametric` ASM profile (axes include `config_value`)
 - each mutable component uses the ASM software-profile style axes:
   - `installation_state`
   - `runtime_state`
@@ -181,4 +191,6 @@ This model is evidenced by:
 - the executable validator in `../tools/validate_setup_state_artifact.py`
 - UIC gate and preference logic in `../install.sh` and `../lib/uic.sh`
 - UCC declaration/result artifacts emitted by `../lib/ucc.sh`
-- TIC verification oracles in `../components/verify.sh`
+- TIC verification oracles in `../tic/software/verify.yaml` and `../tic/system/verify.yaml`
+- component YAML manifests in `../ucc/software/` and `../ucc/system/`
+- parametric profile definition in `../policy/profiles.yaml`

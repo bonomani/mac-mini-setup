@@ -9,7 +9,7 @@ declared_scope: >
   ai-apps, dev-tools, macos-defaults, verify.
   Covers install, idempotent re-run, and update modes.
 
-bgs_version_ref: bgs@73adc3f
+bgs_version_ref: bgs@7961fb4
 
 members_used:
   - BISS
@@ -22,9 +22,9 @@ overlays_used:
   - Basic
 
 member_version_refs:
-  asm: asm@5ca20bd
+  asm: asm@dca032b
   # BISS is hosted in the UCC repo and is pinned through the same ref.
-  ucc: ucc@da74277
+  ucc: ucc@370c1f7
   uic: uic@11bd400
   tic: tic@7cfba80
 
