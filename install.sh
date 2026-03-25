@@ -364,6 +364,7 @@ _profile_var_prefix() {
     presence) printf '_profile_presence' ;;
     configured) printf '_profile_configured' ;;
     runtime) printf '_profile_runtime' ;;
+    parametric) printf '_profile_parametric' ;;
     *) printf '' ;;
   esac
 }
@@ -381,7 +382,7 @@ _profile_bump() {
 
 _print_profile_contracts() {
   local profile expected
-  for profile in presence configured runtime; do
+  for profile in presence configured runtime parametric; do
     expected="$(ucc_profile_expected_text "$profile")"
     [[ -n "$expected" ]] || continue
     printf '  Profile %-10s | baseline: %s\n' "$(ucc_profile_label "$profile")" "$expected"
@@ -538,6 +539,7 @@ _total_ok=0; _total_chg=0; _total_fail=0
 _profile_presence_ok=0; _profile_presence_chg=0; _profile_presence_fail=0
 _profile_configured_ok=0; _profile_configured_chg=0; _profile_configured_fail=0
 _profile_runtime_ok=0; _profile_runtime_chg=0; _profile_runtime_fail=0
+_profile_parametric_ok=0; _profile_parametric_chg=0; _profile_parametric_fail=0
 
 _print_summary_section() {
   local section_label="$1"; shift
@@ -579,9 +581,10 @@ if [[ -f "$UCC_PROFILE_SUMMARY_FILE" ]]; then
   done < "$UCC_PROFILE_SUMMARY_FILE"
   echo "  ──────────────────────────────────────────────────────"
   echo "  By Profile"
-  printf '  %-22s  %s\n' "$(ucc_profile_label presence)" "$(_summary_line "$_profile_presence_ok" "$_profile_presence_chg" "$_profile_presence_fail")"
+  printf '  %-22s  %s\n' "$(ucc_profile_label presence)"   "$(_summary_line "$_profile_presence_ok"   "$_profile_presence_chg"   "$_profile_presence_fail")"
   printf '  %-22s  %s\n' "$(ucc_profile_label configured)" "$(_summary_line "$_profile_configured_ok" "$_profile_configured_chg" "$_profile_configured_fail")"
-  printf '  %-22s  %s\n' "$(ucc_profile_label runtime)" "$(_summary_line "$_profile_runtime_ok" "$_profile_runtime_chg" "$_profile_runtime_fail")"
+  printf '  %-22s  %s\n' "$(ucc_profile_label runtime)"    "$(_summary_line "$_profile_runtime_ok"    "$_profile_runtime_chg"    "$_profile_runtime_fail")"
+  printf '  %-22s  %s\n' "$(ucc_profile_label parametric)" "$(_summary_line "$_profile_parametric_ok" "$_profile_parametric_chg" "$_profile_parametric_fail")"
 fi
 
 if [[ ${#FAILED_COMPONENTS[@]} -gt 0 ]]; then
