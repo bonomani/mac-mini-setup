@@ -4,7 +4,7 @@ from collections import defaultdict
 from pathlib import Path
 
 
-KNOWN_PROFILES = {"presence", "configured", "runtime", "verification"}
+KNOWN_PROFILES = {"presence", "configured", "runtime", "parametric", "verification"}
 KNOWN_TARGET_TYPES = {
     "package",
     "config",
