@@ -374,7 +374,7 @@ _profile_bump() {
   prefix="$(_profile_var_prefix "$1")"
   [[ -z "$prefix" ]] && return 0
   case "$2" in
-    ok) eval "${prefix}_ok=\$(( ${prefix}_ok + 1 ))" ;;
+    ok|unchanged) eval "${prefix}_ok=\$(( ${prefix}_ok + 1 ))" ;;
     changed) eval "${prefix}_chg=\$(( ${prefix}_chg + 1 ))" ;;
     failed) eval "${prefix}_fail=\$(( ${prefix}_fail + 1 ))" ;;
   esac

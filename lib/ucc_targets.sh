@@ -83,6 +83,9 @@ ucc_target() {
   done
 
   [[ -z "$axes" && -n "$profile" ]] && axes="$(_ucc_profile_axes "$profile")"
+  if [[ -z "$desired" && "$profile" == "parametric" ]]; then
+    log_warn "parametric target '$name' requires explicit --desired with --config-value — profile default has no config_value, will cause perpetual re-convergence"
+  fi
   [[ -z "$desired" && -n "$profile" ]] && desired="$(_ucc_profile_desired "$profile")"
 
   local started_at declaration_ts mode target_id msg_id duration_ms

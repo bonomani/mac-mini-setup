@@ -1,12 +1,12 @@
 component: docker
-primary_profile: configured
+primary_profile: presence
 libs: docker
 runner: run_docker_from_yaml
 
 targets:
   docker-desktop:
     component: docker
-    profile: configured
+    profile: presence
     type: package
     depends_on:
       - homebrew

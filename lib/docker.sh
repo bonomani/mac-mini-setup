@@ -52,7 +52,7 @@ run_docker_from_yaml() {
     --name    "docker-desktop" \
     --observe _observe_docker_app \
     --evidence _evidence_docker_app \
-    --axes    "$UCC_ASM_CONFIGURED_AXES" \
+    --profile presence \
     --desired "$(ucc_asm_state --installation Installed --runtime NeverStarted \
                                --health Unknown --admin Enabled --dependencies DepsUnknown)" \
     --install _install_docker \
