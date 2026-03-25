@@ -77,12 +77,6 @@ yaml_list() { python3 "$1/tools/read_config.py" --list "$2" "$3" 2>/dev/null; }
 # Output tab-delimited records from a YAML list-of-dicts section.
 yaml_records() { local d="$1" y="$2" s="$3"; shift 3; python3 "$d/tools/read_config.py" --records "$y" "$s" "$@" 2>/dev/null; }
 
-# Check if a Docker container is running
-docker_is_running() { docker inspect -f '{{.State.Running}}' "$1" 2>/dev/null | grep -q true; }
-
-# Check if a Docker container exists (any state)
-docker_exists() { docker inspect "$1" &>/dev/null 2>&1; }
-
 # Check if a pip package is installed
 pip_is_installed() { pip show "$1" &>/dev/null 2>&1; }
 

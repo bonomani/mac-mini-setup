@@ -339,15 +339,6 @@ _ucc_profile_index() {
   printf ''
 }
 
-ucc_asm_presence_desired() {
-  ucc_asm_state \
-    --installation Configured \
-    --runtime Stopped \
-    --health Healthy \
-    --admin Enabled \
-    --dependencies DepsReady
-}
-
 ucc_asm_configured_desired() {
   ucc_asm_state \
     --installation Configured \
@@ -400,19 +391,6 @@ UCC_ASM_PRESENCE_AXES="$(_ucc_profile_axes presence)"
 UCC_ASM_CONFIGURED_AXES="$(_ucc_profile_axes configured)"
 UCC_ASM_RUNTIME_AXES="$(_ucc_profile_axes runtime)"
 
-ucc_component_profile() {
-  local component="$1" profile=""
-  if [[ -n "${UCC_TARGETS_MANIFEST:-}" && -n "${UCC_TARGETS_QUERY_SCRIPT:-}" ]] \
-      && [[ -e "${UCC_TARGETS_MANIFEST}" && -f "${UCC_TARGETS_QUERY_SCRIPT}" ]]; then
-    profile=$(python3 "$UCC_TARGETS_QUERY_SCRIPT" --component-profile "$component" "$UCC_TARGETS_MANIFEST" 2>/dev/null || true)
-  fi
-  if [[ -n "$profile" ]]; then
-    printf '%s' "$profile"
-    return 0
-  fi
-  [[ "$component" == "verify" ]] && printf 'verification' || printf 'configured'
-}
-
 # ── Profile report helpers ────────────────────────────────────────────────────
 
 _ucc_profile_report_path() {
@@ -426,9 +404,4 @@ _ucc_emit_profile_line() {
   printf '%s\n' "$line"
   path=$(_ucc_profile_report_path "$profile" 2>/dev/null || true)
   [[ -n "$path" ]] && printf '%s\n' "$line" >> "$path" 2>/dev/null || true
-}
-
-ucc_profile_note() {
-  local profile="$1"; shift
-  _ucc_emit_profile_line "$profile" "  $*"
 }
