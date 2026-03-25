@@ -37,7 +37,10 @@ register_unsloth_studio_targets() {
     ucc_asm_service_state 'loaded'
   }"
   eval "_evidence_unsloth_launchd() {
-    local pid; pid=\$(pgrep -f 'unsloth.*studio' 2>/dev/null | head -1 || true)
+    local pid ver
+    ver=\$(pip show unsloth 2>/dev/null | awk '/^Version:/{print \$2}')
+    pid=\$(pgrep -f 'unsloth.*studio' 2>/dev/null | head -1 || true)
+    [[ -n \"\$ver\" ]] && printf 'version=%s ' \"\$ver\"
     [[ -n \"\$pid\" ]] && printf 'pid=%s port=${port} plist=${plist}' \"\$pid\" || printf 'port=${port} plist=${plist}'
   }"
   eval "_install_unsloth_launchd() {

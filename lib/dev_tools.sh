@@ -227,10 +227,10 @@ run_dev_tools_from_yaml() {
     if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-always-upgrade}" == "always-upgrade" ]]; then
       _brew_is_outdated ariaflow && { ucc_asm_package_state "outdated"; return; }
     fi
-    ucc_asm_package_state "$(brew list --versions ariaflow 2>/dev/null | awk '{print $NF}')"
+    ucc_asm_package_state "$(_brew_cached_version ariaflow)"
   }
   _evidence_ariaflow() {
-    local ver; ver=$(brew list --versions ariaflow 2>/dev/null | awk '{print $NF}')
+    local ver; ver=$(_brew_cached_version ariaflow)
     [[ -n "$ver" ]] && printf 'version=%s' "$ver"
   }
   _install_ariaflow() { ucc_run brew tap "$_ARIAFLOW_TAP"; brew_install ariaflow; }
@@ -256,7 +256,10 @@ run_dev_tools_from_yaml() {
       2>/dev/null | while read -r raw; do ucc_asm_service_state "${raw:-absent}"; done
   }
   _evidence_aria2_launchd() {
-    local pid; pid=$(lsof -ti "tcp:${_ARIA2_PORT}" 2>/dev/null | head -1 || true)
+    local pid ver
+    ver=$(_brew_cached_version aria2)
+    pid=$(lsof -ti "tcp:${_ARIA2_PORT}" 2>/dev/null | head -1 || true)
+    [[ -n "$ver" ]] && printf 'version=%s ' "$ver"
     [[ -n "$pid" ]] && printf 'pid=%s port=%s' "$pid" "$_ARIA2_PORT" || printf 'port=%s' "$_ARIA2_PORT"
   }
 
@@ -273,7 +276,7 @@ run_dev_tools_from_yaml() {
   # ---- ariaflow-web (brew formula) ----
   _observe_ariaflow_web()  { ucc_asm_package_state "$(brew_observe ariaflow-web)"; }
   _evidence_ariaflow_web() {
-    local ver; ver=$(brew list --versions ariaflow-web 2>/dev/null | awk '{print $NF}')
+    local ver; ver=$(_brew_cached_version ariaflow-web)
     [[ -n "$ver" ]] && printf 'version=%s' "$ver"
   }
   _install_ariaflow_web() { ucc_run brew tap "$_ARIAFLOW_TAP"; brew_install ariaflow-web; }
@@ -295,7 +298,10 @@ run_dev_tools_from_yaml() {
     fi
   }
   _evidence_ariaflow_web_service() {
-    local pid; pid=$(lsof -ti "tcp:${_ARIAFLOW_WEB_PORT}" 2>/dev/null | head -1 || true)
+    local pid ver
+    ver=$(_brew_cached_version ariaflow-web)
+    pid=$(lsof -ti "tcp:${_ARIAFLOW_WEB_PORT}" 2>/dev/null | head -1 || true)
+    [[ -n "$ver" ]] && printf 'version=%s ' "$ver"
     [[ -n "$pid" ]] && printf 'pid=%s port=%s' "$pid" "$_ARIAFLOW_WEB_PORT" \
                     || printf 'port=%s' "$_ARIAFLOW_WEB_PORT"
   }

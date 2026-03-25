@@ -73,8 +73,10 @@ run_ollama_from_yaml() {
     fi
   }
   _evidence_ollama_service() {
-    local pid
+    local pid ver
+    ver=$(ollama --version 2>/dev/null | awk '{print $NF}')
     pid=$(pgrep -f 'ollama (serve|app)' 2>/dev/null | head -1 || true)
+    [[ -n "$ver" ]] && printf 'version=%s ' "$ver"
     [[ -n "$pid" ]] && printf 'pid=%s port=%s' "$pid" "$_OLLAMA_API_PORT" \
                     || printf 'port=%s' "$_OLLAMA_API_PORT"
   }
