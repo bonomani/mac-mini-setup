@@ -35,8 +35,8 @@ _macos_defaults_observe() {
 }
 
 _macos_defaults_evidence() {
-  local read_cmd="$1"
-  printf 'value=%s' "$(eval "$read_cmd" | head -1)"
+  local read_cmd="$1" key="$2"
+  printf '%s=%s' "$key" "$(eval "$read_cmd" | head -1)"
 }
 
 _macos_defaults_apply() {
@@ -50,6 +50,8 @@ _macos_defaults_target() {
   local observe_fn="_obs_${fn}"
   local evidence_fn="_evidence_${fn}"
   local apply_fn="_apply_${fn}"
+  # Derive evidence key from target name: strip trailing =<value>
+  local evkey; evkey="${name%=*}"
 
   # Store commands in globals to avoid single-quote quoting conflicts in eval
   # (read_cmd contains awk patterns with single quotes)
@@ -57,7 +59,7 @@ _macos_defaults_target() {
   eval "_MDAP_${fn}=\$apply_cmd"
 
   eval "${observe_fn}()  { _macos_defaults_observe  \"\${_MDRD_${fn}}\" '${desired}'; }"
-  eval "${evidence_fn}() { _macos_defaults_evidence \"\${_MDRD_${fn}}\"; }"
+  eval "${evidence_fn}() { _macos_defaults_evidence \"\${_MDRD_${fn}}\" '${evkey}'; }"
   eval "${apply_fn}()    { _macos_defaults_apply    \"\${_MDAP_${fn}}\"; }"
 
   ucc_target_nonruntime \
