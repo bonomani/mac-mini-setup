@@ -12,6 +12,9 @@ targets:
       - docker-desktop
     soft_depends_on:
       - gate:docker-daemon
+    evidence:
+      version: "docker --version 2>/dev/null | awk '{print $3}' | tr -d ','"
+      pid: "pgrep -f 'Docker Desktop' 2>/dev/null | head -1"
 
   ai-stack-compose-file:
     component: ai-apps

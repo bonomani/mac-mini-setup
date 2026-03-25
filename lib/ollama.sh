@@ -41,13 +41,7 @@ run_ollama_from_yaml() {
 
   # ---- Ollama binary ----
   _observe_ollama() { ucc_asm_package_state "$(is_installed ollama && ollama --version 2>/dev/null | awk '{print $NF}' || echo "absent")"; }
-  _evidence_ollama() {
-    local ver path
-    ver=$(ollama --version 2>/dev/null | awk '{print $NF}')
-    path=$(command -v ollama 2>/dev/null || true)
-    [[ -n "$ver" ]] && printf 'version=%s' "$ver"
-    [[ -n "$path" ]] && printf '%s path=%s' "${ver:+ }" "$path"
-  }
+  _evidence_ollama() { ucc_eval_evidence_from_yaml "$cfg_dir" "$yaml" "ollama"; }
   _install_ollama() { curl -fsSL "$_OLLAMA_INSTALLER_URL" | sh; }
   _update_ollama()  { curl -fsSL "$_OLLAMA_INSTALLER_URL" | sh; }
 
@@ -72,14 +66,7 @@ run_ollama_from_yaml() {
         --health Unavailable --admin Enabled --dependencies DepsDegraded
     fi
   }
-  _evidence_ollama_service() {
-    local pid ver
-    ver=$(ollama --version 2>/dev/null | awk '{print $NF}')
-    pid=$(pgrep -f 'ollama (serve|app)' 2>/dev/null | head -1 || true)
-    [[ -n "$ver" ]] && printf 'version=%s' "$ver"
-    [[ -n "$pid" ]] && printf '  pid=%s  port=%s' "$pid" "$_OLLAMA_API_PORT" \
-                    || printf '  port=%s' "$_OLLAMA_API_PORT"
-  }
+  _evidence_ollama_service() { ucc_eval_evidence_from_yaml "$cfg_dir" "$yaml" "ollama-service"; }
   _start_ollama_service() {
     if is_installed brew && brew list ollama &>/dev/null 2>&1; then
       brew services start ollama

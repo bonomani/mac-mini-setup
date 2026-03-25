@@ -2,6 +2,25 @@
 # lib/ucc_targets.sh — Target lifecycle (ucc_target), convenience helpers, and summary
 # Sourced by lib/ucc.sh
 
+# ── YAML evidence executor ─────────────────────────────────────────────────────
+
+# ucc_eval_evidence_from_yaml <cfg_dir> <yaml> <target>
+# Execute evidence snippets declared in the target's YAML evidence: block.
+# Outputs: key=value  key=value  (two-space separated, omits empty values)
+# Top-level YAML scalar ${vars} are pre-substituted by read_config.py.
+ucc_eval_evidence_from_yaml() {
+  local cfg_dir="$1" yaml="$2" target="$3"
+  local _first=1 _key _cmd _val
+  while IFS=$'\t' read -r _key _cmd; do
+    [[ -z "$_key" || -z "$_cmd" ]] && continue
+    _val=$(eval "$_cmd" 2>/dev/null || true)
+    [[ -z "$_val" ]] && continue
+    [[ $_first -eq 0 ]] && printf '  '
+    printf '%s=%s' "$_key" "$_val"
+    _first=0
+  done < <(python3 "$cfg_dir/tools/read_config.py" --evidence "$yaml" "$target" 2>/dev/null)
+}
+
 # ── Convenience target helpers ────────────────────────────────────────────────
 
 # ucc_brew_target <target-name> <brew-pkg>

@@ -136,6 +136,28 @@ def read_scalar(path: Path, key: str) -> str:
     return ""
 
 
+def read_evidence(path: Path, target_name: str) -> list:
+    """Return evidence key/cmd pairs for a target.
+
+    Reads targets.<target>.evidence mapping and returns list of (key, cmd).
+    Top-level scalar values are available for ${key} substitution in cmds.
+    """
+    import yaml as _yaml
+    import re
+    data = _yaml.safe_load(path.read_text()) or {}
+    # Build substitution dict from top-level scalars
+    subst = {k: str(v) for k, v in data.items()
+             if isinstance(v, (str, int, float))}
+    targets = data.get("targets") or {}
+    target_data = targets.get(target_name) or {}
+    evidence = target_data.get("evidence") or {}
+    result = []
+    for key, cmd in evidence.items():
+        cmd = re.sub(r"\$\{(\w+)\}", lambda m: subst.get(m.group(1), m.group(0)), str(cmd))
+        result.append(f"{key}\t{cmd}")
+    return result
+
+
 def main() -> int:
     args = sys.argv[1:]
     if not args:
@@ -143,6 +165,21 @@ def main() -> int:
         return 1
 
     mode = args[0]
+
+    if mode == "--evidence":
+        if len(args) < 3:
+            print("Usage: read_config.py --evidence <file> <target>", file=sys.stderr)
+            return 1
+        path = Path(args[1])
+        if not path.exists():
+            return 0
+        try:
+            for row in read_evidence(path, args[2]):
+                print(row)
+        except Exception as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 1
+        return 0
 
     if mode == "--get":
         if len(args) < 3:

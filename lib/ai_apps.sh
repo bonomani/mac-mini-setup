@@ -33,13 +33,7 @@ run_ai_apps_from_yaml() {
         --health Unavailable --admin Enabled --dependencies DepsUnknown
     fi
   }
-  _evidence_docker_running() {
-    local ver pid
-    ver=$(docker --version 2>/dev/null | awk '{print $3}' | tr -d ',')
-    pid=$(pgrep -f 'Docker Desktop' 2>/dev/null | head -1 || true)
-    [[ -n "$ver" ]] && printf 'version=%s' "$ver"
-    [[ -n "$pid" ]] && printf '  pid=%s' "$pid"
-  }
+  _evidence_docker_running() { ucc_eval_evidence_from_yaml "$cfg_dir" "$yaml" "docker-running"; }
   _start_docker() {
     if [[ "${UIC_PREF_SERVICE_POLICY:-autostart}" != "autostart" ]]; then
       log_warn "Docker not running — start it manually (service-policy=manual)"

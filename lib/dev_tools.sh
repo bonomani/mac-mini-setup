@@ -229,10 +229,7 @@ run_dev_tools_from_yaml() {
     fi
     ucc_asm_package_state "$(_brew_cached_version ariaflow)"
   }
-  _evidence_ariaflow() {
-    local ver; ver=$(_brew_cached_version ariaflow)
-    [[ -n "$ver" ]] && printf 'version=%s' "$ver"
-  }
+  _evidence_ariaflow() { ucc_eval_evidence_from_yaml "$cfg_dir" "$yaml" "ariaflow"; }
   _install_ariaflow() { ucc_run brew tap "$_ARIAFLOW_TAP"; brew_install ariaflow; }
   _update_ariaflow() {
     ucc_run brew tap "$_ARIAFLOW_TAP"
@@ -255,13 +252,7 @@ run_dev_tools_from_yaml() {
       | python3 -c "import json,sys; r=json.load(sys.stdin).get('aria2-launchd',{}).get('result',{}); print('loaded' if r.get('outcome')=='converged' else 'absent')" \
       2>/dev/null | while read -r raw; do ucc_asm_service_state "${raw:-absent}"; done
   }
-  _evidence_aria2_launchd() {
-    local pid ver
-    ver=$(_brew_cached_version aria2)
-    pid=$(lsof -ti "tcp:${_ARIA2_PORT}" 2>/dev/null | head -1 || true)
-    [[ -n "$ver" ]] && printf 'version=%s' "$ver"
-    [[ -n "$pid" ]] && printf '  pid=%s  port=%s' "$pid" "$_ARIA2_PORT" || printf '  port=%s' "$_ARIA2_PORT"
-  }
+  _evidence_aria2_launchd() { ucc_eval_evidence_from_yaml "$cfg_dir" "$yaml" "aria2-launchd"; }
 
   _install_aria2_launchd() { ucc_run ariaflow install --with-aria2; }
 
@@ -275,10 +266,7 @@ run_dev_tools_from_yaml() {
 
   # ---- ariaflow-web (brew formula) ----
   _observe_ariaflow_web()  { ucc_asm_package_state "$(brew_observe ariaflow-web)"; }
-  _evidence_ariaflow_web() {
-    local ver; ver=$(_brew_cached_version ariaflow-web)
-    [[ -n "$ver" ]] && printf 'version=%s' "$ver"
-  }
+  _evidence_ariaflow_web() { ucc_eval_evidence_from_yaml "$cfg_dir" "$yaml" "ariaflow-web"; }
   _install_ariaflow_web() { ucc_run brew tap "$_ARIAFLOW_TAP"; brew_install ariaflow-web; }
   _update_ariaflow_web()  { ucc_run brew tap "$_ARIAFLOW_TAP"; brew_upgrade ariaflow-web; }
 
@@ -297,14 +285,7 @@ run_dev_tools_from_yaml() {
       ucc_asm_service_state "stopped"
     fi
   }
-  _evidence_ariaflow_web_service() {
-    local pid ver
-    ver=$(_brew_cached_version ariaflow-web)
-    pid=$(lsof -ti "tcp:${_ARIAFLOW_WEB_PORT}" 2>/dev/null | head -1 || true)
-    [[ -n "$ver" ]] && printf 'version=%s' "$ver"
-    [[ -n "$pid" ]] && printf '  pid=%s  port=%s' "$pid" "$_ARIAFLOW_WEB_PORT" \
-                    || printf '  port=%s' "$_ARIAFLOW_WEB_PORT"
-  }
+  _evidence_ariaflow_web_service() { ucc_eval_evidence_from_yaml "$cfg_dir" "$yaml" "ariaflow-web-service"; }
   _start_ariaflow_web_service()   { ucc_run brew services start   "${_ARIAFLOW_TAP}/ariaflow-web"; }
   _restart_ariaflow_web_service() { ucc_run brew services restart "${_ARIAFLOW_TAP}/ariaflow-web"; }
 

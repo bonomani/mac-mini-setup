@@ -83,6 +83,8 @@ targets:
     provided_by_tool: brew
     oracle:
       configured: "ariaflow --version >/dev/null 2>&1 || ariaflow lifecycle >/dev/null 2>&1"
+    evidence:
+      version: "_brew_cached_version ariaflow"
 
   aria2-launchd:
     component: dev-tools
@@ -90,6 +92,10 @@ targets:
     type: service
     depends_on:
       - ariaflow
+    evidence:
+      version: "_brew_cached_version aria2"
+      pid: "lsof -ti tcp:${aria2_port} 2>/dev/null | head -1"
+      port: "${aria2_port}"
 
   ariaflow-web:
     component: dev-tools
@@ -100,6 +106,8 @@ targets:
     provided_by_tool: brew
     oracle:
       configured: "brew list ariaflow-web >/dev/null 2>&1"
+    evidence:
+      version: "_brew_cached_version ariaflow-web"
 
   ariaflow-web-service:
     component: dev-tools
@@ -110,6 +118,10 @@ targets:
     oracle:
       configured: "brew services list 2>/dev/null | awk '/^ariaflow-web/ {print $2}' | grep -q '^started$'"
       runtime: 'curl -fsS --max-time 5 "http://127.0.0.1:${_ARIAFLOW_WEB_PORT}" >/dev/null 2>&1'
+    evidence:
+      version: "_brew_cached_version ariaflow-web"
+      pid: "lsof -ti tcp:${ariaflow_web_port} 2>/dev/null | head -1"
+      port: "${ariaflow_web_port}"
 
 # Homebrew formula CLI tools
 cli_tools:
