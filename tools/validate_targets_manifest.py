@@ -83,9 +83,9 @@ def parse_manifest_file(path: Path):
             if key in {"depends_on", "soft_depends_on"}:
                 manifest["targets"][current][key] = []
                 current_list = key
-            elif key == "oracle":
-                manifest["targets"][current]["oracle"] = {}
-                current_list = "oracle"
+            elif key in {"oracle", "evidence"}:
+                manifest["targets"][current][key] = {}
+                current_list = key
             else:
                 raise ValueError(f"{path}:{lineno}: unsupported list field '{key}'")
             continue
@@ -102,9 +102,9 @@ def parse_manifest_file(path: Path):
             manifest["targets"][current][current_list].append(text[2:].strip())
             continue
 
-        if indent == 6 and ":" in text and current_list == "oracle":
+        if indent == 6 and ":" in text and current_list in {"oracle", "evidence"}:
             key, value = text.split(":", 1)
-            manifest["targets"][current]["oracle"][key.strip()] = value.strip()
+            manifest["targets"][current][current_list][key.strip()] = value.strip()
             continue
 
         raise ValueError(f"{path}:{lineno}: unsupported structure")
