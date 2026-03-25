@@ -22,11 +22,23 @@ fi
 # Check if a command exists
 is_installed() { command -v "$1" &>/dev/null; }
 
-# Check if a brew formula is installed
-brew_is_installed() { brew list "$1" &>/dev/null 2>&1; }
+# Check if a brew formula is installed (uses version cache when available)
+brew_is_installed() {
+  if [[ -n "${_BREW_VERSIONS_CACHE+x}" ]]; then
+    echo "${_BREW_VERSIONS_CACHE}" | awk -v p="$1" '$1==p{found=1} END{exit !found}'
+  else
+    brew list "$1" &>/dev/null 2>&1
+  fi
+}
 
-# Check if a brew cask is installed
-brew_cask_is_installed() { brew list --cask "$1" &>/dev/null 2>&1; }
+# Check if a brew cask is installed (uses version cache when available)
+brew_cask_is_installed() {
+  if [[ -n "${_BREW_CASK_VERSIONS_CACHE+x}" ]]; then
+    echo "${_BREW_CASK_VERSIONS_CACHE}" | awk -v p="$1" '$1==p{found=1} END{exit !found}'
+  else
+    brew list --cask "$1" &>/dev/null 2>&1
+  fi
+}
 
 # yaml_get <cfg_dir> <yaml_path> <key> [<default>]
 # Read a scalar value from a YAML config file, with optional default.

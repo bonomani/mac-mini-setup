@@ -7,8 +7,12 @@
 brew_cache_outdated() {
   export _BREW_OUTDATED_CACHE
   export _BREW_CASK_OUTDATED_CACHE
+  export _BREW_VERSIONS_CACHE
+  export _BREW_CASK_VERSIONS_CACHE
   _BREW_OUTDATED_CACHE=$(brew outdated --quiet 2>/dev/null || true)
   _BREW_CASK_OUTDATED_CACHE=$(brew outdated --cask --quiet 2>/dev/null || true)
+  _BREW_VERSIONS_CACHE=$(brew list --versions 2>/dev/null || true)
+  _BREW_CASK_VERSIONS_CACHE=$(brew list --cask --versions 2>/dev/null || true)
 }
 
 # Match short name ("ariaflow") or full tap name ("bonomani/ariaflow/ariaflow")
@@ -25,24 +29,29 @@ _brew_refresh_if_stale() {
   _BREW_OUTDATED_STALE=0
 }
 
+# Lookup version from cache (no brew subprocess)
+_brew_cached_version()      { echo "${_BREW_VERSIONS_CACHE:-}"      | awk -v p="$1" '$1==p{print $NF}'; }
+_brew_cask_cached_version() { echo "${_BREW_CASK_VERSIONS_CACHE:-}" | awk -v p="$1" '$1==p{print $NF}'; }
+
 brew_observe() {
   local pkg="$1" ver
-  brew_is_installed "$pkg" || { echo "absent"; return; }
+  # Use version cache for presence check — avoids `brew list <pkg>` subprocess
+  ver=$(_brew_cached_version "$pkg")
+  [[ -z "$ver" ]] && { echo "absent"; return; }
   if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-always-upgrade}" == "always-upgrade" ]]; then
     _brew_refresh_if_stale
     _brew_is_outdated "$pkg" && { echo "outdated"; return; }
   fi
-  ver=$(brew list --versions "$pkg" 2>/dev/null | awk '{print $NF}')
-  echo "${ver:-present}"
+  echo "$ver"
 }
 
 brew_cask_observe() {
   local pkg="$1" ver
-  brew_cask_is_installed "$pkg" || { echo "absent"; return; }
+  ver=$(_brew_cask_cached_version "$pkg")
+  [[ -z "$ver" ]] && { echo "absent"; return; }
   if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-always-upgrade}" == "always-upgrade" ]]; then
     _brew_refresh_if_stale
     _brew_cask_is_outdated "$pkg" && { echo "outdated"; return; }
   fi
-  ver=$(brew list --cask --versions "$pkg" 2>/dev/null | awk '{print $NF}')
-  echo "${ver:-present}"
+  echo "$ver"
 }

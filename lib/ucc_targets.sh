@@ -10,7 +10,7 @@ ucc_brew_target() {
   local tname="$1" pkg="$2"
   local fn; fn="${pkg//[^a-zA-Z0-9]/_}"
   eval "_ubt_obs_${fn}() { local raw; raw=\$(brew_observe '${pkg}'); ucc_asm_package_state \"\$raw\"; }"
-  eval "_ubt_evd_${fn}() { local ver; ver=\$(brew list --versions '${pkg}' 2>/dev/null | awk '{print \$NF}'); [[ -n \"\$ver\" ]] && printf 'version=%s' \"\$ver\"; }"
+  eval "_ubt_evd_${fn}() { local ver; ver=\$(_brew_cached_version '${pkg}'); [[ -n \"\$ver\" ]] && printf 'version=%s' \"\$ver\"; }"
   eval "_ubt_ins_${fn}() { brew_install  '${pkg}'; }"
   eval "_ubt_upd_${fn}() { brew_upgrade  '${pkg}'; }"
   ucc_target --profile presence --name "$tname" --observe "_ubt_obs_${fn}" \
