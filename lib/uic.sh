@@ -213,7 +213,17 @@ _uic_eval_gate() {
 
   local scope_short="${scope/component:/}"
   local target_suffix=""
-  [[ -n "$target_state" ]] && target_suffix=" target=${target_state}"
+  if [[ -n "$target_state" ]]; then
+    local _tname="${target_state%% *}"
+    local _taxes="${target_state#* }"
+    [[ "$_taxes" == "$_tname" ]] && _taxes=""
+    if [[ "$_tname" == "$scope_short" ]]; then
+      target_suffix=" ${_taxes}"
+    else
+      target_suffix=" target=${_tname} ${_taxes}"
+    fi
+    target_suffix="${target_suffix% }"
+  fi
   if $cond 2>/dev/null; then
     printf '[GATE]  %-36s ok    [%s/%s] →%s%s\n' "$name" "$blocking" "$class" "$scope_short" "$target_suffix"
     return 0

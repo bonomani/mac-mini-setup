@@ -561,7 +561,7 @@ _hdr_sum="Summary | mode=$UCC_MODE"
 echo "  $_hdr_sum"
 echo "  ──────────────────────────────────────────────────────"
 
-_total_ok=0; _total_chg=0; _total_fail=0
+_total_ok=0; _total_chg=0; _total_fail=0; _total_skip=0
 _profile_presence_ok=0; _profile_presence_chg=0; _profile_presence_fail=0
 _profile_configured_ok=0; _profile_configured_chg=0; _profile_configured_fail=0
 _profile_runtime_ok=0; _profile_runtime_chg=0; _profile_runtime_fail=0
@@ -582,17 +582,18 @@ _print_summary_section() {
       if [[ "$_a" == "tic" ]]; then
         local _tic_parts="${_b} pass"
         [[ "$_c" -gt 0 ]] && _tic_parts="${_tic_parts}  ${_c} FAIL"
-        [[ "$_d" -gt 0 ]] && _tic_parts="${_tic_parts}  (skip=${_d})"
+        [[ "$_d" -gt 0 ]] && _tic_parts="${_tic_parts}  skip=${_d}"
         printf '  %-22s  %s\n' "$_comp" "$_tic_parts"
       else
         _total_ok=$(( _total_ok + _a ))
         _total_chg=$(( _total_chg + _b ))
         _total_fail=$(( _total_fail + _c ))
+        _total_skip=$(( _total_skip + ${_d:-0} ))
         _parts=""
         [[ $_a -gt 0 ]] && _parts="${_a} ok"
         [[ $_b -gt 0 ]] && _parts="${_parts:+$_parts  }${_b} changed"
         [[ $_c -gt 0 ]] && _parts="${_parts:+$_parts  }${_c} FAILED"
-        [[ ${_d:-0} -gt 0 ]] && _parts="${_parts:+$_parts  }(skip=${_d})"
+        [[ ${_d:-0} -gt 0 ]] && _parts="${_parts:+$_parts  }skip=${_d}"
         printf '  %-22s  %s\n' "$_comp" "${_parts:----}"
       fi
     done < "$UCC_SUMMARY_FILE"
@@ -603,7 +604,9 @@ _print_summary_section "UCC / software" "${_SOFTWARE_COMPS[@]}"
 _print_summary_section "UCC / system"   "${_SYSTEM_COMPS[@]}"
 _print_summary_section "TIC"            "${_TIC_COMPS[@]}"
 echo "  ──────────────────────────────────────────────────────"
-printf '  %-22s  %s\n' "Total" "$(_summary_line "$_total_ok" "$_total_chg" "$_total_fail")"
+_total_line="$(_summary_line "$_total_ok" "$_total_chg" "$_total_fail")"
+[[ $_total_skip -gt 0 ]] && _total_line="${_total_line}  skip=${_total_skip}"
+printf '  %-22s  %s\n' "Total" "$_total_line"
 
 if [[ -f "$UCC_PROFILE_SUMMARY_FILE" ]]; then
   while IFS='|' read -r _profile _outcome; do
