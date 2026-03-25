@@ -445,8 +445,10 @@ _QUERY_SCRIPT="$DIR/tools/validate_targets_manifest.py"
 
 _comp_prelude="source \"${DIR}/lib/ucc.sh\"; source \"${DIR}/lib/uic.sh\"; source \"${DIR}/lib/utils.sh\""
 
-# Track component → layer (software|system|tic) for structured summary/output
-declare -A _COMP_LAYER
+# Track components per layer for structured summary/output (bash 3 compatible)
+_SOFTWARE_COMPS=()
+_SYSTEM_COMPS=()
+_TIC_COMPS=()
 _current_section=""
 
 _print_section_header() {
@@ -455,6 +457,13 @@ _print_section_header() {
   _current_section="$section"
   echo ""
   printf '── %s\n' "$section"
+}
+
+_comp_in_list() {
+  local needle="$1"; shift
+  local item
+  for item in "$@"; do [[ "$item" == "$needle" ]] && return 0; done
+  return 1
 }
 
 for comp in "${TO_RUN[@]}"; do
@@ -466,7 +475,7 @@ for comp in "${TO_RUN[@]}"; do
   fi
 
   if [[ "$comp" == "verify" ]]; then
-    _COMP_LAYER[$comp]="tic"
+    _TIC_COMPS+=("$comp")
     _print_section_header "TIC"
     SCRIPT="$DIR/components/verify.sh"
     if ! bash -c "${_comp_prelude}; source \"${SCRIPT}\"" -- "$SCRIPT" > "$UCC_VERIFICATION_REPORT_FILE"; then
@@ -488,10 +497,10 @@ for comp in "${TO_RUN[@]}"; do
 
     # Determine layer from config path
     if [[ "$_config" == */system/* ]]; then
-      _COMP_LAYER[$comp]="system"
+      _SYSTEM_COMPS+=("$comp")
       _print_section_header "UCC / system"
     else
-      _COMP_LAYER[$comp]="software"
+      _SOFTWARE_COMPS+=("$comp")
       _print_section_header "UCC / software"
     fi
 
@@ -533,11 +542,13 @@ _profile_configured_ok=0; _profile_configured_chg=0; _profile_configured_fail=0
 _profile_runtime_ok=0; _profile_runtime_chg=0; _profile_runtime_fail=0
 
 _print_summary_section() {
-  local section_label="$1" layer="$2"
+  local section_label="$1"; shift
+  local _comps=("$@")
   local _printed=0
+  [[ ${#_comps[@]} -eq 0 ]] && return
   if [[ -f "$UCC_SUMMARY_FILE" ]]; then
     while IFS='|' read -r _comp _a _b _c _d; do
-      [[ "${_COMP_LAYER[$_comp]:-}" == "$layer" ]] || continue
+      _comp_in_list "$_comp" "${_comps[@]}" || continue
       if [[ $_printed -eq 0 ]]; then
         echo "  ── $section_label"
         _printed=1
@@ -558,9 +569,9 @@ _print_summary_section() {
   fi
 }
 
-_print_summary_section "UCC / software" "software"
-_print_summary_section "UCC / system"   "system"
-_print_summary_section "TIC"            "tic"
+_print_summary_section "UCC / software" "${_SOFTWARE_COMPS[@]}"
+_print_summary_section "UCC / system"   "${_SYSTEM_COMPS[@]}"
+_print_summary_section "TIC"            "${_TIC_COMPS[@]}"
 echo "  ──────────────────────────────────────────────────────"
 printf '  %-22s  %s\n' "Total" "$(_summary_line "$_total_ok" "$_total_chg" "$_total_fail")"
 
