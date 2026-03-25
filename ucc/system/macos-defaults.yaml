@@ -1,11 +1,11 @@
 component: macos-defaults
-primary_profile: configured
+primary_profile: parametric
 libs: macos_defaults
 runner: run_macos_defaults_from_yaml
 targets:
   pmset-ac-sleep=0:
     component: macos-defaults
-    profile: configured
+    profile: parametric
     type: config
     soft_depends_on:
       - gate:sudo-available
@@ -14,7 +14,7 @@ targets:
 
   pmset-disksleep=0:
     component: macos-defaults
-    profile: configured
+    profile: parametric
     type: config
     soft_depends_on:
       - gate:sudo-available
@@ -23,7 +23,7 @@ targets:
 
   pmset-standby=0:
     component: macos-defaults
-    profile: configured
+    profile: parametric
     type: config
     soft_depends_on:
       - gate:sudo-available
@@ -32,7 +32,7 @@ targets:
 
   app-nap=disabled:
     component: macos-defaults
-    profile: configured
+    profile: parametric
     type: config
     soft_depends_on:
       - gate:sudo-available
@@ -41,7 +41,7 @@ targets:
 
   finder-show-hidden=1:
     component: macos-defaults
-    profile: configured
+    profile: parametric
     type: config
     soft_depends_on:
       - gate:sudo-available
@@ -50,7 +50,7 @@ targets:
 
   show-all-extensions=1:
     component: macos-defaults
-    profile: configured
+    profile: parametric
     type: config
     soft_depends_on:
       - gate:sudo-available
@@ -59,7 +59,7 @@ targets:
 
   dock-autohide=1:
     component: macos-defaults
-    profile: configured
+    profile: parametric
     type: config
     soft_depends_on:
       - gate:sudo-available

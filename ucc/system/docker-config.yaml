@@ -1,5 +1,5 @@
 component: docker-config
-primary_profile: configured
+primary_profile: parametric
 libs: docker
 runner: run_docker_config_from_yaml
 memory_gb: 48
@@ -10,7 +10,7 @@ disk_mib: 204800
 targets:
   docker-resources:
     component: docker-config
-    profile: configured
+    profile: parametric
     type: config
     depends_on:
       - docker-desktop
