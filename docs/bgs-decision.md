@@ -59,13 +59,14 @@ evidence_refs:
   - ../tools/validate_setup_state_artifact.py  # executable ASM artifact validator
   - ./evidence/ollama-service.declaration.json
   - ./evidence/ollama-service.result.json
-  - ../install.sh                # UIC gates + preferences + orchestration
+  - ../install.sh                # orchestration entry point
   - ../lib/ucc.sh                # UCC/2.0 declaration/result artifact engine
   - ../lib/uic.sh                # UIC preflight engine
   - ../lib/tic.sh                # TIC test engine
   - ../tic/software/verify.yaml  # TIC software-layer test definitions
   - ../tic/system/verify.yaml    # TIC system-layer test definitions
-  - ../components/verify.sh      # TIC runner (sources the above YAML files)
+  - ../lib/tic_runner.sh          # TIC runner (run_verify sources the above YAML files)
+  - ../lib/summary.sh            # final summary rendering
   - ~/.ai-stack/runs/*.declaration.jsonl  # runtime evidence outside the repo
   - ~/.ai-stack/runs/*.result.jsonl       # runtime evidence outside the repo
 

@@ -203,7 +203,7 @@ This model is evidenced by:
 - this state-model document
 - the concrete state artifact in `./setup-state-artifact.yaml`
 - the executable validator in `../tools/validate_setup_state_artifact.py`
-- UIC gate and preference logic in `../install.sh` and `../lib/uic.sh`
+- UIC gate and preference logic in `../lib/uic.sh`
 - UCC declaration/result artifacts emitted by `../lib/ucc.sh`
 - TIC verification oracles in `../tic/software/verify.yaml` and `../tic/system/verify.yaml`
 - component YAML manifests in `../ucc/software/` and `../ucc/system/`

@@ -1,7 +1,7 @@
 # BISS Classification: mac-mini-setup
 
 Scope:
-- Mac mini AI workstation setup — full installation lifecycle across 10 components
+- Mac mini AI workstation setup — full installation lifecycle across 12 components
 
 Boundary inventory:
 

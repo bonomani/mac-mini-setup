@@ -26,5 +26,6 @@ read_next:
   - "./lib/tic.sh"
   - "./tic/software/verify.yaml"
   - "./tic/system/verify.yaml"
-  - "./components/verify.sh"
+  - "./lib/tic_runner.sh"
+  - "./lib/summary.sh"
   - "./docs/bgs-decision.md"
