@@ -34,7 +34,9 @@ Scope:
 Modeling rule:
 - the host setup state is a composition of component states
 - software-layer components use the `presence` or `configured` ASM profile
-- system-layer components use the `parametric` ASM profile (axes include `config_value`)
+- system-layer value-convergence components (`docker-config`, `macos-defaults`) use the
+  `parametric` ASM profile (axes include `config_value`)
+- system-layer presence-only components (`git-config`) use the `configured` ASM profile
 - each mutable component uses the ASM software-profile style axes:
   - `installation_state`
   - `runtime_state`
@@ -121,6 +123,18 @@ Meaning:
   - Docker settings file present
   - Ollama API reachable
   - sudo available for macOS defaults
+
+### Configuration value (optional — parametric targets only)
+
+Used by: `docker-config`, `macos-defaults`
+
+Meaning:
+- carries the actual observed or desired configuration value as a string
+- enables value-level convergence: the engine re-applies when the value
+  drifts from the desired even though `installation_state=Configured`
+- absent on presence-only targets; present only when the `parametric`
+  profile is selected
+- examples: `mem=48GB cpu=10`, `0` (pmset sleep value), `1` (dock autohide)
 
 ## 3. Derived states
 
