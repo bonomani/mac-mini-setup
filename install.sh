@@ -78,7 +78,7 @@ _gate_ollama_api()      { curl -fsS http://127.0.0.1:11434/api/tags >/dev/null 2
 _gate_sudo()            { sudo -n true 2>/dev/null; }
 
 _load_components() {
-  local manifest_dir="$DIR/targets"
+  local manifest_dir="$DIR/ucc"
   local query_script="$DIR/tools/validate_targets_manifest.py"
   local components=()
   if [[ -d "$manifest_dir" && -x "$(command -v python3)" && -f "$query_script" ]]; then
@@ -421,7 +421,7 @@ export UCC_SUMMARY_FILE="$HOME/.ai-stack/runs/${UCC_CORRELATION_ID}.summary"
 export UCC_PROFILE_SUMMARY_FILE="$HOME/.ai-stack/runs/${UCC_CORRELATION_ID}.profile-summary"
 export UCC_TARGET_STATUS_FILE="$HOME/.ai-stack/runs/${UCC_CORRELATION_ID}.target-status"
 export UCC_VERIFICATION_REPORT_FILE="$HOME/.ai-stack/runs/${UCC_CORRELATION_ID}.verification.report"
-export UCC_TARGETS_MANIFEST="$DIR/targets"
+export UCC_TARGETS_MANIFEST="$DIR/ucc"
 export UCC_TARGETS_QUERY_SCRIPT="$DIR/tools/validate_targets_manifest.py"
 mkdir -p "$HOME/.ai-stack/runs"
 
@@ -432,15 +432,15 @@ _print_verification_section() {
   cat "$UCC_VERIFICATION_REPORT_FILE"
 }
 
-if [[ -d "$DIR/targets" && -x "$(command -v python3)" ]]; then
-  if ! python3 "$DIR/tools/validate_targets_manifest.py" "$DIR/targets" >/dev/null; then
-    log_error "Invalid orchestration manifest directory: $DIR/targets"
+if [[ -d "$DIR/ucc" && -x "$(command -v python3)" ]]; then
+  if ! python3 "$DIR/tools/validate_targets_manifest.py" "$DIR/ucc" >/dev/null; then
+    log_error "Invalid orchestration manifest directory: $DIR/ucc"
   fi
 fi
 
 # --- Run components -----------------------------------------
 FAILED_COMPONENTS=()
-_MANIFEST_DIR="$DIR/targets"
+_MANIFEST_DIR="$DIR/ucc"
 _QUERY_SCRIPT="$DIR/tools/validate_targets_manifest.py"
 
 _comp_prelude="source \"${DIR}/lib/ucc.sh\"; source \"${DIR}/lib/uic.sh\"; source \"${DIR}/lib/utils.sh\""

@@ -303,7 +303,7 @@ def main():
         oracles_mode = True
         args = args[1:]
 
-    path = Path(args[0]) if args else Path("targets")
+    path = Path(args[0]) if args else Path("ucc")
     try:
         manifest = parse_manifest(path)
         known_gates = parse_gate_names(Path("policy/gates.yaml"))

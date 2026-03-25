@@ -17,7 +17,15 @@
       "Bash(cat /home/bc/repos/github/bonomani/mac-mini-setup/targets/*.yaml)",
       "Bash(grep -A8 '  [a-z].*:$')",
       "Read(//home/bc/repos/github/bonomani/mac-mini-setup/**)",
-      "Bash(git mv:*)"
+      "Bash(git mv:*)",
+      "Bash(git rm:*)",
+      "Bash(sed -i 's|\"\"$DIR/targets\"\"|\"\"$DIR/ucc\"\"|g; s|DIR/targets/|DIR/ucc/|g; s|\"\"$DIR/targets\"\"|\"\"$DIR/ucc\"\"|g' /home/bc/repos/github/bonomani/mac-mini-setup/install.sh)",
+      "Bash(sed -i 's|targets/software/vscode-settings.json|ucc/software/vscode-settings.json|g' /home/bc/repos/github/bonomani/mac-mini-setup/lib/dev_tools.sh)",
+      "Bash(sed -i 's|Path\\(\"\"targets\"\"\\)|Path\\(\"\"ucc\"\"\\)|g' /home/bc/repos/github/bonomani/mac-mini-setup/tools/validate_targets_manifest.py)",
+      "Bash(sed -i 's|\"\"./targets/\"\"|\"\"./ucc/\"\"|g; s|`./targets/`|`./ucc/`|g' /home/bc/repos/github/bonomani/mac-mini-setup/BGS.md /home/bc/repos/github/bonomani/mac-mini-setup/README.md)",
+      "Bash(python3 tools/validate_targets_manifest.py)",
+      "Bash(python3 tools/validate_targets_manifest.py --dispatch git-config ucc/)",
+      "Bash(python3 tools/validate_targets_manifest.py --dispatch macos-defaults ucc/)"
     ]
   }
 }

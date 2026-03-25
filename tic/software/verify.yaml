@@ -1,14 +1,7 @@
-# TIC verification tests — sourced by components/verify.sh via lib/tic_runner.sh
-# Only tests without a corresponding oracle: block in a target YAML are kept here.
+# TIC software observation — post-convergence presence and service health assertions
 # oracle strings: evaluated via bash eval — $VAR references expand at test time
-# quote rule: outer YAML double-quotes allow inner single-quotes (and vice-versa)
 
 tests:
-  # ── homebrew ──────────────────────────────────────────────
-  - name: brew-analytics-off
-    intent: "brew analytics must be disabled"
-    oracle: "brew analytics state 2>/dev/null | grep -qi disabled"
-    trace: "component:homebrew / ucc-target:brew-analytics=off"
   # ── ai-python-stack ───────────────────────────────────────
   # pip_group targets are generated dynamically — no explicit target entry for oracle:
   - name: torch-importable

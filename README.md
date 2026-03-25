@@ -10,7 +10,7 @@ Scripts to set up a Mac mini (Apple Silicon, 64 GB) as an AI workstation.
 - ASM state model: `./docs/setup-state-model.md`
 - ASM state artifact: `./docs/setup-state-artifact.yaml`
 - ASM artifact validator: `./tools/validate_setup_state_artifact.py`
-- orchestration target graph: `./targets/`
+- orchestration target graph: `./ucc/`
 - orchestration graph validator: `./tools/validate_targets_manifest.py`
 - UCC engine: `./lib/ucc.sh`
 - UIC preflight: `./lib/uic.sh`

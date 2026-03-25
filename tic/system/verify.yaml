@@ -1,0 +1,9 @@
+# TIC system observation — post-convergence machine-state value assertions
+# oracle strings: evaluated via bash eval — $VAR references expand at test time
+
+tests:
+  # ── homebrew ──────────────────────────────────────────────
+  - name: brew-analytics-off
+    intent: "brew analytics must be disabled"
+    oracle: "brew analytics state 2>/dev/null | grep -qi disabled"
+    trace: "component:homebrew / ucc-target:brew-analytics=off"
