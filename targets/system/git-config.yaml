@@ -1,22 +1,17 @@
-component: git
+component: git-config
 primary_profile: configured
 libs: git
 runner: run_git_from_yaml
-targets:
-  git:
-    component: git
-    profile: configured
-    type: package
-    depends_on:
-      - homebrew
-    provided_by_tool: brew
 
+targets:
   git-global-config:
-    component: git
+    component: git-config
     profile: configured
     type: config
     depends_on:
       - git
+    oracle:
+      configured: "git config --global user.name >/dev/null 2>&1"
 
 global_config:
   - key: init.defaultBranch

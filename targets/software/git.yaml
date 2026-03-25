@@ -1,0 +1,15 @@
+component: git
+primary_profile: configured
+libs: git
+runner: run_git_from_yaml
+
+targets:
+  git:
+    component: git
+    profile: configured
+    type: package
+    depends_on:
+      - homebrew
+    provided_by_tool: brew
+    oracle:
+      configured: "git --version >/dev/null 2>&1"

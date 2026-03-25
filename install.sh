@@ -465,8 +465,9 @@ for comp in "${TO_RUN[@]}"; do
     _libs=$(echo "$_dispatch" | sed -n '1p')
     _runner=$(echo "$_dispatch" | sed -n '2p')
     _on_fail=$(echo "$_dispatch" | sed -n '3p')
+    _config=$(echo "$_dispatch" | sed -n '4p')
 
-    if [[ -z "$_libs" || -z "$_runner" ]]; then
+    if [[ -z "$_libs" || -z "$_runner" || -z "$_config" ]]; then
       log_warn "Component $comp has no dispatch info in manifest — skipping"
       continue
     fi
@@ -478,7 +479,6 @@ for comp in "${TO_RUN[@]}"; do
     done
 
     # Build runner call with on_fail handling
-    _config="${DIR}/targets/${comp}.yaml"
     case "$_on_fail" in
       exit)   _run="${_runner} \"${DIR}\" \"${_config}\" || { ucc_summary \"${comp}\"; exit 1; }" ;;
       ignore) _run="${_runner} \"${DIR}\" \"${_config}\" || true" ;;

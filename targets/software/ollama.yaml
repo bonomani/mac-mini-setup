@@ -21,6 +21,8 @@ targets:
     depends_on:
       - macos-precondition
     provided_by_tool: ollama-installer
+    oracle:
+      configured: "ollama --version >/dev/null 2>&1"
 
   ollama-service:
     component: ollama
@@ -30,6 +32,9 @@ targets:
       - ollama
     soft_depends_on:
       - gate:ollama-api
+    oracle:
+      configured: "ollama --version >/dev/null 2>&1"
+      runtime: 'curl -fsS "http://${_OLLAMA_API_HOST}:${_OLLAMA_API_PORT}/api/tags" >/dev/null 2>&1'
 
 # Model sets — controlled by UIC preference ollama-model-autopull (none|small|medium|large)
 # Default is none — no automatic downloads.

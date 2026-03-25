@@ -9,6 +9,8 @@ targets:
     profile: configured
     type: precondition
     provided_by_tool: macos-installer
+    oracle:
+      configured: "xcode-select -p >/dev/null 2>&1"
 
   homebrew:
     component: homebrew
@@ -17,6 +19,8 @@ targets:
     depends_on:
       - xcode-command-line-tools
     provided_by_tool: brew-installer
+    oracle:
+      configured: "brew --version >/dev/null 2>&1"
 installer_url: "https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh"
 analytics_desired: "off"
 shell_config_file: ".zprofile"

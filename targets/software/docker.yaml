@@ -2,10 +2,7 @@ component: docker
 primary_profile: configured
 libs: docker
 runner: run_docker_from_yaml
-memory_gb: 48
-cpu_count: 10
-swap_mib: 4096
-disk_mib: 204800
+
 targets:
   docker-desktop:
     component: docker
@@ -14,12 +11,6 @@ targets:
     depends_on:
       - homebrew
     provided_by_tool: brew-cask
-
-  docker-resources:
-    component: docker
-    profile: configured
-    type: config
-    depends_on:
-      - docker-desktop
-    soft_depends_on:
-      - gate:docker-settings-file
+    oracle:
+      configured: "[[ -d /Applications/Docker.app ]]"
+      runtime: "docker info >/dev/null 2>&1"

@@ -1,0 +1,18 @@
+component: docker-config
+primary_profile: configured
+libs: docker
+runner: run_docker_from_yaml
+memory_gb: 48
+cpu_count: 10
+swap_mib: 4096
+disk_mib: 204800
+
+targets:
+  docker-resources:
+    component: docker-config
+    profile: configured
+    type: config
+    depends_on:
+      - docker-desktop
+    soft_depends_on:
+      - gate:docker-settings-file

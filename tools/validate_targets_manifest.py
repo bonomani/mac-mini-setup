@@ -80,10 +80,14 @@ def parse_manifest_file(path: Path):
 
         if indent == 4 and text.endswith(":"):
             key = text[:-1]
-            if key not in {"depends_on", "soft_depends_on"}:
+            if key in {"depends_on", "soft_depends_on"}:
+                manifest["targets"][current][key] = []
+                current_list = key
+            elif key == "oracle":
+                manifest["targets"][current]["oracle"] = {}
+                current_list = "oracle"
+            else:
                 raise ValueError(f"{path}:{lineno}: unsupported list field '{key}'")
-            manifest["targets"][current][key] = []
-            current_list = key
             continue
 
         if indent == 4 and ":" in text:
@@ -93,9 +97,14 @@ def parse_manifest_file(path: Path):
             continue
 
         if indent == 6 and text.startswith("- "):
-            if current_list is None:
+            if current_list not in {"depends_on", "soft_depends_on"}:
                 raise ValueError(f"{path}:{lineno}: list item without active list")
             manifest["targets"][current][current_list].append(text[2:].strip())
+            continue
+
+        if indent == 6 and ":" in text and current_list == "oracle":
+            key, value = text.split(":", 1)
+            manifest["targets"][current]["oracle"][key.strip()] = value.strip()
             continue
 
         raise ValueError(f"{path}:{lineno}: unsupported structure")
@@ -103,10 +112,19 @@ def parse_manifest_file(path: Path):
     return manifest
 
 
+def _find_yaml_files(path: Path):
+    files = list(path.glob("*.yaml"))
+    for subdir in ("software", "system"):
+        sub = path / subdir
+        if sub.is_dir():
+            files.extend(sub.glob("*.yaml"))
+    return sorted(files, key=lambda f: f.name)
+
+
 def parse_manifest(path: Path):
     if path.is_dir():
         merged = {"targets": {}, "components": {}}
-        files = sorted(path.glob("*.yaml"))
+        files = _find_yaml_files(path)
         if not files:
             raise ValueError(f"{path}: no *.yaml files found")
         for file in files:
@@ -260,6 +278,7 @@ def main():
     component_profile_mode = False
     components_mode = False
     dispatch_mode = False
+    oracles_mode = False
     target_name = None
     if len(args) >= 2 and args[0] == "--deps":
         deps_mode = True
@@ -279,6 +298,9 @@ def main():
         args = args[2:]
     elif len(args) >= 1 and args[0] == "--components":
         components_mode = True
+        args = args[1:]
+    elif len(args) >= 1 and args[0] == "--oracles":
+        oracles_mode = True
         args = args[1:]
 
     path = Path(args[0]) if args else Path("targets")
@@ -314,11 +336,24 @@ def main():
         print(meta.get("libs", ""))
         print(meta.get("runner", ""))
         print(meta.get("on_fail", ""))
+        print(meta.get("file", ""))
         return 0
 
     if components_mode:
         for component in component_order(manifest, ordered):
             print(component)
+        return 0
+
+    if oracles_mode:
+        # Output tab-separated: target_name \t profile \t oracle_level \t oracle_cmd
+        for name in ordered:
+            data = manifest["targets"][name]
+            profile = data.get("profile", "")
+            oracle = data.get("oracle", {})
+            if not oracle:
+                continue
+            for level, cmd in oracle.items():
+                print(f"{name}\t{profile}\t{level}\t{cmd}")
         return 0
 
     print(f"OK: {len(manifest['targets'])} orchestration targets validated")

@@ -11,6 +11,8 @@ targets:
     depends_on:
       - homebrew
     provided_by_tool: brew
+    oracle:
+      configured: "pyenv --version >/dev/null 2>&1"
 
   xz:
     component: python
@@ -19,6 +21,8 @@ targets:
     depends_on:
       - homebrew
     provided_by_tool: brew
+    oracle:
+      configured: "brew list xz >/dev/null 2>&1"
 
   python:
     component: python
@@ -27,6 +31,9 @@ targets:
     depends_on:
       - pyenv
       - xz
+    oracle:
+      configured: "python3 --version >/dev/null 2>&1"
+      runtime: "python3 -c 'import lzma'"
 
   pip-latest:
     component: python
@@ -34,6 +41,8 @@ targets:
     type: config
     depends_on:
       - python
+    oracle:
+      configured: "pip --version >/dev/null 2>&1"
 
 pyenv_packages:
   - pyenv
