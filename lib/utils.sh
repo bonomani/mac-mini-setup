@@ -22,6 +22,27 @@ fi
 # Check if a command exists
 is_installed() { command -v "$1" &>/dev/null; }
 
+# Pip version cache — call pip_cache_versions once before pip group targets
+pip_cache_versions() {
+  _PIP_VERSIONS_CACHE=$(pip list --format=json 2>/dev/null || echo '[]')
+}
+
+# Return installed version of a pip package, or empty string if absent
+_pip_cached_version() {
+  [[ -z "${_PIP_VERSIONS_CACHE+x}" ]] && { pip show "$1" 2>/dev/null | awk '/^Version:/{print $2}'; return; }
+  python3 -c "
+import sys, json
+pkgs = json.load(sys.stdin)
+name = sys.argv[1].lower().replace('-','_')
+for p in pkgs:
+    if p['name'].lower().replace('-','_') == name:
+        print(p['version']); sys.exit(0)
+" "$1" 2>/dev/null <<< "$_PIP_VERSIONS_CACHE"
+}
+
+# Check if a pip package is installed (uses version cache when available)
+pip_is_installed() { [[ -n "$(_pip_cached_version "$1")" ]]; }
+
 # Check if a brew formula is installed (uses version cache when available)
 brew_is_installed() {
   if [[ -n "${_BREW_VERSIONS_CACHE+x}" ]]; then

@@ -12,23 +12,22 @@ _pip_group() {
 
   if [[ -n "$minver" ]]; then
     eval "_observe_grp_${fn}() {
-      local raw
-      raw=\$(python3 -c \"
+      local ver raw
+      ver=\$(_pip_cached_version '${first}')
+      if [[ -z \"\$ver\" ]]; then raw='absent'
+      else
+        python3 -c \"
+from packaging.version import Version
 import sys
-try:
-    import importlib.metadata
-    ver = importlib.metadata.version('${first}')
-    from packaging.version import Version
-    sys.exit(0 if Version(ver) >= Version('${minver}') else 1)
-except Exception:
-    sys.exit(1)
-\" 2>/dev/null && pip show '${first}' 2>/dev/null | awk '/^Version:/ {print \$2}' || echo 'absent')
+sys.exit(0 if Version('${minver}') <= Version(sys.argv[1]) else 1)
+\" \"\$ver\" 2>/dev/null && raw=\"\$ver\" || raw='absent'
+      fi
       ucc_asm_package_state \"\$raw\"
     }"
   else
-    eval "_observe_grp_${fn}() { local raw; raw=\$(pip_is_installed '${first}' && pip show '${first}' 2>/dev/null | awk '/^Version:/ {print \$2}' || echo 'absent'); ucc_asm_package_state \"\$raw\"; }"
+    eval "_observe_grp_${fn}() { local raw; raw=\$(_pip_cached_version '${first}' || echo 'absent'); [[ -z \"\$raw\" ]] && raw='absent'; ucc_asm_package_state \"\$raw\"; }"
   fi
-  eval "_evidence_grp_${fn}() { local ver; ver=\$(pip show '${first}' 2>/dev/null | awk '/^Version:/ {print \$2}'); [[ -n \"\$ver\" ]] && printf 'version=%s pkg=${first}' \"\$ver\"; }"
+  eval "_evidence_grp_${fn}() { local ver; ver=\$(_pip_cached_version '${first}'); [[ -n \"\$ver\" ]] && printf 'version=%s pkg=${first}' \"\$ver\"; }"
   eval "_install_grp_${fn}() { ucc_run pip install -q ${pkgs}; }"
   eval "_update_grp_${fn}()  { ucc_run pip install -q --upgrade ${pkgs}; }"
 
@@ -54,6 +53,7 @@ load_pip_groups_from_yaml() {
 # Usage: run_ai_python_stack_from_yaml <cfg_dir> <yaml_path>
 run_ai_python_stack_from_yaml() {
   local cfg_dir="$1" yaml="$2"
+  pip_cache_versions
   load_pip_groups_from_yaml "$cfg_dir" "$yaml"
   register_unsloth_studio_targets "$cfg_dir" "$yaml"
   if [[ "$UCC_DRY_RUN" != "1" ]] && is_installed python3; then
