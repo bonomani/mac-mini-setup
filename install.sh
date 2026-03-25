@@ -52,12 +52,12 @@
 #    - respect UCC_MODE (install | update) and UCC_DRY_RUN
 #  Component verify runs TIC tests after all UCC components complete.
 #
-#  Immutable framework version refs (BGS decision record)
-#    BGS : bgs@73adc3f
-#    ASM : asm@5ca20bd
-#    UCC : ucc@da74277
-#    UIC : uic@11bd400
-#    TIC : tic@7cfba80
+#  Framework version refs (updated 2026-03-25)
+#    BGS : bgs@7961fb4
+#    ASM : asm@dca032b
+#    UCC : ucc@370c1f7
+#    UIC : uic@11bd400  (unchanged)
+#    TIC : tic@7cfba80  (unchanged)
 # ============================================================
 set -euo pipefail
 
