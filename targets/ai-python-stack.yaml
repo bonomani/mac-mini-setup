@@ -10,6 +10,8 @@ targets:
     depends_on:
       - python
       - pip-latest
+    oracle:
+      configured: '[[ -d "${_UNSLOTH_STUDIO_DIR}" ]]'
 
   unsloth-studio-launchd:
     component: ai-python-stack
@@ -17,6 +19,9 @@ targets:
     type: service
     depends_on:
       - unsloth-studio-setup
+    oracle:
+      configured: 'launchctl list 2>/dev/null | grep -q "${_UNSLOTH_LABEL}"'
+      runtime: 'curl -fsS --max-time 5 "http://127.0.0.1:${_UNSLOTH_PORT}" >/dev/null 2>&1'
 # Fields:
 #   name        ucc-target suffix and _pip_group identifier
 #   probe       package name used for pip show / version detection

@@ -17,6 +17,8 @@ targets:
     depends_on:
       - homebrew
     provided_by_tool: brew-cask
+    oracle:
+      configured: "[[ -d '/Applications/Visual Studio Code.app' ]] || is_installed code"
 
   vscode-code-cmd:
     component: dev-tools
@@ -24,6 +26,8 @@ targets:
     type: config
     depends_on:
       - vscode
+    oracle:
+      configured: "code --version >/dev/null 2>&1"
 
   vscode-settings:
     component: dev-tools
@@ -39,11 +43,15 @@ targets:
     depends_on:
       - homebrew
     provided_by_tool: brew
+    oracle:
+      configured: 'node --version 2>/dev/null | grep -q "^v${_NODE_VER}\."'
 
   oh-my-zsh:
     component: dev-tools
     profile: configured
     type: config
+    oracle:
+      configured: '[[ -d "$HOME/.oh-my-zsh" ]]'
 
   omz-theme-agnoster:
     component: dev-tools
@@ -63,6 +71,8 @@ targets:
     type: config
     depends_on:
       - home-bin-in-path
+    oracle:
+      configured: '[[ -x "$HOME/bin/ai-healthcheck" ]]'
 
   ariaflow:
     component: dev-tools
@@ -71,6 +81,8 @@ targets:
     depends_on:
       - homebrew
     provided_by_tool: brew
+    oracle:
+      configured: "ariaflow --version >/dev/null 2>&1 || ariaflow lifecycle >/dev/null 2>&1"
 
   aria2-launchd:
     component: dev-tools
@@ -86,6 +98,8 @@ targets:
     depends_on:
       - ariaflow
     provided_by_tool: brew
+    oracle:
+      configured: "brew list ariaflow-web >/dev/null 2>&1"
 
   ariaflow-web-service:
     component: dev-tools
@@ -93,6 +107,9 @@ targets:
     type: service
     depends_on:
       - ariaflow-web
+    oracle:
+      configured: "brew services list 2>/dev/null | awk '/^ariaflow-web/ {print $2}' | grep -q '^started$'"
+      runtime: 'curl -fsS --max-time 5 "http://127.0.0.1:${_ARIAFLOW_WEB_PORT}" >/dev/null 2>&1'
 
 # Homebrew formula CLI tools
 cli_tools:

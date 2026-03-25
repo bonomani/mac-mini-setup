@@ -9,6 +9,8 @@ targets:
     type: config
     soft_depends_on:
       - gate:sudo-available
+    oracle:
+      configured: "pmset -g | grep -E '^ +sleep ' | awk '{print $2}' | grep -q '^0$'"
 
   pmset-disksleep=0:
     component: macos-defaults
@@ -16,6 +18,8 @@ targets:
     type: config
     soft_depends_on:
       - gate:sudo-available
+    oracle:
+      configured: "pmset -g | awk '/disksleep/ {print $2}' | grep -q '^0$'"
 
   pmset-standby=0:
     component: macos-defaults
@@ -23,6 +27,8 @@ targets:
     type: config
     soft_depends_on:
       - gate:sudo-available
+    oracle:
+      configured: "pmset -g | awk '/^[[:space:]]+standby / {print $2}' | grep -q '^0$'"
 
   app-nap=disabled:
     component: macos-defaults
@@ -30,6 +36,8 @@ targets:
     type: config
     soft_depends_on:
       - gate:sudo-available
+    oracle:
+      configured: "defaults read NSGlobalDomain NSAppSleepDisabled 2>/dev/null | grep -q '^1$'"
 
   finder-show-hidden=1:
     component: macos-defaults
@@ -37,6 +45,8 @@ targets:
     type: config
     soft_depends_on:
       - gate:sudo-available
+    oracle:
+      configured: "defaults read com.apple.finder AppleShowAllFiles 2>/dev/null | grep -qi '^1$\\|^true$'"
 
   show-all-extensions=1:
     component: macos-defaults
@@ -44,6 +54,8 @@ targets:
     type: config
     soft_depends_on:
       - gate:sudo-available
+    oracle:
+      configured: "defaults read NSGlobalDomain AppleShowAllExtensions 2>/dev/null | grep -qi '^1$\\|^true$'"
 
   dock-autohide=1:
     component: macos-defaults
@@ -51,6 +63,8 @@ targets:
     type: config
     soft_depends_on:
       - gate:sudo-available
+    oracle:
+      configured: "defaults read com.apple.dock autohide 2>/dev/null | grep -qi '^1$\\|^true$'"
 restart_processes:
   - Finder
   - Dock
