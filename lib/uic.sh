@@ -354,3 +354,91 @@ uic_write_template() {
   log_info "UIC preferences template written to: $target"
   log_info "Edit and rename to $UIC_PREF_FILE to activate overrides"
 }
+
+# ── YAML loaders (called from install.sh) ─────────────────────────────────────
+
+load_uic_gates() {
+  local dir="$1"
+  local gates_file="$dir/policy/gates.yaml"
+  local name="" condition="" scope="" class="" target_state="" blocking=""
+  [[ -f "$gates_file" ]] || return 0
+  while IFS= read -r _line; do
+    case "$_line" in
+      "  - name: "*)
+        if [[ -n "$name" ]]; then
+          uic_gate --name "$name" --condition "$condition" \
+            --scope "${scope:-global}" --class "${class:-readiness}" \
+            --target-state "$target_state" --blocking "${blocking:-hard}"
+        fi
+        name="${_line#  - name: }"; condition=""; scope="global"
+        class="readiness"; target_state=""; blocking="hard" ;;
+      "    condition: "*)   condition="${_line#    condition: }" ;;
+      "    scope: "*)       scope="${_line#    scope: }" ;;
+      "    class: "*)       class="${_line#    class: }" ;;
+      "    target_state: "*)target_state="${_line#    target_state: }" ;;
+      "    blocking: "*)    blocking="${_line#    blocking: }" ;;
+    esac
+  done < "$gates_file"
+  [[ -n "$name" ]] && uic_gate --name "$name" --condition "$condition" \
+    --scope "${scope:-global}" --class "${class:-readiness}" \
+    --target-state "$target_state" --blocking "${blocking:-hard}"
+}
+
+load_uic_preferences() {
+  local dir="$1"
+  local pref_file="$dir/policy/preferences.yaml"
+  local name="" default="" options="" scope="" rationale=""
+  [[ -f "$pref_file" ]] || return 0
+  while IFS= read -r _line; do
+    case "$_line" in
+      "  - name: "*)
+        if [[ -n "$name" ]]; then
+          uic_preference --name "$name" --default "$default" \
+            --options "$options" --rationale "$rationale" --scope "${scope:-global}"
+        fi
+        name="${_line#  - name: }"; default=""; options=""
+        scope="global"; rationale="" ;;
+      "    default: "*)   default="${_line#    default: }" ;;
+      "    options: "*)   options="${_line#    options: }" ;;
+      "    scope: "*)     scope="${_line#    scope: }" ;;
+      "    rationale: "*) rationale="${_line#    rationale: }" ;;
+    esac
+  done < "$pref_file"
+  [[ -n "$name" ]] && uic_preference --name "$name" --default "$default" \
+    --options "$options" --rationale "$rationale" --scope "${scope:-global}"
+}
+
+# ── Global state display helpers ──────────────────────────────────────────────
+
+uic_global_state_label() {
+  if [[ ${#_UIC_FAILED_HARD[@]} -gt 0 ]]; then printf 'Blocked'
+  elif [[ ${#_UIC_FAILED_SOFT[@]} -gt 0 ]]; then printf 'Degraded'
+  else printf 'Ready'
+  fi
+}
+
+uic_global_state_detail() {
+  local detail=""
+  if [[ ${#_UIC_FAILED_HARD[@]} -gt 0 ]]; then
+    detail="hard_gates=${_UIC_FAILED_HARD[*]}"
+  elif [[ ${#_UIC_FAILED_SOFT[@]} -gt 0 ]]; then
+    detail="soft_gates=${_UIC_FAILED_SOFT[*]}"
+  else
+    detail="all_gates_satisfied"
+  fi
+  printf '%s' "$detail" | tr ' ' ','
+}
+
+# ── Hard gate abort helper ────────────────────────────────────────────────────
+
+abort_on_global_hard_gate() {
+  local _gi _gkey
+  for _gi in "${!_UIC_GATE_NAMES[@]}"; do
+    [[ "${_UIC_GATE_BLOCKS[$_gi]}" == "hard" ]]  || continue
+    [[ "${_UIC_GATE_SCOPES[$_gi]}" == "global" ]] || continue
+    _gkey="$(_uic_gate_key "${_UIC_GATE_NAMES[$_gi]}")"
+    if [[ "${!_gkey:-}" == "1" ]]; then
+      log_error "UIC global hard gate '${_UIC_GATE_NAMES[$_gi]}' failed — convergence aborted (run --preflight for details)"
+    fi
+  done
+}

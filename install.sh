@@ -66,6 +66,7 @@ source "$DIR/lib/ucc.sh"
 source "$DIR/lib/uic.sh"
 source "$DIR/lib/tic.sh"
 source "$DIR/lib/utils.sh"
+source "$DIR/lib/summary.sh"
 
 # ============================================================
 #  UIC gate condition functions (read-only, no side effects)
@@ -95,136 +96,6 @@ while IFS= read -r _component; do
   [[ -n "$_component" ]] && COMPONENTS+=("$_component")
 done < <(_load_components)
 
-_print_services_summary() {
-  local services_file="$DIR/services.yaml"
-  local name="" url="" note="" line=""
-  [[ -f "$services_file" ]] || return 0
-  echo "  ──────────────────────────────────────────────────────"
-  echo "  Services"
-  while IFS= read -r _line; do
-    case "$_line" in
-      "  - name: "*)
-        [[ -n "$name" ]] || { name="${_line#  - name: }"; continue; }
-        line="    $(printf '%-16s' "$name") → ${url}"
-        [[ -n "$note" ]] && line="${line}   (${note})"
-        echo "$line"
-        name="${_line#  - name: }"
-        url=""
-        note=""
-        ;;
-      "    name: "*)
-        name="${_line#    name: }"
-        ;;
-      "    url: "*)
-        url="${_line#    url: }"
-        ;;
-      "    note: "*)
-        note="${_line#    note: }"
-        ;;
-    esac
-  done < "$services_file"
-  if [[ -n "$name" ]]; then
-    line="    $(printf '%-16s' "$name") → ${url}"
-    [[ -n "$note" ]] && line="${line}   (${note})"
-    echo "$line"
-  fi
-}
-
-_load_uic_preferences() {
-  local pref_file="$DIR/policy/preferences.yaml"
-  local name="" default="" options="" scope="" rationale=""
-  [[ -f "$pref_file" ]] || return 0
-  while IFS= read -r _line; do
-    case "$_line" in
-      "  - name: "*)
-        if [[ -n "$name" ]]; then
-          uic_preference \
-            --name "$name" \
-            --default "$default" \
-            --options "$options" \
-            --rationale "$rationale" \
-            --scope "${scope:-global}"
-        fi
-        name="${_line#  - name: }"
-        default=""
-        options=""
-        scope="global"
-        rationale=""
-        ;;
-      "    default: "*)
-        default="${_line#    default: }"
-        ;;
-      "    options: "*)
-        options="${_line#    options: }"
-        ;;
-      "    scope: "*)
-        scope="${_line#    scope: }"
-        ;;
-      "    rationale: "*)
-        rationale="${_line#    rationale: }"
-        ;;
-    esac
-  done < "$pref_file"
-  if [[ -n "$name" ]]; then
-    uic_preference \
-      --name "$name" \
-      --default "$default" \
-      --options "$options" \
-      --rationale "$rationale" \
-      --scope "${scope:-global}"
-  fi
-}
-
-_load_uic_gates() {
-  local gates_file="$DIR/policy/gates.yaml"
-  local name="" condition="" scope="" class="" target_state="" blocking=""
-  [[ -f "$gates_file" ]] || return 0
-  while IFS= read -r _line; do
-    case "$_line" in
-      "  - name: "*)
-        if [[ -n "$name" ]]; then
-          uic_gate \
-            --name "$name" \
-            --condition "$condition" \
-            --scope "${scope:-global}" \
-            --class "${class:-readiness}" \
-            --target-state "$target_state" \
-            --blocking "${blocking:-hard}"
-        fi
-        name="${_line#  - name: }"
-        condition=""
-        scope="global"
-        class="readiness"
-        target_state=""
-        blocking="hard"
-        ;;
-      "    condition: "*)
-        condition="${_line#    condition: }"
-        ;;
-      "    scope: "*)
-        scope="${_line#    scope: }"
-        ;;
-      "    class: "*)
-        class="${_line#    class: }"
-        ;;
-      "    target_state: "*)
-        target_state="${_line#    target_state: }"
-        ;;
-      "    blocking: "*)
-        blocking="${_line#    blocking: }"
-        ;;
-    esac
-  done < "$gates_file"
-  if [[ -n "$name" ]]; then
-    uic_gate \
-      --name "$name" \
-      --condition "$condition" \
-      --scope "${scope:-global}" \
-      --class "${class:-readiness}" \
-      --target-state "$target_state" \
-      --blocking "${blocking:-hard}"
-  fi
-}
 
 usage() {
   cat <<EOF
@@ -281,10 +152,10 @@ done
 # ============================================================
 
 # --- Gates --------------------------------------------------
-_load_uic_gates
+load_uic_gates "$DIR"
 
 # --- Preferences (safe defaults = most conservative choice) -
-_load_uic_preferences
+load_uic_preferences "$DIR"
 
 # --- Resolve (evaluate gates, report preferences) -----------
 _UIC_RC=0
@@ -307,16 +178,7 @@ fi
 
 # --- Hard gate failure: abort only on globally-scoped hard gates --------
 # Component-scoped hard gates block only their component (via uic_component_blocked).
-_GLOBAL_HARD_FAILED=0
-for _gi in "${!_UIC_GATE_NAMES[@]}"; do
-  [[ "${_UIC_GATE_BLOCKS[$_gi]}" == "hard" ]]   || continue
-  [[ "${_UIC_GATE_SCOPES[$_gi]}" == "global" ]]  || continue
-  _gkey="$(_uic_gate_key "${_UIC_GATE_NAMES[$_gi]}")"
-  [[ "${!_gkey:-}" == "1" ]] && _GLOBAL_HARD_FAILED=1
-done
-if [[ "$_GLOBAL_HARD_FAILED" == "1" ]]; then
-  log_error "UIC global hard gate failed — convergence aborted (run --preflight for details)"
-fi
+abort_on_global_hard_gate
 
 [[ "$(uname)" == "Darwin" ]] || log_error "This script is for macOS only"
 
@@ -327,74 +189,13 @@ TOTAL_GB=$(( TOTAL_MEM / 1024 / 1024 / 1024 ))
 _arch_label="$ARCH"; [[ "$ARCH" == "arm64" ]] && _arch_label="arm64 (Apple Silicon / Metal)"
 _ram_label="${TOTAL_GB} GB"; [[ $TOTAL_GB -ge 32 ]] && _ram_label="${TOTAL_GB} GB (large model capable)"
 
-_global_state_label() {
-  if [[ ${#_UIC_FAILED_HARD[@]} -gt 0 ]]; then
-    printf 'Blocked'
-    return
-  fi
-  if [[ ${#_UIC_FAILED_SOFT[@]} -gt 0 ]]; then
-    printf 'Degraded'
-    return
-  fi
-  printf 'Ready'
-}
-
-_global_state_detail() {
-  local detail=""
-  if [[ ${#_UIC_FAILED_HARD[@]} -gt 0 ]]; then
-    detail="hard_gates=${_UIC_FAILED_HARD[*]}"
-  elif [[ ${#_UIC_FAILED_SOFT[@]} -gt 0 ]]; then
-    detail="soft_gates=${_UIC_FAILED_SOFT[*]}"
-  else
-    detail="all_gates_satisfied"
-  fi
-  printf '%s' "$detail" | tr ' ' ','
-}
-
-_summary_line() {
-  local ok="${1:-0}" changed="${2:-0}" failed="${3:-0}" line=""
-  line="${ok} ok"
-  [[ "$changed" -gt 0 ]] && line="${line}  ${changed} changed"
-  [[ "$failed" -gt 0 ]] && line="${line}  ${failed} FAILED"
-  printf '%s' "$line"
-}
-
-_profile_var_prefix() {
-  case "$1" in
-    presence) printf '_profile_presence' ;;
-    configured) printf '_profile_configured' ;;
-    runtime) printf '_profile_runtime' ;;
-    parametric) printf '_profile_parametric' ;;
-    *) printf '' ;;
-  esac
-}
-
-_profile_bump() {
-  local prefix
-  prefix="$(_profile_var_prefix "$1")"
-  [[ -z "$prefix" ]] && return 0
-  case "$2" in
-    ok|unchanged) eval "${prefix}_ok=\$(( ${prefix}_ok + 1 ))" ;;
-    changed) eval "${prefix}_chg=\$(( ${prefix}_chg + 1 ))" ;;
-    failed) eval "${prefix}_fail=\$(( ${prefix}_fail + 1 ))" ;;
-  esac
-}
-
-_print_profile_contracts() {
-  local profile expected
-  for profile in presence configured runtime parametric; do
-    expected="$(ucc_profile_expected_text "$profile")"
-    [[ -n "$expected" ]] || continue
-    printf '  Profile %-10s | baseline: %s\n' "$(ucc_profile_label "$profile")" "$expected"
-  done
-}
 
 echo "========================================================"
 _hdr_flags="mode=$UCC_MODE"; [[ "$UCC_DRY_RUN" == "1" ]] && _hdr_flags="$_hdr_flags dry_run=1"
 echo "  Mac Mini AI Setup | $_hdr_flags | $(date '+%Y-%m-%d %H:%M')"
 echo "  $_arch_label  ·  $_ram_label"
-echo "  Global State     | $(_global_state_label) ($(_global_state_detail))"
-_print_profile_contracts
+echo "  Global State     | $(uic_global_state_label) ($(uic_global_state_detail))"
+print_profile_contracts
 log_debug "correlation_id=$UCC_CORRELATION_ID"
 echo "========================================================"
 
@@ -492,13 +293,10 @@ _run_comp() {
   local comp="$1" _libs="$2" _runner="$3" _on_fail="$4" _config="$5"
   if uic_component_blocked "$comp"; then
     log_warn "Component $comp blocked by UIC hard gate — outcome=failed, failure_class=permanent, reason=gate_failed"
-    FAILED_COMPONENTS+=("$comp")
-    return
+    FAILED_COMPONENTS+=("$comp"); return
   fi
   local _src=""
-  for _lib in $_libs; do
-    _src="${_src}source \"${DIR}/lib/${_lib}.sh\"; "
-  done
+  for _lib in $_libs; do _src="${_src}source \"${DIR}/lib/${_lib}.sh\"; "; done
   local _run
   case "$_on_fail" in
     exit)   _run="${_runner} \"${DIR}\" \"${_config}\" || { ucc_summary \"${comp}\"; exit 1; }" ;;
@@ -512,124 +310,41 @@ _run_comp() {
   _refresh_brew_path
 }
 
-# Pass 1 — software layer
-echo ""
-printf '── UCC / software\n'
-for _i in "${!_DISP_COMPS[@]}"; do
-  [[ "${_DISP_CONFIGS[$_i]}" == */system/* ]] && continue
-  [[ "${_DISP_CONFIGS[$_i]}" == "tic" ]]      && continue
-  comp="${_DISP_COMPS[$_i]}"
-  _SOFTWARE_COMPS+=("$comp")
-  _run_comp "$comp" "${_DISP_LIBS[$_i]}" "${_DISP_RUNNERS[$_i]}" "${_DISP_ON_FAILS[$_i]}" "${_DISP_CONFIGS[$_i]}"
-done
-
-# Pass 2 — system layer
-echo ""
-printf '── UCC / system\n'
-for _i in "${!_DISP_COMPS[@]}"; do
-  [[ "${_DISP_CONFIGS[$_i]}" != */system/* ]] && continue
-  comp="${_DISP_COMPS[$_i]}"
-  _SYSTEM_COMPS+=("$comp")
-  _run_comp "$comp" "${_DISP_LIBS[$_i]}" "${_DISP_RUNNERS[$_i]}" "${_DISP_ON_FAILS[$_i]}" "${_DISP_CONFIGS[$_i]}"
-done
-
-# Pass 3 — TIC / verification
-for _i in "${!_DISP_COMPS[@]}"; do
-  [[ "${_DISP_CONFIGS[$_i]}" != "tic" ]] && continue
-  comp="${_DISP_COMPS[$_i]}"
-  _TIC_COMPS+=("$comp")
-  if uic_component_blocked "$comp"; then
-    log_warn "Component $comp blocked by UIC hard gate"
-    FAILED_COMPONENTS+=("$comp")
-    continue
-  fi
-  echo ""
-  printf '── TIC\n'
-  if ! bash -c "${_comp_prelude}; source \"${DIR}/lib/tic.sh\"; source \"${DIR}/lib/tic_runner.sh\"; run_verify \"${DIR}\"" \
-       > "$UCC_VERIFICATION_REPORT_FILE"; then
-    log_warn "Component failed: $comp"
-    FAILED_COMPONENTS+=("$comp")
-  fi
-  _print_verification_section
-done
-
-# --- Final summary ------------------------------------------
-echo ""
-echo "========================================================"
-_hdr_sum="Summary | mode=$UCC_MODE"
-[[ "$UCC_DRY_RUN" == "1" ]] && _hdr_sum="$_hdr_sum | dry_run=1"
-echo "  $_hdr_sum"
-echo "  ──────────────────────────────────────────────────────"
-
-_total_ok=0; _total_chg=0; _total_fail=0; _total_skip=0
-_profile_presence_ok=0; _profile_presence_chg=0; _profile_presence_fail=0
-_profile_configured_ok=0; _profile_configured_chg=0; _profile_configured_fail=0
-_profile_runtime_ok=0; _profile_runtime_chg=0; _profile_runtime_fail=0
-_profile_parametric_ok=0; _profile_parametric_chg=0; _profile_parametric_fail=0
-
-_print_summary_section() {
-  local section_label="$1"; shift
-  local _comps=("$@")
-  local _printed=0
-  [[ ${#_comps[@]} -eq 0 ]] && return
-  if [[ -f "$UCC_SUMMARY_FILE" ]]; then
-    while IFS='|' read -r _comp _a _b _c _d; do
-      _comp_in_list "$_comp" "${_comps[@]}" || continue
-      if [[ $_printed -eq 0 ]]; then
-        echo "  ── $section_label"
-        _printed=1
+# _run_layer <label> <filter> <comps_array_ref>
+# filter: "software" | "system" | "tic"
+_run_layer() {
+  local label="$1" filter="$2" comps_ref="$3"
+  echo ""; printf '── %s\n' "$label"
+  for _i in "${!_DISP_COMPS[@]}"; do
+    local _cfg="${_DISP_CONFIGS[$_i]}"
+    case "$filter" in
+      software) [[ "$_cfg" == */system/* || "$_cfg" == "tic" ]] && continue ;;
+      system)   [[ "$_cfg" != */system/* ]] && continue ;;
+      tic)      [[ "$_cfg" != "tic" ]] && continue ;;
+    esac
+    local comp="${_DISP_COMPS[$_i]}"
+    eval "${comps_ref}+=(\"\$comp\")"
+    if [[ "$filter" == "tic" ]]; then
+      if uic_component_blocked "$comp"; then
+        log_warn "Component $comp blocked by UIC hard gate"
+        FAILED_COMPONENTS+=("$comp"); continue
       fi
-      if [[ "$_a" == "tic" ]]; then
-        local _tic_parts="${_b} pass"
-        [[ "$_c" -gt 0 ]] && _tic_parts="${_tic_parts}  ${_c} FAIL"
-        [[ "$_d" -gt 0 ]] && _tic_parts="${_tic_parts}  skip=${_d}"
-        printf '  %-22s  %s\n' "$_comp" "$_tic_parts"
-      else
-        _total_ok=$(( _total_ok + _a ))
-        _total_chg=$(( _total_chg + _b ))
-        _total_fail=$(( _total_fail + _c ))
-        _total_skip=$(( _total_skip + ${_d:-0} ))
-        _parts=""
-        [[ $_a -gt 0 ]] && _parts="${_a} ok"
-        [[ $_b -gt 0 ]] && _parts="${_parts:+$_parts  }${_b} changed"
-        [[ $_c -gt 0 ]] && _parts="${_parts:+$_parts  }${_c} FAILED"
-        [[ ${_d:-0} -gt 0 ]] && _parts="${_parts:+$_parts  }skip=${_d}"
-        printf '  %-22s  %s\n' "$_comp" "${_parts:----}"
+      if ! bash -c "${_comp_prelude}; source \"${DIR}/lib/tic.sh\"; source \"${DIR}/lib/tic_runner.sh\"; run_verify \"${DIR}\"" \
+           > "$UCC_VERIFICATION_REPORT_FILE"; then
+        log_warn "Component failed: $comp"; FAILED_COMPONENTS+=("$comp")
       fi
-    done < "$UCC_SUMMARY_FILE"
-  fi
+      [[ -s "$UCC_VERIFICATION_REPORT_FILE" ]] && cat "$UCC_VERIFICATION_REPORT_FILE"
+    else
+      _run_comp "$comp" "${_DISP_LIBS[$_i]}" "${_DISP_RUNNERS[$_i]}" "${_DISP_ON_FAILS[$_i]}" "$_cfg"
+    fi
+  done
 }
 
-_print_summary_section "UCC / software" "${_SOFTWARE_COMPS[@]}"
-_print_summary_section "UCC / system"   "${_SYSTEM_COMPS[@]}"
-_print_summary_section "TIC"            "${_TIC_COMPS[@]}"
-echo "  ──────────────────────────────────────────────────────"
-_total_line="$(_summary_line "$_total_ok" "$_total_chg" "$_total_fail")"
-[[ $_total_skip -gt 0 ]] && _total_line="${_total_line}  skip=${_total_skip}"
-printf '  %-22s  %s\n' "Total" "$_total_line"
+_run_layer "UCC / software" "software" _SOFTWARE_COMPS
+_run_layer "UCC / system"   "system"   _SYSTEM_COMPS
+_run_layer "TIC"            "tic"      _TIC_COMPS
 
-if [[ -f "$UCC_PROFILE_SUMMARY_FILE" ]]; then
-  while IFS='|' read -r _profile _outcome; do
-    _profile_bump "$_profile" "$_outcome"
-  done < "$UCC_PROFILE_SUMMARY_FILE"
-  echo "  ──────────────────────────────────────────────────────"
-  echo "  By Profile"
-  printf '  %-22s  %s\n' "$(ucc_profile_label presence)"   "$(_summary_line "$_profile_presence_ok"   "$_profile_presence_chg"   "$_profile_presence_fail")"
-  printf '  %-22s  %s\n' "$(ucc_profile_label configured)" "$(_summary_line "$_profile_configured_ok" "$_profile_configured_chg" "$_profile_configured_fail")"
-  printf '  %-22s  %s\n' "$(ucc_profile_label runtime)"    "$(_summary_line "$_profile_runtime_ok"    "$_profile_runtime_chg"    "$_profile_runtime_fail")"
-  printf '  %-22s  %s\n' "$(ucc_profile_label parametric)" "$(_summary_line "$_profile_parametric_ok" "$_profile_parametric_chg" "$_profile_parametric_fail")"
-fi
-
-if [[ ${#FAILED_COMPONENTS[@]} -gt 0 ]]; then
-  echo ""
-  log_warn "Failed components: ${FAILED_COMPONENTS[*]}"
-fi
-
-_print_services_summary
-echo "  ──────────────────────────────────────────────────────"
-echo "  Declarations: $UCC_DECLARATION_FILE"
-echo "  Results:      $UCC_RESULT_FILE"
-echo "========================================================"
-echo ""
+# --- Final summary ------------------------------------------
+print_final_summary "$DIR" "$UCC_MODE" "${UCC_DRY_RUN:-0}"
 
 [[ ${#FAILED_COMPONENTS[@]} -eq 0 ]]
