@@ -76,7 +76,8 @@ run_docker_config_from_yaml() {
         --health Unavailable --admin Enabled --dependencies DepsFailed
     else
       ucc_asm_state --installation Configured --runtime Stopped \
-        --health Healthy --admin Enabled --dependencies DepsReady
+        --health Healthy --admin Enabled --dependencies DepsReady \
+        --config-value "mem=${_DOCKER_MEM_GB}GB cpu=${_DOCKER_CPUS}"
     fi
   }
   _observe_docker_settings() {
@@ -86,15 +87,19 @@ run_docker_config_from_yaml() {
         --health Unavailable --admin Enabled --dependencies DepsFailed
       return
     }
-    local mem
+    local mem cpus mem_gb
     mem=$(python3 -c "import json; d=json.load(open('$f')); print(d.get('memoryMiB',0))" 2>/dev/null)
+    cpus=$(python3 -c "import json; d=json.load(open('$f')); print(d.get('cpus',0))" 2>/dev/null)
     [[ -z "$mem" ]] && return 0
+    mem_gb=$(( mem / 1024 ))
     if [[ "$mem" -ge "$_DOCKER_MEM_MIB" ]]; then
       ucc_asm_state --installation Configured --runtime Stopped \
-        --health Healthy --admin Enabled --dependencies DepsReady
+        --health Healthy --admin Enabled --dependencies DepsReady \
+        --config-value "mem=${mem_gb}GB cpu=${cpus}"
     else
       ucc_asm_state --installation Installed --runtime Stopped \
-        --health Degraded --admin Enabled --dependencies DepsDegraded
+        --health Degraded --admin Enabled --dependencies DepsDegraded \
+        --config-value "mem=${mem_gb}GB cpu=${cpus}"
     fi
   }
   _evidence_docker_settings() {
@@ -128,7 +133,7 @@ EOF
     --name    "docker-resources" \
     --observe _observe_docker_settings \
     --evidence _evidence_docker_settings \
-    --axes    "$UCC_ASM_CONFIGURED_AXES" \
+    --profile parametric \
     --desired "$(_docker_settings_desired_state)" \
     --install _configure_docker_settings \
     --update  _configure_docker_settings

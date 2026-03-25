@@ -62,6 +62,7 @@ _macos_defaults_target() {
 
   ucc_target_nonruntime \
     --name "$name" \
+    --profile parametric \
     --observe "$observe_fn" \
     --evidence "$evidence_fn" \
     --desired "$(_macos_defaults_desired_state "$desired")" \

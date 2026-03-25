@@ -29,6 +29,16 @@ profiles:
     health: Healthy
     admin: Enabled
     dependencies: DepsReady
+  - id: parametric
+    label: Parametric
+    aliases: configured-value
+    axes: installation_state,health_state,dependency_state,config_value
+    expected_text: installation=Configured health=Healthy dependencies=DepsReady
+    installation: Configured
+    runtime: Stopped
+    health: Healthy
+    admin: Enabled
+    dependencies: DepsReady
   - id: verification
     label: Verification
     aliases:

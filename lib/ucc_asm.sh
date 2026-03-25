@@ -75,7 +75,7 @@ import json, sys
 state = json.loads(sys.argv[1])
 axes = [a for a in sys.argv[2].split(",") if a] if len(sys.argv) > 2 and sys.argv[2] else []
 fields = []
-keys = axes or ("installation_state", "runtime_state", "health_state", "admin_state", "dependency_state")
+keys = axes or [k for k in ("installation_state", "runtime_state", "health_state", "admin_state", "dependency_state", "config_value") if k in state]
 for key in keys:
     value = state.get(key)
     if value:
