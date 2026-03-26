@@ -1,8 +1,10 @@
 # Mac Mini AI Setup
 
-Scripts to set up a Mac mini (Apple Silicon, 64 GB) as an AI workstation.
-The repo now also declares a local system-level composition target so the
-governed state can describe the whole machine, not only individual components.
+Scripts to set up an AI workstation.
+macOS remains the primary target, while Linux and WSL run the portable subset
+and skip unsupported components automatically.
+The repo also declares a local system-level composition target so the governed
+state can describe the whole machine, not only individual components.
 
 ## Governance
 
@@ -87,6 +89,7 @@ governed state can describe the whole machine, not only individual components.
 |---|---|---|---|
 | `policy/gates.yaml` | YAML | UIC gates | Hard/soft preflight gate declarations |
 | `policy/preferences.yaml` | YAML | UIC preferences | Safe defaults and operator overrides |
+| `policy/components.yaml` | YAML | Component policy | Per-component `enabled|disabled|remove` mode declarations |
 | `policy/profiles.yaml` | YAML | UCC profiles | Presence/configured/runtime/parametric baselines |
 
 ### UCC Software Manifests
@@ -146,7 +149,7 @@ and `ucc/system/`, then dispatched through `install.sh`.
 | Git Config | `ucc/system/git-config.yaml` | Global git defaults |
 | Docker Config | `ucc/system/docker-config.yaml` | Docker memory/CPU/swap/disk resource settings |
 | macOS Defaults | `ucc/system/macos-defaults.yaml` | Power, Finder, Dock, and visibility defaults |
-| System | `ucc/system/system.yaml` | Whole-machine composition target over required governed subsystem targets |
+| AI Workstation | `ucc/system/system.yaml` | Whole-machine composition target over required governed subsystem targets |
 | Verify | `tic/software/verify.yaml`, `tic/system/verify.yaml` | Read-only post-convergence verification, including system-level evidence for `system-composition` |
 
 ## Usage
@@ -162,6 +165,19 @@ chmod +x install.sh
 # Multiple components
 ./install.sh python ai-python-stack
 ```
+
+## Component Policy
+
+Component participation is controlled in `policy/components.yaml`.
+
+Supported modes:
+- `enabled`: include the component in normal runs
+- `disabled`: skip the component without treating it as a failure
+- `remove`: reserved for future removal handlers; currently reported and skipped safely
+
+Platform support is also declared per component in the `ucc/software/*.yaml`
+and `ucc/system/*.yaml` manifests. On unsupported hosts such components are
+skipped automatically instead of aborting the whole installer.
 
 ## macOS Validation
 
@@ -207,6 +223,7 @@ Expected checkpoints:
 
 ## Requirements
 
-- macOS 14+ (Sonoma or later)
-- Apple Silicon (M1/M2/M3/M4)
-- 64 GB unified memory
+- macOS 14+ for the full workstation profile
+- Linux or WSL for the portable subset
+- Apple Silicon is recommended when you want MPS/Metal acceleration
+- 64 GB RAM is recommended for large local model workflows, but not required

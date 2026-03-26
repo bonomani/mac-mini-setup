@@ -3,7 +3,7 @@
 # Logging must go through lib/ucc.sh — do not redefine log_* here.
 
 # Ensure brew is in PATH for every component subshell (Apple Silicon / Intel)
-for _bp in /opt/homebrew/bin/brew /usr/local/bin/brew; do
+for _bp in /opt/homebrew/bin/brew /usr/local/bin/brew /home/linuxbrew/.linuxbrew/bin/brew; do
   if [[ -x "$_bp" ]] && ! command -v brew &>/dev/null; then
     eval "$("$_bp" shellenv)"
     break

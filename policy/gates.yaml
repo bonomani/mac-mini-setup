@@ -1,15 +1,15 @@
 gates:
-  - name: macos-platform
-    condition: _gate_macos
+  - name: supported-platform
+    condition: _gate_supported_platform
     scope: global
     class: readiness
     target_state: host installation_state=Configured
     blocking: hard
   - name: apple-silicon
     condition: _gate_arm64
-    scope: global
+    scope: component:ai-python-stack
     class: readiness
-    target_state: host dependency_state=DepsReady
+    target_state: ai-python-stack dependency_state=DepsReady
     blocking: soft
   - name: docker-daemon
     condition: _gate_docker_daemon

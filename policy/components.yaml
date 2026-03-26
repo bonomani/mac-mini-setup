@@ -1,0 +1,27 @@
+components:
+  - name: homebrew
+    mode: enabled
+  - name: git
+    mode: enabled
+  - name: docker
+    mode: enabled
+  - name: python
+    mode: enabled
+  - name: ollama
+    mode: enabled
+  - name: ai-python-stack
+    mode: enabled
+  - name: ai-apps
+    mode: enabled
+  - name: dev-tools
+    mode: enabled
+  - name: git-config
+    mode: enabled
+  - name: docker-config
+    mode: enabled
+  - name: macos-defaults
+    mode: enabled
+  - name: system
+    mode: enabled
+  - name: verify
+    mode: enabled

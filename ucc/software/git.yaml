@@ -2,6 +2,10 @@ component: git
 primary_profile: configured
 libs: git
 runner: run_git_from_yaml
+platforms:
+  - macos
+  - linux
+  - wsl
 
 targets:
   git:

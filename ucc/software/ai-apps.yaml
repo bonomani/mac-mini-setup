@@ -3,6 +3,10 @@ primary_profile: runtime
 libs: ai_apps
 runner: run_ai_apps_from_yaml
 on_fail: ignore
+platforms:
+  - macos
+  - linux
+  - wsl
 stack:
   kind: docker-compose
   compose_dir: ".ai-stack"

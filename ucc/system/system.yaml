@@ -3,6 +3,8 @@ primary_profile: parametric
 libs: system
 runner: run_system_from_yaml
 on_fail: ignore
+platforms:
+  - macos
 system:
   kind: host-composition
   depends_on:

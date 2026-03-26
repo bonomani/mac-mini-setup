@@ -224,6 +224,10 @@ _uic_eval_gate() {
     fi
     target_suffix="${target_suffix% }"
   fi
+  if declare -F _uic_scope_active >/dev/null 2>&1 && ! _uic_scope_active "$scope"; then
+    printf '[GATE]  %-36s skip  [%s/%s] →%s%s\n' "$name" "$blocking" "$class" "$scope_short" "$target_suffix"
+    return 0
+  fi
   if $cond 2>/dev/null; then
     printf '[GATE]  %-36s ok    [%s/%s] →%s%s\n' "$name" "$blocking" "$class" "$scope_short" "$target_suffix"
     return 0

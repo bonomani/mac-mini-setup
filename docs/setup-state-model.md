@@ -10,7 +10,8 @@ bounded lifecycle and explicit admissible transitions.
 ## 1. Modeling boundary
 
 Scope:
-- Mac mini AI workstation setup
+- AI workstation setup
+- macOS is the full-profile target; Linux and WSL use the portable subset
 - 13 governed components across two layers:
 
   Software layer (`ucc/software/`) — presence convergence:

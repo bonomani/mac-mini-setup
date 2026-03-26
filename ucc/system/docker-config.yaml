@@ -2,6 +2,8 @@ component: docker-config
 primary_profile: parametric
 libs: docker
 runner: run_docker_config_from_yaml
+platforms:
+  - macos
 memory_gb: 48
 cpu_count: 10
 swap_mib: 4096

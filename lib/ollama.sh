@@ -3,7 +3,7 @@
 # Sourced by components/ollama.sh
 
 # Usage: run_ollama_from_yaml <cfg_dir> <yaml_path>
-# Returns 1 if macOS precondition fails or API is unreachable (models not pulled).
+# Returns 1 if host precondition fails or API is unreachable (models not pulled).
 run_ollama_from_yaml() {
   local cfg_dir="$1" yaml="$2"
 
@@ -14,30 +14,46 @@ run_ollama_from_yaml() {
   _OLLAMA_API_PORT="$(     yaml_get "$cfg_dir" "$yaml" api_port             "11434")"
   _OLLAMA_LOG="$(          yaml_get "$cfg_dir" "$yaml" log_file             "/tmp/ollama.log")"
 
-  local MACOS_MAJOR
-  MACOS_MAJOR="$(sw_vers -productVersion | awk -F. '{print $1}')"
+  local MACOS_MAJOR=0
+  [[ "${HOST_PLATFORM:-macos}" == "macos" ]] && MACOS_MAJOR="$(sw_vers -productVersion | awk -F. '{print $1}')"
 
-  # ---- Step 0: macOS version precondition ----
-  _observe_macos_prereq() {
-    if [[ "$MACOS_MAJOR" -ge "$_OLLAMA_MACOS_MIN" ]]; then
+  # ---- Step 0: host precondition ----
+  _observe_host_prereq() {
+    if [[ "${HOST_PLATFORM:-unknown}" == "macos" && "$MACOS_MAJOR" -ge "$_OLLAMA_MACOS_MIN" ]]; then
+      ucc_asm_config_state "supported"
+    elif [[ "${HOST_PLATFORM:-unknown}" == "linux" || "${HOST_PLATFORM:-unknown}" == "wsl" ]]; then
       ucc_asm_config_state "supported"
     else
       ucc_asm_config_state "absent"
     fi
   }
-  _evidence_macos_prereq() { printf 'macos=%s' "$(sw_vers -productVersion 2>/dev/null || echo unknown)"; }
-  _fail_macos_prereq() {
-    log_warn "Ollama requires macOS ${_OLLAMA_MACOS_MIN}+ — current: macOS $MACOS_MAJOR"
+  _evidence_host_prereq() {
+    if [[ "${HOST_PLATFORM:-unknown}" == "macos" ]]; then
+      printf 'platform=%s  version=%s' "${HOST_PLATFORM:-unknown}" "$(sw_vers -productVersion 2>/dev/null || echo unknown)"
+    else
+      printf 'platform=%s  kernel=%s' "${HOST_PLATFORM:-unknown}" "$(uname -r 2>/dev/null || echo unknown)"
+    fi
+  }
+  _fail_host_prereq() {
+    if [[ "${HOST_PLATFORM:-unknown}" == "macos" ]]; then
+      log_warn "Ollama requires macOS ${_OLLAMA_MACOS_MIN}+ — current: macOS $MACOS_MAJOR"
+    else
+      log_warn "Ollama is not supported on host platform: ${HOST_PLATFORM:-unknown}"
+    fi
     return 1
   }
 
   ucc_target_nonruntime \
-    --name    "macos-precondition" \
-    --observe _observe_macos_prereq \
-    --evidence _evidence_macos_prereq \
-    --install _fail_macos_prereq
+    --name    "ollama-host-supported" \
+    --observe _observe_host_prereq \
+    --evidence _evidence_host_prereq \
+    --install _fail_host_prereq
 
-  [[ "$MACOS_MAJOR" -ge "$_OLLAMA_MACOS_MIN" ]] || return 1
+  if [[ "${HOST_PLATFORM:-unknown}" == "macos" ]]; then
+    [[ "$MACOS_MAJOR" -ge "$_OLLAMA_MACOS_MIN" ]] || return 1
+  elif [[ "${HOST_PLATFORM:-unknown}" != "linux" && "${HOST_PLATFORM:-unknown}" != "wsl" ]]; then
+    return 1
+  fi
 
   # ---- Ollama binary ----
   _observe_ollama() { ucc_asm_package_state "$(is_installed ollama && ollama --version 2>/dev/null | awk '{print $NF}' || echo "absent")"; }

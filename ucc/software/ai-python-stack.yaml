@@ -2,6 +2,8 @@ component: ai-python-stack
 primary_profile: runtime
 libs: pip_group unsloth_studio
 runner: run_ai_python_stack_from_yaml
+platforms:
+  - macos
 targets:
   unsloth-studio-setup:
     component: ai-python-stack

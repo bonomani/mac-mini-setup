@@ -66,14 +66,19 @@ run_system_from_yaml() {
   }
 
   _evidence_system_composition() {
-    local pairs=() target status
+    local target status total=0 ok=0 failed=0 pending=0
     for target in "${SYSTEM_DEPENDENCIES[@]}"; do
+      total=$((total + 1))
       status="$(_system_status_for "$target")"
-      [[ -z "$status" ]] && status="unknown"
-      pairs+=("${target}=${status}")
+      case "$status" in
+        ok) ok=$((ok + 1)) ;;
+        failed) failed=$((failed + 1)) ;;
+        *) pending=$((pending + 1)) ;;
+      esac
     done
-    printf 'kind=%s  targets=%s' "$system_kind" "$expected_count"
-    [[ ${#pairs[@]} -gt 0 ]] && printf '  status=%s' "$(IFS=,; echo "${pairs[*]}")"
+    printf 'kind=%s  required=%s  ready=%s/%s' "$system_kind" "$expected_count" "$ok" "$total"
+    [[ "$failed" -gt 0 ]] && printf '  failed=%s' "$failed"
+    [[ "$pending" -gt 0 ]] && printf '  pending=%s' "$pending"
   }
 
   _reconcile_system_composition() {

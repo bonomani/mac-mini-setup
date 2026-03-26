@@ -2,6 +2,8 @@ component: docker
 primary_profile: presence
 libs: docker
 runner: run_docker_from_yaml
+platforms:
+  - macos
 
 targets:
   docker-desktop:

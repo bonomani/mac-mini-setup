@@ -3,13 +3,17 @@ primary_profile: runtime
 libs: ollama_models ollama
 runner: run_ollama_from_yaml
 on_fail: ignore
+platforms:
+  - macos
+  - linux
+  - wsl
 macos_min_version: 14
 installer_url: https://ollama.com/install.sh
 api_host: 127.0.0.1
 api_port: 11434
 log_file: /tmp/ollama.log
 targets:
-  macos-precondition:
+  ollama-host-supported:
     component: ollama
     profile: configured
     type: precondition
@@ -19,7 +23,7 @@ targets:
     profile: configured
     type: package
     depends_on:
-      - macos-precondition
+      - ollama-host-supported
     provided_by_tool: ollama-installer
     oracle:
       configured: "ollama --version >/dev/null 2>&1"

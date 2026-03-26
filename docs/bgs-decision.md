@@ -4,8 +4,10 @@
 decision_id: mac-mini-setup-bgs-001
 bgs_slice: BGS-State-Modeled-Governed
 declared_scope: >
-  Mac mini AI workstation setup — full installation lifecycle across 13
-  components in two layers:
+  AI workstation setup — full installation lifecycle across 13
+  governed components in two layers. macOS is the primary/full profile;
+  Linux and WSL run the portable subset with unsupported components
+  skipped by manifest platform scope and component policy:
   software layer (ucc/software/): homebrew, git, docker, python, ollama,
   ai-python-stack, ai-apps, dev-tools;
   system layer (ucc/system/): git-config, docker-config, macos-defaults, system;
@@ -79,6 +81,8 @@ evidence_refs:
   - ~/.ai-stack/runs/*.result.jsonl       # runtime evidence outside the repo
 
 limitations:
+  - macOS remains the only full-profile target. Linux and WSL currently
+    run the portable subset only; macOS-specific components are skipped.
   - Does not claim privacy enforcement beyond disabling brew analytics;
     all network calls reach upstream public registries.
   - Does not manage credentials or API tokens.

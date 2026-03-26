@@ -62,6 +62,23 @@
 set -euo pipefail
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+_detect_host_platform() {
+  case "$(uname)" in
+    Darwin) echo "macos" ;;
+    Linux)
+      if grep -qiE 'microsoft|wsl' /proc/sys/kernel/osrelease 2>/dev/null \
+         || grep -qiE 'microsoft|wsl' /proc/version 2>/dev/null; then
+        echo "wsl"
+      else
+        echo "linux"
+      fi
+      ;;
+    *) echo "unknown" ;;
+  esac
+}
+
+export HOST_PLATFORM="$(_detect_host_platform)"
 source "$DIR/lib/ucc.sh"
 source "$DIR/lib/uic.sh"
 source "$DIR/lib/tic.sh"
@@ -71,6 +88,7 @@ source "$DIR/lib/summary.sh"
 # ============================================================
 #  UIC gate condition functions (read-only, no side effects)
 # ============================================================
+_gate_supported_platform(){ [[ "$HOST_PLATFORM" == "macos" || "$HOST_PLATFORM" == "linux" || "$HOST_PLATFORM" == "wsl" ]]; }
 _gate_macos()           { [[ "$(uname)" == "Darwin" ]]; }
 _gate_arm64()           { [[ "$(uname -m)" == "arm64" ]]; }
 _gate_docker_daemon()   { docker info &>/dev/null 2>&1; }
@@ -102,6 +120,80 @@ COMPONENTS=()
 while IFS= read -r _component; do
   [[ -n "$_component" ]] && COMPONENTS+=("$_component")
 done < <(_load_components)
+
+_COMPONENT_POLICY_FILE="$DIR/policy/components.yaml"
+_COMP_POLICY_NAMES=()
+_COMP_POLICY_MODES=()
+
+_load_component_policies() {
+  local name mode
+  [[ -f "$_COMPONENT_POLICY_FILE" ]] || return 0
+  while IFS=$'\t' read -r name mode; do
+    [[ -n "$name" ]] || continue
+    _COMP_POLICY_NAMES+=("$name")
+    _COMP_POLICY_MODES+=("${mode:-enabled}")
+  done < <(yaml_records "$DIR" "$_COMPONENT_POLICY_FILE" components name mode)
+}
+
+_component_mode() {
+  local comp="$1" i
+  for i in "${!_COMP_POLICY_NAMES[@]}"; do
+    [[ "${_COMP_POLICY_NAMES[$i]}" == "$comp" ]] || continue
+    printf '%s' "${_COMP_POLICY_MODES[$i]}"
+    return 0
+  done
+  printf 'enabled'
+}
+
+_component_supported_for() {
+  local comp="$1" config="$2" platform item
+  local supported=()
+  if [[ "$comp" == "verify" ]]; then
+    [[ "$HOST_PLATFORM" == "macos" ]] && return 0
+    return 1
+  fi
+  while IFS= read -r item; do
+    [[ -n "$item" ]] && supported+=("$item")
+  done < <(yaml_list "$DIR" "$config" platforms)
+  [[ ${#supported[@]} -eq 0 ]] && return 0
+  for platform in "${supported[@]}"; do
+    [[ "$platform" == "$HOST_PLATFORM" ]] && return 0
+    [[ "$HOST_PLATFORM" == "wsl" && "$platform" == "linux" ]] && return 0
+  done
+  return 1
+}
+
+_display_component_name() {
+  case "$1" in
+    system) printf 'AI workstation' ;;
+    verify) printf 'Verification' ;;
+    *)      printf '%s' "$1" ;;
+  esac
+}
+
+_load_component_policies
+
+_uic_scope_active() {
+  local scope="$1" comp dispatch config mode
+  case "$scope" in
+    global|target:*) return 0 ;;
+    component:*)
+      comp="${scope#component:}"
+      mode="$(_component_mode "$comp")"
+      [[ "$mode" == "enabled" ]] || return 1
+      if [[ "$comp" == "verify" ]]; then
+        _component_supported_for "$comp" "tic"
+        return $?
+      fi
+      dispatch=$(python3 "$DIR/tools/validate_targets_manifest.py" --dispatch "$comp" "$DIR/ucc" 2>/dev/null || true)
+      config=$(echo "$dispatch" | sed -n '4p')
+      [[ -z "$config" ]] && return 0
+      _component_supported_for "$comp" "$config"
+      return $?
+      ;;
+  esac
+  return 0
+}
 
 
 usage() {
@@ -187,10 +279,12 @@ fi
 # Component-scoped hard gates block only their component (via uic_component_blocked).
 abort_on_global_hard_gate
 
-[[ "$(uname)" == "Darwin" ]] || log_error "This script is for macOS only"
-
 ARCH=$(uname -m)
-TOTAL_MEM=$(sysctl -n hw.memsize)
+case "$HOST_PLATFORM" in
+  macos) TOTAL_MEM=$(sysctl -n hw.memsize 2>/dev/null || echo 0) ;;
+  linux|wsl) TOTAL_MEM=$(awk '/MemTotal:/ {print $2 * 1024}' /proc/meminfo 2>/dev/null | head -1) ;;
+  *) TOTAL_MEM=0 ;;
+esac
 TOTAL_GB=$(( TOTAL_MEM / 1024 / 1024 / 1024 ))
 
 _arch_label="$ARCH"; [[ "$ARCH" == "arm64" ]] && _arch_label="arm64 (Apple Silicon / Metal)"
@@ -199,20 +293,20 @@ _ram_label="${TOTAL_GB} GB"; [[ $TOTAL_GB -ge 32 ]] && _ram_label="${TOTAL_GB} G
 
 echo "========================================================"
 _hdr_flags="mode=$UCC_MODE"; [[ "$UCC_DRY_RUN" == "1" ]] && _hdr_flags="$_hdr_flags dry_run=1"
-echo "  Mac Mini AI Setup | $_hdr_flags | $(date '+%Y-%m-%d %H:%M')"
+echo "  AI Workstation Setup | platform=${HOST_PLATFORM} | $_hdr_flags | $(date '+%Y-%m-%d %H:%M')"
 echo "  $_arch_label  ·  $_ram_label"
 echo "  Global State     | $(uic_global_state_label) ($(uic_global_state_detail))"
 print_profile_contracts
 log_debug "correlation_id=$UCC_CORRELATION_ID"
 echo "========================================================"
 
-[[ "$ARCH" != "arm64" ]] && log_warn "Intel Mac detected — some AI acceleration features may differ"
+[[ "$HOST_PLATFORM" == "macos" && "$ARCH" != "arm64" ]] && log_warn "Intel Mac detected — some AI acceleration features may differ"
 [[ $TOTAL_GB -lt 32 ]]   && log_warn "Less than 32 GB RAM — large models may be slow"
 
 # --- Ensure brew is in PATH (re-checked after each component) ---
 _refresh_brew_path() {
   command -v brew &>/dev/null && return
-  for _bp in /opt/homebrew/bin/brew /usr/local/bin/brew; do
+  for _bp in /opt/homebrew/bin/brew /usr/local/bin/brew /home/linuxbrew/.linuxbrew/bin/brew; do
     if [[ -x "$_bp" ]]; then
       eval "$("$_bp" shellenv)"
       export PATH
@@ -282,9 +376,9 @@ _collect_layer_components() {
 
 print_execution_plan() {
   local software=() system=() tic=() item
-  while IFS= read -r item; do [[ -n "$item" ]] && software+=("$item"); done < <(_collect_layer_components software)
-  while IFS= read -r item; do [[ -n "$item" ]] && system+=("$item"); done < <(_collect_layer_components system)
-  while IFS= read -r item; do [[ -n "$item" ]] && tic+=("$item"); done < <(_collect_layer_components tic)
+  while IFS= read -r item; do [[ -n "$item" ]] && software+=("$(_display_component_name "$item")"); done < <(_collect_layer_components software)
+  while IFS= read -r item; do [[ -n "$item" ]] && system+=("$(_display_component_name "$item")"); done < <(_collect_layer_components system)
+  while IFS= read -r item; do [[ -n "$item" ]] && tic+=("$(_display_component_name "$item")"); done < <(_collect_layer_components tic)
 
   echo ""
   echo "  Execution Plan"
@@ -292,11 +386,12 @@ print_execution_plan() {
   [[ ${#software[@]} -gt 0 ]] && printf '  %-14s %s\n' "Software" "$(IFS=', '; echo "${software[*]}")"
   [[ ${#system[@]} -gt 0 ]]   && printf '  %-14s %s\n' "System"   "$(IFS=', '; echo "${system[*]}")"
   [[ ${#tic[@]} -gt 0 ]]      && printf '  %-14s %s\n' "Verify"   "$(IFS=', '; echo "${tic[*]}")"
+  return 0
 }
 
 _print_component_header() {
   local comp="$1"
-  printf '  [%s]\n' "$comp"
+  printf '  [%s]\n' "$(_display_component_name "$comp")"
 }
 
 # Pre-collect dispatch info for all components (one query per component)
@@ -308,6 +403,21 @@ _DISP_CONFIGS=()
 
 for comp in "${TO_RUN[@]}"; do
   if [[ "$comp" == "verify" ]]; then
+    _mode="$(_component_mode "$comp")"
+    case "$_mode" in
+      disabled)
+        log_info "Skipping $(_display_component_name "$comp") (policy=disabled)"
+        continue
+        ;;
+      remove)
+        log_warn "Component $comp policy=remove — removal is not implemented yet; skipping"
+        continue
+        ;;
+    esac
+    if ! _component_supported_for "$comp" "tic"; then
+      log_info "Skipping $(_display_component_name "$comp") (platform=${HOST_PLATFORM} unsupported)"
+      continue
+    fi
     _DISP_COMPS+=("$comp")
     _DISP_LIBS+=("")
     _DISP_RUNNERS+=("")
@@ -320,8 +430,23 @@ for comp in "${TO_RUN[@]}"; do
   _runner=$(echo "$_dispatch" | sed -n '2p')
   _on_fail=$(echo "$_dispatch" | sed -n '3p')
   _config=$(echo "$_dispatch" | sed -n '4p')
+  _mode="$(_component_mode "$comp")"
+  case "$_mode" in
+    disabled)
+      log_info "Skipping $(_display_component_name "$comp") (policy=disabled)"
+      continue
+      ;;
+    remove)
+      log_warn "Component $comp policy=remove — removal is not implemented yet; skipping"
+      continue
+      ;;
+  esac
   if [[ -z "$_libs" || -z "$_runner" || -z "$_config" ]]; then
     log_warn "Component $comp has no dispatch info in manifest — skipping"
+    continue
+  fi
+  if ! _component_supported_for "$comp" "$_config"; then
+    log_info "Skipping $(_display_component_name "$comp") (platform=${HOST_PLATFORM} unsupported)"
     continue
   fi
   _DISP_COMPS+=("$comp")

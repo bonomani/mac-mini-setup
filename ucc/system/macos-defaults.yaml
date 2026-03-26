@@ -2,6 +2,8 @@ component: macos-defaults
 primary_profile: parametric
 libs: macos_defaults
 runner: run_macos_defaults_from_yaml
+platforms:
+  - macos
 targets:
   pmset-ac-sleep=0:
     component: macos-defaults

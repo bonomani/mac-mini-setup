@@ -7,8 +7,11 @@ decision_reason: "AI workstation setup depends on explicit installation,
   interdependent components in two layers (software + system). Preflight
   gates and UCC convergence are interpreted against an ASM-aligned setup
   state model with parametric state for value-convergence targets; TIC
-  verification remains additional evidence over the resulting state."
-applies_to_scope: "Full Mac mini AI workstation setup — 13 components:
+  verification remains additional evidence over the resulting state. The
+  repo is macOS-first, but portable subsets can run on Linux and WSL with
+  unsupported components skipped by policy and manifest platform scope."
+applies_to_scope: "AI workstation setup — 13 governed components with a
+  full macOS profile and a portable Linux/WSL subset:
   software layer (homebrew, git, docker, python, ollama, ai-python-stack,
   ai-apps, dev-tools), system layer (git-config, docker-config,
   macos-defaults, system), verification (verify)"

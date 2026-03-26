@@ -51,6 +51,14 @@ print_profile_contracts() {
   done
 }
 
+_summary_component_label() {
+  case "$1" in
+    system) printf 'AI workstation' ;;
+    verify) printf 'Verification' ;;
+    *)      printf '%s' "$1" ;;
+  esac
+}
+
 print_summary_section() {
   local section_label="$1"; shift
   local _comps=("$@")
@@ -67,7 +75,7 @@ print_summary_section() {
       local _tic_parts="${_b} pass"
       [[ "$_c" -gt 0 ]] && _tic_parts="${_tic_parts}  ${_c} FAIL"
       [[ "$_d" -gt 0 ]] && _tic_parts="${_tic_parts}  skip=${_d}"
-      printf '  %-22s  %s\n' "$_comp" "$_tic_parts"
+      printf '  %-22s  %s\n' "$(_summary_component_label "$_comp")" "$_tic_parts"
     else
       _total_ok=$(( _total_ok + _a ))
       _total_chg=$(( _total_chg + _b ))
@@ -78,7 +86,7 @@ print_summary_section() {
       [[ $_b -gt 0 ]]      && _parts="${_parts:+$_parts  }${_b} changed"
       [[ $_c -gt 0 ]]      && _parts="${_parts:+$_parts  }${_c} FAILED"
       [[ ${_d:-0} -gt 0 ]] && _parts="${_parts:+$_parts  }skip=${_d}"
-      printf '  %-22s  %s\n' "$_comp" "${_parts:----}"
+      printf '  %-22s  %s\n' "$(_summary_component_label "$_comp")" "${_parts:----}"
     fi
   done < "$UCC_SUMMARY_FILE"
 }

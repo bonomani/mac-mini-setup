@@ -3,6 +3,10 @@ primary_profile: configured
 libs: homebrew
 runner: run_homebrew_from_yaml
 on_fail: exit
+platforms:
+  - macos
+  - linux
+  - wsl
 targets:
   xcode-command-line-tools:
     component: homebrew
