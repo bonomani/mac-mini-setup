@@ -86,7 +86,7 @@ run_homebrew_from_yaml() {
   is_installed brew || _setup_brew_path
 
   # Update package index (GIC action, not a UCC target)
-  if is_installed brew && [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-always-upgrade}" != "always-upgrade" ]]; then
+  if is_installed brew && [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-always-upgrade}" == "always-upgrade" ]]; then
     log_info "Updating Homebrew package index..."
     ucc_run brew update
   fi
