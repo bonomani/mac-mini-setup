@@ -253,7 +253,6 @@ ucc_target() {
   fi
 
   if $action_fn; then
-    _BREW_OUTDATED_STALE=1  # invalidate cache so verify sees post-upgrade state
     # Step 5 – Verify: re-observe after transition
     local verified ver_exit
     verified=$($observe_fn 2>/dev/null)

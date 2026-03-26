@@ -236,6 +236,7 @@ run_dev_tools_from_yaml() {
     done
     brew_upgrade ariaflow
     ucc_run ariaflow install --with-aria2
+    sleep 3  # allow launchd service to start before post-upgrade observe
   }
 
   ucc_target_nonruntime \
