@@ -26,7 +26,25 @@
       "Bash(python3 tools/validate_targets_manifest.py)",
       "Bash(python3 tools/validate_targets_manifest.py --dispatch git-config ucc/)",
       "Bash(python3 tools/validate_targets_manifest.py --dispatch macos-defaults ucc/)",
-      "Bash(python3 tools/validate_targets_manifest.py --dispatch docker-config ucc/)"
+      "Bash(python3 tools/validate_targets_manifest.py --dispatch docker-config ucc/)",
+      "Bash(bash -n /home/bc/repos/github/bonomani/mac-mini-setup/install.sh)",
+      "Bash(git -C /home/bc/repos/github/bonomani/asm show dca032b:docs/state-vocabulary-guide.md)",
+      "Bash(git -C /home/bc/repos/github/bonomani/asm log --oneline -5)",
+      "Bash(git -C /home/bc/repos/github/bonomani/asm diff 5ca20bd..dca032b --name-only)",
+      "Bash(git -C /home/bc/repos/github/bonomani/ucc diff da74277..370c1f7 --name-only)",
+      "Bash(git -C /home/bc/repos/github/bonomani/bgs diff 73adc3f..7961fb4 --name-only)",
+      "Read(//home/bc/repos/github/bonomani/bgs/**)",
+      "Read(//home/bc/repos/github/bonomani/asm/**)",
+      "Bash(git -C /home/bc/repos/github/bonomani/asm diff 5ca20bd..dca032b -- SOFTWARE-MODEL.md)",
+      "Read(//home/bc/repos/github/bonomani/ucc/governance/**)",
+      "Bash(grep -rn \"^\\\\s*profile:\" /home/bc/repos/github/bonomani/mac-mini-setup/ucc/software/*.yaml /home/bc/repos/github/bonomani/mac-mini-setup/ucc/system/*.yaml)",
+      "Bash(grep -rn \"^primary_profile:\" /home/bc/repos/github/bonomani/mac-mini-setup/ucc/software/*.yaml /home/bc/repos/github/bonomani/mac-mini-setup/ucc/system/*.yaml)",
+      "Bash(grep -rn \"ucc_target\\\\|ucc_brew_target\\\\|--profile\\\\|--axes\" /home/bc/repos/github/bonomani/mac-mini-setup/lib/*.sh)",
+      "Bash(grep -rn \"ucc_target_nonruntime\\\\|ucc_target_service\\\\|ucc_target \" /home/bc/repos/github/bonomani/mac-mini-setup/lib/*.sh)",
+      "Bash(python3 -c \":*)",
+      "Bash(grep -n \"UIC_GATE_FAILED\\\\|uic_component_blocked\\\\|gate:\" /home/bc/repos/github/bonomani/mac-mini-setup/lib/*.sh)",
+      "Bash(grep -rn \"printf.*version=.*pid=\\\\|printf.*version=.*path=\\\\|printf.*version=.*port=\" /home/bc/repos/github/bonomani/mac-mini-setup/lib/*.sh)",
+      "Read(//home/bc/repos/github/bonomani/ucc/**)"
     ]
   }
 }
