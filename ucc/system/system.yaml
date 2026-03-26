@@ -1,0 +1,39 @@
+component: system
+primary_profile: parametric
+libs: system
+runner: run_system_from_yaml
+on_fail: ignore
+system:
+  kind: host-composition
+  depends_on:
+    - homebrew
+    - git
+    - docker-running
+    - python
+    - ollama-service
+    - ai-stack-running
+    - ariaflow-web-service
+    - unsloth-studio-launchd
+    - git-global-config
+    - docker-resources
+    - pmset-ac-sleep=0
+    - finder-show-hidden=1
+
+targets:
+  system-composition:
+    component: system
+    profile: parametric
+    type: config
+    depends_on:
+      - homebrew
+      - git
+      - docker-running
+      - python
+      - ollama-service
+      - ai-stack-running
+      - ariaflow-web-service
+      - unsloth-studio-launchd
+      - git-global-config
+      - docker-resources
+      - pmset-ac-sleep=0
+      - finder-show-hidden=1

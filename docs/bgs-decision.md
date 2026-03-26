@@ -4,11 +4,11 @@
 decision_id: mac-mini-setup-bgs-001
 bgs_slice: BGS-State-Modeled-Governed
 declared_scope: >
-  Mac mini AI workstation setup — full installation lifecycle across 12
+  Mac mini AI workstation setup — full installation lifecycle across 13
   components in two layers:
   software layer (ucc/software/): homebrew, git, docker, python, ollama,
   ai-python-stack, ai-apps, dev-tools;
-  system layer (ucc/system/): git-config, docker-config, macos-defaults;
+  system layer (ucc/system/): git-config, docker-config, macos-defaults, system;
   verification (tic/): verify.
   Covers install, idempotent re-run, and update modes.
 
@@ -71,6 +71,8 @@ evidence_refs:
   - ../tic/system/verify.yaml    # TIC system-layer test definitions
   - ../stack/docker-compose.yml  # stack definition template for ai-apps
   - ../lib/ai_apps.sh            # stack convergence logic and definition/runtime checks
+  - ../lib/system.sh             # system-level composition target over governed subsystems
+  - ../ucc/system/system.yaml    # system composition declaration
   - ../lib/tic_runner.sh          # TIC runner (run_verify sources the above YAML files)
   - ../lib/summary.sh            # final summary rendering
   - ~/.ai-stack/runs/*.declaration.jsonl  # runtime evidence outside the repo

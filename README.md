@@ -1,6 +1,8 @@
 # Mac Mini AI Setup
 
 Scripts to set up a Mac mini (Apple Silicon, 64 GB) as an AI workstation.
+The repo now also declares a local system-level composition target so the
+governed state can describe the whole machine, not only individual components.
 
 ## Governance
 
@@ -69,6 +71,7 @@ Scripts to set up a Mac mini (Apple Silicon, 64 GB) as an AI workstation.
 | `lib/vscode_ext.sh` | Bash library | VS Code extension targets | Dynamic extension install targets |
 | `lib/macos_defaults.sh` | Bash library | macOS defaults logic | Parametric config targets and UI restarts |
 | `lib/unsloth_studio.sh` | Bash library | Unsloth Studio logic | Setup plus launchd service |
+| `lib/system.sh` | Bash library | System composition logic | Derives whole-machine state from governed subsystem targets |
 
 ### Tools
 
@@ -107,6 +110,7 @@ Scripts to set up a Mac mini (Apple Silicon, 64 GB) as an AI workstation.
 | `ucc/system/git-config.yaml` | YAML manifest | Git config component | Global git settings |
 | `ucc/system/docker-config.yaml` | YAML manifest | Docker config component | Parametric resource settings |
 | `ucc/system/macos-defaults.yaml` | YAML manifest | macOS defaults component | Power, Finder, Dock, extension settings |
+| `ucc/system/system.yaml` | YAML manifest | System composition component | Declares whole-machine composition over subsystem targets |
 
 ### TIC
 
@@ -142,6 +146,7 @@ and `ucc/system/`, then dispatched through `install.sh`.
 | Git Config | `ucc/system/git-config.yaml` | Global git defaults |
 | Docker Config | `ucc/system/docker-config.yaml` | Docker memory/CPU/swap/disk resource settings |
 | macOS Defaults | `ucc/system/macos-defaults.yaml` | Power, Finder, Dock, and visibility defaults |
+| System | `ucc/system/system.yaml` | Whole-machine composition target over governed subsystem targets |
 | Verify | `tic/software/verify.yaml`, `tic/system/verify.yaml` | Read-only post-convergence verification |
 
 ## Usage

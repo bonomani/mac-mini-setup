@@ -3,15 +3,15 @@
 project_name: mac-mini-setup
 bgs_slice: BGS-State-Modeled-Governed
 decision_reason: "AI workstation setup depends on explicit installation,
-  configuration, readiness, runtime, and recovery semantics across 12
+  configuration, readiness, runtime, and recovery semantics across 13
   interdependent components in two layers (software + system). Preflight
   gates and UCC convergence are interpreted against an ASM-aligned setup
   state model with parametric state for value-convergence targets; TIC
   verification remains additional evidence over the resulting state."
-applies_to_scope: "Full Mac mini AI workstation setup — 12 components:
+applies_to_scope: "Full Mac mini AI workstation setup — 13 components:
   software layer (homebrew, git, docker, python, ollama, ai-python-stack,
   ai-apps, dev-tools), system layer (git-config, docker-config,
-  macos-defaults), verification (verify)"
+  macos-defaults, system), verification (verify)"
 decision_record_path: "./docs/bgs-decision.md"
 inventory_path: "./README.md#repository-inventory"
 orchestration_root: "./ucc/"

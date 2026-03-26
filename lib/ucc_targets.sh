@@ -28,6 +28,7 @@ _ucc_display_name() {
     ai-stack-compose-file) printf 'stack definition' ;;
     ai-stack-running)      printf 'stack runtime' ;;
     docker-running)        printf 'docker runtime' ;;
+    system-composition)    printf 'system composition' ;;
     *)                     printf '%s' "$1" ;;
   esac
 }

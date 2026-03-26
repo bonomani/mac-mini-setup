@@ -11,7 +11,7 @@ bounded lifecycle and explicit admissible transitions.
 
 Scope:
 - Mac mini AI workstation setup
-- 12 governed components across two layers:
+- 13 governed components across two layers:
 
   Software layer (`ucc/software/`) — presence convergence:
   - `homebrew`
@@ -27,6 +27,7 @@ Scope:
   - `git-config`
   - `docker-config`
   - `macos-defaults`
+  - `system`
 
   Verification (`tic/software/`, `tic/system/`):
   - `verify`
@@ -39,6 +40,9 @@ Modeling rule:
   definition and the running stack are governed separately
 - system-layer value-convergence components (`docker-config`, `macos-defaults`) use the
   `parametric` ASM profile (axes include `config_value`)
+- the `system` component uses a parametric composition target
+  (`system-composition`) that derives whole-machine state from the
+  status of governed subsystem targets in the current run
 - system-layer presence-only components (`git-config`) use the `configured` ASM profile
 - each mutable component uses the ASM software-profile style axes:
   - `installation_state`
@@ -129,7 +133,8 @@ Meaning:
 
 ### Configuration value (optional — parametric targets only)
 
-Used by: `docker-config`, `macos-defaults`, `ai-apps` stack definition target
+Used by: `docker-config`, `macos-defaults`, `ai-apps` stack definition target,
+`system` composition target
 
 Meaning:
 - carries the actual observed or desired configuration value as a string
@@ -140,6 +145,8 @@ Meaning:
 - examples: `mem=48GB cpu=10`, `0` (pmset sleep value), `1` (dock autohide)
 - stack-definition example:
   `marker=# ai-stack v2 services=flowise,n8n,open-webui,openhands,qdrant`
+- system-composition example:
+  `kind=host-composition targets=ai-stack-running,ariaflow-web-service,docker-resources,docker-running,finder-show-hidden=1,git,git-global-config,homebrew,ollama-service,pmset-ac-sleep=0,python,unsloth-studio-launchd`
 
 ## 3. Derived states
 
@@ -215,6 +222,10 @@ Host-level interpretation:
   required by the selected workload are available
 - the setup is `Broken` when a mandatory component is in a failed state
   or a mandatory dependency is `DepsFailed`
+- the `system` target is the explicit project-local bridge between
+  component state and whole-machine state; it does not add new runtime
+  controls by itself, but it makes the composed system state declarable
+  and observable inside the existing UCC flow
 
 ## 7. Evidence relationship
 
