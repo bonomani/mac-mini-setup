@@ -32,6 +32,21 @@ run_dev_tools_from_yaml() {
     brew_cache_outdated 2>/dev/null || true
   }
 
+  _brew_service_status() {
+    local service_name="$1"
+    brew services list 2>/dev/null | awk -v svc="$service_name" '$1==svc {print $2; found=1} END {if (!found) print ""}'
+  }
+
+  _wait_http_ready() {
+    local url="$1" attempts="${2:-15}" delay="${3:-1}"
+    local _i
+    for ((_i = 1; _i <= attempts; _i++)); do
+      curl -fsS --max-time 5 "$url" >/dev/null 2>&1 && return 0
+      sleep "$delay"
+    done
+    return 1
+  }
+
   _reset_brew_service() {
     local formula_ref="$1" service_name="$2"
     local plist="$HOME/Library/LaunchAgents/homebrew.mxcl.${service_name}.plist"
@@ -41,25 +56,27 @@ run_dev_tools_from_yaml() {
   }
 
   _ensure_brew_service_started() {
-    local formula_ref="$1" service_name="$2"
+    local formula_ref="$1" service_name="$2" readiness_url="${3:-}"
     if ucc_run brew services start "$formula_ref"; then
-      sleep 3
-      return 0
+      if [[ -z "$readiness_url" ]] || _wait_http_ready "$readiness_url"; then
+        return 0
+      fi
     fi
     _reset_brew_service "$formula_ref" "$service_name"
     ucc_run brew services start "$formula_ref"
-    sleep 3
+    [[ -z "$readiness_url" ]] || _wait_http_ready "$readiness_url"
   }
 
   _restart_brew_service() {
-    local formula_ref="$1" service_name="$2"
+    local formula_ref="$1" service_name="$2" readiness_url="${3:-}"
     if ucc_run brew services restart "$formula_ref"; then
-      sleep 3
-      return 0
+      if [[ -z "$readiness_url" ]] || _wait_http_ready "$readiness_url"; then
+        return 0
+      fi
     fi
     _reset_brew_service "$formula_ref" "$service_name"
     ucc_run brew services start "$formula_ref"
-    sleep 3
+    [[ -z "$readiness_url" ]] || _wait_http_ready "$readiness_url"
   }
 
   # ---- CLI tools (brew) ----
@@ -295,22 +312,26 @@ run_dev_tools_from_yaml() {
 
   # ---- ariaflow service ----
   _observe_ariaflow_service() {
-    if ! brew services list 2>/dev/null | awk '$1=="ariaflow" {print $2}' | grep -q "^started$"; then
-      ucc_asm_service_state "stopped"
-    elif curl -fsS --max-time 5 "http://127.0.0.1:${_ARIAFLOW_PORT}/api/status" >/dev/null 2>&1; then
+    local svc_status=""
+    if curl -fsS --max-time 5 "http://127.0.0.1:${_ARIAFLOW_PORT}/api/status" >/dev/null 2>&1; then
       ucc_asm_service_state "started"
-    else
+      return
+    fi
+    svc_status="$(_brew_service_status ariaflow)"
+    if [[ "$svc_status" == "started" ]] || lsof -ti tcp:"${_ARIAFLOW_PORT}" >/dev/null 2>&1; then
       ucc_asm_service_state "outdated"
+    else
+      ucc_asm_service_state "stopped"
     fi
   }
   _evidence_ariaflow_service() { ucc_eval_evidence_from_yaml "$cfg_dir" "$yaml" "ariaflow-service"; }
   _start_ariaflow_service() {
     ariaflow --version >/dev/null 2>&1 || return 1
-    _ensure_brew_service_started "$_ARIAFLOW_FORMULA" "ariaflow"
+    _ensure_brew_service_started "$_ARIAFLOW_FORMULA" "ariaflow" "http://127.0.0.1:${_ARIAFLOW_PORT}/api/status"
   }
   _restart_ariaflow_service() {
     ariaflow --version >/dev/null 2>&1 || return 1
-    _restart_brew_service "$_ARIAFLOW_FORMULA" "ariaflow"
+    _restart_brew_service "$_ARIAFLOW_FORMULA" "ariaflow" "http://127.0.0.1:${_ARIAFLOW_PORT}/api/status"
   }
 
   ucc_target_service \
@@ -370,22 +391,26 @@ run_dev_tools_from_yaml() {
 
   # ---- ariaflow-web service ----
   _observe_ariaflow_web_service() {
-    if ! brew services list 2>/dev/null | awk '$1=="ariaflow-web" {print $2}' | grep -q "^started$"; then
-      ucc_asm_service_state "stopped"
-    elif curl -fsS --max-time 5 "http://127.0.0.1:${_ARIAFLOW_WEB_PORT}" >/dev/null 2>&1; then
+    local svc_status=""
+    if curl -fsS --max-time 5 "http://127.0.0.1:${_ARIAFLOW_WEB_PORT}" >/dev/null 2>&1; then
       ucc_asm_service_state "started"
-    else
+      return
+    fi
+    svc_status="$(_brew_service_status ariaflow-web)"
+    if [[ "$svc_status" == "started" ]] || lsof -ti tcp:"${_ARIAFLOW_WEB_PORT}" >/dev/null 2>&1; then
       ucc_asm_service_state "outdated"
+    else
+      ucc_asm_service_state "stopped"
     fi
   }
   _evidence_ariaflow_web_service() { ucc_eval_evidence_from_yaml "$cfg_dir" "$yaml" "ariaflow-web-service"; }
   _start_ariaflow_web_service() {
     ariaflow-web --version >/dev/null 2>&1 || return 1
-    _ensure_brew_service_started "$_ARIAFLOW_WEB_FORMULA" "ariaflow-web"
+    _ensure_brew_service_started "$_ARIAFLOW_WEB_FORMULA" "ariaflow-web" "http://127.0.0.1:${_ARIAFLOW_WEB_PORT}"
   }
   _restart_ariaflow_web_service() {
     ariaflow-web --version >/dev/null 2>&1 || return 1
-    _restart_brew_service "$_ARIAFLOW_WEB_FORMULA" "ariaflow-web"
+    _restart_brew_service "$_ARIAFLOW_WEB_FORMULA" "ariaflow-web" "http://127.0.0.1:${_ARIAFLOW_WEB_PORT}"
   }
 
   ucc_target_service \
