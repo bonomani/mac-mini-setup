@@ -7,15 +7,60 @@ run_dev_tools_from_yaml() {
   local cfg_dir="$1" yaml="$2"
 
   local _NODE_VER _NODE_PREV_VER _OMZ_INSTALLER_URL _OMZ_THEME
-  local _ARIAFLOW_TAP _ARIA2_PORT _ARIAFLOW_PORT _ARIAFLOW_WEB_PORT
+  local _ARIAFLOW_TAP _ARIAFLOW_FORMULA _ARIAFLOW_WEB_FORMULA
+  local _ARIA2_PORT _ARIAFLOW_PORT _ARIAFLOW_WEB_PORT
   _NODE_VER="$(          yaml_get "$cfg_dir" "$yaml" node_version          24)"
   _NODE_PREV_VER="$(     yaml_get "$cfg_dir" "$yaml" node_previous_version 20)"
   _OMZ_INSTALLER_URL="$( yaml_get "$cfg_dir" "$yaml" omz_installer_url     "https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh")"
   _OMZ_THEME="$(         yaml_get "$cfg_dir" "$yaml" omz_theme             agnoster)"
   _ARIAFLOW_TAP="$(      yaml_get "$cfg_dir" "$yaml" ariaflow_tap          bonomani/ariaflow)"
+  _ARIAFLOW_FORMULA="${_ARIAFLOW_TAP}/ariaflow"
+  _ARIAFLOW_WEB_FORMULA="${_ARIAFLOW_TAP}/ariaflow-web"
   _ARIA2_PORT="$(        yaml_get "$cfg_dir" "$yaml" aria2_port            6800)"
   _ARIAFLOW_PORT="$(     yaml_get "$cfg_dir" "$yaml" ariaflow_port         8000)"
   _ARIAFLOW_WEB_PORT="$( yaml_get "$cfg_dir" "$yaml" ariaflow_web_port     8001)"
+
+  _refresh_ariaflow_tap() {
+    local tap_repo=""
+    ucc_run brew tap "$_ARIAFLOW_TAP"
+    tap_repo="$(brew --repository "$_ARIAFLOW_TAP" 2>/dev/null || true)"
+    if [[ -n "$tap_repo" ]] && brew help update-reset >/dev/null 2>&1; then
+      ucc_run brew update-reset "$tap_repo"
+    else
+      ucc_run brew update --force --quiet
+    fi
+    brew_cache_outdated 2>/dev/null || true
+  }
+
+  _reset_brew_service() {
+    local formula_ref="$1" service_name="$2"
+    local plist="$HOME/Library/LaunchAgents/homebrew.mxcl.${service_name}.plist"
+    ucc_run brew services stop "$formula_ref" >/dev/null 2>&1 || true
+    ucc_run /bin/launchctl bootout "gui/$(id -u)" "$plist" >/dev/null 2>&1 || true
+    ucc_run brew services cleanup >/dev/null 2>&1 || true
+  }
+
+  _ensure_brew_service_started() {
+    local formula_ref="$1" service_name="$2"
+    if ucc_run brew services start "$formula_ref"; then
+      sleep 3
+      return 0
+    fi
+    _reset_brew_service "$formula_ref" "$service_name"
+    ucc_run brew services start "$formula_ref"
+    sleep 3
+  }
+
+  _restart_brew_service() {
+    local formula_ref="$1" service_name="$2"
+    if ucc_run brew services restart "$formula_ref"; then
+      sleep 3
+      return 0
+    fi
+    _reset_brew_service "$formula_ref" "$service_name"
+    ucc_run brew services start "$formula_ref"
+    sleep 3
+  }
 
   # ---- CLI tools (brew) ----
   local _tool
@@ -229,13 +274,16 @@ run_dev_tools_from_yaml() {
     ucc_asm_package_state "$(_brew_cached_version ariaflow)"
   }
   _evidence_ariaflow() { ucc_eval_evidence_from_yaml "$cfg_dir" "$yaml" "ariaflow"; }
-  _install_ariaflow() { ucc_run brew tap "$_ARIAFLOW_TAP"; brew_install ariaflow; }
+  _install_ariaflow() {
+    _refresh_ariaflow_tap
+    brew_install "$_ARIAFLOW_FORMULA"
+  }
   _update_ariaflow() {
-    ucc_run brew tap "$_ARIAFLOW_TAP"
-    brew services stop "${_ARIAFLOW_TAP}/ariaflow" 2>/dev/null || true
-    brew_upgrade ariaflow
-    ucc_run brew services start "${_ARIAFLOW_TAP}/ariaflow"
-    sleep 3  # allow launchd service to start before post-upgrade observe
+    _refresh_ariaflow_tap
+    _reset_brew_service "$_ARIAFLOW_FORMULA" "ariaflow"
+    brew_upgrade "$_ARIAFLOW_FORMULA"
+    ariaflow --version >/dev/null 2>&1 || return 1
+    _ensure_brew_service_started "$_ARIAFLOW_FORMULA" "ariaflow"
   }
 
   ucc_target_nonruntime \
@@ -257,14 +305,12 @@ run_dev_tools_from_yaml() {
   }
   _evidence_ariaflow_service() { ucc_eval_evidence_from_yaml "$cfg_dir" "$yaml" "ariaflow-service"; }
   _start_ariaflow_service() {
-    ucc_run brew tap "$_ARIAFLOW_TAP"
-    ucc_run brew services start "${_ARIAFLOW_TAP}/ariaflow"
-    sleep 3
+    ariaflow --version >/dev/null 2>&1 || return 1
+    _ensure_brew_service_started "$_ARIAFLOW_FORMULA" "ariaflow"
   }
   _restart_ariaflow_service() {
-    ucc_run brew tap "$_ARIAFLOW_TAP"
-    ucc_run brew services restart "${_ARIAFLOW_TAP}/ariaflow"
-    sleep 3
+    ariaflow --version >/dev/null 2>&1 || return 1
+    _restart_brew_service "$_ARIAFLOW_FORMULA" "ariaflow"
   }
 
   ucc_target_service \
@@ -303,8 +349,17 @@ run_dev_tools_from_yaml() {
     ucc_asm_package_state "$(_brew_cached_version ariaflow-web)"
   }
   _evidence_ariaflow_web() { ucc_eval_evidence_from_yaml "$cfg_dir" "$yaml" "ariaflow-web"; }
-  _install_ariaflow_web() { ucc_run brew tap "$_ARIAFLOW_TAP"; brew_install ariaflow-web; }
-  _update_ariaflow_web()  { ucc_run brew tap "$_ARIAFLOW_TAP"; brew_upgrade ariaflow-web; }
+  _install_ariaflow_web() {
+    _refresh_ariaflow_tap
+    brew_install "$_ARIAFLOW_WEB_FORMULA"
+  }
+  _update_ariaflow_web()  {
+    _refresh_ariaflow_tap
+    _reset_brew_service "$_ARIAFLOW_WEB_FORMULA" "ariaflow-web"
+    brew_upgrade "$_ARIAFLOW_WEB_FORMULA"
+    ariaflow-web --version >/dev/null 2>&1 || return 1
+    _ensure_brew_service_started "$_ARIAFLOW_WEB_FORMULA" "ariaflow-web"
+  }
 
   ucc_target_nonruntime \
     --name     "ariaflow-web" \
@@ -325,14 +380,12 @@ run_dev_tools_from_yaml() {
   }
   _evidence_ariaflow_web_service() { ucc_eval_evidence_from_yaml "$cfg_dir" "$yaml" "ariaflow-web-service"; }
   _start_ariaflow_web_service() {
-    ucc_run brew tap "$_ARIAFLOW_TAP"
-    ucc_run brew services start "${_ARIAFLOW_TAP}/ariaflow-web"
-    sleep 3
+    ariaflow-web --version >/dev/null 2>&1 || return 1
+    _ensure_brew_service_started "$_ARIAFLOW_WEB_FORMULA" "ariaflow-web"
   }
   _restart_ariaflow_web_service() {
-    ucc_run brew tap "$_ARIAFLOW_TAP"
-    ucc_run brew services restart "${_ARIAFLOW_TAP}/ariaflow-web"
-    sleep 3
+    ariaflow-web --version >/dev/null 2>&1 || return 1
+    _restart_brew_service "$_ARIAFLOW_WEB_FORMULA" "ariaflow-web"
   }
 
   ucc_target_service \
