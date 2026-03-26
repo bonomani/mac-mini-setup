@@ -231,11 +231,9 @@ run_dev_tools_from_yaml() {
   _install_ariaflow() { ucc_run brew tap "$_ARIAFLOW_TAP"; brew_install ariaflow; }
   _update_ariaflow() {
     ucc_run brew tap "$_ARIAFLOW_TAP"
-    for _plist in ~/Library/LaunchAgents/com.ariaflow.*.plist; do
-      [[ -f "$_plist" ]] && ucc_run launchctl unload "$_plist" 2>/dev/null || true
-    done
+    brew services stop "${_ARIAFLOW_TAP}/ariaflow" 2>/dev/null || true
     brew_upgrade ariaflow
-    ucc_run ariaflow install --with-aria2
+    ucc_run brew services start "${_ARIAFLOW_TAP}/ariaflow"
     sleep 3  # allow launchd service to start before post-upgrade observe
   }
 
