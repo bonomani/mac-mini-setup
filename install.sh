@@ -475,12 +475,6 @@ _run_comp() {
     FAILED_COMPONENTS+=("$comp")
   fi
   _refresh_brew_path
-  # Rebuild brew cache in parent shell after each component — subshell writes
-  # (brew upgrades, _BREW_OUTDATED_STALE) do not propagate back to the parent.
-  if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-always-upgrade}" == "always-upgrade" ]] \
-      && command -v brew &>/dev/null; then
-    brew_cache_outdated 2>/dev/null || true
-  fi
 }
 
 # _run_layer <label> <filter> <comps_array_ref>
@@ -517,6 +511,13 @@ _run_layer() {
 print_execution_plan
 
 _run_layer "Convergence / software" "software" _SOFTWARE_COMPS
+# Rebuild brew cache once after all software components — subshell upgrades
+# do not propagate back to the parent shell, so we refresh here in bulk
+# rather than after each component (which would be 4 brew calls × N components).
+if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-always-upgrade}" == "always-upgrade" ]] \
+    && command -v brew &>/dev/null; then
+  brew_cache_outdated 2>/dev/null || true
+fi
 _run_layer "Convergence / system"   "system"   _SYSTEM_COMPS
 _run_layer "Verification"           "tic"      _TIC_COMPS
 

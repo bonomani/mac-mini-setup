@@ -235,6 +235,7 @@ run_dev_tools_from_yaml() {
       [[ -f "$_plist" ]] && ucc_run launchctl unload "$_plist" 2>/dev/null || true
     done
     brew_upgrade ariaflow
+    ucc_run ariaflow install --with-aria2
   }
 
   ucc_target_nonruntime \
