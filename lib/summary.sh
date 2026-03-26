@@ -126,9 +126,9 @@ print_final_summary() {
   echo "  ──────────────────────────────────────────────────────"
 
   init_summary_counters
-  print_summary_section "UCC / software" "${software_comps[@]}"
-  print_summary_section "UCC / system"   "${system_comps[@]}"
-  print_summary_section "TIC"            "${tic_comps[@]}"
+  print_summary_section "Convergence / software" "${software_comps[@]}"
+  print_summary_section "Convergence / system"   "${system_comps[@]}"
+  print_summary_section "Verification"           "${tic_comps[@]}"
 
   echo "  ──────────────────────────────────────────────────────"
   local _total_line

@@ -33,6 +33,16 @@ _ucc_display_name() {
   esac
 }
 
+_ucc_emit_target_line() {
+  local profile="$1" status="$2" name="$3" detail="${4:-}" line=""
+  if [[ -n "$detail" ]]; then
+    line=$(printf '      [%-8s] %-30s %s' "$status" "$name" "$detail")
+  else
+    line=$(printf '      [%-8s] %s' "$status" "$name")
+  fi
+  _ucc_emit_profile_line "$profile" "$line"
+}
+
 # ucc_brew_target <target-name> <brew-pkg>
 # Standard brew formula: install=brew install, update=brew upgrade
 ucc_brew_target() {
@@ -147,7 +157,7 @@ ucc_target() {
 
   # observation=failed: observe function crashed (non-zero exit)
   if [[ $obs_exit -ne 0 ]]; then
-    _ucc_emit_profile_line "$profile" "$(printf '  %-46s  obs-failed  (observe fn exited non-zero)' "$display_name")"
+    _ucc_emit_target_line "$profile" "obs-fail" "$display_name" "observe fn exited non-zero"
     _ucc_record_outcome "$profile" "$name" "FAILED" "failed" "failed" "$msg_id" "$started_at" \
       "{}" "{\"observation\":\"failed\",\"message\":\"observe function exited non-zero\"}"
     return 0
@@ -155,7 +165,7 @@ ucc_target() {
 
   # observation=indeterminate: observe ran (exit 0) but produced no usable state
   if [[ -z "$observed" ]]; then
-    _ucc_emit_profile_line "$profile" "$(printf '  %-46s  indeterminate  (observe returned no state)' "$display_name")"
+    _ucc_emit_target_line "$profile" "unknown" "$display_name" "observe returned no state"
     _ucc_record_outcome "$profile" "$name" "FAILED" "failed" "failed" "$msg_id" "$started_at" \
       "{}" "{\"observation\":\"indeterminate\",\"message\":\"observe returned empty state\"}"
     return 0
@@ -182,7 +192,7 @@ ucc_target() {
     if [[ "$UCC_MODE" == "update" && -n "$update_fn" ]]; then
       # Update mode: run upgrade even when state already matches
       if [[ "$UCC_DRY_RUN" == "1" ]]; then
-        _ucc_emit_profile_line "$profile" "$(printf '  %-46s  dry-run  state=\"%s\"  (update skipped)' "$display_name" "$(_ucc_display_state "$observed" "$axes")")"
+        _ucc_emit_target_line "$profile" "dry-run" "$display_name" "state=\"$(_ucc_display_state "$observed" "$axes")\" (update skipped)"
         _ucc_record_outcome "$profile" "$name" "" "unchanged" "unchanged" "$msg_id" "$started_at" \
           "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":{}}" \
           "{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"dry_run\",\"message\":\"update transition not applied due to dry-run mode\"}"
@@ -193,23 +203,23 @@ ucc_target() {
         verified=$($observe_fn 2>/dev/null)
         ver_exit=$?
         if [[ $ver_exit -eq 0 ]] && _ucc_satisfied "$verified" "$desired"; then
-          _ucc_emit_profile_line "$profile" "$(printf '  %-46s  updated  \"%s\" → \"%s\"' "$display_name" "$(_ucc_display_state "$observed" "$axes")" "$(_ucc_display_state "$verified" "$axes")")"
+          _ucc_emit_target_line "$profile" "updated" "$display_name" "\"$(_ucc_display_state "$observed" "$axes")\" -> \"$(_ucc_display_state "$verified" "$axes")\""
           _ucc_record_outcome "$profile" "$name" "CHANGED" "ok" "changed" "$msg_id" "$started_at" \
             "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$verified" "$axes"),\"observed_after\":$(_ucc_state_obj "$verified")}" \
             "{\"observation\":\"ok\",\"outcome\":\"changed\",\"completion\":\"complete\",\"proof\":{\"change\":\"update_applied\"}}"
         else
-          _ucc_emit_profile_line "$profile" "$(printf '  %-46s  FAILED — verify after update: \"%s\"' "$display_name" "$(_ucc_display_state "${verified:-?}" "$axes")")"
+          _ucc_emit_target_line "$profile" "fail" "$display_name" "verify after update: \"$(_ucc_display_state "${verified:-?}" "$axes")\""
           _ucc_record_outcome "$profile" "$name" "FAILED" "failed" "failed" "$msg_id" "$started_at" \
             "{}" "{\"observation\":\"failed\",\"message\":\"post-update verify did not reach desired state\"}"
         fi
       else
-        _ucc_emit_profile_line "$profile" "$(printf '  %-46s  FAILED — update error  state=\"%s\"' "$display_name" "$(_ucc_display_state "$observed" "$axes")")"
+        _ucc_emit_target_line "$profile" "fail" "$display_name" "update error state=\"$(_ucc_display_state "$observed" "$axes")\""
         _ucc_record_outcome "$profile" "$name" "FAILED" "failed" "failed" "$msg_id" "$started_at" \
           "{}" "{\"observation\":\"failed\",\"message\":\"update function failed\"}"
       fi
     else
       # Already at desired state
-      _ucc_emit_profile_line "$profile" "$(printf '  %-46s  ok  %s' "$display_name" "$(_ucc_compose_evidence "$name" "$observed" "$axes" "$evidence_fn")")"
+      _ucc_emit_target_line "$profile" "ok" "$display_name" "$(_ucc_compose_evidence "$name" "$observed" "$axes" "$evidence_fn")"
       _ucc_record_outcome "$profile" "$name" "CONVERGED" "ok" "ok" "$msg_id" "$started_at" \
         "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":{}}" \
         "{\"observation\":\"ok\",\"outcome\":\"converged\"}"
@@ -219,7 +229,7 @@ ucc_target() {
 
   # Step 4: Apply transition
   if [[ "$UCC_DRY_RUN" == "1" ]]; then
-    _ucc_emit_profile_line "$profile" "$(printf '  %-46s  dry-run  \"%s\" → \"%s\"' "$display_name" "$(_ucc_display_state "$observed" "$axes")" "$(_ucc_display_state "$desired" "$axes")")"
+    _ucc_emit_target_line "$profile" "dry-run" "$display_name" "\"$(_ucc_display_state "$observed" "$axes")\" -> \"$(_ucc_display_state "$desired" "$axes")\""
     _ucc_record_outcome "$profile" "$name" "" "unchanged" "unchanged" "$msg_id" "$started_at" \
       "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$desired" "$axes")}" \
       "{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"dry_run\",\"message\":\"transition not applied due to dry-run mode\"}"
@@ -227,7 +237,7 @@ ucc_target() {
   fi
 
   if [[ -z "$install_fn" ]]; then
-    _ucc_emit_profile_line "$profile" "$(printf '  %-46s  no-install (policy)  \"%s\" → \"%s\"' "$display_name" "$(_ucc_display_state "$observed" "$axes")" "$(_ucc_display_state "$desired" "$axes")")"
+    _ucc_emit_target_line "$profile" "policy" "$display_name" "\"$(_ucc_display_state "$observed" "$axes")\" -> \"$(_ucc_display_state "$desired" "$axes")\""
     _ucc_record_outcome "$profile" "$name" "" "unchanged" "unchanged" "$msg_id" "$started_at" \
       "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$desired" "$axes")}" \
       "{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"policy\",\"message\":\"transition not applied - no install function declared\"}"
@@ -250,17 +260,17 @@ ucc_target() {
     ver_exit=$?
     log_debug "post-install observed=\"$verified\""
     if [[ $ver_exit -eq 0 ]] && _ucc_satisfied "$verified" "$desired"; then
-      _ucc_emit_profile_line "$profile" "$(printf '  %-46s  %s  \"%s\" → \"%s\"' "$display_name" "$action_label" "$(_ucc_display_state "$observed" "$axes")" "$(_ucc_display_state "$verified" "$axes")")"
+      _ucc_emit_target_line "$profile" "$action_label" "$display_name" "\"$(_ucc_display_state "$observed" "$axes")\" -> \"$(_ucc_display_state "$verified" "$axes")\""
       _ucc_record_outcome "$profile" "$name" "CHANGED" "ok" "changed" "$msg_id" "$started_at" \
         "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$verified" "$axes"),\"observed_after\":$(_ucc_state_obj "$verified")}" \
         "{\"observation\":\"ok\",\"outcome\":\"changed\",\"completion\":\"complete\",\"proof\":{\"change\":\"verify_pass\"}}"
     else
-      _ucc_emit_profile_line "$profile" "$(printf '  %-46s  FAILED — verify after install: \"%s\"' "$display_name" "$(_ucc_display_state "${verified:-?}" "$axes")")"
+      _ucc_emit_target_line "$profile" "fail" "$display_name" "verify after install: \"$(_ucc_display_state "${verified:-?}" "$axes")\""
       _ucc_record_outcome "$profile" "$name" "FAILED" "failed" "failed" "$msg_id" "$started_at" \
         "{}" "{\"observation\":\"failed\",\"message\":\"post-install verify did not reach desired state\"}"
     fi
   else
-    _ucc_emit_profile_line "$profile" "$(printf '  %-46s  FAILED — install error  was=\"%s\"' "$display_name" "$(_ucc_display_state "$observed" "$axes")")"
+    _ucc_emit_target_line "$profile" "fail" "$display_name" "install error was=\"$(_ucc_display_state "$observed" "$axes")\""
     _ucc_record_outcome "$profile" "$name" "FAILED" "failed" "failed" "$msg_id" "$started_at" \
       "{}" "{\"observation\":\"failed\",\"message\":\"install function failed\"}"
   fi
@@ -284,7 +294,9 @@ ucc_target_service()    { _ucc_target_with_default_profile runtime    "$@"; }
 
 ucc_skip_target() {
   local name="$1" reason="$2"
-  printf '  %-47s skip — %s\n' "$name" "$reason"
+  local display_name
+  display_name="$(_ucc_display_name "$name")"
+  printf '      [%-8s] %-30s %s\n' "skip" "$display_name" "$reason"
   _UCC_SKIPPED=$(( ${_UCC_SKIPPED:-0} + 1 ))
 }
 

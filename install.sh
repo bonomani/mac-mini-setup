@@ -294,6 +294,11 @@ print_execution_plan() {
   [[ ${#tic[@]} -gt 0 ]]      && printf '  %-14s %s\n' "Verify"   "$(IFS=', '; echo "${tic[*]}")"
 }
 
+_print_component_header() {
+  local comp="$1"
+  printf '  [%s]\n' "$comp"
+}
+
 # Pre-collect dispatch info for all components (one query per component)
 _DISP_COMPS=()
 _DISP_LIBS=()
@@ -361,7 +366,7 @@ _run_layer() {
     esac
     local comp="${_DISP_COMPS[$_i]}"
     eval "${comps_ref}+=(\"\$comp\")"
-    printf '  %s\n' "$comp"
+    _print_component_header "$comp"
     if [[ "$filter" == "tic" ]]; then
       if uic_component_blocked "$comp"; then
         log_warn "Component $comp blocked by UIC hard gate"

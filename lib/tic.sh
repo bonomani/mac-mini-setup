@@ -19,6 +19,15 @@ TIC_PASS=0
 TIC_FAIL=0
 TIC_SKIP=0
 
+_tic_emit_line() {
+  local status="$1" name="$2" detail="${3:-}"
+  if [[ -n "$detail" ]]; then
+    printf '      [%-8s] %-30s %s\n' "$status" "$name" "$detail"
+  else
+    printf '      [%-8s] %s\n' "$status" "$name"
+  fi
+}
+
 # tic_test: declare and execute one TIC-compliant test
 #
 # Usage:
@@ -46,7 +55,7 @@ tic_test() {
 
   # Phase: skip (oracle not evaluated — reason must be explicit per TIC SPEC)
   if [[ -n "$skip_reason" ]]; then
-    printf '  %-47s skip — %s\n' "$name" "$skip_reason"
+    _tic_emit_line "skip" "$name" "$skip_reason"
     TIC_SKIP=$(( TIC_SKIP + 1 ))
     return 0
   fi
@@ -58,11 +67,13 @@ tic_test() {
 
   # Phase: report
   if [[ $exit_code -eq 0 ]]; then
-    printf '  %-47s pass\n' "$name"
+    _tic_emit_line "pass" "$name"
     TIC_PASS=$(( TIC_PASS + 1 ))
   else
-    printf '  %-47s FAIL  intent="%s" observed="%s"%s\n' \
-      "$name" "$intent" "$observed" "$trace_field"
+    _tic_emit_line "fail" "$name"
+    [[ -n "$intent" ]] && printf '                 intent: %s\n' "$intent"
+    printf '                 observed: %s\n' "$observed"
+    [[ -n "$trace" ]] && printf '                 trace: %s\n' "$trace"
     TIC_FAIL=$(( TIC_FAIL + 1 ))
   fi
 }

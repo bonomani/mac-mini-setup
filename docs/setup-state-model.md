@@ -42,7 +42,7 @@ Modeling rule:
   `parametric` ASM profile (axes include `config_value`)
 - the `system` component uses a parametric composition target
   (`system-composition`) that derives whole-machine state from the
-  status of governed subsystem targets in the current run
+  status of required governed subsystem targets in the current run
 - system-layer presence-only components (`git-config`) use the `configured` ASM profile
 - each mutable component uses the ASM software-profile style axes:
   - `installation_state`
@@ -229,6 +229,9 @@ Host-level interpretation:
 - `tic/system/verify.yaml` is the explicit verification layer for
   `system-composition`; verification stays separate from convergence,
   but the relation is now declared in the project artifacts and traces
+- soft-gated optional targets can remain outside the required
+  `system-composition` dependency set so they do not incorrectly degrade
+  whole-machine state
 
 ## 7. Evidence relationship
 

@@ -86,6 +86,9 @@ limitations:
   - `tic/system/verify.yaml` is explicitly the post-convergence
     verification layer for `system-composition`, but TIC results are
     still not folded back into UCC state in the current project design.
+  - `system-composition` currently covers required subsystem targets
+    only; soft-gated optional targets such as `docker-resources` are not
+    included in the required composition set.
   - Stack governance is currently project-local: ai-apps uses a
     parametric stack-definition target, stack-specific UIC gates, and
     TIC endpoint checks, but these semantics are not yet generalized in

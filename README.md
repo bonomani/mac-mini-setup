@@ -146,7 +146,7 @@ and `ucc/system/`, then dispatched through `install.sh`.
 | Git Config | `ucc/system/git-config.yaml` | Global git defaults |
 | Docker Config | `ucc/system/docker-config.yaml` | Docker memory/CPU/swap/disk resource settings |
 | macOS Defaults | `ucc/system/macos-defaults.yaml` | Power, Finder, Dock, and visibility defaults |
-| System | `ucc/system/system.yaml` | Whole-machine composition target over governed subsystem targets |
+| System | `ucc/system/system.yaml` | Whole-machine composition target over required governed subsystem targets |
 | Verify | `tic/software/verify.yaml`, `tic/system/verify.yaml` | Read-only post-convergence verification, including system-level evidence for `system-composition` |
 
 ## Usage
