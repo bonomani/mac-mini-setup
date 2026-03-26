@@ -158,6 +158,34 @@ chmod +x install.sh
 ./install.sh python ai-python-stack
 ```
 
+## macOS Validation
+
+Run these commands on the target Mac to validate the governed install flow
+and the AI app stack behavior end to end:
+
+```bash
+# 1. Resolve gates and preferences only
+./install.sh --preflight
+
+# 2. Preview AI app stack convergence
+./install.sh --dry-run ai-apps
+
+# 3. Apply AI app stack convergence
+./install.sh ai-apps
+
+# 4. Run read-only verification
+./install.sh verify
+```
+
+Expected checkpoints:
+- `--preflight` should show `macos-platform` as `ok`
+- `--dry-run ai-apps` should evaluate `docker-daemon`, `docker-compose-cli`,
+  and `ai-apps-template`
+- `ai-apps` should converge both `ai-stack-compose-file` and
+  `ai-stack-running`
+- `verify` should pass the AI app HTTP readiness checks for Open WebUI,
+  Flowise, OpenHands, n8n, and Qdrant
+
 ## Services
 
 | Service | URL |
