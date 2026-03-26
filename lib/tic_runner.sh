@@ -29,10 +29,11 @@ run_verify() {
     < <(yaml_list "$cfg_dir" "$cfg_dir/ucc/software/ai-apps.yaml" services)
   [[ ${#_AI_SERVICES[@]} -gt 0 ]] || _AI_SERVICES=(open-webui flowise openhands n8n qdrant)
 
-  local _NODE_VER _ARIA2_PORT _ARIAFLOW_WEB_PORT _OLLAMA_API_HOST _OLLAMA_API_PORT
+  local _NODE_VER _ARIA2_PORT _ARIAFLOW_PORT _ARIAFLOW_WEB_PORT _OLLAMA_API_HOST _OLLAMA_API_PORT
   local _UNSLOTH_PORT _UNSLOTH_LABEL _UNSLOTH_STUDIO_DIR
   _NODE_VER="$(          yaml_get "$cfg_dir" "$cfg_dir/ucc/software/dev-tools.yaml"       node_version          24)"
   _ARIA2_PORT="$(        yaml_get "$cfg_dir" "$cfg_dir/ucc/software/dev-tools.yaml"       aria2_port            6800)"
+  _ARIAFLOW_PORT="$(     yaml_get "$cfg_dir" "$cfg_dir/ucc/software/dev-tools.yaml"       ariaflow_port         8000)"
   _ARIAFLOW_WEB_PORT="$( yaml_get "$cfg_dir" "$cfg_dir/ucc/software/dev-tools.yaml"       ariaflow_web_port     8001)"
   _OLLAMA_API_HOST="$(   yaml_get "$cfg_dir" "$cfg_dir/ucc/software/ollama.yaml"          api_host              127.0.0.1)"
   _OLLAMA_API_PORT="$(   yaml_get "$cfg_dir" "$cfg_dir/ucc/software/ollama.yaml"          api_port              11434)"

@@ -10,6 +10,7 @@ omz_theme: agnoster
 omz_installer_url: https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh
 ariaflow_tap: bonomani/ariaflow
 aria2_port: 6800
+ariaflow_port: 8000
 ariaflow_web_port: 8001
 targets:
   vscode:
@@ -84,7 +85,7 @@ targets:
       - homebrew
     provided_by_tool: brew
     oracle:
-      configured: "ariaflow --version >/dev/null 2>&1 || ariaflow lifecycle >/dev/null 2>&1"
+      configured: "ariaflow --version >/dev/null 2>&1"
     evidence:
       version: "_brew_cached_version ariaflow"
 
@@ -99,6 +100,21 @@ targets:
       pid: "lsof -ti tcp:${aria2_port} 2>/dev/null | head -1"
       port: "${aria2_port}"
 
+  ariaflow-service:
+    component: dev-tools
+    profile: runtime
+    type: service
+    depends_on:
+      - ariaflow
+      - aria2-launchd
+    oracle:
+      configured: "brew services list 2>/dev/null | awk '$1==\"ariaflow\" {print $2}' | grep -q '^started$'"
+      runtime: 'curl -fsS --max-time 5 "http://127.0.0.1:${_ARIAFLOW_PORT}/api/status" >/dev/null 2>&1'
+    evidence:
+      version: "_brew_cached_version ariaflow"
+      pid: "lsof -ti tcp:${ariaflow_port} 2>/dev/null | head -1"
+      port: "${ariaflow_port}"
+
   ariaflow-web:
     component: dev-tools
     profile: configured
@@ -107,7 +123,7 @@ targets:
       - ariaflow
     provided_by_tool: brew
     oracle:
-      configured: "brew list ariaflow-web >/dev/null 2>&1"
+      configured: "ariaflow-web --version >/dev/null 2>&1"
     evidence:
       version: "_brew_cached_version ariaflow-web"
 
@@ -116,9 +132,10 @@ targets:
     profile: runtime
     type: service
     depends_on:
+      - ariaflow-service
       - ariaflow-web
     oracle:
-      configured: "brew services list 2>/dev/null | awk '/^ariaflow-web/ {print $2}' | grep -q '^started$'"
+      configured: "brew services list 2>/dev/null | awk '$1==\"ariaflow-web\" {print $2}' | grep -q '^started$'"
       runtime: 'curl -fsS --max-time 5 "http://127.0.0.1:${_ARIAFLOW_WEB_PORT}" >/dev/null 2>&1'
     evidence:
       version: "_brew_cached_version ariaflow-web"
@@ -172,6 +189,7 @@ omz_theme: "agnoster"
 # Ariaflow brew tap and service ports
 ariaflow_tap: "bonomani/ariaflow"
 aria2_port: "6800"
+ariaflow_port: "8000"
 ariaflow_web_port: "8001"
 
 # Homebrew cask GUI tools

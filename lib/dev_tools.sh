@@ -7,13 +7,14 @@ run_dev_tools_from_yaml() {
   local cfg_dir="$1" yaml="$2"
 
   local _NODE_VER _NODE_PREV_VER _OMZ_INSTALLER_URL _OMZ_THEME
-  local _ARIAFLOW_TAP _ARIA2_PORT _ARIAFLOW_WEB_PORT
+  local _ARIAFLOW_TAP _ARIA2_PORT _ARIAFLOW_PORT _ARIAFLOW_WEB_PORT
   _NODE_VER="$(          yaml_get "$cfg_dir" "$yaml" node_version          24)"
   _NODE_PREV_VER="$(     yaml_get "$cfg_dir" "$yaml" node_previous_version 20)"
   _OMZ_INSTALLER_URL="$( yaml_get "$cfg_dir" "$yaml" omz_installer_url     "https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh")"
   _OMZ_THEME="$(         yaml_get "$cfg_dir" "$yaml" omz_theme             agnoster)"
   _ARIAFLOW_TAP="$(      yaml_get "$cfg_dir" "$yaml" ariaflow_tap          bonomani/ariaflow)"
   _ARIA2_PORT="$(        yaml_get "$cfg_dir" "$yaml" aria2_port            6800)"
+  _ARIAFLOW_PORT="$(     yaml_get "$cfg_dir" "$yaml" ariaflow_port         8000)"
   _ARIAFLOW_WEB_PORT="$( yaml_get "$cfg_dir" "$yaml" ariaflow_web_port     8001)"
 
   # ---- CLI tools (brew) ----
@@ -221,7 +222,7 @@ run_dev_tools_from_yaml() {
   # ---- ariaflow ----
   _observe_ariaflow() {
     brew_is_installed ariaflow || { ucc_asm_package_state "absent"; return; }
-    ariaflow lifecycle &>/dev/null 2>&1 || { ucc_asm_package_state "outdated"; return; }
+    ariaflow --version &>/dev/null 2>&1 || { ucc_asm_package_state "outdated"; return; }
     if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-always-upgrade}" == "always-upgrade" ]]; then
       _brew_is_outdated ariaflow && { ucc_asm_package_state "outdated"; return; }
     fi
@@ -244,6 +245,36 @@ run_dev_tools_from_yaml() {
     --install  _install_ariaflow \
     --update   _update_ariaflow
 
+  # ---- ariaflow service ----
+  _observe_ariaflow_service() {
+    if ! brew services list 2>/dev/null | awk '$1=="ariaflow" {print $2}' | grep -q "^started$"; then
+      ucc_asm_service_state "stopped"
+    elif curl -fsS --max-time 5 "http://127.0.0.1:${_ARIAFLOW_PORT}/api/status" >/dev/null 2>&1; then
+      ucc_asm_service_state "started"
+    else
+      ucc_asm_service_state "outdated"
+    fi
+  }
+  _evidence_ariaflow_service() { ucc_eval_evidence_from_yaml "$cfg_dir" "$yaml" "ariaflow-service"; }
+  _start_ariaflow_service() {
+    ucc_run brew tap "$_ARIAFLOW_TAP"
+    ucc_run brew services start "${_ARIAFLOW_TAP}/ariaflow"
+    sleep 3
+  }
+  _restart_ariaflow_service() {
+    ucc_run brew tap "$_ARIAFLOW_TAP"
+    ucc_run brew services restart "${_ARIAFLOW_TAP}/ariaflow"
+    sleep 3
+  }
+
+  ucc_target_service \
+    --name     "ariaflow-service" \
+    --observe  _observe_ariaflow_service \
+    --evidence _evidence_ariaflow_service \
+    --desired  "$(ucc_asm_runtime_desired)" \
+    --install  _start_ariaflow_service \
+    --update   _restart_ariaflow_service
+
   # ---- aria2 daemon (launchd) ----
   _observe_aria2_launchd() {
     ariaflow lifecycle 2>/dev/null \
@@ -263,7 +294,14 @@ run_dev_tools_from_yaml() {
     --update   _install_aria2_launchd
 
   # ---- ariaflow-web (brew formula) ----
-  _observe_ariaflow_web()  { ucc_asm_package_state "$(brew_observe ariaflow-web)"; }
+  _observe_ariaflow_web() {
+    brew_is_installed ariaflow-web || { ucc_asm_package_state "absent"; return; }
+    ariaflow-web --version &>/dev/null 2>&1 || { ucc_asm_package_state "outdated"; return; }
+    if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-always-upgrade}" == "always-upgrade" ]]; then
+      _brew_is_outdated ariaflow-web && { ucc_asm_package_state "outdated"; return; }
+    fi
+    ucc_asm_package_state "$(_brew_cached_version ariaflow-web)"
+  }
   _evidence_ariaflow_web() { ucc_eval_evidence_from_yaml "$cfg_dir" "$yaml" "ariaflow-web"; }
   _install_ariaflow_web() { ucc_run brew tap "$_ARIAFLOW_TAP"; brew_install ariaflow-web; }
   _update_ariaflow_web()  { ucc_run brew tap "$_ARIAFLOW_TAP"; brew_upgrade ariaflow-web; }
@@ -277,15 +315,25 @@ run_dev_tools_from_yaml() {
 
   # ---- ariaflow-web service ----
   _observe_ariaflow_web_service() {
-    if brew services list 2>/dev/null | awk '/^ariaflow-web/ {print $2}' | grep -q "^started$"; then
+    if ! brew services list 2>/dev/null | awk '$1=="ariaflow-web" {print $2}' | grep -q "^started$"; then
+      ucc_asm_service_state "stopped"
+    elif curl -fsS --max-time 5 "http://127.0.0.1:${_ARIAFLOW_WEB_PORT}" >/dev/null 2>&1; then
       ucc_asm_service_state "started"
     else
-      ucc_asm_service_state "stopped"
+      ucc_asm_service_state "outdated"
     fi
   }
   _evidence_ariaflow_web_service() { ucc_eval_evidence_from_yaml "$cfg_dir" "$yaml" "ariaflow-web-service"; }
-  _start_ariaflow_web_service()   { ucc_run brew services start   "${_ARIAFLOW_TAP}/ariaflow-web"; }
-  _restart_ariaflow_web_service() { ucc_run brew services restart "${_ARIAFLOW_TAP}/ariaflow-web"; }
+  _start_ariaflow_web_service() {
+    ucc_run brew tap "$_ARIAFLOW_TAP"
+    ucc_run brew services start "${_ARIAFLOW_TAP}/ariaflow-web"
+    sleep 3
+  }
+  _restart_ariaflow_web_service() {
+    ucc_run brew tap "$_ARIAFLOW_TAP"
+    ucc_run brew services restart "${_ARIAFLOW_TAP}/ariaflow-web"
+    sleep 3
+  }
 
   ucc_target_service \
     --name     "ariaflow-web-service" \

@@ -219,6 +219,7 @@ Expected checkpoints:
 | n8n | http://localhost:5678 |
 | Qdrant | http://localhost:6333 |
 | aria2 RPC | http://127.0.0.1:6800 |
+| ariaflow API | http://127.0.0.1:8000 |
 | ariaflow web UI | http://127.0.0.1:8001 |
 
 ## Requirements

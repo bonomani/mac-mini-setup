@@ -16,5 +16,7 @@ services:
     url: http://localhost:6333
   - name: aria2 RPC
     url: http://127.0.0.1:6800
+  - name: ariaflow API
+    url: http://127.0.0.1:8000
   - name: ariaflow web UI
     url: http://127.0.0.1:8001

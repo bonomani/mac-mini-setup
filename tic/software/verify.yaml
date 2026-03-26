@@ -43,6 +43,14 @@ tests:
     intent: "bmad-method npm global must be installed"
     oracle: "npm ls -g bmad-method --depth=0 >/dev/null 2>&1"
     trace: "component:dev-tools / ucc-target:npm-global-bmad-method"
+  - name: ariaflow-api-ready
+    intent: "ariaflow backend must answer API requests on its local port"
+    oracle: "curl -fsS --max-time 5 http://127.0.0.1:${_ARIAFLOW_PORT}/api/status >/dev/null 2>&1"
+    trace: "component:dev-tools / ucc-target:ariaflow-service"
+  - name: ariaflow-web-http-ready
+    intent: "ariaflow-web must answer HTTP requests on its local port"
+    oracle: "curl -fsS --max-time 5 http://127.0.0.1:${_ARIAFLOW_WEB_PORT} >/dev/null 2>&1"
+    trace: "component:dev-tools / ucc-target:ariaflow-web-service"
   # ── ai-apps ───────────────────────────────────────────────
   - name: open-webui-http-ready
     intent: "Open WebUI must answer HTTP requests on port 3000"
