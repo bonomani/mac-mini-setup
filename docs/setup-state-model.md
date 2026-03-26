@@ -226,6 +226,9 @@ Host-level interpretation:
   component state and whole-machine state; it does not add new runtime
   controls by itself, but it makes the composed system state declarable
   and observable inside the existing UCC flow
+- `tic/system/verify.yaml` is the explicit verification layer for
+  `system-composition`; verification stays separate from convergence,
+  but the relation is now declared in the project artifacts and traces
 
 ## 7. Evidence relationship
 
@@ -236,6 +239,8 @@ This model is evidenced by:
 - UIC gate and preference logic in `../lib/uic.sh`
 - UCC declaration/result artifacts emitted by `../lib/ucc.sh`
 - TIC verification oracles in `../tic/software/verify.yaml` and `../tic/system/verify.yaml`
+- the system TIC suite explicitly verifies `system-composition` and
+  treats the rest of its checks as evidence for that system target
 - component YAML manifests in `../ucc/software/` and `../ucc/system/`
 - stack runtime composition template in `../stack/docker-compose.yml`
 - AI apps convergence logic in `../lib/ai_apps.sh`

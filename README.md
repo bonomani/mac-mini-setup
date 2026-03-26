@@ -117,7 +117,7 @@ governed state can describe the whole machine, not only individual components.
 | File | Type | Purpose | Key Notes |
 |---|---|---|---|
 | `tic/software/verify.yaml` | YAML | Software verification suite | Imports, package presence, MPS checks, AI app HTTP readiness |
-| `tic/system/verify.yaml` | YAML | System verification suite | Machine-state checks |
+| `tic/system/verify.yaml` | YAML | System verification suite | Machine-state checks and verification evidence for `system-composition` |
 
 ### Runtime Templates And Scripts
 
@@ -147,7 +147,7 @@ and `ucc/system/`, then dispatched through `install.sh`.
 | Docker Config | `ucc/system/docker-config.yaml` | Docker memory/CPU/swap/disk resource settings |
 | macOS Defaults | `ucc/system/macos-defaults.yaml` | Power, Finder, Dock, and visibility defaults |
 | System | `ucc/system/system.yaml` | Whole-machine composition target over governed subsystem targets |
-| Verify | `tic/software/verify.yaml`, `tic/system/verify.yaml` | Read-only post-convergence verification |
+| Verify | `tic/software/verify.yaml`, `tic/system/verify.yaml` | Read-only post-convergence verification, including system-level evidence for `system-composition` |
 
 ## Usage
 

@@ -1,9 +1,18 @@
 # TIC system observation — post-convergence machine-state value assertions
 # oracle strings: evaluated via bash eval — $VAR references expand at test time
+verification_for:
+  component: system
+  ucc_target: system-composition
+  role: post-convergence verification evidence
 
 tests:
+  - name: system-composition-converged
+    intent: "system-composition must converge before system verification is accepted"
+    oracle: "awk -F'|' '$1==\"system-composition\" {val=$2} END {exit !(val==\"ok\")}' \"${UCC_TARGET_STATUS_FILE:-/dev/null}\""
+    trace: "component:system / ucc-target:system-composition / tic-suite:system"
+
   # ── homebrew ──────────────────────────────────────────────
   - name: brew-analytics-off
     intent: "brew analytics must be disabled"
     oracle: "brew analytics state 2>/dev/null | grep -qi disabled"
-    trace: "component:homebrew / ucc-target:brew-analytics=off"
+    trace: "component:system / verifies:homebrew / evidence-for:system-composition"

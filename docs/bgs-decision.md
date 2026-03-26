@@ -83,6 +83,9 @@ limitations:
     all network calls reach upstream public registries.
   - Does not manage credentials or API tokens.
   - TIC tests are read-only probes (GIC); they do not re-run convergence.
+  - `tic/system/verify.yaml` is explicitly the post-convergence
+    verification layer for `system-composition`, but TIC results are
+    still not folded back into UCC state in the current project design.
   - Stack governance is currently project-local: ai-apps uses a
     parametric stack-definition target, stack-specific UIC gates, and
     TIC endpoint checks, but these semantics are not yet generalized in
