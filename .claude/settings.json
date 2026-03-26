@@ -44,7 +44,10 @@
       "Bash(python3 -c \":*)",
       "Bash(grep -n \"UIC_GATE_FAILED\\\\|uic_component_blocked\\\\|gate:\" /home/bc/repos/github/bonomani/mac-mini-setup/lib/*.sh)",
       "Bash(grep -rn \"printf.*version=.*pid=\\\\|printf.*version=.*path=\\\\|printf.*version=.*port=\" /home/bc/repos/github/bonomani/mac-mini-setup/lib/*.sh)",
-      "Read(//home/bc/repos/github/bonomani/ucc/**)"
+      "Read(//home/bc/repos/github/bonomani/ucc/**)",
+      "Bash(grep -rn \"ariaflow\\\\|aria\" /home/bc/repos/github/bonomani/mac-mini-setup/ --include=*.sh --include=*.yaml --include=*.yml -i)",
+      "Bash(grep -n \"_brew_is_outdated\\\\|brew_is_outdated\\\\|brew outdated\\\\|needs-update\\\\|outdated\" /home/bc/repos/github/bonomani/mac-mini-setup/lib/*.sh)",
+      "Bash(grep -n \"brew_cache_outdated\\\\|_BREW_OUTDATED_STALE\" /home/bc/repos/github/bonomani/mac-mini-setup/install.sh /home/bc/repos/github/bonomani/mac-mini-setup/lib/*.sh)"
     ]
   }
 }

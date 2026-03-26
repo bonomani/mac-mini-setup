@@ -1,0 +1,141 @@
+# BGS Compliance Report
+
+Date: 2026-03-26
+Project: `mac-mini-setup`
+Claimed slice: `BGS-State-Modeled-Governed`
+Assessment basis: repo-local artifacts, executable validators, and local runtime evidence
+
+## Executive Summary
+
+`mac-mini-setup` is materially compliant with its claimed `BGS-State-Modeled-Governed` slice based on the governance entry, decision record, BISS classification, ASM-aligned state model, executable validators, and available runtime UCC evidence present at review time.
+
+This is a project-local compliance assessment, not an external audit or a claim about stronger rigor overlays such as `RIG`.
+
+## Scope Reviewed
+
+The assessed scope is the one declared in [`../BGS.md`](../BGS.md):
+
+- AI workstation setup across 13 governed components
+- full macOS profile
+- portable Linux/WSL subset with unsupported components skipped by manifest scope and policy
+- governed preflight, convergence, and post-convergence verification
+
+## Reviewed Evidence
+
+Primary governance and model artifacts:
+
+- [`../BGS.md`](../BGS.md)
+- [`bgs-decision.md`](./bgs-decision.md)
+- [`biss-classification.md`](./biss-classification.md)
+- [`setup-state-model.md`](./setup-state-model.md)
+- [`setup-state-artifact.yaml`](./setup-state-artifact.yaml)
+
+Executable and operational evidence:
+
+- [`../tools/validate_setup_state_artifact.py`](../tools/validate_setup_state_artifact.py)
+- [`../tools/validate_targets_manifest.py`](../tools/validate_targets_manifest.py)
+- [`../install.sh`](../install.sh)
+- [`../lib/ucc.sh`](../lib/ucc.sh)
+- [`../lib/uic.sh`](../lib/uic.sh)
+- [`../lib/tic.sh`](../lib/tic.sh)
+- [`../tic/software/verify.yaml`](../tic/software/verify.yaml)
+- [`../tic/system/verify.yaml`](../tic/system/verify.yaml)
+- `~/.ai-stack/runs/*.declaration.jsonl`
+- `~/.ai-stack/runs/*.result.jsonl`
+
+## Validation Performed
+
+The following checks were run during this review:
+
+```bash
+python3 tools/validate_setup_state_artifact.py docs/setup-state-artifact.yaml
+python3 tools/validate_targets_manifest.py
+```
+
+Observed results:
+
+- ASM artifact validator: `VALID docs/setup-state-artifact.yaml`
+- orchestration validator: `OK: 38 orchestration targets validated`
+- runtime evidence present locally:
+  - `3` declaration artifacts under `~/.ai-stack/runs/`
+  - `3` result artifacts under `~/.ai-stack/runs/`
+
+## Compliance Findings
+
+### 1. Governance entry is present and specific
+
+The repository contains a dedicated BGS project entry in [`../BGS.md`](../BGS.md) with:
+
+- explicit slice selection
+- declared scope
+- decision record path
+- orchestration and verification roots
+- review and validation dates
+- concrete next-read pointers
+
+Status: compliant
+
+### 2. Decision record is present and materially complete
+
+The decision record in [`bgs-decision.md`](./bgs-decision.md) includes:
+
+- pinned suite and member refs
+- claimed members and overlay
+- declared external controls
+- evidence references
+- explicit limitations
+
+Status: compliant
+
+### 3. BISS classification exists and matches the declared scope
+
+The boundary classification in [`biss-classification.md`](./biss-classification.md) identifies:
+
+- GCC at the preflight gate and preference layer
+- UCC for convergence and reconciliation
+- GIC for post-convergence verification
+
+During this review, the component count wording was aligned to the declared scope of 13 governed components so that the BISS document now matches the BGS entry and ASM model.
+
+Status: compliant
+
+### 4. ASM-governed state evidence exists
+
+The repo includes:
+
+- a setup state model in [`setup-state-model.md`](./setup-state-model.md)
+- a concrete state artifact in [`setup-state-artifact.yaml`](./setup-state-artifact.yaml)
+- an executable validator in [`../tools/validate_setup_state_artifact.py`](../tools/validate_setup_state_artifact.py)
+
+This supports the project’s claim that admissible convergence is interpreted against an explicit setup state model rather than only ad hoc installer behavior.
+
+Status: compliant
+
+### 5. UIC, UCC, and TIC are wired into the implementation
+
+The implementation structure and inventory show:
+
+- UIC preflight and preference handling through policy and shell libraries
+- UCC declaration/result generation in the installer and runtime libraries
+- TIC verification as read-only post-convergence evidence
+
+This is consistent with the claimed slice and with the stated limitation that TIC evidence is not folded back into UCC state.
+
+Status: compliant
+
+## Residual Limits and Caveats
+
+These do not invalidate the current slice claim, but they remain important:
+
+- macOS is still the only full-profile target; Linux and WSL run a governed subset only
+- TIC remains verification evidence, not convergence
+- credentials, IAM, and most privacy controls are delegated to upstream tooling
+- runtime evidence is partly outside the repository under `~/.ai-stack/runs/`
+- some behavior remains policy-soft rather than hard-blocking, such as the sudo gate for `macos-defaults`
+- the project claims the `Basic` overlay only, not `RIG`
+
+## Verdict
+
+As of 2026-03-26, `mac-mini-setup` is materially compliant with its declared `BGS-State-Modeled-Governed` slice on the basis of the reviewed artifacts and executed validators.
+
+The current claim should still be read with the limitations above: this is a `Basic`-overlay, project-local compliance posture with explicit delegated controls and a macOS-first full profile.
