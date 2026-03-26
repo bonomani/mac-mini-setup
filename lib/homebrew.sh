@@ -85,10 +85,10 @@ run_homebrew_from_yaml() {
   # Ensure brew is in PATH for the rest of this session
   is_installed brew || _setup_brew_path
 
-  # Update package index (GIC action, not a UCC target)
+  # Refresh outdated cache after homebrew target (covers first-install and
+  # the case where install.sh ran before brew was in PATH).
   if is_installed brew && [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-always-upgrade}" == "always-upgrade" ]]; then
-    log_info "Updating Homebrew package index..."
-    ucc_run brew update
+    brew_cache_outdated 2>/dev/null || true
   fi
 
   # ---- Disable analytics ----
