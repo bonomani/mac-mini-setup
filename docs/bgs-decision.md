@@ -47,6 +47,8 @@ external_controls:
   # Docker resource limits enforced: memory capped at 48 GB, CPU at 10
   # cores (docker.sh). Ollama model autopull defaults to 'none' to
   # prevent unintended bandwidth use (UIC preference ollama-model-autopull).
+  # AI apps image refresh policy defaults to 'reuse-local' to avoid
+  # unnecessary image pulls during stack startup/update.
   privacy and data-boundary control: delegated
   # Network calls go to upstream registries (brew, PyPI, Docker Hub,
   # Ollama, npm). No telemetry is emitted by this installer. Brew
@@ -62,9 +64,13 @@ evidence_refs:
   - ../install.sh                # orchestration entry point
   - ../lib/ucc.sh                # UCC/2.0 declaration/result artifact engine
   - ../lib/uic.sh                # UIC preflight engine
+  - ../policy/gates.yaml         # includes stack-specific ai-apps preflight gates
+  - ../policy/preferences.yaml   # includes stack-specific image pull policy
   - ../lib/tic.sh                # TIC test engine
   - ../tic/software/verify.yaml  # TIC software-layer test definitions
   - ../tic/system/verify.yaml    # TIC system-layer test definitions
+  - ../stack/docker-compose.yml  # stack definition template for ai-apps
+  - ../lib/ai_apps.sh            # stack convergence logic and definition/runtime checks
   - ../lib/tic_runner.sh          # TIC runner (run_verify sources the above YAML files)
   - ../lib/summary.sh            # final summary rendering
   - ~/.ai-stack/runs/*.declaration.jsonl  # runtime evidence outside the repo
@@ -75,6 +81,10 @@ limitations:
     all network calls reach upstream public registries.
   - Does not manage credentials or API tokens.
   - TIC tests are read-only probes (GIC); they do not re-run convergence.
+  - Stack governance is currently project-local: ai-apps uses a
+    parametric stack-definition target, stack-specific UIC gates, and
+    TIC endpoint checks, but these semantics are not yet generalized in
+    the upstream suite members.
   - Sudo gate is soft (not hard); macos-defaults is skipped if sudo
     is unavailable rather than aborting the full install.
   - The claimed BGS slice is `BGS-State-Modeled-Governed`; `TIC` is used

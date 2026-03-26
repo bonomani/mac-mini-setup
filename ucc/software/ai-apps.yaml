@@ -3,6 +3,18 @@ primary_profile: runtime
 libs: ai_apps
 runner: run_ai_apps_from_yaml
 on_fail: ignore
+stack:
+  kind: docker-compose
+  compose_dir: ".ai-stack"
+  compose_file: "docker-compose.yml"
+  definition_template: "stack/docker-compose.yml"
+  marker: "# ai-stack v2"
+  services:
+    - open-webui
+    - flowise
+    - openhands
+    - n8n
+    - qdrant
 targets:
   docker-running:
     component: ai-apps
@@ -18,8 +30,10 @@ targets:
 
   ai-stack-compose-file:
     component: ai-apps
-    profile: configured
+    profile: parametric
     type: config
+    evidence:
+      path: "printf '%s' \"$COMPOSE_FILE\""
 
   ai-stack-running:
     component: ai-apps
@@ -29,13 +43,3 @@ targets:
       - docker-running
       - ai-stack-compose-file
     provided_by_tool: docker-compose
-
-compose_dir: ".ai-stack"
-compose_marker: "# ai-stack v2"
-
-services:
-  - open-webui
-  - flowise
-  - openhands
-  - n8n
-  - qdrant

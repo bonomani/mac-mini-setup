@@ -74,7 +74,14 @@ source "$DIR/lib/summary.sh"
 _gate_macos()           { [[ "$(uname)" == "Darwin" ]]; }
 _gate_arm64()           { [[ "$(uname -m)" == "arm64" ]]; }
 _gate_docker_daemon()   { docker info &>/dev/null 2>&1; }
+_gate_docker_compose()  { docker compose version &>/dev/null 2>&1; }
 _gate_docker_settings() { [[ -f "$HOME/Library/Group Containers/group.com.docker/settings.json" ]]; }
+_gate_ai_apps_template(){
+  local rel
+  rel="$(python3 "$DIR/tools/read_config.py" --get "$DIR/ucc/software/ai-apps.yaml" stack.definition_template 2>/dev/null || true)"
+  [[ -z "$rel" ]] && rel="stack/docker-compose.yml"
+  [[ -f "$DIR/$rel" ]]
+}
 _gate_ollama_api()      { curl -fsS http://127.0.0.1:11434/api/tags >/dev/null 2>&1; }
 _gate_sudo()            { sudo -n true 2>/dev/null; }
 

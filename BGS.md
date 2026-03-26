@@ -13,13 +13,19 @@ applies_to_scope: "Full Mac mini AI workstation setup — 12 components:
   ai-apps, dev-tools), system layer (git-config, docker-config,
   macos-defaults), verification (verify)"
 decision_record_path: "./docs/bgs-decision.md"
-last_reviewed: 2026-03-25
+inventory_path: "./README.md#repository-inventory"
+orchestration_root: "./ucc/"
+verification_root: "./tic/"
+last_reviewed: 2026-03-26
+last_validated: 2026-03-26
 read_next:
+  - "./README.md"
   - "./docs/biss-classification.md"
   - "./docs/setup-state-model.md"
   - "./docs/setup-state-artifact.yaml"
   - "./ucc/"
   - "./tools/validate_targets_manifest.py"
+  - "./tools/validate_setup_state_artifact.py"
   - "./install.sh"
   - "./lib/ucc.sh"
   - "./lib/uic.sh"
@@ -28,4 +34,3 @@ read_next:
   - "./tic/system/verify.yaml"
   - "./lib/tic_runner.sh"
   - "./lib/summary.sh"
-  - "./docs/bgs-decision.md"

@@ -34,6 +34,9 @@ Scope:
 Modeling rule:
 - the host setup state is a composition of component states
 - software-layer components use the `presence` or `configured` ASM profile
+- `ai-apps` uses both a parametric configuration target (`ai-stack-compose-file`)
+  and a runtime target (`ai-stack-running`) because the desired stack
+  definition and the running stack are governed separately
 - system-layer value-convergence components (`docker-config`, `macos-defaults`) use the
   `parametric` ASM profile (axes include `config_value`)
 - system-layer presence-only components (`git-config`) use the `configured` ASM profile
@@ -126,7 +129,7 @@ Meaning:
 
 ### Configuration value (optional — parametric targets only)
 
-Used by: `docker-config`, `macos-defaults`
+Used by: `docker-config`, `macos-defaults`, `ai-apps` stack definition target
 
 Meaning:
 - carries the actual observed or desired configuration value as a string
@@ -135,6 +138,8 @@ Meaning:
 - absent on presence-only targets; present only when the `parametric`
   profile is selected
 - examples: `mem=48GB cpu=10`, `0` (pmset sleep value), `1` (dock autohide)
+- stack-definition example:
+  `marker=# ai-stack v2 services=flowise,n8n,open-webui,openhands,qdrant`
 
 ## 3. Derived states
 
@@ -167,6 +172,12 @@ Examples:
   Docker settings file is present
 - Ollama service should not be targeted as `Running` until the API gate
   is satisfied or intentionally bypassed as a soft warning
+- AI apps stack definition should not be targeted as `Configured` until
+  the Compose template exists and the deployed stack file matches the
+  expected marker and service set
+- AI apps runtime should not be targeted as `Running` until Docker
+  daemon and Docker Compose CLI readiness are satisfied or intentionally
+  tolerated as soft warnings
 - macOS defaults may remain outside the target path when `sudo` is not
   available because that gate is soft and component-scoped
 
@@ -184,6 +195,14 @@ Runtime-bearing components may additionally use:
 - `NeverStarted -> Starting -> Running`
 - `Running -> Stopped`
 - `Running -> Crashed`
+
+For the AI apps stack the effective interpretation is split:
+- definition convergence:
+  `Absent -> Configuring -> Configured`
+- runtime convergence:
+  `Stopped -> Starting -> Running`
+- readiness evidence is strengthened by TIC HTTP endpoint probes over the
+  composed services after convergence
 
 ## 6. Host-level composition
 
@@ -207,4 +226,6 @@ This model is evidenced by:
 - UCC declaration/result artifacts emitted by `../lib/ucc.sh`
 - TIC verification oracles in `../tic/software/verify.yaml` and `../tic/system/verify.yaml`
 - component YAML manifests in `../ucc/software/` and `../ucc/system/`
+- stack runtime composition template in `../stack/docker-compose.yml`
+- AI apps convergence logic in `../lib/ai_apps.sh`
 - parametric profile definition in `../policy/profiles.yaml`

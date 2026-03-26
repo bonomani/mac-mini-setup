@@ -17,6 +17,18 @@ gates:
     class: readiness
     target_state: ai-apps runtime_state=Running dependency_state=DepsReady
     blocking: soft
+  - name: docker-compose-cli
+    condition: _gate_docker_compose
+    scope: component:ai-apps
+    class: readiness
+    target_state: ai-apps installation_state=Configured dependency_state=DepsReady
+    blocking: soft
+  - name: ai-apps-template
+    condition: _gate_ai_apps_template
+    scope: component:ai-apps
+    class: integrity
+    target_state: ai-apps installation_state=Configured dependency_state=DepsReady
+    blocking: hard
   - name: docker-settings-file
     condition: _gate_docker_settings
     scope: component:docker-config

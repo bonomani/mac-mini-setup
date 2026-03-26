@@ -34,6 +34,11 @@ preferences:
     options: mps|cpu
     scope: component:ai-python-stack
     rationale: mps uses Apple Silicon Metal GPU for ML acceleration; cpu works everywhere but is significantly slower
+  - name: ai-apps-image-policy
+    default: reuse-local
+    options: reuse-local|always-pull
+    scope: component:ai-apps
+    rationale: reuse-local starts the compose stack from locally available images for faster runs; always-pull refreshes images before stack startup and updates
   - name: destructive-updates
     default: off
     options: on|off

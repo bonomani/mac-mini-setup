@@ -43,3 +43,24 @@ tests:
     intent: "bmad-method npm global must be installed"
     oracle: "npm ls -g bmad-method --depth=0 >/dev/null 2>&1"
     trace: "component:dev-tools / ucc-target:npm-global-bmad-method"
+  # ── ai-apps ───────────────────────────────────────────────
+  - name: open-webui-http-ready
+    intent: "Open WebUI must answer HTTP requests on port 3000"
+    oracle: "curl -fsS --max-time 5 http://127.0.0.1:3000 >/dev/null 2>&1"
+    trace: "component:ai-apps / ucc-target:ai-stack-running"
+  - name: flowise-http-ready
+    intent: "Flowise must answer HTTP requests on port 3001"
+    oracle: "curl -fsS --max-time 5 http://127.0.0.1:3001 >/dev/null 2>&1"
+    trace: "component:ai-apps / ucc-target:ai-stack-running"
+  - name: openhands-http-ready
+    intent: "OpenHands must answer HTTP requests on port 3002"
+    oracle: "curl -fsS --max-time 5 http://127.0.0.1:3002 >/dev/null 2>&1"
+    trace: "component:ai-apps / ucc-target:ai-stack-running"
+  - name: n8n-http-ready
+    intent: "n8n must answer HTTP requests on port 5678"
+    oracle: "curl -fsS --max-time 5 http://127.0.0.1:5678 >/dev/null 2>&1"
+    trace: "component:ai-apps / ucc-target:ai-stack-running"
+  - name: qdrant-http-ready
+    intent: "Qdrant must answer HTTP requests on port 6333"
+    oracle: "curl -fsS --max-time 5 http://127.0.0.1:6333/collections >/dev/null 2>&1"
+    trace: "component:ai-apps / ucc-target:ai-stack-running"

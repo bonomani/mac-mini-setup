@@ -84,9 +84,6 @@ _ucc_ver_path_evidence() {
   [[ -n "$2" ]] && printf '%s%s=%s' "${1:+  }" "${3:-path}" "$2"
 }
 
-# Check if a pip package is installed
-pip_is_installed() { pip show "$1" &>/dev/null 2>&1; }
-
 # Check if an ollama model is present
 ollama_model_present() { ollama list 2>/dev/null | grep -q "^$1"; }
 

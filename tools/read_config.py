@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Read lists or records from simple YAML-like config files.
+"""Read lists, records, scalars, or evidence from YAML config files.
 
 Usage:
   read_config.py --list <file> <section>
@@ -10,152 +10,101 @@ Usage:
       Missing fields are output as empty strings.
 
   read_config.py --get <file> <key>
-      Outputs a scalar value.  key may be a top-level key ("foo") or
-      a two-level dotted path ("section.key") for nested mappings.
+      Outputs a scalar value. key may be a dotted path such as
+      "section.key" or "section.nested.key".
+
+  read_config.py --evidence <file> <target>
+      Outputs tab-delimited evidence key/command pairs for a target.
 """
+from __future__ import annotations
+
+import re
 import sys
 from pathlib import Path
 
-
-def read_list(path: Path, section: str) -> list:
-    """Return items from a flat list section: `section:\\n  - item`."""
-    items = []
-    in_section = False
-    for line in path.read_text().splitlines():
-        s = line.rstrip()
-        if not s or s.lstrip().startswith("#"):
-            continue
-        indent = len(s) - len(s.lstrip())
-        text = s.strip()
-        if indent == 0:
-            in_section = text == f"{section}:"
-            continue
-        if in_section and indent == 2 and text.startswith("- "):
-            val = text[2:]
-            # Strip optional surrounding YAML quotes
-            if len(val) >= 2 and val[0] == val[-1] and val[0] in ('"', "'"):
-                val = val[1:-1]
-            items.append(val)
-    return items
+import yaml
 
 
-def read_records(path: Path, section: str, fields: list) -> list:
-    """Return records from a list-of-dicts section.
+def load_yaml(path: Path):
+    data = yaml.safe_load(path.read_text()) or {}
+    if not isinstance(data, dict):
+        raise ValueError(f"{path} must contain a top-level mapping")
+    return data
 
-    Each record is a dict built from:
-      - name: foo        <- first key of a list item (indent 2, starts with '- ')
-        key: val         <- subsequent keys of the same item (indent 4)
-    """
-    records = []
-    in_section = False
-    current = None
 
-    for line in path.read_text().splitlines():
-        s = line.rstrip()
-        if not s or s.lstrip().startswith("#"):
-            continue
-        indent = len(s) - len(s.lstrip())
-        text = s.strip()
+def get_path(data: dict, dotted_key: str):
+    current = data
+    for part in dotted_key.split("."):
+        if not isinstance(current, dict) or part not in current:
+            return ""
+        current = current[part]
+    return current
 
-        if indent == 0:
-            if in_section and current is not None:
-                records.append(current)
-            in_section = text == f"{section}:"
-            current = None
-            continue
 
-        if not in_section:
-            continue
+def stringify(value) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    return str(value)
 
-        if indent == 2 and text.startswith("- "):
-            if current is not None:
-                records.append(current)
-            current = {}
-            rest = text[2:]
-            if ":" in rest:
-                k, v = rest.split(":", 1)
-                v = v.strip()
-                if len(v) >= 2 and v[0] == v[-1] and v[0] in ('"', "'"):
-                    v = v[1:-1]
-                current[k.strip()] = v
-            continue
 
-        if indent == 4 and current is not None and ":" in text:
-            k, v = text.split(":", 1)
-            v = v.strip()
-            if len(v) >= 2 and v[0] == v[-1] and v[0] in ('"', "'"):
-                v = v[1:-1]
-            current[k.strip()] = v
+def read_list(path: Path, section: str) -> list[str]:
+    data = load_yaml(path)
+    value = get_path(data, section)
+    if value in ("", None):
+        return []
+    if not isinstance(value, list):
+        raise ValueError(f"section '{section}' is not a list")
+    return [stringify(item) for item in value]
 
-    if in_section and current is not None:
-        records.append(current)
 
-    return ["\t".join(str(r.get(f, "")) for f in fields) for r in records]
+def read_records(path: Path, section: str, fields: list[str]) -> list[str]:
+    data = load_yaml(path)
+    value = get_path(data, section)
+    if value in ("", None):
+        return []
+    if not isinstance(value, list):
+        raise ValueError(f"section '{section}' is not a list of mappings")
+
+    rows = []
+    for index, item in enumerate(value):
+        if not isinstance(item, dict):
+            raise ValueError(f"section '{section}' entry {index} is not a mapping")
+        rows.append("\t".join(stringify(item.get(field, "")) for field in fields))
+    return rows
 
 
 def read_scalar(path: Path, key: str) -> str:
-    """Return a scalar value from the config file.
-
-    key may be:
-      - "foo"           → top-level   foo: value
-      - "section.key"   → two-level   section:\n  key: value  (indent 2)
-    """
-    parts = key.split(".", 1)
-    if len(parts) == 1:
-        # Top-level scalar
-        for line in path.read_text().splitlines():
-            s = line.rstrip()
-            if not s or s.lstrip().startswith("#"):
-                continue
-            if len(s) - len(s.lstrip()) == 0 and ":" in s:
-                k, v = s.split(":", 1)
-                if k.strip() == parts[0]:
-                    v = v.strip()
-                    if len(v) >= 2 and v[0] == v[-1] and v[0] in ('"', "'"):
-                        v = v[1:-1]
-                    return v
-    else:
-        section, subkey = parts
-        in_section = False
-        for line in path.read_text().splitlines():
-            s = line.rstrip()
-            if not s or s.lstrip().startswith("#"):
-                continue
-            indent = len(s) - len(s.lstrip())
-            text = s.strip()
-            if indent == 0:
-                in_section = text == f"{section}:"
-                continue
-            if in_section and indent == 2 and ":" in text:
-                k, v = text.split(":", 1)
-                if k.strip() == subkey:
-                    v = v.strip()
-                    if len(v) >= 2 and v[0] == v[-1] and v[0] in ('"', "'"):
-                        v = v[1:-1]
-                    return v
-    return ""
+    data = load_yaml(path)
+    value = get_path(data, key)
+    if isinstance(value, (dict, list)):
+        return ""
+    return stringify(value)
 
 
-def read_evidence(path: Path, target_name: str) -> list:
-    """Return evidence key/cmd pairs for a target.
-
-    Reads targets.<target>.evidence mapping and returns list of (key, cmd).
-    Top-level scalar values are available for ${key} substitution in cmds.
-    """
-    import yaml as _yaml
-    import re
-    data = _yaml.safe_load(path.read_text()) or {}
-    # Build substitution dict from top-level scalars
-    subst = {k: str(v) for k, v in data.items()
-             if isinstance(v, (str, int, float))}
+def read_evidence(path: Path, target_name: str) -> list[str]:
+    data = load_yaml(path)
+    subst = {
+        key: stringify(value)
+        for key, value in data.items()
+        if isinstance(value, (str, int, float, bool))
+    }
     targets = data.get("targets") or {}
+    if not isinstance(targets, dict):
+        raise ValueError("top-level 'targets' must be a mapping")
     target_data = targets.get(target_name) or {}
+    if not isinstance(target_data, dict):
+        return []
     evidence = target_data.get("evidence") or {}
-    result = []
+    if not isinstance(evidence, dict):
+        raise ValueError(f"target '{target_name}' evidence must be a mapping")
+
+    rows = []
     for key, cmd in evidence.items():
-        cmd = re.sub(r"\$\{(\w+)\}", lambda m: subst.get(m.group(1), m.group(0)), str(cmd))
-        result.append(f"{key}\t{cmd}")
-    return result
+        rendered = re.sub(r"\$\{(\w+)\}", lambda m: subst.get(m.group(1), m.group(0)), stringify(cmd))
+        rows.append(f"{key}\t{rendered}")
+    return rows
 
 
 def main() -> int:
