@@ -264,6 +264,36 @@ _comp_in_list() {
   return 1
 }
 
+_collect_layer_components() {
+  local filter="$1"
+  local comps=() _cfg _comp
+  for _i in "${!_DISP_COMPS[@]}"; do
+    _cfg="${_DISP_CONFIGS[$_i]}"
+    case "$filter" in
+      software) [[ "$_cfg" == */system/* || "$_cfg" == "tic" ]] && continue ;;
+      system)   [[ "$_cfg" != */system/* ]] && continue ;;
+      tic)      [[ "$_cfg" != "tic" ]] && continue ;;
+    esac
+    _comp="${_DISP_COMPS[$_i]}"
+    comps+=("$_comp")
+  done
+  printf '%s\n' "${comps[@]}"
+}
+
+print_execution_plan() {
+  local software=() system=() tic=() item
+  while IFS= read -r item; do [[ -n "$item" ]] && software+=("$item"); done < <(_collect_layer_components software)
+  while IFS= read -r item; do [[ -n "$item" ]] && system+=("$item"); done < <(_collect_layer_components system)
+  while IFS= read -r item; do [[ -n "$item" ]] && tic+=("$item"); done < <(_collect_layer_components tic)
+
+  echo ""
+  echo "  Execution Plan"
+  echo "  ──────────────────────────────────────────────────────"
+  [[ ${#software[@]} -gt 0 ]] && printf '  %-14s %s\n' "Software" "$(IFS=', '; echo "${software[*]}")"
+  [[ ${#system[@]} -gt 0 ]]   && printf '  %-14s %s\n' "System"   "$(IFS=', '; echo "${system[*]}")"
+  [[ ${#tic[@]} -gt 0 ]]      && printf '  %-14s %s\n' "Verify"   "$(IFS=', '; echo "${tic[*]}")"
+}
+
 # Pre-collect dispatch info for all components (one query per component)
 _DISP_COMPS=()
 _DISP_LIBS=()
@@ -331,6 +361,7 @@ _run_layer() {
     esac
     local comp="${_DISP_COMPS[$_i]}"
     eval "${comps_ref}+=(\"\$comp\")"
+    printf '  %s\n' "$comp"
     if [[ "$filter" == "tic" ]]; then
       if uic_component_blocked "$comp"; then
         log_warn "Component $comp blocked by UIC hard gate"
@@ -347,9 +378,11 @@ _run_layer() {
   done
 }
 
-_run_layer "UCC / software" "software" _SOFTWARE_COMPS
-_run_layer "UCC / system"   "system"   _SYSTEM_COMPS
-_run_layer "TIC"            "tic"      _TIC_COMPS
+print_execution_plan
+
+_run_layer "Convergence / software" "software" _SOFTWARE_COMPS
+_run_layer "Convergence / system"   "system"   _SYSTEM_COMPS
+_run_layer "Verification"           "tic"      _TIC_COMPS
 
 # --- Final summary ------------------------------------------
 print_final_summary "$DIR" "$UCC_MODE" "${UCC_DRY_RUN:-0}"
