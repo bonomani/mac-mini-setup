@@ -5,26 +5,32 @@ tests:
   # ── ai-python-stack ───────────────────────────────────────
   # pip_group targets are generated dynamically — no explicit target entry for oracle:
   - name: torch-importable
+    component: ai-python-stack
     intent: "torch must be importable"
     oracle: "python3 -c 'import torch'"
     trace: "component:ai-python-stack / ucc-target:pip-group-pytorch"
   - name: torch-mps-available
+    component: ai-python-stack
     intent: "MPS (Metal) GPU acceleration must be available on Apple Silicon"
     oracle: "python3 -c 'import torch; assert torch.backends.mps.is_available()'"
     trace: "component:ai-python-stack / ucc-target:pip-group-pytorch"
   - name: transformers-importable
+    component: ai-python-stack
     intent: "transformers must be importable"
     oracle: "python3 -c 'import transformers'"
     trace: "component:ai-python-stack / ucc-target:pip-group-huggingface"
   - name: langchain-importable
+    component: ai-python-stack
     intent: "langchain must be importable"
     oracle: "python3 -c 'import langchain'"
     trace: "component:ai-python-stack / ucc-target:pip-group-langchain"
   - name: langchain-core-version
+    component: ai-python-stack
     intent: "langchain-core must be >=1.0.0 (required by langgraph and langchain-ollama)"
     oracle: "pip show langchain-core 2>/dev/null | grep -E '^Version: [1-9]'"
     trace: "component:ai-python-stack / ucc-target:pip-group-langchain"
   - name: unsloth-importable
+    component: ai-python-stack
     intent: "unsloth Python package is not importable on Apple Silicon (NVIDIA/AMD only)"
     oracle: "true"
     trace: "component:ai-python-stack / ucc-target:unsloth-studio-setup"
@@ -32,43 +38,53 @@ tests:
   # ── dev-tools ─────────────────────────────────────────────
   # cli_tools and npm_packages have no explicit target entries for oracle:
   - name: cmake-installed
+    component: dev-tools
     intent: "cmake must be present (required for Unsloth GGUF inference)"
     oracle: "cmake --version >/dev/null 2>&1"
     trace: "component:dev-tools / cli-cmake"
   - name: claude-code-installed
+    component: dev-tools
     intent: "claude-code npm global must be installed"
     oracle: "npm ls -g @anthropic-ai/claude-code --depth=0 >/dev/null 2>&1"
     trace: "component:dev-tools / ucc-target:npm-global-@anthropic-ai/claude-code"
   - name: bmad-method-installed
+    component: dev-tools
     intent: "bmad-method npm global must be installed"
     oracle: "npm ls -g bmad-method --depth=0 >/dev/null 2>&1"
     trace: "component:dev-tools / ucc-target:npm-global-bmad-method"
   - name: ariaflow-api-ready
+    component: dev-tools
     intent: "ariaflow backend must answer API requests on its local port"
     oracle: "curl -fsS --max-time 5 http://127.0.0.1:${_ARIAFLOW_PORT}/api/status >/dev/null 2>&1"
     trace: "component:dev-tools / ucc-target:ariaflow-service"
   - name: ariaflow-web-http-ready
+    component: dev-tools
     intent: "ariaflow-web must answer HTTP requests on its local port"
     oracle: "curl -fsS --max-time 5 http://127.0.0.1:${_ARIAFLOW_WEB_PORT} >/dev/null 2>&1"
     trace: "component:dev-tools / ucc-target:ariaflow-web-service"
   # ── ai-apps ───────────────────────────────────────────────
   - name: open-webui-http-ready
+    component: ai-apps
     intent: "Open WebUI must answer HTTP requests on port 3000"
     oracle: "curl -fsS --max-time 5 http://127.0.0.1:3000 >/dev/null 2>&1"
     trace: "component:ai-apps / ucc-target:ai-stack-running"
   - name: flowise-http-ready
+    component: ai-apps
     intent: "Flowise must answer HTTP requests on port 3001"
     oracle: "curl -fsS --max-time 5 http://127.0.0.1:3001 >/dev/null 2>&1"
     trace: "component:ai-apps / ucc-target:ai-stack-running"
   - name: openhands-http-ready
+    component: ai-apps
     intent: "OpenHands must answer HTTP requests on port 3002"
     oracle: "curl -fsS --max-time 5 http://127.0.0.1:3002 >/dev/null 2>&1"
     trace: "component:ai-apps / ucc-target:ai-stack-running"
   - name: n8n-http-ready
+    component: ai-apps
     intent: "n8n must answer HTTP requests on port 5678"
     oracle: "curl -fsS --max-time 5 http://127.0.0.1:5678 >/dev/null 2>&1"
     trace: "component:ai-apps / ucc-target:ai-stack-running"
   - name: qdrant-http-ready
+    component: ai-apps
     intent: "Qdrant must answer HTTP requests on port 6333"
     oracle: "curl -fsS --max-time 5 http://127.0.0.1:6333/collections >/dev/null 2>&1"
     trace: "component:ai-apps / ucc-target:ai-stack-running"

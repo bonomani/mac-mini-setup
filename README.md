@@ -206,6 +206,9 @@ Expected checkpoints:
   `ai-stack-running`
 - `verify` should pass the AI app HTTP readiness checks for Open WebUI,
   Flowise, OpenHands, n8n, and Qdrant
+- `verify` may skip `system-composition-converged` when run standalone,
+  because that assertion only applies when the current invocation also
+  emitted `system-composition` target status
 
 ## Services
 

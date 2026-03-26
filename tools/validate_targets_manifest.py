@@ -13,6 +13,8 @@ KNOWN_TARGET_TYPES = {
     "service",
 }
 
+REPO_ROOT = Path(__file__).resolve().parent.parent
+
 
 def parse_gate_names(path: Path):
     gate_names = set()
@@ -296,7 +298,7 @@ def main():
     path = Path(args[0]) if args else Path("ucc")
     try:
         manifest = parse_manifest(path)
-        known_gates = parse_gate_names(Path("policy/gates.yaml"))
+        known_gates = parse_gate_names(REPO_ROOT / "policy" / "gates.yaml")
         errors, ordered = validate(manifest, known_gates)
     except Exception as exc:
         print(f"ERROR: {exc}", file=sys.stderr)

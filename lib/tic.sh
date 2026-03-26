@@ -14,6 +14,9 @@
 #   oracle      — shell expression whose exit code decides pass/fail
 #   trace       — trace link back to the UCC target or component under test
 #   skip        — optional reason; when set the oracle is not evaluated
+#
+# Runner-only metadata such as component scoping and current-run status
+# dependencies are resolved in lib/tic_runner.sh before tic_test is called.
 
 TIC_PASS=0
 TIC_FAIL=0
@@ -61,9 +64,12 @@ tic_test() {
   fi
 
   # Phase: arrange + act + observe + assert
-  local observed=""
-  observed=$(eval "$oracle" 2>&1)
-  local exit_code=$?
+  local observed="" exit_code=0
+  if observed=$(eval "$oracle" 2>&1); then
+    exit_code=0
+  else
+    exit_code=$?
+  fi
 
   # Phase: report
   if [[ $exit_code -eq 0 ]]; then
