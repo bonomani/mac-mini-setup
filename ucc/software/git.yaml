@@ -12,6 +12,7 @@ targets:
     component: git
     profile: configured
     type: package
+    state_model: package
     depends_on:
       - homebrew
     provided_by_tool: brew

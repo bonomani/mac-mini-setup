@@ -12,6 +12,7 @@ targets:
     component: python
     profile: configured
     type: package
+    state_model: package
     depends_on:
       - homebrew
     provided_by_tool: brew
@@ -22,6 +23,7 @@ targets:
     component: python
     profile: configured
     type: package
+    state_model: package
     depends_on:
       - homebrew
     provided_by_tool: brew
@@ -32,6 +34,7 @@ targets:
     component: python
     profile: configured
     type: package
+    state_model: package
     depends_on:
       - pyenv
       - xz

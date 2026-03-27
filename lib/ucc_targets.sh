@@ -223,9 +223,8 @@ _ucc_observe_yaml_parametric_target() {
 
 _ucc_evidence_yaml_parametric_target() {
   local cfg_dir="$1" yaml="$2" target="$3"
-  local observe_cmd evidence_key current evidence
+  local observe_cmd current evidence
   observe_cmd="$(_ucc_yaml_get "$cfg_dir" "$yaml" "targets.${target}.observe_cmd")"
-  evidence_key="$(_ucc_yaml_get "$cfg_dir" "$yaml" "targets.${target}.evidence_key" "value")"
 
   local CFG_DIR="$cfg_dir" YAML_PATH="$yaml" TARGET_NAME="$target"
   evidence="$(ucc_eval_evidence_from_yaml "$cfg_dir" "$yaml" "$target")"
@@ -234,7 +233,7 @@ _ucc_evidence_yaml_parametric_target() {
     return 0
   fi
   current="$(_ucc_eval_scalar_cmd "$observe_cmd")"
-  printf '%s=%s' "$evidence_key" "$current"
+  printf 'value=%s' "$current"
 }
 
 _ucc_yaml_parametric_desired_value() {

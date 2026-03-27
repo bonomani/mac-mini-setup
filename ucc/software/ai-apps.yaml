@@ -24,6 +24,7 @@ targets:
     component: ai-apps
     profile: parametric
     type: config
+    state_model: parametric
     display_name: compose file
     evidence:
       path: "printf '%s' \"$COMPOSE_FILE\""

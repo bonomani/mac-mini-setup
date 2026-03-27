@@ -23,6 +23,7 @@ targets:
     component: dev-tools
     profile: configured
     type: package
+    state_model: package
     depends_on:
       - homebrew
     provided_by_tool: brew-cask
@@ -55,6 +56,7 @@ targets:
     component: dev-tools
     profile: configured
     type: config
+    state_model: config
     depends_on:
       - vscode
 
@@ -62,6 +64,7 @@ targets:
     component: dev-tools
     profile: configured
     type: package
+    state_model: package
     depends_on:
       - homebrew
     provided_by_tool: brew
@@ -191,6 +194,7 @@ targets:
     component: dev-tools
     profile: configured
     type: package
+    state_model: package
     depends_on:
       - homebrew
 
@@ -198,6 +202,7 @@ targets:
     component: dev-tools
     profile: configured
     type: package
+    state_model: package
     depends_on:
       - homebrew
 
@@ -205,6 +210,7 @@ targets:
     component: dev-tools
     profile: configured
     type: package
+    state_model: package
     depends_on:
       - homebrew
 
@@ -212,6 +218,7 @@ targets:
     component: dev-tools
     profile: configured
     type: package
+    state_model: package
     depends_on:
       - homebrew
 
@@ -219,6 +226,7 @@ targets:
     component: dev-tools
     profile: configured
     type: package
+    state_model: package
     depends_on:
       - homebrew
 
@@ -226,6 +234,7 @@ targets:
     component: dev-tools
     profile: configured
     type: package
+    state_model: package
     depends_on:
       - homebrew
 
@@ -233,6 +242,7 @@ targets:
     component: dev-tools
     profile: configured
     type: package
+    state_model: package
     depends_on:
       - homebrew
 
@@ -240,6 +250,7 @@ targets:
     component: dev-tools
     profile: configured
     type: package
+    state_model: package
     depends_on:
       - homebrew
 
@@ -247,6 +258,7 @@ targets:
     component: dev-tools
     profile: configured
     type: package
+    state_model: package
     depends_on:
       - homebrew
 
@@ -254,6 +266,7 @@ targets:
     component: dev-tools
     profile: configured
     type: package
+    state_model: package
     depends_on:
       - homebrew
 
@@ -261,6 +274,7 @@ targets:
     component: dev-tools
     profile: configured
     type: package
+    state_model: package
     depends_on:
       - homebrew
 
@@ -268,6 +282,7 @@ targets:
     component: dev-tools
     profile: configured
     type: package
+    state_model: package
     depends_on:
       - homebrew
 
@@ -275,6 +290,7 @@ targets:
     component: dev-tools
     profile: configured
     type: package
+    state_model: package
     depends_on:
       - homebrew
 
@@ -282,6 +298,7 @@ targets:
     component: dev-tools
     profile: configured
     type: package
+    state_model: package
     depends_on:
       - homebrew
 
@@ -289,6 +306,7 @@ targets:
     component: dev-tools
     profile: configured
     type: package
+    state_model: package
     depends_on:
       - homebrew
 
@@ -296,6 +314,7 @@ targets:
     component: dev-tools
     profile: configured
     type: package
+    state_model: package
     depends_on:
       - homebrew
 
@@ -303,6 +322,7 @@ targets:
     component: dev-tools
     profile: configured
     type: package
+    state_model: package
     depends_on:
       - homebrew
 
@@ -310,6 +330,7 @@ targets:
     component: dev-tools
     profile: configured
     type: config
+    state_model: config
     depends_on:
       - vscode-code-cmd
 
@@ -317,6 +338,7 @@ targets:
     component: dev-tools
     profile: configured
     type: config
+    state_model: config
     depends_on:
       - vscode-code-cmd
 
@@ -324,6 +346,7 @@ targets:
     component: dev-tools
     profile: configured
     type: config
+    state_model: config
     depends_on:
       - vscode-code-cmd
 
@@ -331,6 +354,7 @@ targets:
     component: dev-tools
     profile: configured
     type: config
+    state_model: config
     depends_on:
       - vscode-code-cmd
 
@@ -338,6 +362,7 @@ targets:
     component: dev-tools
     profile: configured
     type: config
+    state_model: config
     depends_on:
       - vscode-code-cmd
 
@@ -345,6 +370,7 @@ targets:
     component: dev-tools
     profile: configured
     type: config
+    state_model: config
     depends_on:
       - vscode-code-cmd
 
@@ -352,6 +378,7 @@ targets:
     component: dev-tools
     profile: configured
     type: config
+    state_model: config
     depends_on:
       - vscode-code-cmd
 
@@ -359,6 +386,7 @@ targets:
     component: dev-tools
     profile: configured
     type: package
+    state_model: package
     depends_on:
       - homebrew
 
@@ -366,6 +394,7 @@ targets:
     component: dev-tools
     profile: configured
     type: package
+    state_model: package
     depends_on:
       - homebrew
 
@@ -373,6 +402,7 @@ targets:
     component: dev-tools
     profile: configured
     type: package
+    state_model: package
     depends_on:
       - node-lts
 
@@ -380,6 +410,7 @@ targets:
     component: dev-tools
     profile: configured
     type: package
+    state_model: package
     depends_on:
       - node-lts
 
@@ -387,6 +418,7 @@ targets:
     component: dev-tools
     profile: configured
     type: package
+    state_model: package
     depends_on:
       - node-lts
 

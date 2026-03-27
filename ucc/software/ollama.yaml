@@ -51,7 +51,6 @@ targets:
     provided_by_tool: ollama-installer
     runtime_manager: custom
     probe_kind: http
-    stopped_health: Unavailable
     oracle:
       configured: "ollama --version >/dev/null 2>&1"
       runtime: 'curl -fsS "http://${api_host}:${api_port}${api_tags_path}" >/dev/null 2>&1'
@@ -64,6 +63,7 @@ targets:
       - name: Ollama API
         url: http://${api_host}:${api_port}
         note: ollama pull <model>
+    stopped_health: Unavailable
 
 # Model sets — controlled by UIC preference ollama-model-autopull (none|small|medium|large)
 # Default is none — no automatic downloads.

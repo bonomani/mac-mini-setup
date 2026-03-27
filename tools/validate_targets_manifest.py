@@ -18,6 +18,32 @@ KNOWN_TARGET_TYPES = {
 }
 KNOWN_STATE_MODELS = {"package", "config", "parametric"}
 KNOWN_PLATFORMS = {"macos", "linux", "wsl", "wsl1", "wsl2"}
+CANONICAL_TARGET_KEY_ORDER = [
+    "component",
+    "profile",
+    "type",
+    "state_model",
+    "display_name",
+    "depends_on",
+    "depends_on_by_platform",
+    "soft_depends_on",
+    "provided_by_tool",
+    "runtime_manager",
+    "probe_kind",
+    "oracle",
+    "observe_cmd",
+    "desired_value",
+    "desired_cmd",
+    "evidence",
+    "endpoints",
+    "stopped_installation",
+    "stopped_runtime",
+    "stopped_health",
+    "stopped_dependencies",
+    "install_cmd",
+    "update_cmd",
+]
+CANONICAL_TARGET_KEY_RANK = {key: idx for idx, key in enumerate(CANONICAL_TARGET_KEY_ORDER)}
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -233,7 +259,6 @@ def validate(manifest, known_gates):
             "observe_cmd",
             "desired_value",
             "desired_cmd",
-            "evidence_key",
             "dependency_gate",
             "stopped_installation",
             "stopped_runtime",
@@ -247,9 +272,27 @@ def validate(manifest, known_gates):
         state_model = data.get("state_model")
         if state_model is not None and state_model not in KNOWN_STATE_MODELS:
             errors.append(f"target '{name}' has unknown state_model '{state_model}'")
+        if target_type == "package" and state_model != "package":
+            errors.append(f"target '{name}' type 'package' requires state_model 'package'")
+        if target_type == "config" and profile != "parametric" and state_model != "config":
+            errors.append(f"target '{name}' type 'config' with profile '{profile}' requires state_model 'config'")
+        if target_type == "precondition" and state_model != "config":
+            errors.append(f"target '{name}' type 'precondition' requires state_model 'config'")
         dependency_gate = data.get("dependency_gate")
         if isinstance(dependency_gate, str) and dependency_gate and dependency_gate not in known_gates:
             errors.append(f"target '{name}' dependency_gate unknown gate '{dependency_gate}'")
+
+        ordered_keys = [key for key in data.keys() if key in CANONICAL_TARGET_KEY_RANK]
+        previous_rank = -1
+        for key in ordered_keys:
+            rank = CANONICAL_TARGET_KEY_RANK[key]
+            if rank < previous_rank:
+                errors.append(
+                    f"target '{name}' keys must follow canonical order: "
+                    + ", ".join(CANONICAL_TARGET_KEY_ORDER)
+                )
+                break
+            previous_rank = rank
 
         oracle = data.get("oracle")
         if oracle is not None:
@@ -317,12 +360,14 @@ def validate(manifest, known_gates):
                 errors.append(f"target '{name}' state_model 'parametric' requires profile 'parametric'")
             if target_type != "config":
                 errors.append(f"target '{name}' state_model 'parametric' requires type 'config'")
-            if not isinstance(data.get("observe_cmd"), str) or not data.get("observe_cmd", "").strip():
-                errors.append(f"target '{name}' state_model 'parametric' requires observe_cmd")
+            has_install_update = data.get("install_cmd") is not None or data.get("update_cmd") is not None
+            has_observe_cmd = isinstance(data.get("observe_cmd"), str) and data.get("observe_cmd", "").strip()
             has_desired_value = isinstance(data.get("desired_value"), str) and data.get("desired_value", "").strip()
             has_desired_cmd = isinstance(data.get("desired_cmd"), str) and data.get("desired_cmd", "").strip()
-            if not has_desired_value and not has_desired_cmd:
-                errors.append(f"target '{name}' state_model 'parametric' requires desired_value or desired_cmd")
+            if has_install_update and not has_observe_cmd:
+                errors.append(f"target '{name}' state_model 'parametric' with install/update commands requires observe_cmd")
+            if has_install_update and not has_desired_value and not has_desired_cmd:
+                errors.append(f"target '{name}' state_model 'parametric' with install/update commands requires desired_value or desired_cmd")
 
         if data.get("install_cmd") is not None or data.get("update_cmd") is not None:
             if state_model is None:

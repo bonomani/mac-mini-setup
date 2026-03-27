@@ -41,6 +41,7 @@ targets:
     component: ai-python-stack
     profile: configured
     type: package
+    state_model: package
     depends_on:
       - pip-latest
 
@@ -48,6 +49,7 @@ targets:
     component: ai-python-stack
     profile: configured
     type: package
+    state_model: package
     depends_on:
       - pip-latest
 
@@ -55,6 +57,7 @@ targets:
     component: ai-python-stack
     profile: configured
     type: package
+    state_model: package
     depends_on:
       - pip-latest
 
@@ -62,6 +65,7 @@ targets:
     component: ai-python-stack
     profile: configured
     type: package
+    state_model: package
     depends_on:
       - pip-latest
 
@@ -69,6 +73,7 @@ targets:
     component: ai-python-stack
     profile: configured
     type: package
+    state_model: package
     depends_on:
       - pip-latest
 
@@ -76,6 +81,7 @@ targets:
     component: ai-python-stack
     profile: configured
     type: package
+    state_model: package
     depends_on:
       - pip-latest
 
@@ -83,6 +89,7 @@ targets:
     component: ai-python-stack
     profile: configured
     type: package
+    state_model: package
     depends_on:
       - pip-latest
 
@@ -90,6 +97,7 @@ targets:
     component: ai-python-stack
     profile: configured
     type: package
+    state_model: package
     depends_on:
       - pip-latest
 
@@ -97,6 +105,7 @@ targets:
     component: ai-python-stack
     profile: configured
     type: package
+    state_model: package
     depends_on:
       - pip-latest
 
@@ -104,6 +113,7 @@ targets:
     component: ai-python-stack
     profile: configured
     type: package
+    state_model: package
     depends_on:
       - pip-latest
 
@@ -111,6 +121,7 @@ targets:
     component: ai-python-stack
     profile: configured
     type: package
+    state_model: package
     depends_on:
       - pip-latest
 
@@ -118,6 +129,7 @@ targets:
     component: ai-python-stack
     profile: configured
     type: package
+    state_model: package
     depends_on:
       - pip-latest
 

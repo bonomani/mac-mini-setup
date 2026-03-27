@@ -21,6 +21,7 @@ targets:
     component: homebrew
     profile: configured
     type: precondition
+    state_model: config
     provided_by_tool: macos-installer
     oracle:
       configured: "xcode-select -p >/dev/null 2>&1"
@@ -29,6 +30,7 @@ targets:
     component: homebrew
     profile: configured
     type: package
+    state_model: package
     depends_on_by_platform:
       macos:
         - xcode-command-line-tools
@@ -45,7 +47,8 @@ targets:
       - homebrew
     observe_cmd: "brew analytics state 2>/dev/null | grep -qi disabled && echo off || echo on"
     desired_value: "${analytics_desired}"
-    evidence_key: analytics
+    evidence:
+      analytics: "brew analytics state 2>/dev/null | grep -qi disabled && printf off || printf on"
     install_cmd: "ucc_run brew analytics off"
 installer_url: "https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh"
 analytics_desired: "off"

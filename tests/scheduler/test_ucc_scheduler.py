@@ -35,16 +35,19 @@ class UccSchedulerTests(unittest.TestCase):
                         component: fake
                         profile: configured
                         type: config
+                        state_model: config
                         depends_on:
                           - b
                       a:
                         component: fake
                         profile: configured
                         type: config
+                        state_model: config
                       b:
                         component: fake
                         profile: configured
                         type: config
+                        state_model: config
                         depends_on:
                           - a
                     """
@@ -72,16 +75,19 @@ class UccSchedulerTests(unittest.TestCase):
                         component: fake
                         profile: configured
                         type: config
+                        state_model: config
                         depends_on:
                           - b
                       a:
                         component: fake
                         profile: configured
                         type: config
+                        state_model: config
                       b:
                         component: fake
                         profile: configured
                         type: config
+                        state_model: config
                         depends_on:
                           - a
                     """
@@ -156,12 +162,12 @@ class UccSchedulerTests(unittest.TestCase):
                         component: fake
                         profile: runtime
                         type: runtime
+                        soft_depends_on:
+                          - capability
                         runtime_manager: custom
                         probe_kind: command
                         oracle:
                           runtime: "true"
-                        soft_depends_on:
-                          - capability
                     """
                 ),
             )
@@ -227,6 +233,7 @@ class UccSchedulerTests(unittest.TestCase):
                         component: fake
                         profile: configured
                         type: package
+                        state_model: package
                       fake-runtime:
                         component: fake
                         profile: runtime
@@ -265,11 +272,11 @@ class UccSchedulerTests(unittest.TestCase):
                         component: fake
                         profile: runtime
                         type: runtime
+                        display_name: Fake Runtime
                         runtime_manager: custom
                         probe_kind: command
                         oracle:
                           runtime: "true"
-                        display_name: Fake Runtime
                     """
                 ),
             )
@@ -295,6 +302,7 @@ class UccSchedulerTests(unittest.TestCase):
                         component: fake
                         profile: configured
                         type: config
+                        state_model: config
                         oracle:
                           configured: '[[ -f "$HOME/simple.txt" ]]'
                         evidence:
@@ -446,7 +454,8 @@ class UccSchedulerTests(unittest.TestCase):
                         state_model: parametric
                         observe_cmd: '[[ -f "$HOME/setting.applied" ]] && printf on || printf off'
                         desired_value: 'on'
-                        evidence_key: mode
+                        evidence:
+                          mode: '[[ -f "$HOME/setting.applied" ]] && printf on || printf off'
                         install_cmd: 'touch "$HOME/setting.applied"'
                         update_cmd: 'touch "$HOME/setting.applied"'
                     """
@@ -472,6 +481,7 @@ class UccSchedulerTests(unittest.TestCase):
                         source "{ROOT / 'lib/ucc.sh'}"
 
                         ucc_yaml_parametric_target "{ROOT}" "{manifest}" setting
+                        ucc_yaml_parametric_target "{ROOT}" "{manifest}" setting
                         """
                     ),
                 ],
@@ -480,8 +490,63 @@ class UccSchedulerTests(unittest.TestCase):
             )
             self.assertEqual(result.returncode, 0, msg=result.stderr)
             self.assertIn("[installed] setting", result.stdout)
-            self.assertIn('config_value=off" -> "installation_state=Configured', result.stdout)
+            self.assertIn("mode=on", result.stdout)
             self.assertTrue((home_dir / "setting.applied").exists())
+
+    def test_validator_requires_state_model_for_package_targets(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            ucc_dir = self._write_manifest(
+                Path(tmp),
+                textwrap.dedent(
+                    """\
+                    component: fake
+                    primary_profile: configured
+                    libs: fake
+                    runner: run_fake
+                    targets:
+                      pkg:
+                        component: fake
+                        profile: configured
+                        type: package
+                    """
+                ),
+            )
+            result = subprocess.run(
+                ["python3", str(QUERY), str(ucc_dir)],
+                text=True,
+                capture_output=True,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("type 'package' requires state_model 'package'", result.stderr)
+
+    def test_validator_enforces_canonical_target_key_order(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            ucc_dir = self._write_manifest(
+                Path(tmp),
+                textwrap.dedent(
+                    """\
+                    component: fake
+                    primary_profile: configured
+                    libs: fake
+                    runner: run_fake
+                    targets:
+                      pkg:
+                        component: fake
+                        profile: configured
+                        type: package
+                        oracle:
+                          configured: "true"
+                        state_model: package
+                    """
+                ),
+            )
+            result = subprocess.run(
+                ["python3", str(QUERY), str(ucc_dir)],
+                text=True,
+                capture_output=True,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("keys must follow canonical order", result.stderr)
 
     def test_yaml_parametric_target_supports_desired_cmd_and_yaml_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -612,12 +677,12 @@ class UccSchedulerTests(unittest.TestCase):
                         type: runtime
                         runtime_manager: custom
                         probe_kind: command
-                        stopped_health: Unavailable
                         oracle:
                           configured: '[[ -f "$HOME/app.installed" ]]'
                           runtime: '[[ -f "$HOME/app.ready" ]]'
                         evidence:
                           version: 'printf 1.2.3'
+                        stopped_health: Unavailable
                     """
                 ),
             )
@@ -747,10 +812,12 @@ class UccSchedulerTests(unittest.TestCase):
                         component: fake
                         profile: configured
                         type: precondition
+                        state_model: config
                       pkg:
                         component: fake
                         profile: configured
                         type: package
+                        state_model: package
                         depends_on_by_platform:
                           macos:
                             - xcode
@@ -794,6 +861,7 @@ class UccSchedulerTests(unittest.TestCase):
                         component: fake
                         profile: configured
                         type: package
+                        state_model: package
                       fake-service:
                         component: fake
                         profile: runtime
@@ -862,6 +930,7 @@ class UccSchedulerTests(unittest.TestCase):
                         component: fake
                         profile: configured
                         type: package
+                        state_model: package
                       fake-service:
                         component: fake
                         profile: runtime
@@ -931,6 +1000,7 @@ class UccSchedulerTests(unittest.TestCase):
                         component: fake
                         profile: configured
                         type: package
+                        state_model: package
                       fake-service:
                         component: fake
                         profile: runtime
@@ -1130,10 +1200,12 @@ class UccSchedulerTests(unittest.TestCase):
                         component: fake
                         profile: configured
                         type: config
+                        state_model: config
                       b:
                         component: fake
                         profile: configured
                         type: config
+                        state_model: config
                         depends_on:
                           - a
                     """

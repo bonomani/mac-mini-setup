@@ -30,6 +30,7 @@ targets:
     component: system
     profile: parametric
     type: config
+    state_model: parametric
     display_name: composition
     depends_on:
       - homebrew
