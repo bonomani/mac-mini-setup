@@ -50,6 +50,7 @@ coverage.xml
 # --- Configuration IDE ---
 .vscode/
 .idea/
+.codexrules
 *.swp
 *.swo
 
@@ -65,4 +66,3 @@ clean.py
 # --- Fichiers système ---
 .DS_Store
 Thumbs.db
-
