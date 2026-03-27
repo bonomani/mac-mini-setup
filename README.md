@@ -118,7 +118,7 @@ state can describe the whole machine, not only individual components.
 
 | File | Type | Purpose | Key Notes |
 |---|---|---|---|
-| `tic/software/verify.yaml` | YAML | Software verification suite | Imports, package presence, MPS checks, AI app HTTP readiness |
+| `tic/software/verify.yaml` | YAML | Software verification suite | Imports, package presence, and non-duplicated runtime checks |
 | `tic/system/verify.yaml` | YAML | System verification suite | Machine-state checks and verification evidence for `system-composition` |
 
 ### Runtime Templates And Scripts
@@ -203,8 +203,8 @@ Expected checkpoints:
   and `ai-apps-template`
 - `ai-apps` should converge `ai-stack-compose-file` plus the per-app
   runtime targets for Open WebUI, Flowise, OpenHands, n8n, and Qdrant
-- `verify` should pass the AI app HTTP readiness checks for Open WebUI,
-  Flowise, OpenHands, n8n, and Qdrant
+- `verify` should pass the remaining non-duplicated software checks after
+  convergence
 - `verify` may skip `system-composition-converged` when run standalone,
   because that assertion only applies when the current invocation also
   emitted `system-composition` target status

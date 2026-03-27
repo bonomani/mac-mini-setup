@@ -117,22 +117,10 @@ run_tic_tests_from_yaml() {
   done < <(yaml_records "$cfg_dir" "$yaml" tests name component requires_status_target intent oracle trace skip)
 }
 
-# Run docker container-running tests for services listed under a YAML section.
-# Usage: run_container_tic_tests_from_yaml <cfg_dir> <yaml_path>
 # Run all TIC suites and emit summary.
 # Usage: run_verify <cfg_dir>
 run_verify() {
   local cfg_dir="$1"
-
-  # Load runtime variables used by oracle strings at eval time
-  local _AI_SERVICES=()
-  while IFS= read -r _s; do [[ -n "$_s" ]] && _AI_SERVICES+=("$_s"); done \
-    < <(yaml_list "$cfg_dir" "$cfg_dir/ucc/software/ai-apps.yaml" stack.services)
-  if [[ ${#_AI_SERVICES[@]} -eq 0 ]]; then
-    while IFS= read -r _s; do [[ -n "$_s" ]] && _AI_SERVICES+=("$_s"); done \
-      < <(yaml_list "$cfg_dir" "$cfg_dir/ucc/software/ai-apps.yaml" services)
-  fi
-  [[ ${#_AI_SERVICES[@]} -gt 0 ]] || _AI_SERVICES=(open-webui flowise openhands n8n qdrant)
 
   local _NODE_VER _ARIA2_PORT _ARIAFLOW_PORT _ARIAFLOW_WEB_PORT _OLLAMA_API_HOST _OLLAMA_API_PORT
   local _UNSLOTH_PORT _UNSLOTH_LABEL _UNSLOTH_STUDIO_DIR
@@ -158,40 +146,6 @@ run_verify() {
 
   run_tic_tests_from_yaml "$cfg_dir" "$cfg_dir/tic/software/verify.yaml"
   run_tic_tests_from_yaml "$cfg_dir" "$cfg_dir/tic/system/verify.yaml"
-  run_container_tic_tests_from_yaml "$cfg_dir" "$cfg_dir/ucc/software/ai-apps.yaml"
 
   tic_summary "verify"
-}
-
-run_container_tic_tests_from_yaml() {
-  local cfg_dir="$1" yaml="$2"
-  local skip_reason="" _svc
-  local _services=()
-  _docker_container_running() {
-    docker inspect --format '{{.State.Status}}' "$1" 2>/dev/null | grep -q "^running$"
-  }
-  skip_reason="$(_tic_component_skip_reason "$cfg_dir" "ai-apps" || true)"
-  while IFS= read -r _svc; do [[ -n "$_svc" ]] && _services+=("$_svc"); done \
-    < <(yaml_list "$cfg_dir" "$yaml" stack.services)
-  if [[ ${#_services[@]} -eq 0 ]]; then
-    while IFS= read -r _svc; do [[ -n "$_svc" ]] && _services+=("$_svc"); done \
-      < <(yaml_list "$cfg_dir" "$yaml" services)
-  fi
-  for _svc in "${_services[@]}"; do
-    [[ -n "$_svc" ]] || continue
-    if [[ -n "$skip_reason" ]]; then
-      tic_test \
-        --name   "docker-container-${_svc}" \
-        --intent "${_svc} container must be running" \
-        --oracle "_docker_container_running '${_svc}'" \
-        --trace  "component:ai-apps / ucc-target:${_svc}-runtime" \
-        --skip   "$skip_reason"
-    else
-      tic_test \
-        --name   "docker-container-${_svc}" \
-        --intent "${_svc} container must be running" \
-        --oracle "_docker_container_running '${_svc}'" \
-        --trace  "component:ai-apps / ucc-target:${_svc}-runtime"
-    fi
-  done
 }

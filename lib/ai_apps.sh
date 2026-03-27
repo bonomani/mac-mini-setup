@@ -81,16 +81,37 @@ PY
     printf '%s' "$image"
   }
 
-  _ai_service_version() {
+  _ai_service_image_tag() {
     local image="$1" tail
     [[ -n "$image" ]] || return 0
     tail="${image##*/}"
     tail="${tail%%@*}"
     if [[ "$tail" == *:* ]]; then
       printf '%s' "${tail##*:}"
-    else
-      printf 'latest'
     fi
+  }
+
+  _ai_service_image_label_version() {
+    local image="$1" version=""
+    [[ -n "$image" ]] || return 0
+    version="$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.version" }}' "$image" 2>/dev/null || true)"
+    [[ "$version" == "<no value>" ]] && version=""
+    if [[ -z "$version" ]]; then
+      version="$(docker image inspect --format '{{ index .Config.Labels "org.label-schema.version" }}' "$image" 2>/dev/null || true)"
+      [[ "$version" == "<no value>" ]] && version=""
+    fi
+    printf '%s' "$version"
+  }
+
+  _ai_service_image_digest() {
+    local image="$1" digest="" short=""
+    [[ -n "$image" ]] || return 0
+    digest="$(docker image inspect --format '{{index .RepoDigests 0}}' "$image" 2>/dev/null || true)"
+    digest="${digest##*@}"
+    [[ "$digest" == sha256:* ]] || return 0
+    short="${digest#sha256:}"
+    short="${short:0:12}"
+    printf 'sha256:%s' "$short"
   }
 
   AI_APP_LABELS=()
@@ -199,10 +220,35 @@ PY
     ucc_asm_runtime_desired
   }
   _evidence_service_runtime() {
-    local svc="$1" image version
+    local svc="$1" image tag version digest
     image="$(_ai_service_image "$svc")"
-    version="$(_ai_service_version "$image")"
-    [[ -n "$version" ]] && printf 'version=%s' "$version"
+    tag="$(_ai_service_image_tag "$image")"
+    version="$(_ai_service_image_label_version "$image")"
+    digest="$(_ai_service_image_digest "$image")"
+
+    if [[ -n "$version" ]]; then
+      printf 'version=%s' "$version"
+      if [[ -n "$digest" && ( "$tag" == "latest" || "$tag" == "main" ) ]]; then
+        printf '  digest=%s' "$digest"
+      fi
+      if [[ -n "$tag" && "$tag" != "$version" ]]; then
+        printf '  ref=%s' "$tag"
+      fi
+      return
+    fi
+
+    if [[ -n "$tag" && "$tag" != "latest" && "$tag" != "main" ]]; then
+      printf 'version=%s' "$tag"
+      return
+    fi
+
+    if [[ -n "$digest" ]]; then
+      printf 'digest=%s' "$digest"
+      [[ -n "$tag" ]] && printf '  ref=%s' "$tag"
+      return
+    fi
+
+    [[ -n "$tag" ]] && printf 'ref=%s' "$tag"
   }
   _remove_legacy_containers() {
     local name

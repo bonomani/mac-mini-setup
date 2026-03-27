@@ -9,11 +9,6 @@ tests:
     intent: "torch must be importable"
     oracle: "python3 -c 'import torch'"
     trace: "component:ai-python-stack / ucc-target:pip-group-pytorch"
-  - name: torch-mps-available
-    component: ai-python-stack
-    intent: "MPS (Metal) GPU acceleration must be available on Apple Silicon"
-    oracle: "python3 -c 'import torch; assert torch.backends.mps.is_available()'"
-    trace: "component:ai-python-stack / ucc-target:pip-group-pytorch"
   - name: transformers-importable
     component: ai-python-stack
     intent: "transformers must be importable"
@@ -42,49 +37,3 @@ tests:
     intent: "cmake must be present (required for Unsloth GGUF inference)"
     oracle: "cmake --version >/dev/null 2>&1"
     trace: "component:dev-tools / cli-cmake"
-  - name: claude-code-installed
-    component: dev-tools
-    intent: "claude-code npm global must be installed"
-    oracle: "npm ls -g @anthropic-ai/claude-code --depth=0 >/dev/null 2>&1"
-    trace: "component:dev-tools / ucc-target:npm-global-@anthropic-ai/claude-code"
-  - name: bmad-method-installed
-    component: dev-tools
-    intent: "bmad-method npm global must be installed"
-    oracle: "npm ls -g bmad-method --depth=0 >/dev/null 2>&1"
-    trace: "component:dev-tools / ucc-target:npm-global-bmad-method"
-  - name: ariaflow-api-ready
-    component: dev-tools
-    intent: "ariaflow backend must answer API requests on its local port"
-    oracle: "curl -fsS --max-time 5 http://127.0.0.1:${_ARIAFLOW_PORT}/api/status >/dev/null 2>&1"
-    trace: "component:dev-tools / ucc-target:ariaflow-service"
-  - name: ariaflow-web-http-ready
-    component: dev-tools
-    intent: "ariaflow-web must answer HTTP requests on its local port"
-    oracle: "curl -fsS --max-time 5 http://127.0.0.1:${_ARIAFLOW_WEB_PORT} >/dev/null 2>&1"
-    trace: "component:dev-tools / ucc-target:ariaflow-web-service"
-  # ── ai-apps ───────────────────────────────────────────────
-  - name: open-webui-http-ready
-    component: ai-apps
-    intent: "Open WebUI must answer HTTP requests on port 3000"
-    oracle: "curl -fsS --max-time 5 http://127.0.0.1:3000 >/dev/null 2>&1"
-    trace: "component:ai-apps / ucc-target:open-webui-runtime"
-  - name: flowise-http-ready
-    component: ai-apps
-    intent: "Flowise must answer HTTP requests on port 3001"
-    oracle: "curl -fsS --max-time 5 http://127.0.0.1:3001 >/dev/null 2>&1"
-    trace: "component:ai-apps / ucc-target:flowise-runtime"
-  - name: openhands-http-ready
-    component: ai-apps
-    intent: "OpenHands must answer HTTP requests on port 3002"
-    oracle: "curl -fsS --max-time 5 http://127.0.0.1:3002 >/dev/null 2>&1"
-    trace: "component:ai-apps / ucc-target:openhands-runtime"
-  - name: n8n-http-ready
-    component: ai-apps
-    intent: "n8n must answer HTTP requests on port 5678"
-    oracle: "curl -fsS --max-time 5 http://127.0.0.1:5678 >/dev/null 2>&1"
-    trace: "component:ai-apps / ucc-target:n8n-runtime"
-  - name: qdrant-http-ready
-    component: ai-apps
-    intent: "Qdrant must answer HTTP requests on port 6333"
-    oracle: "curl -fsS --max-time 5 http://127.0.0.1:6333/collections >/dev/null 2>&1"
-    trace: "component:ai-apps / ucc-target:qdrant-runtime"

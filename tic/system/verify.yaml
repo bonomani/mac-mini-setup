@@ -12,10 +12,3 @@ tests:
     intent: "system-composition must converge before system verification is accepted"
     oracle: "awk -F'|' '$1==\"system-composition\" {val=$2} END {exit !(val==\"ok\")}' \"${UCC_TARGET_STATUS_FILE:-/dev/null}\""
     trace: "component:system / ucc-target:system-composition / tic-suite:system"
-
-  # ── homebrew ──────────────────────────────────────────────
-  - name: brew-analytics-off
-    component: system
-    intent: "brew analytics must be disabled"
-    oracle: "brew analytics state 2>/dev/null | grep -qi disabled"
-    trace: "component:system / verifies:homebrew / evidence-for:system-composition"
