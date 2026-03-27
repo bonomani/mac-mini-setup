@@ -168,6 +168,33 @@ class UccSchedulerTests(unittest.TestCase):
             ).strip()
             self.assertEqual(output, "fake-runtime\tFake API\thttp://127.0.0.1:9999\tprimary")
 
+    def test_read_config_get_substitutes_top_level_scalars(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest = self._write_manifest(
+                Path(tmp),
+                textwrap.dedent(
+                    """\
+                    component: fake
+                    primary_profile: runtime
+                    libs: fake
+                    runner: run_fake
+                    probe_port: 9999
+                    targets:
+                      fake-runtime:
+                        component: fake
+                        profile: runtime
+                        type: runtime
+                        oracle:
+                          runtime: 'curl -fsS http://127.0.0.1:${probe_port} >/dev/null 2>&1'
+                    """
+                ),
+            ) / "software" / "fake.yaml"
+            output = subprocess.check_output(
+                ["python3", str(ROOT / "tools" / "read_config.py"), "--get", str(manifest), "targets.fake-runtime.oracle.runtime"],
+                text=True,
+            ).strip()
+            self.assertEqual(output, 'curl -fsS http://127.0.0.1:9999 >/dev/null 2>&1')
+
     def test_brew_runtime_target_uses_yaml_probe_and_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)

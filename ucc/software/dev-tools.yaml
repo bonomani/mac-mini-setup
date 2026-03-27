@@ -99,7 +99,7 @@ targets:
     probe_kind: http
     oracle:
       configured: "brew services list 2>/dev/null | awk '$1==\"ariaflow\" {print $2}' | grep -q '^started$'"
-      runtime: 'curl -fsS --max-time 5 "http://127.0.0.1:${_ARIAFLOW_PORT}/api/status" >/dev/null 2>&1'
+      runtime: 'curl -fsS --max-time 5 "http://127.0.0.1:${ariaflow_port}/api/status" >/dev/null 2>&1'
     evidence:
       version: "_brew_cached_version ariaflow"
       pid: "lsof -ti tcp:${ariaflow_port} 2>/dev/null | head -1"
@@ -132,7 +132,7 @@ targets:
     probe_kind: http
     oracle:
       configured: "brew services list 2>/dev/null | awk '$1==\"ariaflow-web\" {print $2}' | grep -q '^started$'"
-      runtime: 'curl -fsS --max-time 5 "http://127.0.0.1:${_ARIAFLOW_WEB_PORT}" >/dev/null 2>&1'
+      runtime: 'curl -fsS --max-time 5 "http://127.0.0.1:${ariaflow_web_port}" >/dev/null 2>&1'
     evidence:
       version: "_brew_cached_version ariaflow-web"
       pid: "lsof -ti tcp:${ariaflow_web_port} 2>/dev/null | head -1"

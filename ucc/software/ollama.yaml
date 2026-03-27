@@ -43,7 +43,7 @@ targets:
     probe_kind: http
     oracle:
       configured: "ollama --version >/dev/null 2>&1"
-      runtime: 'curl -fsS "http://${_OLLAMA_API_HOST}:${_OLLAMA_API_PORT}/api/tags" >/dev/null 2>&1'
+      runtime: 'curl -fsS "http://${api_host}:${api_port}/api/tags" >/dev/null 2>&1'
     evidence:
       version: "ollama --version 2>/dev/null | awk '{print $NF}'"
       pid: "pgrep -f 'ollama (serve|app)' 2>/dev/null | head -1"

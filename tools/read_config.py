@@ -49,6 +49,15 @@ def stringify(value) -> str:
     return str(value)
 
 
+def substitute_scalars(value: str, data: dict) -> str:
+    subst = {
+        key: stringify(raw)
+        for key, raw in data.items()
+        if isinstance(raw, (str, int, float, bool))
+    }
+    return re.sub(r"\$\{(\w+)\}", lambda m: subst.get(m.group(1), m.group(0)), value)
+
+
 def read_list(path: Path, section: str) -> list[str]:
     data = load_yaml(path)
     value = get_path(data, section)
@@ -80,16 +89,14 @@ def read_scalar(path: Path, key: str) -> str:
     value = get_path(data, key)
     if isinstance(value, (dict, list)):
         return ""
-    return stringify(value)
+    rendered = stringify(value)
+    if isinstance(value, str):
+        rendered = substitute_scalars(rendered, data)
+    return rendered
 
 
 def read_evidence(path: Path, target_name: str) -> list[str]:
     data = load_yaml(path)
-    subst = {
-        key: stringify(value)
-        for key, value in data.items()
-        if isinstance(value, (str, int, float, bool))
-    }
     targets = data.get("targets") or {}
     if not isinstance(targets, dict):
         raise ValueError("top-level 'targets' must be a mapping")
@@ -102,7 +109,7 @@ def read_evidence(path: Path, target_name: str) -> list[str]:
 
     rows = []
     for key, cmd in evidence.items():
-        rendered = re.sub(r"\$\{(\w+)\}", lambda m: subst.get(m.group(1), m.group(0)), stringify(cmd))
+        rendered = substitute_scalars(stringify(cmd), data)
         rows.append(f"{key}\t{rendered}")
     return rows
 
