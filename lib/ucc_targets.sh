@@ -116,14 +116,35 @@ _ucc_record_outcome() {
 
 _UCC_REGISTERED_NAMES=()
 _UCC_REGISTERED_ARGS=()
+_UCC_REGISTERED_ENV=()
 
 ucc_reset_registered_targets() {
   _UCC_REGISTERED_NAMES=()
   _UCC_REGISTERED_ARGS=()
+  _UCC_REGISTERED_ENV=()
+}
+
+_ucc_should_snapshot_var() {
+  local name="$1" decl="${2:-}"
+  [[ -n "$name" ]] || return 1
+  [[ "$name" =~ ^(_UCC_|BASH_|EUID$|PPID$|SHELLOPTS$|BASHPID$|FUNCNAME$|BASH_SOURCE$|BASH_LINENO$|LINENO$|RANDOM$|SECONDS$|SRANDOM$|PIPESTATUS$|GROUPS$|DIRSTACK$|COMP_|COPROC$|MAPFILE$) ]] && return 1
+  [[ "$decl" == declare\ -r* || "$decl" == "declare -ir"* || "$decl" == "declare -ar"* || "$decl" == "declare -A -r"* || "$decl" == "declare -n -r"* ]] && return 1
+  return 0
+}
+
+_ucc_capture_visible_vars() {
+  local name decl snapshot=""
+  while IFS= read -r name; do
+    decl="$(declare -p "$name" 2>/dev/null || true)"
+    [[ -n "$decl" ]] || continue
+    _ucc_should_snapshot_var "$name" "$decl" || continue
+    snapshot+="${decl}"$'\n'
+  done < <(compgen -A variable | LC_ALL=C sort)
+  printf '%s' "$snapshot"
 }
 
 _ucc_register_target() {
-  local args=("$@") name="" argv="" arg
+  local args=("$@") name="" argv="" arg snapshot=""
   while [[ ${#args[@]} -gt 0 ]]; do
     case "${args[0]}" in
       --name) name="${args[1]:-}"; args=("${args[@]:2}") ;;
@@ -134,8 +155,10 @@ _ucc_register_target() {
   for arg in "$@"; do
     argv+="$(printf '%q ' "$arg")"
   done
+  snapshot="$(_ucc_capture_visible_vars)"
   _UCC_REGISTERED_NAMES+=("$name")
   _UCC_REGISTERED_ARGS+=("${argv% }")
+  _UCC_REGISTERED_ENV+=("$snapshot")
 }
 
 _ucc_registered_index() {
@@ -187,6 +210,11 @@ _ucc_execute_target() {
       *) shift ;;
     esac
   done
+
+  local _ucc_snapshot="${_UCC_EXEC_SNAPSHOT:-}"
+  if [[ -n "$_ucc_snapshot" ]]; then
+    eval "$_ucc_snapshot"
+  fi
 
   [[ -z "$axes" && -n "$profile" ]] && axes="$(_ucc_profile_axes "$profile")"
   if [[ -z "$desired" && "$profile" == "parametric" ]]; then
@@ -347,7 +375,7 @@ ucc_flush_registered_targets() {
     idx="$(_ucc_registered_index "$target" || true)"
     [[ -n "$idx" ]] || continue
     _ucc_require_declared_dependencies_resolved "$target" || return 1
-    eval "_ucc_execute_target ${_UCC_REGISTERED_ARGS[$idx]}" || return 1
+    UCC_EXEC_SNAPSHOT="${_UCC_REGISTERED_ENV[$idx]}" eval "_ucc_execute_target ${_UCC_REGISTERED_ARGS[$idx]}" || return 1
   done
 
   local name seen
@@ -363,7 +391,7 @@ ucc_flush_registered_targets() {
   done
 
   for idx in "${undeclared[@]}"; do
-    eval "_ucc_execute_target ${_UCC_REGISTERED_ARGS[$idx]}" || return 1
+    UCC_EXEC_SNAPSHOT="${_UCC_REGISTERED_ENV[$idx]}" eval "_ucc_execute_target ${_UCC_REGISTERED_ARGS[$idx]}" || return 1
   done
 }
 
