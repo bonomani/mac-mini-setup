@@ -12,19 +12,17 @@ ARIAFLOW = WORKSPACE / "ariaflow"
 ARIAFLOW_WEB = WORKSPACE / "ariaflow-web"
 
 
-def run(repo_name: str, repo_path: Path, version: str | None, push: bool, dry_run: bool, no_tests: bool) -> None:
+def run(repo_name: str, repo_path: Path, subcommand: str, version: str | None, no_tests: bool) -> None:
     if not repo_path.exists():
         raise SystemExit(f"Missing repo path for {repo_name}: {repo_path}")
 
-    cmd = ["python3", "scripts/publish.py"]
+    cmd = ["python3", "scripts/publish.py", subcommand]
     if version is not None:
         cmd.extend(["--version", version])
     if no_tests:
         cmd.append("--no-tests")
-    if dry_run:
-        cmd.extend(["--dry-run", "--allow-dirty"])
-    if push:
-        cmd.append("--push")
+    if subcommand == "plan":
+        cmd.append("--allow-dirty")
 
     print(f"==> {repo_name}: {' '.join(cmd)}", flush=True)
     subprocess.run(cmd, cwd=repo_path, check=True)
@@ -34,30 +32,45 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="Rebase-safe double-publish helper for ariaflow and ariaflow-web."
     )
-    parser.add_argument("--push", action="store_true", help="Push main in both repos. Required for real publish actions.")
-    parser.add_argument("--dry-run", action="store_true", help="Preview the commands that would run in both repos.")
-    parser.add_argument("--no-tests", action="store_true", help="Skip local tests in both repos.")
-    parser.add_argument("--ariaflow-version", help="Explicit stable release version for ariaflow.")
-    parser.add_argument("--ariaflow-web-version", help="Explicit stable release version for ariaflow-web.")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    plan_parser = subparsers.add_parser("plan", help="Preview the commands that would run in both repos.")
+    plan_parser.add_argument("--no-tests", action="store_true", help="Show a plan that skips local tests in both repos.")
+    plan_parser.add_argument("--ariaflow-version", help="Preview an explicit stable release version for ariaflow.")
+    plan_parser.add_argument("--ariaflow-web-version", help="Preview an explicit stable release version for ariaflow-web.")
+
+    push_parser = subparsers.add_parser("push", help="Push main in both repos with rebase-safe sync.")
+    push_parser.add_argument("--no-tests", action="store_true", help="Skip local tests in both repos.")
+
+    release_parser = subparsers.add_parser("release", help="Trigger explicit release flow for one or both repos after rebase-safe sync.")
+    release_parser.add_argument("--no-tests", action="store_true", help="Skip local tests in both repos.")
+    release_parser.add_argument("--ariaflow-version", help="Explicit stable release version for ariaflow.")
+    release_parser.add_argument("--ariaflow-web-version", help="Explicit stable release version for ariaflow-web.")
+
     args = parser.parse_args()
 
-    if not args.dry_run and not args.push:
-        raise SystemExit("Pass --push for real actions, or --dry-run to preview them.")
+    if args.command == "release" and not args.ariaflow_version and not args.ariaflow_web_version:
+        raise SystemExit("Pass at least one explicit version for the release command.")
+
+    ariaflow_command = args.command
+    ariaflow_web_command = args.command
+    if args.command == "release" and args.ariaflow_version is None:
+        ariaflow_command = "push"
+    if args.command == "release" and args.ariaflow_web_version is None:
+        ariaflow_web_command = "push"
 
     run(
         repo_name="ariaflow",
         repo_path=ARIAFLOW,
+        subcommand=ariaflow_command,
         version=args.ariaflow_version,
-        push=args.push,
-        dry_run=args.dry_run,
         no_tests=args.no_tests,
     )
     run(
         repo_name="ariaflow-web",
         repo_path=ARIAFLOW_WEB,
+        subcommand=ariaflow_web_command,
         version=args.ariaflow_web_version,
-        push=args.push,
-        dry_run=args.dry_run,
         no_tests=args.no_tests,
     )
     return 0
