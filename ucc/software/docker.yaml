@@ -3,11 +3,12 @@ primary_profile: runtime
 libs: docker
 runner: run_docker_from_yaml
 platforms:
-  - macos
+- macos
 docker_desktop_cask_id: docker
 docker_desktop_app_name: Docker
 docker_desktop_app_path: /Applications/Docker.app
-
+docker_runtime_wait_attempts: 24
+docker_runtime_wait_interval: 5
 targets:
   docker-desktop:
     component: docker
@@ -15,13 +16,23 @@ targets:
     type: runtime
     display_name: Docker Desktop
     depends_on:
-      - homebrew
+    - homebrew
     provided_by_tool: brew-cask
     runtime_manager: desktop-app
     probe_kind: command
     oracle:
       configured: '[[ -d "${docker_desktop_app_path}" ]]'
-      runtime: "docker info >/dev/null 2>&1"
+      runtime: docker info >/dev/null 2>&1
     evidence:
-      version: "defaults read \"${docker_desktop_app_path}/Contents/Info\" CFBundleShortVersionString 2>/dev/null || docker --version 2>/dev/null | awk '{print $3}' | tr -d ','"
-      pid: "pgrep -f \"${docker_desktop_app_path}\" 2>/dev/null | head -1"
+      version: defaults read "${docker_desktop_app_path}/Contents/Info" CFBundleShortVersionString
+        2>/dev/null || docker --version 2>/dev/null | awk '{print $3}' | tr -d ','
+      pid: pgrep -f "${docker_desktop_app_path}" 2>/dev/null | head -1
+    install_cmd: "observed=\"$(brew_cask_observe \"${docker_desktop_cask_id}\")\"\n\
+      if [[ \"$observed\" == \"absent\" && -d \"${docker_desktop_app_path}\" ]]; then\n\
+      \  observed=\"installed\"\nfi\nif [[ \"$observed\" == \"absent\" ]]; then\n\
+      \  brew_cask_install \"${docker_desktop_cask_id}\" || return 1\nelif [[ \"$observed\"\
+      \ == \"outdated\" ]]; then\n  brew_cask_upgrade \"${docker_desktop_cask_id}\"\
+      \ || return 1\nfi\nopen -a \"${docker_desktop_app_name}\"\nlog_info \"Waiting\
+      \ for Docker daemon...\"\nUCC_RUNTIME_WAIT_ATTEMPTS=\"${docker_runtime_wait_attempts}\"\
+      \ \\\nUCC_RUNTIME_WAIT_INTERVAL=\"${docker_runtime_wait_interval}\" \\\n  _ucc_wait_for_runtime_probe\
+      \ \"docker info >/dev/null 2>&1\"\n"

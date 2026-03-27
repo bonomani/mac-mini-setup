@@ -3,9 +3,9 @@ primary_profile: configured
 libs: python
 runner: run_python_from_yaml
 platforms:
-  - macos
-  - linux
-  - wsl2
+- macos
+- linux
+- wsl2
 python_version: 3.12.3
 targets:
   pyenv:
@@ -15,23 +15,32 @@ targets:
     state_model: package
     display_name: pyenv
     depends_on:
-      - homebrew
+    - homebrew
     provided_by_tool: brew
     package_driver: brew-formula
-    observe_cmd: "brew_observe pyenv"
+    observe_cmd: brew_observe pyenv
     evidence:
-      version: "pyenv --version 2>/dev/null | awk '{print $2}'"
-      root: "pyenv root 2>/dev/null || true"
-    install_cmd: |
-      pkgs="$(python3 "$CFG_DIR/tools/read_config.py" --list "$YAML_PATH" pyenv_packages 2>/dev/null | xargs)"
+      version: pyenv --version 2>/dev/null | awk '{print $2}'
+      root: pyenv root 2>/dev/null || true
+    install_cmd: 'pkgs="$(python3 "$CFG_DIR/tools/read_config.py" --list "$YAML_PATH"
+      pyenv_packages 2>/dev/null | xargs)"
+
       [[ -n "$pkgs" ]] || pkgs="pyenv pyenv-virtualenv"
+
       brew_install $pkgs
-      grep -q 'pyenv init' "$HOME/.zshrc" 2>/dev/null || cat "$CFG_DIR/scripts/pyenv-zshrc-snippet" >> "$HOME/.zshrc"
-    update_cmd: |
-      pkgs="$(python3 "$CFG_DIR/tools/read_config.py" --list "$YAML_PATH" pyenv_packages 2>/dev/null | xargs)"
+
+      grep -q ''pyenv init'' "$HOME/.zshrc" 2>/dev/null || cat "$CFG_DIR/scripts/pyenv-zshrc-snippet"
+      >> "$HOME/.zshrc"
+
+      '
+    update_cmd: 'pkgs="$(python3 "$CFG_DIR/tools/read_config.py" --list "$YAML_PATH"
+      pyenv_packages 2>/dev/null | xargs)"
+
       [[ -n "$pkgs" ]] || pkgs="pyenv pyenv-virtualenv"
+
       brew_upgrade $pkgs
 
+      '
   xz:
     component: python
     profile: configured
@@ -39,15 +48,14 @@ targets:
     state_model: package
     display_name: XZ Utils
     depends_on:
-      - homebrew
+    - homebrew
     provided_by_tool: brew
     package_driver: brew-formula
-    observe_cmd: "brew_observe xz"
+    observe_cmd: brew_observe xz
     evidence:
-      version: "_brew_cached_version xz"
-    install_cmd: "brew_install xz"
-    update_cmd: "brew_upgrade xz"
-
+      version: _brew_cached_version xz
+    install_cmd: brew_install xz
+    update_cmd: brew_upgrade xz
   python:
     component: python
     profile: configured
@@ -55,47 +63,59 @@ targets:
     state_model: package
     display_name: Python
     depends_on:
-      - pyenv
-      - xz
+    - pyenv
+    - xz
     provided_by_tool: pyenv
     package_driver: pyenv-version
-    observe_cmd: |
-      version="${UIC_PREF_PYTHON_VERSION:-${python_version}}"
-      pyenv versions 2>/dev/null | grep -q "$version" && printf '%s' "$version" || printf 'absent'
+    observe_cmd: 'version="${UIC_PREF_PYTHON_VERSION:-${python_version}}"
+
+      pyenv versions 2>/dev/null | grep -q "$version" && printf ''%s'' "$version"
+      || printf ''absent''
+
+      '
     evidence:
-      version: "python3 --version 2>/dev/null | awk '{print $2}'"
-      path: "pyenv which python3 2>/dev/null || command -v python3 2>/dev/null || true"
-    install_cmd: |
-      version="${UIC_PREF_PYTHON_VERSION:-${python_version}}"
+      version: python3 --version 2>/dev/null | awk '{print $2}'
+      path: pyenv which python3 2>/dev/null || command -v python3 2>/dev/null || true
+    install_cmd: 'version="${UIC_PREF_PYTHON_VERSION:-${python_version}}"
+
       pyenv install "$version"
-      pyenv global "$version"
-    update_cmd: |
-      version="${UIC_PREF_PYTHON_VERSION:-${python_version}}"
-      pyenv install --skip-existing "$version"
+
       pyenv global "$version"
 
+      '
+    update_cmd: 'version="${UIC_PREF_PYTHON_VERSION:-${python_version}}"
+
+      pyenv install --skip-existing "$version"
+
+      pyenv global "$version"
+
+      '
   pip-latest:
     component: python
     profile: configured
     type: config
     state_model: config
+    display_name: pip
+    config_driver: pip-bootstrap
     depends_on:
-      - python
+    - python
     oracle:
-      configured: "pip --version >/dev/null 2>&1"
+      configured: pip --version >/dev/null 2>&1
     evidence:
-      version: "pip --version 2>/dev/null | awk '{print $2}'"
-      path: "command -v pip 2>/dev/null || true"
-    install_cmd: |
-      local pkgs
-      pkgs="$(python3 "$CFG_DIR/tools/read_config.py" --list "$YAML_PATH" pip_bootstrap 2>/dev/null | xargs)"
+      version: pip --version 2>/dev/null | awk '{print $2}'
+      path: command -v pip 2>/dev/null || true
+    install_cmd: 'local pkgs
+
+      pkgs="$(python3 "$CFG_DIR/tools/read_config.py" --list "$YAML_PATH" pip_bootstrap
+      2>/dev/null | xargs)"
+
       [[ -n "$pkgs" ]] && pip install --upgrade $pkgs
 
+      '
 pyenv_packages:
-  - pyenv
-  - pyenv-virtualenv
-
+- pyenv
+- pyenv-virtualenv
 pip_bootstrap:
-  - pip
-  - setuptools
-  - wheel
+- pip
+- setuptools
+- wheel

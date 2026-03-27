@@ -3,42 +3,36 @@ primary_profile: configured
 libs: git
 runner: run_git_config_from_yaml
 platforms:
-  - macos
-  - linux
-  - wsl2
-
+- macos
+- linux
+- wsl2
 targets:
   git-global-config:
     component: git-config
     profile: configured
     type: config
     state_model: config
+    display_name: Git global config
+    config_driver: git-global-config
     depends_on:
-      - git
+    - git
     oracle:
-      configured: "git config --global user.name >/dev/null 2>&1"
+      configured: git config --global user.name >/dev/null 2>&1
     evidence:
-      user: "git config --global user.name 2>/dev/null || true"
-      email: "git config --global user.email 2>/dev/null || true"
-    install_cmd: |
-      if [[ ! -t 0 ]]; then
-        log_warn "git-global-config: non-interactive shell — skipping. Set manually:"
-        log_warn "  git config --global user.name  'Your Name'"
-        log_warn "  git config --global user.email 'you@example.com'"
-        return 1
-      fi
-      read -rp "Git username: " GIT_USER
-      read -rp "Git email:    " GIT_EMAIL
-      git config --global user.name "$GIT_USER"
-      git config --global user.email "$GIT_EMAIL"
-      while IFS=$'\t' read -r cfg_key cfg_val; do
-        [[ -n "$cfg_key" ]] && git config --global "$cfg_key" "$cfg_val"
-      done < <(yaml_records "$CFG_DIR" "$YAML_PATH" global_config key value)
-
+      user: git config --global user.name 2>/dev/null || true
+      email: git config --global user.email 2>/dev/null || true
+    install_cmd: "if [[ ! -t 0 ]]; then\n  log_warn \"git-global-config: non-interactive\
+      \ shell \u2014 skipping. Set manually:\"\n  log_warn \"  git config --global\
+      \ user.name  'Your Name'\"\n  log_warn \"  git config --global user.email 'you@example.com'\"\
+      \n  return 1\nfi\nread -rp \"Git username: \" GIT_USER\nread -rp \"Git email:\
+      \    \" GIT_EMAIL\ngit config --global user.name \"$GIT_USER\"\ngit config --global\
+      \ user.email \"$GIT_EMAIL\"\nwhile IFS=$'\\t' read -r cfg_key cfg_val; do\n\
+      \  [[ -n \"$cfg_key\" ]] && git config --global \"$cfg_key\" \"$cfg_val\"\n\
+      done < <(yaml_records \"$CFG_DIR\" \"$YAML_PATH\" global_config key value)\n"
 global_config:
-  - key: init.defaultBranch
-    value: main
-  - key: pull.rebase
-    value: "false"
-  - key: core.autocrlf
-    value: input
+- key: init.defaultBranch
+  value: main
+- key: pull.rebase
+  value: 'false'
+- key: core.autocrlf
+  value: input

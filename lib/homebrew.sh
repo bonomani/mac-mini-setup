@@ -8,30 +8,7 @@ run_homebrew_from_yaml() {
 
   # ---- Step 0: Xcode Command Line Tools ----
   if [[ "${HOST_PLATFORM:-macos}" == "macos" ]]; then
-    _observe_xcode_clt() {
-      local raw
-      raw=$(xcode-select -p >/dev/null 2>&1 \
-        && (pkgutil --pkg-info=com.apple.pkg.CLTools_Executables 2>/dev/null | awk '/^version:/ {print $2}') \
-        || echo "absent")
-      ucc_asm_package_state "$raw"
-    }
-    _evidence_xcode_clt() {
-      _ucc_ver_path_evidence \
-        "$(pkgutil --pkg-info=com.apple.pkg.CLTools_Executables 2>/dev/null | awk '/^version:/ {print $2}')" \
-        "$(xcode-select -p 2>/dev/null || true)"
-    }
-    _install_xcode_clt() {
-      log_info "Triggering Xcode Command Line Tools install..."
-      xcode-select --install 2>/dev/null || true
-      log_warn "Xcode CLT installation triggered. Wait for it to complete, then re-run this script."
-      return 1
-    }
-
-    ucc_target_nonruntime \
-      --name    "xcode-command-line-tools" \
-      --observe _observe_xcode_clt \
-      --evidence _evidence_xcode_clt \
-      --install _install_xcode_clt
+    ucc_yaml_simple_target "$cfg_dir" "$yaml" "xcode-command-line-tools"
 
     # Abort if CLT just got triggered
     xcode-select -p >/dev/null 2>&1 || return 1

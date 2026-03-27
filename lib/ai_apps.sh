@@ -129,6 +129,59 @@ PY
     printf 'sha256:%s' "$short"
   }
 
+  _ai_service_runtime_version() {
+    local svc="$1" image tag version
+    image="$(_ai_service_image "$svc")"
+    tag="$(_ai_service_image_tag "$image")"
+    version="$(_ai_service_image_label_version "$image")"
+    [[ -n "$version" ]] && version="$(_ai_normalize_version "$version")"
+    [[ -n "$tag" ]] && tag="$(_ai_normalize_version "$tag")"
+
+    if [[ -n "$version" ]] && ! _ai_is_mutable_ref "$version"; then
+      printf '%s' "$version"
+      return
+    fi
+
+    if [[ -n "$tag" ]] && ! _ai_is_mutable_ref "$tag"; then
+      printf '%s' "$tag"
+    fi
+  }
+
+  _ai_service_runtime_digest() {
+    local svc="$1" image tag version digest
+    image="$(_ai_service_image "$svc")"
+    tag="$(_ai_service_image_tag "$image")"
+    version="$(_ai_service_image_label_version "$image")"
+    digest="$(_ai_service_image_digest "$image")"
+    [[ -n "$version" ]] && version="$(_ai_normalize_version "$version")"
+    [[ -n "$tag" ]] && tag="$(_ai_normalize_version "$tag")"
+
+    [[ -n "$digest" ]] || return 0
+    if [[ -n "$version" ]] && ! _ai_is_mutable_ref "$version" && [[ -n "$tag" ]] && _ai_is_mutable_ref "$tag"; then
+      printf '%s' "$digest"
+      return
+    fi
+    if [[ -z "$version" || ( -n "$version" && _ai_is_mutable_ref "$version" ) ]]; then
+      printf '%s' "$digest"
+    fi
+  }
+
+  _ai_service_runtime_ref() {
+    local svc="$1" image tag version
+    image="$(_ai_service_image "$svc")"
+    tag="$(_ai_service_image_tag "$image")"
+    version="$(_ai_service_image_label_version "$image")"
+    [[ -n "$version" ]] && version="$(_ai_normalize_version "$version")"
+    [[ -n "$tag" ]] && tag="$(_ai_normalize_version "$tag")"
+
+    [[ -n "$tag" ]] || return 0
+    if [[ -n "$version" ]] && ! _ai_is_mutable_ref "$version"; then
+      [[ "$tag" != "$version" ]] && printf '%s' "$tag"
+      return
+    fi
+    printf '%s' "$tag"
+  }
+
   AI_APP_LABELS=()
   for _svc in "${AI_SERVICES[@]}"; do
     AI_APP_LABELS+=("$(_ai_service_label "$_svc")")
@@ -234,39 +287,6 @@ PY
 
     ucc_asm_runtime_desired
   }
-  _evidence_service_runtime() {
-    local svc="$1" image tag version digest
-    image="$(_ai_service_image "$svc")"
-    tag="$(_ai_service_image_tag "$image")"
-    version="$(_ai_service_image_label_version "$image")"
-    digest="$(_ai_service_image_digest "$image")"
-    [[ -n "$version" ]] && version="$(_ai_normalize_version "$version")"
-    [[ -n "$tag" ]] && tag="$(_ai_normalize_version "$tag")"
-
-    if [[ -n "$version" ]] && ! _ai_is_mutable_ref "$version"; then
-      printf 'version=%s' "$version"
-      if [[ -n "$digest" && -n "$tag" ]] && _ai_is_mutable_ref "$tag"; then
-        printf '  digest=%s' "$digest"
-      fi
-      if [[ -n "$tag" && "$tag" != "$version" ]]; then
-        printf '  ref=%s' "$tag"
-      fi
-      return
-    fi
-
-    if [[ -n "$tag" ]] && ! _ai_is_mutable_ref "$tag"; then
-      printf 'version=%s' "$tag"
-      return
-    fi
-
-    if [[ -n "$digest" ]]; then
-      printf 'digest=%s' "$digest"
-      [[ -n "$tag" ]] && printf '  ref=%s' "$tag"
-      return
-    fi
-
-    [[ -n "$tag" ]] && printf 'ref=%s' "$tag"
-  }
   _remove_legacy_containers() {
     local name
     for name in "${AI_SERVICES[@]}"; do
@@ -296,7 +316,7 @@ PY
     target="$(_ai_target_for_service "$svc")"
     fn="${svc//[^a-zA-Z0-9]/_}"
     eval "_ai_obs_${fn}() { _observe_service_runtime '${svc}' '${target}'; }"
-    eval "_ai_evd_${fn}() { _evidence_service_runtime '${svc}'; }"
+    eval "_ai_evd_${fn}() { ucc_eval_evidence_from_yaml '${cfg_dir}' '${yaml}' '${target}'; }"
     eval "_ai_ins_${fn}() { _start_stack; }"
     eval "_ai_upd_${fn}() { _update_stack; }"
 

@@ -5,15 +5,10 @@
 # Usage: run_docker_from_yaml <cfg_dir> <yaml_path>
 run_docker_from_yaml() {
   local cfg_dir="$1" yaml="$2"
-  local _DOCKER_CASK_ID _DOCKER_APP_NAME _DOCKER_APP_PATH
+  local _DOCKER_CASK_ID _DOCKER_APP_PATH
   _DOCKER_CASK_ID="$(yaml_get "$cfg_dir" "$yaml" docker_desktop_cask_id docker)"
-  _DOCKER_APP_NAME="$(yaml_get "$cfg_dir" "$yaml" docker_desktop_app_name Docker)"
   _DOCKER_APP_PATH="$(yaml_get "$cfg_dir" "$yaml" docker_desktop_app_path /Applications/Docker.app)"
 
-  _docker_desktop_version() {
-    defaults read "${_DOCKER_APP_PATH}/Contents/Info" CFBundleShortVersionString 2>/dev/null \
-      || docker --version 2>/dev/null | awk '{print $3}' | tr -d ','
-  }
   _docker_desktop_pkg_state() {
     if [[ -d "$_DOCKER_APP_PATH" ]] && ! brew_cask_is_installed "$_DOCKER_CASK_ID"; then
       printf 'installed'
@@ -47,38 +42,20 @@ run_docker_from_yaml() {
       fi
     fi
   }
-  _evidence_docker_desktop() {
-    local pid ver
-    pid="$(pgrep -f "$_DOCKER_APP_PATH" 2>/dev/null | head -1 || true)"
-    ver="$(_docker_desktop_version)"
-    [[ -n "$ver" ]] && printf 'version=%s' "$ver"
-    [[ -n "$pid" ]] && printf '  pid=%s' "$pid"
+  _install_docker_desktop() {
+    _ucc_run_yaml_action "$cfg_dir" "$yaml" "docker-desktop" install_cmd
   }
-  _converge_docker_desktop() {
-    local observed
-    observed="$(_docker_desktop_pkg_state)"
-    if [[ "$observed" == "absent" ]]; then
-      brew_cask_install "$_DOCKER_CASK_ID" || return 1
-    elif [[ "$observed" == "outdated" ]]; then
-      brew_cask_upgrade "$_DOCKER_CASK_ID" || return 1
-    fi
-    open -a "$_DOCKER_APP_NAME"
-    log_info "Waiting for Docker daemon..."
-    for i in $(seq 1 24); do
-      docker info &>/dev/null && return 0
-      log_debug "Waiting for Docker ($i/24)..."
-      sleep 5
-    done
-    return 1
+  _update_docker_desktop() {
+    _ucc_run_yaml_action "$cfg_dir" "$yaml" "docker-desktop" update_cmd
   }
 
   ucc_target_service \
     --name    "docker-desktop" \
     --observe _observe_docker_desktop \
-    --evidence _evidence_docker_desktop \
+    --evidence "ucc_eval_evidence_from_yaml \"$cfg_dir\" \"$yaml\" docker-desktop" \
     --desired "$(ucc_asm_runtime_desired)" \
-    --install _converge_docker_desktop \
-    --update  _converge_docker_desktop
+    --install _install_docker_desktop \
+    --update  _update_docker_desktop
 }
 
 # Usage: run_docker_config_from_yaml <cfg_dir> <yaml_path>

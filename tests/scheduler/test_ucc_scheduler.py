@@ -36,20 +36,32 @@ class UccSchedulerTests(unittest.TestCase):
                         profile: configured
                         type: config
                         state_model: config
+                        display_name: Config C
+                        config_driver: shell-file-edit
                         depends_on:
                           - b
+                        evidence:
+                          state: "printf configured"
                       a:
                         component: fake
                         profile: configured
                         type: config
                         state_model: config
+                        display_name: Config A
+                        config_driver: shell-file-edit
+                        evidence:
+                          state: "printf configured"
                       b:
                         component: fake
                         profile: configured
                         type: config
                         state_model: config
+                        display_name: Config B
+                        config_driver: shell-file-edit
                         depends_on:
                           - a
+                        evidence:
+                          state: "printf configured"
                     """
                 ),
             )
@@ -76,20 +88,32 @@ class UccSchedulerTests(unittest.TestCase):
                         profile: configured
                         type: config
                         state_model: config
+                        display_name: Config C
+                        config_driver: shell-file-edit
                         depends_on:
                           - b
+                        evidence:
+                          state: "printf configured"
                       a:
                         component: fake
                         profile: configured
                         type: config
                         state_model: config
+                        display_name: Config A
+                        config_driver: shell-file-edit
+                        evidence:
+                          state: "printf configured"
                       b:
                         component: fake
                         profile: configured
                         type: config
                         state_model: config
+                        display_name: Config B
+                        config_driver: shell-file-edit
                         depends_on:
                           - a
+                        evidence:
+                          state: "printf configured"
                     """
                 ),
             )
@@ -169,6 +193,8 @@ class UccSchedulerTests(unittest.TestCase):
                         probe_kind: command
                         oracle:
                           runtime: "true"
+                        evidence:
+                          version: "printf 1.0.0"
                     """
                 ),
             )
@@ -253,6 +279,8 @@ class UccSchedulerTests(unittest.TestCase):
                         probe_kind: http
                         oracle:
                           runtime: "curl -fsS http://${probe_host}:${probe_port} >/dev/null 2>&1"
+                        evidence:
+                          version: "printf 1.0.0"
                         endpoints:
                           - name: Fake API
                             url: http://${probe_host}:${probe_port}
@@ -286,6 +314,8 @@ class UccSchedulerTests(unittest.TestCase):
                         probe_kind: command
                         oracle:
                           runtime: "true"
+                        evidence:
+                          version: "printf 1.0.0"
                     """
                 ),
             )
@@ -993,6 +1023,12 @@ class UccSchedulerTests(unittest.TestCase):
                         profile: configured
                         type: precondition
                         state_model: config
+                        display_name: Xcode
+                        config_driver: platform-check
+                        oracle:
+                          configured: "true"
+                        evidence:
+                          state: "printf supported"
                       pkg:
                         component: fake
                         profile: configured
@@ -1404,13 +1440,21 @@ class UccSchedulerTests(unittest.TestCase):
                         profile: configured
                         type: config
                         state_model: config
+                        display_name: Config A
+                        config_driver: shell-file-edit
+                        evidence:
+                          state: "printf configured"
                       b:
                         component: fake
                         profile: configured
                         type: config
                         state_model: config
+                        display_name: Config B
+                        config_driver: shell-file-edit
                         depends_on:
                           - a
+                        evidence:
+                          state: "printf configured"
                     """
                 ),
             )

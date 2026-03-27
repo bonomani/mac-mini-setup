@@ -4,9 +4,9 @@ libs: ollama_models ollama
 runner: run_ollama_from_yaml
 on_fail: ignore
 platforms:
-  - macos
-  - linux
-  - wsl2
+- macos
+- linux
+- wsl2
 macos_min_version: 14
 installer_url: https://ollama.com/install.sh
 brew_service_name: ollama
@@ -22,50 +22,49 @@ targets:
     profile: configured
     type: precondition
     state_model: config
+    display_name: Ollama host support
+    config_driver: platform-check
     oracle:
-      configured: |
-        if [[ "${HOST_PLATFORM:-unknown}" == "macos" ]]; then
-          [[ "$(sw_vers -productVersion 2>/dev/null | awk -F. '{print $1}')" -ge ${macos_min_version} ]]
-        else
-          [[ "${HOST_PLATFORM:-unknown}" == "linux" || "${HOST_PLATFORM_VARIANT:-unknown}" == "wsl2" ]]
-        fi
+      configured: "if [[ \"${HOST_PLATFORM:-unknown}\" == \"macos\" ]]; then\n  [[\
+        \ \"$(sw_vers -productVersion 2>/dev/null | awk -F. '{print $1}')\" -ge ${macos_min_version}\
+        \ ]]\nelse\n  [[ \"${HOST_PLATFORM:-unknown}\" == \"linux\" || \"${HOST_PLATFORM_VARIANT:-unknown}\"\
+        \ == \"wsl2\" ]]\nfi\n"
     evidence:
-      platform: "printf '%s' \"${HOST_PLATFORM:-unknown}\""
-      version: "if [[ \"${HOST_PLATFORM:-unknown}\" == macos ]]; then sw_vers -productVersion 2>/dev/null || printf unknown; else uname -r 2>/dev/null || printf unknown; fi"
-    install_cmd: |
-      if [[ "${HOST_PLATFORM:-unknown}" == "macos" ]]; then
-        log_warn "Ollama requires macOS ${macos_min_version}+ — current: macOS $(sw_vers -productVersion 2>/dev/null || echo unknown)"
-      else
-        log_warn "Ollama is not supported on host platform: ${HOST_PLATFORM:-unknown}"
-      fi
-      return 1
-
+      platform: printf '%s' "${HOST_PLATFORM:-unknown}"
+      version: if [[ "${HOST_PLATFORM:-unknown}" == macos ]]; then sw_vers -productVersion
+        2>/dev/null || printf unknown; else uname -r 2>/dev/null || printf unknown;
+        fi
+    install_cmd: "if [[ \"${HOST_PLATFORM:-unknown}\" == \"macos\" ]]; then\n  log_warn\
+      \ \"Ollama requires macOS ${macos_min_version}+ \u2014 current: macOS $(sw_vers\
+      \ -productVersion 2>/dev/null || echo unknown)\"\nelse\n  log_warn \"Ollama\
+      \ is not supported on host platform: ${HOST_PLATFORM:-unknown}\"\nfi\nreturn\
+      \ 1\n"
   ollama:
     component: ollama
     profile: runtime
     type: runtime
     display_name: Ollama
     depends_on:
-      - ollama-host-supported
+    - ollama-host-supported
     soft_depends_on:
-      - gate:ollama-api
+    - gate:ollama-api
     provided_by_tool: ollama-installer
     runtime_manager: custom
     probe_kind: http
     oracle:
-      configured: "ollama --version >/dev/null 2>&1"
-      runtime: 'curl -fsS "http://${api_host}:${api_port}${api_tags_path}" >/dev/null 2>&1'
+      configured: ollama --version >/dev/null 2>&1
+      runtime: curl -fsS "http://${api_host}:${api_port}${api_tags_path}" >/dev/null
+        2>&1
     evidence:
-      version: "ollama --version 2>/dev/null | awk '{print $NF}'"
-      path: "command -v ollama 2>/dev/null"
-      pid: "pgrep -f 'ollama (serve|app)' 2>/dev/null | head -1"
-      listener: "printf 'tcp:${api_host}:${api_port}'"
+      version: ollama --version 2>/dev/null | awk '{print $NF}'
+      path: command -v ollama 2>/dev/null
+      pid: pgrep -f 'ollama (serve|app)' 2>/dev/null | head -1
+      listener: printf 'tcp:${api_host}:${api_port}'
     endpoints:
-      - name: Ollama API
-        url: http://${api_host}:${api_port}
-        note: ollama pull <model>
+    - name: Ollama API
+      url: http://${api_host}:${api_port}
+      note: ollama pull <model>
     stopped_health: Unavailable
-
   ollama-model-llama3.2:
     component: ollama
     profile: configured
@@ -73,16 +72,16 @@ targets:
     state_model: package
     display_name: Ollama llama3.2
     depends_on:
-      - ollama
+    - ollama
     provided_by_tool: ollama
     package_driver: ollama-model
-    model_ref: llama3.2
-    observe_cmd: "ollama_model_present '${model_ref}' && printf '%s' '${model_ref}' || printf absent"
+    observe_cmd: ollama_model_present '${model_ref}' && printf '%s' '${model_ref}'
+      || printf absent
     evidence:
-      model: "printf '%s' '${model_ref}'"
-    install_cmd: "log_info 'Pulling model: ${model_ref}'; ucc_run ollama pull '${model_ref}'"
-    update_cmd: "log_info 'Pulling model: ${model_ref}'; ucc_run ollama pull '${model_ref}'"
-
+      model: printf '%s' '${model_ref}'
+    install_cmd: 'log_info ''Pulling model: ${model_ref}''; ucc_run ollama pull ''${model_ref}'''
+    update_cmd: 'log_info ''Pulling model: ${model_ref}''; ucc_run ollama pull ''${model_ref}'''
+    model_ref: llama3.2
   ollama-model-nomic-embed-text:
     component: ollama
     profile: configured
@@ -90,16 +89,16 @@ targets:
     state_model: package
     display_name: Ollama nomic-embed-text
     depends_on:
-      - ollama
+    - ollama
     provided_by_tool: ollama
     package_driver: ollama-model
-    model_ref: nomic-embed-text
-    observe_cmd: "ollama_model_present '${model_ref}' && printf '%s' '${model_ref}' || printf absent"
+    observe_cmd: ollama_model_present '${model_ref}' && printf '%s' '${model_ref}'
+      || printf absent
     evidence:
-      model: "printf '%s' '${model_ref}'"
-    install_cmd: "log_info 'Pulling model: ${model_ref}'; ucc_run ollama pull '${model_ref}'"
-    update_cmd: "log_info 'Pulling model: ${model_ref}'; ucc_run ollama pull '${model_ref}'"
-
+      model: printf '%s' '${model_ref}'
+    install_cmd: 'log_info ''Pulling model: ${model_ref}''; ucc_run ollama pull ''${model_ref}'''
+    update_cmd: 'log_info ''Pulling model: ${model_ref}''; ucc_run ollama pull ''${model_ref}'''
+    model_ref: nomic-embed-text
   ollama-model-qwen3-latest:
     component: ollama
     profile: configured
@@ -107,16 +106,16 @@ targets:
     state_model: package
     display_name: Ollama qwen3:latest
     depends_on:
-      - ollama
+    - ollama
     provided_by_tool: ollama
     package_driver: ollama-model
-    model_ref: qwen3:latest
-    observe_cmd: "ollama_model_present '${model_ref}' && printf '%s' '${model_ref}' || printf absent"
+    observe_cmd: ollama_model_present '${model_ref}' && printf '%s' '${model_ref}'
+      || printf absent
     evidence:
-      model: "printf '%s' '${model_ref}'"
-    install_cmd: "log_info 'Pulling model: ${model_ref}'; ucc_run ollama pull '${model_ref}'"
-    update_cmd: "log_info 'Pulling model: ${model_ref}'; ucc_run ollama pull '${model_ref}'"
-
+      model: printf '%s' '${model_ref}'
+    install_cmd: 'log_info ''Pulling model: ${model_ref}''; ucc_run ollama pull ''${model_ref}'''
+    update_cmd: 'log_info ''Pulling model: ${model_ref}''; ucc_run ollama pull ''${model_ref}'''
+    model_ref: qwen3:latest
   ollama-model-llama3.1-8b:
     component: ollama
     profile: configured
@@ -124,16 +123,16 @@ targets:
     state_model: package
     display_name: Ollama llama3.1:8b
     depends_on:
-      - ollama
+    - ollama
     provided_by_tool: ollama
     package_driver: ollama-model
-    model_ref: llama3.1:8b
-    observe_cmd: "ollama_model_present '${model_ref}' && printf '%s' '${model_ref}' || printf absent"
+    observe_cmd: ollama_model_present '${model_ref}' && printf '%s' '${model_ref}'
+      || printf absent
     evidence:
-      model: "printf '%s' '${model_ref}'"
-    install_cmd: "log_info 'Pulling model: ${model_ref}'; ucc_run ollama pull '${model_ref}'"
-    update_cmd: "log_info 'Pulling model: ${model_ref}'; ucc_run ollama pull '${model_ref}'"
-
+      model: printf '%s' '${model_ref}'
+    install_cmd: 'log_info ''Pulling model: ${model_ref}''; ucc_run ollama pull ''${model_ref}'''
+    update_cmd: 'log_info ''Pulling model: ${model_ref}''; ucc_run ollama pull ''${model_ref}'''
+    model_ref: llama3.1:8b
   ollama-model-mistral-7b:
     component: ollama
     profile: configured
@@ -141,16 +140,16 @@ targets:
     state_model: package
     display_name: Ollama mistral:7b
     depends_on:
-      - ollama
+    - ollama
     provided_by_tool: ollama
     package_driver: ollama-model
-    model_ref: mistral:7b
-    observe_cmd: "ollama_model_present '${model_ref}' && printf '%s' '${model_ref}' || printf absent"
+    observe_cmd: ollama_model_present '${model_ref}' && printf '%s' '${model_ref}'
+      || printf absent
     evidence:
-      model: "printf '%s' '${model_ref}'"
-    install_cmd: "log_info 'Pulling model: ${model_ref}'; ucc_run ollama pull '${model_ref}'"
-    update_cmd: "log_info 'Pulling model: ${model_ref}'; ucc_run ollama pull '${model_ref}'"
-
+      model: printf '%s' '${model_ref}'
+    install_cmd: 'log_info ''Pulling model: ${model_ref}''; ucc_run ollama pull ''${model_ref}'''
+    update_cmd: 'log_info ''Pulling model: ${model_ref}''; ucc_run ollama pull ''${model_ref}'''
+    model_ref: mistral:7b
   ollama-model-qwen2.5-coder-32b:
     component: ollama
     profile: configured
@@ -158,16 +157,16 @@ targets:
     state_model: package
     display_name: Ollama qwen2.5-coder:32b
     depends_on:
-      - ollama
+    - ollama
     provided_by_tool: ollama
     package_driver: ollama-model
-    model_ref: qwen2.5-coder:32b
-    observe_cmd: "ollama_model_present '${model_ref}' && printf '%s' '${model_ref}' || printf absent"
+    observe_cmd: ollama_model_present '${model_ref}' && printf '%s' '${model_ref}'
+      || printf absent
     evidence:
-      model: "printf '%s' '${model_ref}'"
-    install_cmd: "log_info 'Pulling model: ${model_ref}'; ucc_run ollama pull '${model_ref}'"
-    update_cmd: "log_info 'Pulling model: ${model_ref}'; ucc_run ollama pull '${model_ref}'"
-
+      model: printf '%s' '${model_ref}'
+    install_cmd: 'log_info ''Pulling model: ${model_ref}''; ucc_run ollama pull ''${model_ref}'''
+    update_cmd: 'log_info ''Pulling model: ${model_ref}''; ucc_run ollama pull ''${model_ref}'''
+    model_ref: qwen2.5-coder:32b
   ollama-model-llama3.1-70b:
     component: ollama
     profile: configured
@@ -175,28 +174,23 @@ targets:
     state_model: package
     display_name: Ollama llama3.1:70b
     depends_on:
-      - ollama
+    - ollama
     provided_by_tool: ollama
     package_driver: ollama-model
-    model_ref: llama3.1:70b
-    observe_cmd: "ollama_model_present '${model_ref}' && printf '%s' '${model_ref}' || printf absent"
+    observe_cmd: ollama_model_present '${model_ref}' && printf '%s' '${model_ref}'
+      || printf absent
     evidence:
-      model: "printf '%s' '${model_ref}'"
-    install_cmd: "log_info 'Pulling model: ${model_ref}'; ucc_run ollama pull '${model_ref}'"
-    update_cmd: "log_info 'Pulling model: ${model_ref}'; ucc_run ollama pull '${model_ref}'"
-
-# Model sets — controlled by UIC preference ollama-model-autopull (none|small|medium|large)
-# Each entry is a target name; target-local metadata carries the Ollama model ref.
-
+      model: printf '%s' '${model_ref}'
+    install_cmd: 'log_info ''Pulling model: ${model_ref}''; ucc_run ollama pull ''${model_ref}'''
+    update_cmd: 'log_info ''Pulling model: ${model_ref}''; ucc_run ollama pull ''${model_ref}'''
+    model_ref: llama3.1:70b
 small:
-  - ollama-model-llama3.2
-  - ollama-model-nomic-embed-text
-
+- ollama-model-llama3.2
+- ollama-model-nomic-embed-text
 medium:
-  - ollama-model-qwen3-latest
-  - ollama-model-llama3.1-8b
-  - ollama-model-mistral-7b
-
+- ollama-model-qwen3-latest
+- ollama-model-llama3.1-8b
+- ollama-model-mistral-7b
 large:
-  - ollama-model-qwen2.5-coder-32b
-  - ollama-model-llama3.1-70b
+- ollama-model-qwen2.5-coder-32b
+- ollama-model-llama3.1-70b

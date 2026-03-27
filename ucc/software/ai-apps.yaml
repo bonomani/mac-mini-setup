@@ -4,21 +4,21 @@ libs: ai_apps
 runner: run_ai_apps_from_yaml
 on_fail: ignore
 platforms:
-  - macos
-  - linux
-  - wsl2
+- macos
+- linux
+- wsl2
 stack:
   kind: docker-compose
-  compose_dir: ".ai-stack"
-  compose_file: "docker-compose.yml"
-  definition_template: "stack/docker-compose.yml"
-  marker: "# ai-stack v2"
+  compose_dir: .ai-stack
+  compose_file: docker-compose.yml
+  definition_template: stack/docker-compose.yml
+  marker: '# ai-stack v2'
   services:
-    - open-webui
-    - flowise
-    - openhands
-    - n8n
-    - qdrant
+  - open-webui
+  - flowise
+  - openhands
+  - n8n
+  - qdrant
 targets:
   ai-stack-compose-file:
     component: ai-apps
@@ -26,90 +26,112 @@ targets:
     type: config
     state_model: parametric
     display_name: compose file
+    config_driver: compose-file
     evidence:
-      path: "printf '%s' \"$COMPOSE_FILE\""
-
+      path: printf '%s' "$COMPOSE_FILE"
   open-webui-runtime:
     component: ai-apps
     profile: runtime
     type: runtime
     display_name: Open WebUI
     depends_on:
-      - docker-desktop
-      - ai-stack-compose-file
+    - docker-desktop
+    - ai-stack-compose-file
     provided_by_tool: docker-compose
     runtime_manager: docker-compose
     probe_kind: http
     oracle:
-      runtime: 'curl -fsS --max-time 5 http://127.0.0.1:3000 >/dev/null 2>&1'
+      runtime: curl -fsS --max-time 5 http://127.0.0.1:3000 >/dev/null 2>&1
+    evidence:
+      version: _ai_service_runtime_version '${service_name}'
+      digest: _ai_service_runtime_digest '${service_name}'
+      ref: _ai_service_runtime_ref '${service_name}'
     endpoints:
-      - name: Open WebUI
-        url: http://localhost:3000
-
+    - name: Open WebUI
+      url: http://localhost:3000
+    service_name: open-webui
   flowise-runtime:
     component: ai-apps
     profile: runtime
     type: runtime
     display_name: Flowise
     depends_on:
-      - docker-desktop
-      - ai-stack-compose-file
+    - docker-desktop
+    - ai-stack-compose-file
     provided_by_tool: docker-compose
     runtime_manager: docker-compose
     probe_kind: http
     oracle:
-      runtime: 'curl -fsS --max-time 5 http://127.0.0.1:3001 >/dev/null 2>&1'
+      runtime: curl -fsS --max-time 5 http://127.0.0.1:3001 >/dev/null 2>&1
+    evidence:
+      version: _ai_service_runtime_version '${service_name}'
+      digest: _ai_service_runtime_digest '${service_name}'
+      ref: _ai_service_runtime_ref '${service_name}'
     endpoints:
-      - name: Flowise
-        url: http://localhost:3001
-
+    - name: Flowise
+      url: http://localhost:3001
+    service_name: flowise
   openhands-runtime:
     component: ai-apps
     profile: runtime
     type: runtime
     display_name: OpenHands
     depends_on:
-      - docker-desktop
-      - ai-stack-compose-file
+    - docker-desktop
+    - ai-stack-compose-file
     provided_by_tool: docker-compose
     runtime_manager: docker-compose
     probe_kind: http
     oracle:
-      runtime: 'curl -fsS --max-time 5 http://127.0.0.1:3002 >/dev/null 2>&1'
+      runtime: curl -fsS --max-time 5 http://127.0.0.1:3002 >/dev/null 2>&1
+    evidence:
+      version: _ai_service_runtime_version '${service_name}'
+      digest: _ai_service_runtime_digest '${service_name}'
+      ref: _ai_service_runtime_ref '${service_name}'
     endpoints:
-      - name: OpenHands
-        url: http://localhost:3002
-
+    - name: OpenHands
+      url: http://localhost:3002
+    service_name: openhands
   n8n-runtime:
     component: ai-apps
     profile: runtime
     type: runtime
     display_name: n8n
     depends_on:
-      - docker-desktop
-      - ai-stack-compose-file
+    - docker-desktop
+    - ai-stack-compose-file
     provided_by_tool: docker-compose
     runtime_manager: docker-compose
     probe_kind: http
     oracle:
-      runtime: 'curl -fsS --max-time 5 http://127.0.0.1:5678 >/dev/null 2>&1'
+      runtime: curl -fsS --max-time 5 http://127.0.0.1:5678 >/dev/null 2>&1
+    evidence:
+      version: _ai_service_runtime_version '${service_name}'
+      digest: _ai_service_runtime_digest '${service_name}'
+      ref: _ai_service_runtime_ref '${service_name}'
     endpoints:
-      - name: n8n
-        url: http://localhost:5678
-
+    - name: n8n
+      url: http://localhost:5678
+    service_name: n8n
   qdrant-runtime:
     component: ai-apps
     profile: runtime
     type: runtime
     display_name: Qdrant
     depends_on:
-      - docker-desktop
-      - ai-stack-compose-file
+    - docker-desktop
+    - ai-stack-compose-file
     provided_by_tool: docker-compose
     runtime_manager: docker-compose
     probe_kind: http
     oracle:
-      runtime: 'curl -fsS --max-time 5 http://127.0.0.1:6333/collections >/dev/null 2>&1'
+      runtime: curl -fsS --max-time 5 http://127.0.0.1:6333/collections >/dev/null
+        2>&1
+    evidence:
+      version: _ai_service_runtime_version '${service_name}'
+      digest: _ai_service_runtime_digest '${service_name}'
+      ref: _ai_service_runtime_ref '${service_name}'
     endpoints:
-      - name: Qdrant
-        url: http://localhost:6333
+    - name: Qdrant
+      url: http://localhost:6333
+    service_name: qdrant

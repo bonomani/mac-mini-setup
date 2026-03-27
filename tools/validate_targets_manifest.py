@@ -28,12 +28,31 @@ KNOWN_PACKAGE_DRIVERS = {
     "pyenv-version",
     "ollama-model",
 }
+KNOWN_CONFIG_DRIVERS = {
+    "brew-analytics",
+    "compose-file",
+    "docker-settings",
+    "git-global-config",
+    "host-composition",
+    "json-merge",
+    "macos-clt",
+    "path-export",
+    "pip-bootstrap",
+    "platform-check",
+    "pmset",
+    "script-install",
+    "shell-bootstrap",
+    "shell-file-edit",
+    "symlink-command",
+    "user-defaults",
+}
 CANONICAL_TARGET_KEY_ORDER = [
     "component",
     "profile",
     "type",
     "state_model",
     "display_name",
+    "config_driver",
     "depends_on",
     "depends_on_by_platform",
     "soft_depends_on",
@@ -313,6 +332,7 @@ def validate(manifest, known_gates):
 
         for field in (
             "display_name",
+            "config_driver",
             "provided_by_tool",
             "package_driver",
             "runtime_manager",
@@ -335,6 +355,7 @@ def validate(manifest, known_gates):
                 errors.append(f"target '{name}' field '{field}' must be a non-empty string")
 
         state_model = data.get("state_model")
+        oracle = data.get("oracle")
         if state_model is not None and state_model not in KNOWN_STATE_MODELS:
             errors.append(f"target '{name}' has unknown state_model '{state_model}'")
         if target_type == "package" and state_model != "package":
@@ -358,8 +379,30 @@ def validate(manifest, known_gates):
                 errors.append(f"target '{name}' type 'package' requires update_cmd")
         if target_type == "config" and profile != "parametric" and state_model != "config":
             errors.append(f"target '{name}' type 'config' with profile '{profile}' requires state_model 'config'")
+        if target_type == "config":
+            config_driver = data.get("config_driver")
+            if not isinstance(data.get("display_name"), str) or not data.get("display_name", "").strip():
+                errors.append(f"target '{name}' type 'config' requires display_name")
+            if not isinstance(config_driver, str) or not config_driver.strip():
+                errors.append(f"target '{name}' type 'config' requires config_driver")
+            elif config_driver not in KNOWN_CONFIG_DRIVERS:
+                errors.append(f"target '{name}' has unknown config_driver '{config_driver}'")
+            if not isinstance(data.get("evidence"), dict) or not data.get("evidence"):
+                errors.append(f"target '{name}' type 'config' requires evidence")
         if target_type == "precondition" and state_model != "config":
             errors.append(f"target '{name}' type 'precondition' requires state_model 'config'")
+        if target_type == "precondition":
+            config_driver = data.get("config_driver")
+            if not isinstance(data.get("display_name"), str) or not data.get("display_name", "").strip():
+                errors.append(f"target '{name}' type 'precondition' requires display_name")
+            if not isinstance(config_driver, str) or not config_driver.strip():
+                errors.append(f"target '{name}' type 'precondition' requires config_driver")
+            elif config_driver not in KNOWN_CONFIG_DRIVERS:
+                errors.append(f"target '{name}' has unknown config_driver '{config_driver}'")
+            if not isinstance((oracle or {}).get("configured"), str) or not (oracle or {}).get("configured", "").strip():
+                errors.append(f"target '{name}' type 'precondition' requires oracle.configured")
+            if not isinstance(data.get("evidence"), dict) or not data.get("evidence"):
+                errors.append(f"target '{name}' type 'precondition' requires evidence")
         dependency_gate = data.get("dependency_gate")
         if isinstance(dependency_gate, str) and dependency_gate and dependency_gate not in known_gates:
             errors.append(f"target '{name}' dependency_gate unknown gate '{dependency_gate}'")
@@ -376,7 +419,6 @@ def validate(manifest, known_gates):
                 break
             previous_rank = rank
 
-        oracle = data.get("oracle")
         if oracle is not None:
             if not isinstance(oracle, dict):
                 errors.append(f"target '{name}' oracle must be a mapping")
@@ -428,6 +470,8 @@ def validate(manifest, known_gates):
                 errors.append(f"target '{name}' profile '{profile}' requires probe_kind")
             if not isinstance((oracle or {}).get("runtime"), str) or not (oracle or {}).get("runtime", "").strip():
                 errors.append(f"target '{name}' profile '{profile}' requires oracle.runtime")
+            if not isinstance(data.get("evidence"), dict) or not data.get("evidence"):
+                errors.append(f"target '{name}' profile '{profile}' requires evidence")
 
         if profile == "capability":
             if target_type != "capability":
@@ -455,7 +499,9 @@ def validate(manifest, known_gates):
 
         if data.get("install_cmd") is not None or data.get("update_cmd") is not None:
             has_observe_cmd = isinstance(data.get("observe_cmd"), str) and data.get("observe_cmd", "").strip()
-            if state_model is None:
+            if profile == "runtime":
+                pass
+            elif state_model is None:
                 errors.append(f"target '{name}' with install/update commands requires state_model")
             elif state_model == "parametric":
                 pass
