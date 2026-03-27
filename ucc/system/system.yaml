@@ -10,17 +10,17 @@ system:
   depends_on:
     - homebrew
     - git
-    - docker-desktop-runtime
+    - docker-desktop
     - python
-    - ollama-service
+    - ollama
     - open-webui-runtime
     - flowise-runtime
     - openhands-runtime
     - n8n-runtime
     - qdrant-runtime
-    - ariaflow-service
-    - ariaflow-web-service
-    - unsloth-studio-launchd
+    - ariaflow
+    - ariaflow-web
+    - unsloth-studio
     - git-global-config
     - pmset-ac-sleep=0
     - finder-show-hidden=1
@@ -33,17 +33,17 @@ targets:
     depends_on:
       - homebrew
       - git
-      - docker-desktop-runtime
+      - docker-desktop
       - python
-      - ollama-service
+      - ollama
       - open-webui-runtime
       - flowise-runtime
       - openhands-runtime
       - n8n-runtime
       - qdrant-runtime
-      - ariaflow-service
-      - ariaflow-web-service
-      - unsloth-studio-launchd
+      - ariaflow
+      - ariaflow-web
+      - unsloth-studio
       - git-global-config
       - pmset-ac-sleep=0
       - finder-show-hidden=1

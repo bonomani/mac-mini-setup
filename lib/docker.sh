@@ -1,65 +1,63 @@
 #!/usr/bin/env bash
-# lib/docker.sh — Docker Desktop package + runtime + resource settings targets
+# lib/docker.sh — Docker Desktop runtime + resource settings targets
 # Sourced by components/docker.sh
 
 # Usage: run_docker_from_yaml <cfg_dir> <yaml_path>
 run_docker_from_yaml() {
   local cfg_dir="$1" yaml="$2"
 
-  _observe_docker_app() {
+  _docker_desktop_version() {
+    defaults read "/Applications/Docker.app/Contents/Info" CFBundleShortVersionString 2>/dev/null \
+      || docker --version 2>/dev/null | awk '{print $3}' | tr -d ','
+  }
+  _docker_desktop_pkg_state() {
     if [[ -d "/Applications/Docker.app" ]] && ! brew_cask_is_installed docker; then
-      ucc_asm_config_state "configured"
+      printf 'installed'
       return
     fi
-    local observed; observed=$(brew_cask_observe docker)
-    case "$observed" in
-      absent)   ucc_asm_config_state "absent" ;;
-      outdated) ucc_asm_config_state "needs-update" ;;
-      *)        ucc_asm_config_state "configured" ;;
-    esac
+    brew_cask_observe docker
   }
-  _evidence_docker_app() {
-    local ver
-    ver=$(defaults read "/Applications/Docker.app/Contents/Info" CFBundleShortVersionString 2>/dev/null \
-      || docker --version 2>/dev/null | awk '{print $3}' | tr -d ',')
-    [[ -n "$ver" ]] && printf 'version=%s' "$ver"
-  }
-  _install_docker() {
-    brew_cask_install docker
-  }
-  _upgrade_docker() {
-    brew_cask_upgrade docker
-  }
-
-  ucc_target_nonruntime \
-    --name    "docker-desktop" \
-    --observe _observe_docker_app \
-    --evidence _evidence_docker_app \
-    --install _install_docker \
-    --update  _upgrade_docker
-
-  _observe_docker_runtime() {
-    if [[ ! -d "/Applications/Docker.app" ]] && ! command -v docker >/dev/null 2>&1; then
+  _observe_docker_desktop() {
+    local observed
+    observed="$(_docker_desktop_pkg_state)"
+    if [[ "$observed" == "absent" ]] && [[ ! -d "/Applications/Docker.app" ]] && ! command -v docker >/dev/null 2>&1; then
       ucc_asm_state --installation Absent --runtime NeverStarted \
         --health Unavailable --admin Enabled --dependencies DepsUnknown
       return
     fi
+
     if docker info &>/dev/null 2>&1; then
-      ucc_asm_runtime_desired
+      if [[ "$observed" == "outdated" ]]; then
+        ucc_asm_state --installation Installed --runtime Running \
+          --health Degraded --admin Enabled --dependencies DepsDegraded
+      else
+        ucc_asm_runtime_desired
+      fi
     else
-      ucc_asm_state --installation Installed --runtime Stopped \
-        --health Unavailable --admin Enabled --dependencies DepsDegraded
+      if [[ "$observed" == "outdated" ]]; then
+        ucc_asm_state --installation Installed --runtime Stopped \
+          --health Degraded --admin Enabled --dependencies DepsDegraded
+      else
+        ucc_asm_state --installation Configured --runtime Stopped \
+          --health Unavailable --admin Enabled --dependencies DepsDegraded
+      fi
     fi
   }
-  _evidence_docker_runtime() {
+  _evidence_docker_desktop() {
     local pid ver
     pid="$(pgrep -f '/Applications/Docker.app' 2>/dev/null | head -1 || true)"
-    ver="$(defaults read '/Applications/Docker.app/Contents/Info' CFBundleShortVersionString 2>/dev/null \
-      || docker --version 2>/dev/null | awk '{print $3}' | tr -d ',')"
+    ver="$(_docker_desktop_version)"
     [[ -n "$ver" ]] && printf 'version=%s' "$ver"
     [[ -n "$pid" ]] && printf '  pid=%s' "$pid"
   }
-  _start_docker_runtime() {
+  _converge_docker_desktop() {
+    local observed
+    observed="$(_docker_desktop_pkg_state)"
+    if [[ "$observed" == "absent" ]]; then
+      brew_cask_install docker || return 1
+    elif [[ "$observed" == "outdated" ]]; then
+      brew_cask_upgrade docker || return 1
+    fi
     open -a Docker
     log_info "Waiting for Docker daemon..."
     for i in $(seq 1 24); do
@@ -71,11 +69,12 @@ run_docker_from_yaml() {
   }
 
   ucc_target_service \
-    --name    "docker-desktop-runtime" \
-    --observe _observe_docker_runtime \
-    --evidence _evidence_docker_runtime \
+    --name    "docker-desktop" \
+    --observe _observe_docker_desktop \
+    --evidence _evidence_docker_desktop \
     --desired "$(ucc_asm_runtime_desired)" \
-    --install _start_docker_runtime
+    --install _converge_docker_desktop \
+    --update  _converge_docker_desktop
 }
 
 # Usage: run_docker_config_from_yaml <cfg_dir> <yaml_path>

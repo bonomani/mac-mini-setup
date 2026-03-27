@@ -28,7 +28,7 @@ tests:
     component: ai-python-stack
     intent: "unsloth Python package is not importable on Apple Silicon (NVIDIA/AMD only)"
     oracle: "true"
-    trace: "component:ai-python-stack / ucc-target:unsloth-studio-setup"
+    trace: "component:ai-python-stack / ucc-target:unsloth-studio"
     skip: "not importable on Apple Silicon (NVIDIA only) — Studio runs in its own venv"
   # ── dev-tools ─────────────────────────────────────────────
   # cli_tools and npm_packages have no explicit target entries for oracle:

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# lib/unsloth_studio.sh — Unsloth Studio setup + launchd targets
+# lib/unsloth_studio.sh — Unsloth Studio software target
 # Sourced by components/ai-python-stack.sh
 
 # Usage: register_unsloth_studio_targets <cfg_dir> <yaml_path>
@@ -18,36 +18,36 @@ register_unsloth_studio_targets() {
   # launchd does not load pyenv shims — resolve absolute binary path at source time
   bin="$(pyenv which unsloth 2>/dev/null || command -v unsloth)"
 
-  # ---- setup target (downloads frontend, creates venv) ----
-  eval "_observe_unsloth_setup()  { ucc_asm_package_state \"\$([[ -d '${studio_dir}' ]] && echo 'present' || echo 'absent')\"; }"
-  eval "_evidence_unsloth_setup() {
-    local ver; ver=\$(pip show unsloth 2>/dev/null | awk '/^Version:/{print \$2}')
-    [[ -n \"\$ver\" ]] && printf 'version=%s  ' \"\$ver\"
-    printf 'folder=${studio_dir}'
+  eval "_observe_unsloth_studio() {
+    [[ -d '${studio_dir}' ]] || {
+      ucc_asm_state --installation Absent --runtime NeverStarted --health Unavailable --admin Enabled --dependencies DepsUnknown
+      return
+    }
+    launchctl list 2>/dev/null | grep -q '${label}' || {
+      ucc_asm_state --installation Configured --runtime Stopped --health Degraded --admin Enabled --dependencies DepsDegraded
+      return
+    }
+    grep -qF '${plist_marker}' '${plist}' 2>/dev/null || {
+      ucc_asm_state --installation Configured --runtime Stopped --health Degraded --admin Enabled --dependencies DepsDegraded
+      return
+    }
+    curl -fsS --max-time 5 'http://127.0.0.1:${port}' >/dev/null 2>&1 || {
+      ucc_asm_state --installation Configured --runtime Running --health Degraded --admin Enabled --dependencies DepsDegraded
+      return
+    }
+    ucc_asm_runtime_desired
   }"
-  eval "_run_unsloth_setup()      { ucc_run unsloth studio setup; }"
-
-  ucc_target_nonruntime \
-    --name    "unsloth-studio-setup" \
-    --observe _observe_unsloth_setup \
-    --evidence _evidence_unsloth_setup \
-    --install _run_unsloth_setup \
-    --update  _run_unsloth_setup
-
-  # ---- launchd target ----
-  eval "_observe_unsloth_launchd() {
-    launchctl list 2>/dev/null | grep -q '${label}' || { ucc_asm_service_state 'absent'; return; }
-    grep -qF '${plist_marker}' '${plist}' 2>/dev/null || { ucc_asm_service_state 'outdated'; return; }
-    ucc_asm_service_state 'loaded'
-  }"
-  eval "_evidence_unsloth_launchd() {
+  eval "_evidence_unsloth_studio() {
     local pid ver
     ver=\$(pip show unsloth 2>/dev/null | awk '/^Version:/{print \$2}')
     pid=\$(pgrep -f 'unsloth.*studio' 2>/dev/null | head -1 || true)
     [[ -n \"\$ver\" ]] && printf 'version=%s' \"\$ver\"
-    [[ -n \"\$pid\" ]] && printf '  pid=%s  port=${port}  plist=${plist}' \"\$pid\" || printf '  port=${port}  plist=${plist}'
+    printf '  folder=${studio_dir}'
+    [[ -n \"\$pid\" ]] && printf '  pid=%s' \"\$pid\"
+    printf '  listener=tcp:127.0.0.1:${port}  plist=${plist}'
   }"
-  eval "_install_unsloth_launchd() {
+  eval "_install_unsloth_studio() {
+    [[ -d '${studio_dir}' ]] || ucc_run unsloth studio setup || return 1
     mkdir -p '\$(dirname '${plist}')'
     cat > '${plist}' <<PLIST
 ${plist_marker}
@@ -71,18 +71,21 @@ ${plist_marker}
 </dict>
 </plist>
 PLIST
-    ucc_run launchctl load '${plist}'
-  }"
-  eval "_update_unsloth_launchd() {
     launchctl unload '${plist}' 2>/dev/null || true
-    _install_unsloth_launchd
+    ucc_run launchctl load '${plist}'
+    _ucc_wait_for_runtime_probe \"curl -fsS --max-time 5 'http://127.0.0.1:${port}' >/dev/null 2>&1\"
+  }"
+  eval "_update_unsloth_studio() {
+    ucc_run unsloth studio setup || return 1
+    launchctl unload '${plist}' 2>/dev/null || true
+    _install_unsloth_studio
   }"
 
   ucc_target_service \
-    --name    "unsloth-studio-launchd" \
-    --observe _observe_unsloth_launchd \
-    --evidence _evidence_unsloth_launchd \
+    --name    "unsloth-studio" \
+    --observe _observe_unsloth_studio \
+    --evidence _evidence_unsloth_studio \
     --desired "$(ucc_asm_runtime_desired)" \
-    --install _install_unsloth_launchd \
-    --update  _update_unsloth_launchd
+    --install _install_unsloth_studio \
+    --update  _update_unsloth_studio
 }

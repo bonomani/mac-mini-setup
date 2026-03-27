@@ -20,25 +20,13 @@ targets:
 
   ollama:
     component: ollama
-    profile: configured
-    type: package
-    depends_on:
-      - ollama-host-supported
-    provided_by_tool: ollama-installer
-    oracle:
-      configured: "ollama --version >/dev/null 2>&1"
-    evidence:
-      version: "ollama --version 2>/dev/null | awk '{print $NF}'"
-      path: "command -v ollama 2>/dev/null"
-
-  ollama-service:
-    component: ollama
     profile: runtime
     type: runtime
     depends_on:
-      - ollama
+      - ollama-host-supported
     soft_depends_on:
       - gate:ollama-api
+    provided_by_tool: ollama-installer
     runtime_manager: custom
     probe_kind: http
     oracle:
@@ -46,6 +34,7 @@ targets:
       runtime: 'curl -fsS "http://${api_host}:${api_port}/api/tags" >/dev/null 2>&1'
     evidence:
       version: "ollama --version 2>/dev/null | awk '{print $NF}'"
+      path: "command -v ollama 2>/dev/null"
       pid: "pgrep -f 'ollama (serve|app)' 2>/dev/null | head -1"
       listener: "printf 'tcp:127.0.0.1:${api_port}'"
     endpoints:

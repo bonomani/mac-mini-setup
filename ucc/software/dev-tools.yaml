@@ -79,26 +79,15 @@ targets:
 
   ariaflow:
     component: dev-tools
-    profile: configured
-    type: package
-    depends_on:
-      - homebrew
-    provided_by_tool: brew
-    oracle:
-      configured: "ariaflow --version >/dev/null 2>&1"
-    evidence:
-      version: "_brew_cached_version ariaflow"
-
-  ariaflow-service:
-    component: dev-tools
     profile: runtime
     type: runtime
     depends_on:
-      - ariaflow
+      - homebrew
+    provided_by_tool: brew
     runtime_manager: brew-service
     probe_kind: http
     oracle:
-      configured: "brew services list 2>/dev/null | awk '$1==\"ariaflow\" {print $2}' | grep -q '^started$'"
+      configured: "ariaflow --version >/dev/null 2>&1"
       runtime: 'curl -fsS --max-time 5 "http://127.0.0.1:${ariaflow_port}/api/status" >/dev/null 2>&1'
     evidence:
       version: "_brew_cached_version ariaflow"
@@ -113,25 +102,15 @@ targets:
 
   ariaflow-web:
     component: dev-tools
-    profile: configured
-    type: package
-    provided_by_tool: brew
-    oracle:
-      configured: "ariaflow-web --version >/dev/null 2>&1"
-    evidence:
-      version: "_brew_cached_version ariaflow-web"
-
-  ariaflow-web-service:
-    component: dev-tools
     profile: runtime
     type: runtime
     depends_on:
-      - ariaflow-service
-      - ariaflow-web
+      - ariaflow
+    provided_by_tool: brew
     runtime_manager: brew-service
     probe_kind: http
     oracle:
-      configured: "brew services list 2>/dev/null | awk '$1==\"ariaflow-web\" {print $2}' | grep -q '^started$'"
+      configured: "ariaflow-web --version >/dev/null 2>&1"
       runtime: 'curl -fsS --max-time 5 "http://127.0.0.1:${ariaflow_web_port}" >/dev/null 2>&1'
     evidence:
       version: "_brew_cached_version ariaflow-web"

@@ -6,7 +6,7 @@ from pathlib import Path
 import yaml
 
 
-KNOWN_PROFILES = {"presence", "configured", "runtime", "parametric", "verification"}
+KNOWN_PROFILES = {"presence", "configured", "runtime", "capability", "parametric", "verification"}
 KNOWN_TARGET_TYPES = {
     "package",
     "config",

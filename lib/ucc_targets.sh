@@ -37,7 +37,8 @@ _ucc_display_name() {
     openhands-runtime)     printf 'OpenHands' ;;
     n8n-runtime)           printf 'n8n' ;;
     qdrant-runtime)        printf 'Qdrant' ;;
-    docker-desktop-runtime) printf 'docker runtime' ;;
+    docker-desktop)        printf 'Docker Desktop' ;;
+    unsloth-studio)        printf 'Unsloth Studio' ;;
     system-composition)    printf 'composition' ;;
     *)                     printf '%s' "$1" ;;
   esac
@@ -70,6 +71,65 @@ ucc_brew_target() {
 _ucc_brew_service_status() {
   local service_name="$1"
   brew services list 2>/dev/null | awk -v svc="$service_name" '$1==svc {print $2; found=1} END {if (!found) print ""}'
+}
+
+_ucc_observe_brew_runtime_formula() {
+  local pkg="$1" service_name="$2" runtime_cmd="${3:-}" configured_cmd="${4:-}"
+  local pkg_state svc_status
+
+  pkg_state="$(brew_observe "$pkg")"
+  svc_status="$(_ucc_brew_service_status "$service_name")"
+
+  if [[ "$pkg_state" == "absent" ]]; then
+    ucc_asm_state --installation Absent --runtime NeverStarted --health Unavailable --admin Enabled --dependencies DepsUnknown
+    return
+  fi
+
+  if [[ "$pkg_state" == "outdated" ]]; then
+    if [[ "$svc_status" == "started" ]]; then
+      ucc_asm_state --installation Installed --runtime Running --health Degraded --admin Enabled --dependencies DepsDegraded
+    else
+      ucc_asm_state --installation Installed --runtime Stopped --health Degraded --admin Enabled --dependencies DepsDegraded
+    fi
+    return
+  fi
+
+  if [[ -n "$configured_cmd" ]] && ! eval "$configured_cmd" >/dev/null 2>&1; then
+    ucc_asm_state --installation Installed --runtime Stopped --health Degraded --admin Enabled --dependencies DepsDegraded
+    return
+  fi
+
+  if [[ "$svc_status" != "started" ]]; then
+    ucc_asm_state --installation Configured --runtime Stopped --health Degraded --admin Enabled --dependencies DepsDegraded
+    return
+  fi
+
+  if [[ -n "$runtime_cmd" ]] && ! eval "$runtime_cmd" >/dev/null 2>&1; then
+    ucc_asm_state --installation Configured --runtime Running --health Degraded --admin Enabled --dependencies DepsDegraded
+    return
+  fi
+
+  ucc_asm_runtime_desired
+}
+
+_ucc_apply_brew_runtime_formula() {
+  local pkg="$1" brew_ref="$2" service_name="$3" runtime_cmd="${4:-}" mode="${5:-install}"
+  local pkg_state
+
+  pkg_state="$(brew_observe "$pkg")"
+  if [[ "$pkg_state" == "absent" ]]; then
+    brew_install "$brew_ref" || return 1
+  elif [[ "$pkg_state" == "outdated" || "$mode" == "update" ]]; then
+    brew_upgrade "$brew_ref" || return 1
+  fi
+
+  if [[ "$(_ucc_brew_service_status "$service_name")" == "started" ]]; then
+    ucc_run brew services restart "$brew_ref" || return 1
+  else
+    ucc_run brew services start "$brew_ref" || return 1
+  fi
+
+  [[ -n "$runtime_cmd" ]] && _ucc_wait_for_runtime_probe "$runtime_cmd"
 }
 
 _ucc_wait_for_runtime_probe() {
@@ -177,6 +237,51 @@ ucc_brew_service_target() {
     --desired "$(ucc_asm_runtime_desired)" \
     --install "_ubst_ins_${fn}" \
     --update "_ubst_upd_${fn}"
+}
+
+# ucc_brew_runtime_formula_target <target-name> <brew-pkg> [brew-ref] [cfg_dir] [yaml] [service-name]
+# Software-centric brew formula target: package presence, service lifecycle, and
+# runtime probe are governed as one runtime-profile target.
+ucc_brew_runtime_formula_target() {
+  local tname="$1" pkg="$2" brew_ref="${3:-$2}" cfg_dir="${4:-}" yaml="${5:-}" service_name="${6:-$2}"
+  local fn; fn="${tname//[^a-zA-Z0-9]/_}"
+  eval "_ubrt_obs_${fn}() {
+    local runtime_cmd configured_cmd
+    if [[ -n '${cfg_dir}' && -n '${yaml}' ]]; then
+      runtime_cmd=\"\$(_ucc_yaml_get '${cfg_dir}' '${yaml}' 'targets.${tname}.oracle.runtime')\"
+      configured_cmd=\"\$(_ucc_yaml_get '${cfg_dir}' '${yaml}' 'targets.${tname}.oracle.configured')\"
+    fi
+    _ucc_observe_brew_runtime_formula '${pkg}' '${service_name}' \"\$runtime_cmd\" \"\$configured_cmd\"
+  }"
+  eval "_ubrt_evd_${fn}() {
+    if [[ -n '${cfg_dir}' && -n '${yaml}' ]]; then
+      ucc_eval_evidence_from_yaml '${cfg_dir}' '${yaml}' '${tname}'
+      return
+    fi
+    local ver
+    ver=\$(_brew_cached_version '${pkg}')
+    [[ -n \"\$ver\" ]] && printf 'version=%s' \"\$ver\"
+  }"
+  eval "_ubrt_ins_${fn}() {
+    local runtime_cmd=''
+    if [[ -n '${cfg_dir}' && -n '${yaml}' ]]; then
+      runtime_cmd=\"\$(_ucc_yaml_get '${cfg_dir}' '${yaml}' 'targets.${tname}.oracle.runtime')\"
+    fi
+    _ucc_apply_brew_runtime_formula '${pkg}' '${brew_ref}' '${service_name}' \"\$runtime_cmd\" install
+  }"
+  eval "_ubrt_upd_${fn}() {
+    local runtime_cmd=''
+    if [[ -n '${cfg_dir}' && -n '${yaml}' ]]; then
+      runtime_cmd=\"\$(_ucc_yaml_get '${cfg_dir}' '${yaml}' 'targets.${tname}.oracle.runtime')\"
+    fi
+    _ucc_apply_brew_runtime_formula '${pkg}' '${brew_ref}' '${service_name}' \"\$runtime_cmd\" update
+  }"
+  ucc_target_service --name "$tname" \
+    --observe "_ubrt_obs_${fn}" \
+    --evidence "_ubrt_evd_${fn}" \
+    --desired "$(ucc_asm_runtime_desired)" \
+    --install "_ubrt_ins_${fn}" \
+    --update "_ubrt_upd_${fn}"
 }
 
 # ucc_brew_cask_target <target-name> <cask-pkg>

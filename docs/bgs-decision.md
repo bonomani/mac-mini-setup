@@ -61,8 +61,8 @@ evidence_refs:
   - ./setup-state-model.md       # ASM-aligned setup state model
   - ./setup-state-artifact.yaml  # concrete state artifact
   - ../tools/validate_setup_state_artifact.py  # executable ASM artifact validator
-  - ./evidence/ollama-service.declaration.json
-  - ./evidence/ollama-service.result.json
+  - ./evidence/ollama.declaration.json
+  - ./evidence/ollama.result.json
   - ../install.sh                # orchestration entry point
   - ../lib/ucc.sh                # UCC/2.0 declaration/result artifact engine
   - ../lib/uic.sh                # UIC preflight engine

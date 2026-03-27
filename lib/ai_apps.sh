@@ -88,7 +88,22 @@ PY
     tail="${tail%%@*}"
     if [[ "$tail" == *:* ]]; then
       printf '%s' "${tail##*:}"
+    else
+      printf 'latest'
     fi
+  }
+
+  _ai_is_mutable_ref() {
+    case "$1" in
+      latest|main|master|edge|nightly|dev) return 0 ;;
+      *) return 1 ;;
+    esac
+  }
+
+  _ai_normalize_version() {
+    local value="$1"
+    [[ "$value" =~ ^v[0-9] ]] && value="${value#v}"
+    printf '%s' "$value"
   }
 
   _ai_service_image_label_version() {
@@ -225,10 +240,12 @@ PY
     tag="$(_ai_service_image_tag "$image")"
     version="$(_ai_service_image_label_version "$image")"
     digest="$(_ai_service_image_digest "$image")"
+    [[ -n "$version" ]] && version="$(_ai_normalize_version "$version")"
+    [[ -n "$tag" ]] && tag="$(_ai_normalize_version "$tag")"
 
-    if [[ -n "$version" ]]; then
+    if [[ -n "$version" ]] && ! _ai_is_mutable_ref "$version"; then
       printf 'version=%s' "$version"
-      if [[ -n "$digest" && ( "$tag" == "latest" || "$tag" == "main" ) ]]; then
+      if [[ -n "$digest" && -n "$tag" ]] && _ai_is_mutable_ref "$tag"; then
         printf '  digest=%s' "$digest"
       fi
       if [[ -n "$tag" && "$tag" != "$version" ]]; then
@@ -237,7 +254,7 @@ PY
       return
     fi
 
-    if [[ -n "$tag" && "$tag" != "latest" && "$tag" != "main" ]]; then
+    if [[ -n "$tag" ]] && ! _ai_is_mutable_ref "$tag"; then
       printf 'version=%s' "$tag"
       return
     fi

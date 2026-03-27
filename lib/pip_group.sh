@@ -68,8 +68,9 @@ run_ai_python_stack_from_yaml() {
     _evidence_mps() {
       [[ "$_MPS_STATUS" == "ok" ]] && printf 'gpu=Metal  status=available' || printf 'gpu=Metal  status=unavailable (CPU only)'
     }
-    ucc_target_service \
+    ucc_target \
       --name    "mps-available" \
+      --profile capability \
       --observe _observe_mps \
       --evidence _evidence_mps
   fi

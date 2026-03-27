@@ -21,11 +21,21 @@ profiles:
     dependencies: DepsReady
   - id: runtime
     label: Runtime
-    aliases: service
+    aliases: service|software
     axes: installation_state,runtime_state,health_state,dependency_state
     expected_text: installation=Configured runtime=Running health=Healthy dependencies=DepsReady
     installation: Configured
     runtime: Running
+    health: Healthy
+    admin: Enabled
+    dependencies: DepsReady
+  - id: capability
+    label: Capability
+    aliases: probe
+    axes: health_state,dependency_state
+    expected_text: health=Healthy dependencies=DepsReady
+    installation: Configured
+    runtime: Stopped
     health: Healthy
     admin: Enabled
     dependencies: DepsReady

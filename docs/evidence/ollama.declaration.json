@@ -1,0 +1,19 @@
+{
+  "meta": {
+    "contract": "UCC",
+    "version": "2.0",
+    "id": "example-ollama-001",
+    "timestamp": "2026-03-23T12:00:00Z"
+  },
+  "declaration": {
+    "mode": "apply",
+    "target": "ollama",
+    "desired_state": {
+      "installation_state": "Configured",
+      "runtime_state": "Running",
+      "health_state": "Healthy",
+      "admin_state": "Enabled",
+      "dependency_state": "DepsReady"
+    }
+  }
+}

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# lib/ollama.sh — Ollama install + service + model pull targets
+# lib/ollama.sh — Ollama software + model pull targets
 # Sourced by components/ollama.sh
 
 # Usage: run_ollama_from_yaml <cfg_dir> <yaml_path>
@@ -55,49 +55,51 @@ run_ollama_from_yaml() {
     return 1
   fi
 
-  # ---- Ollama binary ----
-  _observe_ollama() { ucc_asm_package_state "$(is_installed ollama && ollama --version 2>/dev/null | awk '{print $NF}' || echo "absent")"; }
-  _evidence_ollama() { ucc_eval_evidence_from_yaml "$cfg_dir" "$yaml" "ollama"; }
-  _install_ollama() { curl -fsSL "$_OLLAMA_INSTALLER_URL" | sh; }
-  _update_ollama()  { curl -fsSL "$_OLLAMA_INSTALLER_URL" | sh; }
-
-  ucc_target_nonruntime \
-    --name    "ollama" \
-    --observe _observe_ollama \
-    --evidence _evidence_ollama \
-    --install _install_ollama \
-    --update  _update_ollama
-
-  # ---- Ollama service ----
-  _observe_ollama_service() {
+  _observe_ollama() {
     if ! is_installed ollama; then
       ucc_asm_state --installation Absent --runtime NeverStarted \
         --health Unavailable --admin Enabled --dependencies DepsUnknown
       return
     fi
+
     if curl -fsS "http://${_OLLAMA_API_HOST}:${_OLLAMA_API_PORT}/api/tags" >/dev/null 2>&1; then
       ucc_asm_runtime_desired
     else
-      ucc_asm_state --installation Installed --runtime Stopped \
+      ucc_asm_state --installation Configured --runtime Stopped \
         --health Unavailable --admin Enabled --dependencies DepsDegraded
     fi
   }
-  _evidence_ollama_service() { ucc_eval_evidence_from_yaml "$cfg_dir" "$yaml" "ollama-service"; }
-  _start_ollama_service() {
+  _evidence_ollama() { ucc_eval_evidence_from_yaml "$cfg_dir" "$yaml" "ollama"; }
+  _start_ollama() {
+    if ! is_installed ollama; then
+      curl -fsSL "$_OLLAMA_INSTALLER_URL" | sh || return 1
+    fi
+
     if is_installed brew && brew list ollama &>/dev/null 2>&1; then
-      brew services start ollama
+      if brew services list 2>/dev/null | awk '$1=="ollama" {print $2}' | grep -q '^started$'; then
+        brew services restart ollama
+      else
+        brew services start ollama
+      fi
     else
+      pkill -f 'ollama (serve|app)' 2>/dev/null || true
       nohup ollama serve >"$_OLLAMA_LOG" 2>&1 &
     fi
-    sleep 5
+
+    _ucc_wait_for_runtime_probe "curl -fsS \"http://${_OLLAMA_API_HOST}:${_OLLAMA_API_PORT}/api/tags\" >/dev/null 2>&1"
+  }
+  _update_ollama() {
+    curl -fsSL "$_OLLAMA_INSTALLER_URL" | sh || return 1
+    _start_ollama
   }
 
   ucc_target_service \
-    --name    "ollama-service" \
-    --observe _observe_ollama_service \
-    --evidence _evidence_ollama_service \
+    --name    "ollama" \
+    --observe _observe_ollama \
+    --evidence _evidence_ollama \
     --desired "$(ucc_asm_runtime_desired)" \
-    --install _start_ollama_service
+    --install _start_ollama \
+    --update  _update_ollama
 
   # ---- API health check (guard before model pulls) ----
   if [[ "$UCC_DRY_RUN" != "1" ]]; then

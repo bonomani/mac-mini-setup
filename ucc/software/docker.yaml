@@ -8,20 +8,11 @@ platforms:
 targets:
   docker-desktop:
     component: docker
-    profile: configured
-    type: package
-    depends_on:
-      - homebrew
-    provided_by_tool: brew-cask
-    oracle:
-      configured: "[[ -d /Applications/Docker.app ]]"
-
-  docker-desktop-runtime:
-    component: docker
     profile: runtime
     type: runtime
     depends_on:
-      - docker-desktop
+      - homebrew
+    provided_by_tool: brew-cask
     runtime_manager: desktop-app
     probe_kind: command
     oracle:

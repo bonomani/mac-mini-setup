@@ -4,28 +4,21 @@ libs: pip_group unsloth_studio
 runner: run_ai_python_stack_from_yaml
 platforms:
   - macos
+unsloth_port: 8888
+unsloth_studio_dir: .unsloth/studio
 targets:
-  unsloth-studio-setup:
-    component: ai-python-stack
-    profile: configured
-    type: config
-    depends_on:
-      - python
-      - pip-latest
-    oracle:
-      configured: '[[ -d "${_UNSLOTH_STUDIO_DIR}" ]]'
-
-  unsloth-studio-launchd:
+  unsloth-studio:
     component: ai-python-stack
     profile: runtime
     type: runtime
     depends_on:
-      - unsloth-studio-setup
+      - python
+      - pip-latest
     runtime_manager: launchd
     probe_kind: http
     oracle:
-      configured: 'launchctl list 2>/dev/null | grep -q "${_UNSLOTH_LABEL}"'
-      runtime: 'curl -fsS --max-time 5 "http://127.0.0.1:${_UNSLOTH_PORT}" >/dev/null 2>&1'
+      configured: '[[ -d "$HOME/${unsloth_studio_dir}" ]]'
+      runtime: 'curl -fsS --max-time 5 "http://127.0.0.1:${unsloth_port}" >/dev/null 2>&1'
     endpoints:
       - name: Unsloth Studio
         url: http://0.0.0.0:8888
@@ -116,7 +109,7 @@ targets:
 
   mps-available:
     component: ai-python-stack
-    profile: runtime
+    profile: capability
     type: runtime
     depends_on:
       - pip-group-pytorch

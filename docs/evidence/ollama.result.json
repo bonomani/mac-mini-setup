@@ -1,0 +1,47 @@
+{
+  "meta": {
+    "contract": "UCC",
+    "version": "2.0",
+    "id": "example-ollama-001",
+    "timestamp": "2026-03-23T12:00:01Z",
+    "duration_ms": 210
+  },
+  "observe": {
+    "observed_before": {
+      "installation_state": "Configured",
+      "runtime_state": "Stopped",
+      "health_state": "Unavailable",
+      "admin_state": "Enabled",
+      "dependency_state": "DepsDegraded"
+    },
+    "diff": {
+      "runtime_state": {
+        "before": "Stopped",
+        "after": "Running"
+      },
+      "health_state": {
+        "before": "Unavailable",
+        "after": "Healthy"
+      },
+      "dependency_state": {
+        "before": "DepsDegraded",
+        "after": "DepsReady"
+      }
+    },
+    "observed_after": {
+      "installation_state": "Configured",
+      "runtime_state": "Running",
+      "health_state": "Healthy",
+      "admin_state": "Enabled",
+      "dependency_state": "DepsReady"
+    }
+  },
+  "result": {
+    "observation": "ok",
+    "outcome": "changed",
+    "completion": "complete",
+    "proof": {
+      "change": "service_started"
+    }
+  }
+}

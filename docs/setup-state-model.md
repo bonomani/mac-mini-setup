@@ -148,7 +148,7 @@ Meaning:
 - stack-definition example:
   `marker=# ai-stack v2 services=flowise,n8n,open-webui,openhands,qdrant`
 - system-composition example:
-  `kind=host-composition targets=ariaflow-service,ariaflow-web-service,docker-desktop-runtime,docker-resources,flowise-runtime,finder-show-hidden=1,git,git-global-config,homebrew,n8n-runtime,ollama-service,open-webui-runtime,openhands-runtime,pmset-ac-sleep=0,python,qdrant-runtime,unsloth-studio-launchd`
+  `kind=host-composition targets=ariaflow,ariaflow-web,docker-desktop,docker-resources,flowise-runtime,finder-show-hidden=1,git,git-global-config,homebrew,n8n-runtime,ollama,open-webui-runtime,openhands-runtime,pmset-ac-sleep=0,python,qdrant-runtime,unsloth-studio`
 
 ## 3. Derived states
 

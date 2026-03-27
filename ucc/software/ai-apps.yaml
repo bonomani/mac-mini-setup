@@ -32,7 +32,7 @@ targets:
     profile: runtime
     type: runtime
     depends_on:
-      - docker-desktop-runtime
+      - docker-desktop
       - ai-stack-compose-file
     provided_by_tool: docker-compose
     runtime_manager: docker-compose
@@ -48,7 +48,7 @@ targets:
     profile: runtime
     type: runtime
     depends_on:
-      - docker-desktop-runtime
+      - docker-desktop
       - ai-stack-compose-file
     provided_by_tool: docker-compose
     runtime_manager: docker-compose
@@ -64,7 +64,7 @@ targets:
     profile: runtime
     type: runtime
     depends_on:
-      - docker-desktop-runtime
+      - docker-desktop
       - ai-stack-compose-file
     provided_by_tool: docker-compose
     runtime_manager: docker-compose
@@ -80,7 +80,7 @@ targets:
     profile: runtime
     type: runtime
     depends_on:
-      - docker-desktop-runtime
+      - docker-desktop
       - ai-stack-compose-file
     provided_by_tool: docker-compose
     runtime_manager: docker-compose
@@ -96,7 +96,7 @@ targets:
     profile: runtime
     type: runtime
     depends_on:
-      - docker-desktop-runtime
+      - docker-desktop
       - ai-stack-compose-file
     provided_by_tool: docker-compose
     runtime_manager: docker-compose

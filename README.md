@@ -42,8 +42,8 @@ state can describe the whole machine, not only individual components.
 | `docs/biss-classification.md` | Markdown | BISS classification | Boundary inventory and axis mapping |
 | `docs/setup-state-model.md` | Markdown | ASM setup model | States, transitions, admissibility |
 | `docs/setup-state-artifact.yaml` | YAML | Example ASM artifact | Validator-backed sample state |
-| `docs/evidence/ollama-service.declaration.json` | JSON | Example UCC declaration | Illustrative evidence |
-| `docs/evidence/ollama-service.result.json` | JSON | Example UCC result | Shows observe/diff/result structure |
+| `docs/evidence/ollama.declaration.json` | JSON | Example UCC declaration | Illustrative evidence |
+| `docs/evidence/ollama.result.json` | JSON | Example UCC result | Shows observe/diff/result structure |
 
 ### Libraries
 
@@ -89,7 +89,7 @@ state can describe the whole machine, not only individual components.
 | `policy/gates.yaml` | YAML | UIC gates | Hard/soft preflight gate declarations |
 | `policy/preferences.yaml` | YAML | UIC preferences | Safe defaults and operator overrides |
 | `policy/components.yaml` | YAML | Component policy | Per-component `enabled|disabled|remove` mode declarations |
-| `policy/profiles.yaml` | YAML | UCC profiles | Presence/configured/runtime/parametric baselines |
+| `policy/profiles.yaml` | YAML | UCC profiles | Presence/configured/runtime/capability/parametric baselines |
 
 ### UCC Software Manifests
 
@@ -97,12 +97,12 @@ state can describe the whole machine, not only individual components.
 |---|---|---|---|
 | `ucc/software/homebrew.yaml` | YAML manifest | Homebrew component | Xcode CLT and brew targets |
 | `ucc/software/git.yaml` | YAML manifest | Git component | Brew-backed package target |
-| `ucc/software/docker.yaml` | YAML manifest | Docker component | Docker Desktop package plus desktop runtime target |
+| `ucc/software/docker.yaml` | YAML manifest | Docker component | Docker Desktop software target plus resource settings dependency |
 | `ucc/software/python.yaml` | YAML manifest | Python component | pyenv, xz, python, pip targets |
-| `ucc/software/ollama.yaml` | YAML manifest | Ollama component | Package, runtime target, evidence, model sets |
+| `ucc/software/ollama.yaml` | YAML manifest | Ollama component | Single software target, evidence, model sets |
 | `ucc/software/ai-python-stack.yaml` | YAML manifest | AI Python stack | Pip groups and Unsloth Studio |
 | `ucc/software/ai-apps.yaml` | YAML manifest | AI apps stack | Docker Compose targets and runtime endpoints |
-| `ucc/software/dev-tools.yaml` | YAML manifest | Dev tools component | VS Code, Node, OMZ, ariaflow, npm |
+| `ucc/software/dev-tools.yaml` | YAML manifest | Dev tools component | VS Code, Node, OMZ, npm, ariaflow software targets |
 | `ucc/software/vscode-settings.json` | JSON | VS Code settings patch | Merged into user settings |
 
 ### UCC System Manifests
