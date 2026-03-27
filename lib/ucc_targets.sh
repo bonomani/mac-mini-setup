@@ -72,6 +72,24 @@ _ucc_brew_service_status() {
   brew services list 2>/dev/null | awk -v svc="$service_name" '$1==svc {print $2; found=1} END {if (!found) print ""}'
 }
 
+_ucc_wait_for_runtime_probe() {
+  local runtime_cmd="$1"
+  local attempts="${UCC_RUNTIME_WAIT_ATTEMPTS:-20}"
+  local interval="${UCC_RUNTIME_WAIT_INTERVAL:-1}"
+  local i
+
+  [[ -n "$runtime_cmd" ]] || return 0
+
+  for ((i = 1; i <= attempts; i++)); do
+    if eval "$runtime_cmd" >/dev/null 2>&1; then
+      return 0
+    fi
+    [[ "$i" -lt "$attempts" ]] && sleep "$interval"
+  done
+
+  return 1
+}
+
 # ucc_brew_formula_target <target-name> <brew-pkg> [brew-ref]
 # Observe using the local formula name, install/upgrade using the given brew ref.
 ucc_brew_formula_target() {
@@ -134,13 +152,25 @@ ucc_brew_service_target() {
     [[ -n \"\$ver\" ]] && printf 'version=%s' \"\$ver\"
   }"
   eval "_ubst_ins_${fn}() {
+    local runtime_cmd=''
+    if [[ -n '${cfg_dir}' && -n '${yaml}' ]]; then
+      runtime_cmd=\"\$(_ucc_yaml_get '${cfg_dir}' '${yaml}' 'targets.${tname}.oracle.runtime')\"
+    fi
     if [[ \"\$(_ucc_brew_service_status '${service_name}')\" == 'started' ]]; then
       ucc_run brew services restart '${brew_ref}'
     else
       ucc_run brew services start '${brew_ref}'
     fi
+    [[ -n \"\$runtime_cmd\" ]] && _ucc_wait_for_runtime_probe \"\$runtime_cmd\"
   }"
-  eval "_ubst_upd_${fn}() { ucc_run brew services restart '${brew_ref}'; }"
+  eval "_ubst_upd_${fn}() {
+    local runtime_cmd=''
+    if [[ -n '${cfg_dir}' && -n '${yaml}' ]]; then
+      runtime_cmd=\"\$(_ucc_yaml_get '${cfg_dir}' '${yaml}' 'targets.${tname}.oracle.runtime')\"
+    fi
+    ucc_run brew services restart '${brew_ref}'
+    [[ -n \"\$runtime_cmd\" ]] && _ucc_wait_for_runtime_probe \"\$runtime_cmd\"
+  }"
   ucc_target_service --name "$tname" \
     --observe "_ubst_obs_${fn}" \
     --evidence "_ubst_evd_${fn}" \

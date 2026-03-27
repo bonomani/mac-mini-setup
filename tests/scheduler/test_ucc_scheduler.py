@@ -302,6 +302,82 @@ class UccSchedulerTests(unittest.TestCase):
             self.assertIn("services restart fake-ref", commands.read_text(encoding="utf-8"))
             self.assertIn("fake-service", result.stdout)
 
+    def test_brew_runtime_target_waits_for_probe_after_start(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            marker = tmp_path / "runtime.ok"
+            started = tmp_path / "service.started"
+            commands = tmp_path / "commands.txt"
+            ucc_dir = self._write_manifest(
+                tmp_path,
+                textwrap.dedent(
+                    f"""\
+                    component: fake
+                    primary_profile: runtime
+                    libs: fake
+                    runner: run_fake
+                    targets:
+                      fake-package:
+                        component: fake
+                        profile: configured
+                        type: package
+                      fake-service:
+                        component: fake
+                        profile: runtime
+                        type: runtime
+                        depends_on:
+                          - fake-package
+                        runtime_manager: brew-service
+                        probe_kind: command
+                        oracle:
+                          configured: "true"
+                          runtime: '[[ -f "{marker}" ]]'
+                        evidence:
+                          version: "printf 1.2.3"
+                    """
+                ),
+            )
+            manifest = ucc_dir / "software" / "fake.yaml"
+            result = subprocess.run(
+                [
+                    "bash",
+                    "-lc",
+                    textwrap.dedent(
+                        f"""\
+                        set -euo pipefail
+                        export UCC_DECLARATION_FILE="{tmp_path / 'decl.jsonl'}"
+                        export UCC_RESULT_FILE="{tmp_path / 'result.jsonl'}"
+                        export UCC_SUMMARY_FILE="{tmp_path / 'summary.txt'}"
+                        export UCC_PROFILE_SUMMARY_FILE="{tmp_path / 'profile.txt'}"
+                        export UCC_TARGET_STATUS_FILE="{tmp_path / 'status.txt'}"
+                        export UCC_CORRELATION_ID="test-run"
+                        export UCC_RUNTIME_WAIT_ATTEMPTS=20
+                        export UCC_RUNTIME_WAIT_INTERVAL=0.01
+                        source "{ROOT / 'lib/ucc.sh'}"
+
+                        _ucc_brew_service_status() {{
+                          [[ -f "{started}" ]] && printf 'started' || printf 'stopped'
+                        }}
+                        brew() {{
+                          printf '%s\\n' "$*" >> "{commands}"
+                          touch "{started}"
+                          (
+                            sleep 0.05
+                            touch "{marker}"
+                          ) &
+                        }}
+
+                        ucc_brew_service_target "fake-service" "fake" "fake-ref" "{ROOT}" "{manifest}"
+                        """
+                    ),
+                ],
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertIn("services start fake-ref", commands.read_text(encoding="utf-8"))
+            self.assertIn("[installed] fake-service", result.stdout)
+
     def test_missing_declared_dependency_raises_execution_error(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
