@@ -33,10 +33,23 @@ targets:
     component: dev-tools
     profile: configured
     type: config
+    state_model: config
     depends_on:
       - vscode
     oracle:
       configured: "code --version >/dev/null 2>&1"
+    evidence:
+      path: "command -v code 2>/dev/null || true"
+    install_cmd: |
+      if [[ -x "${vscode_cli_path}" ]]; then
+        sudo mkdir -p "$(dirname "${vscode_cli_link_path}")"
+        sudo ln -sf "${vscode_cli_path}" "${vscode_cli_link_path}"
+        export PATH="$(dirname "${vscode_cli_link_path}"):$PATH"
+        log_warn "Symlink created. If 'code' is still missing in new shells, run: Cmd+Shift+P → 'Shell Command: Install code command in PATH'"
+      else
+        log_warn "VS Code binary not found. Open VS Code manually first."
+        return 1
+      fi
 
   vscode-settings:
     component: dev-tools
@@ -59,29 +72,72 @@ targets:
     component: dev-tools
     profile: configured
     type: config
+    state_model: config
     oracle:
       configured: '[[ -d "$HOME/.oh-my-zsh" ]]'
+    evidence:
+      folder: "printf '%s' \"$HOME/.oh-my-zsh\""
+    install_cmd: |
+      sh -c "$(curl -fsSL "${omz_installer_url}")" "" --unattended
+    update_cmd: |
+      [[ -f "$HOME/.oh-my-zsh/tools/upgrade.sh" ]] && bash "$HOME/.oh-my-zsh/tools/upgrade.sh" || true
 
   omz-theme-agnoster:
     component: dev-tools
     profile: configured
     type: config
+    state_model: config
     depends_on:
       - oh-my-zsh
+    oracle:
+      configured: 'grep -q "^ZSH_THEME=\"${omz_theme}\"" "$HOME/.zshrc" 2>/dev/null'
+    evidence:
+      theme: "printf '%s' '${omz_theme}'"
+      file: "printf '%s' \"$HOME/.zshrc\""
+    install_cmd: |
+      if grep -q '^ZSH_THEME=' "$HOME/.zshrc" 2>/dev/null; then
+        sed -i '' "s/^ZSH_THEME=.*/ZSH_THEME=\"${omz_theme}\"/" "$HOME/.zshrc"
+      else
+        printf '\nZSH_THEME="%s"\n' "${omz_theme}" >> "$HOME/.zshrc"
+      fi
+    update_cmd: |
+      if grep -q '^ZSH_THEME=' "$HOME/.zshrc" 2>/dev/null; then
+        sed -i '' "s/^ZSH_THEME=.*/ZSH_THEME=\"${omz_theme}\"/" "$HOME/.zshrc"
+      else
+        printf '\nZSH_THEME="%s"\n' "${omz_theme}" >> "$HOME/.zshrc"
+      fi
 
   home-bin-in-path:
     component: dev-tools
     profile: configured
     type: config
+    state_model: config
+    oracle:
+      configured: "grep -q 'export PATH=\"$HOME/bin:$PATH\"' \"$HOME/.zprofile\" 2>/dev/null"
+    evidence:
+      path: "printf '%s' \"$HOME/bin\""
+    install_cmd: |
+      mkdir -p "$HOME/bin"
+      printf '\nexport PATH="$HOME/bin:$PATH"\n' >> "$HOME/.zprofile"
+      export PATH="$HOME/bin:$PATH"
 
   ai-healthcheck:
     component: dev-tools
     profile: configured
     type: config
+    state_model: config
     depends_on:
       - home-bin-in-path
     oracle:
       configured: '[[ -x "$HOME/bin/ai-healthcheck" ]]'
+    evidence:
+      path: "printf '%s' \"$HOME/bin/ai-healthcheck\""
+    install_cmd: |
+      mkdir -p "$HOME/bin"
+      install -m 755 "$CFG_DIR/scripts/ai-healthcheck" "$HOME/bin/ai-healthcheck"
+    update_cmd: |
+      mkdir -p "$HOME/bin"
+      install -m 755 "$CFG_DIR/scripts/ai-healthcheck" "$HOME/bin/ai-healthcheck"
 
   networkquality-available:
     component: dev-tools

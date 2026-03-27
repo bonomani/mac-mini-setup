@@ -29,19 +29,28 @@ _ucc_yaml_get() {
 
 # ── Convenience target helpers ────────────────────────────────────────────────
 
+_UCC_DISPLAY_NAME_CACHE_KEYS=()
+_UCC_DISPLAY_NAME_CACHE_VALUES=()
+
 _ucc_display_name() {
-  case "$1" in
-    ai-stack-compose-file) printf 'compose file' ;;
-    open-webui-runtime)    printf 'Open WebUI' ;;
-    flowise-runtime)       printf 'Flowise' ;;
-    openhands-runtime)     printf 'OpenHands' ;;
-    n8n-runtime)           printf 'n8n' ;;
-    qdrant-runtime)        printf 'Qdrant' ;;
-    docker-desktop)        printf 'Docker Desktop' ;;
-    unsloth-studio)        printf 'Unsloth Studio' ;;
-    system-composition)    printf 'composition' ;;
-    *)                     printf '%s' "$1" ;;
-  esac
+  local target="$1" idx display_name="$1"
+  for idx in "${!_UCC_DISPLAY_NAME_CACHE_KEYS[@]}"; do
+    if [[ "${_UCC_DISPLAY_NAME_CACHE_KEYS[$idx]}" == "$target" ]]; then
+      printf '%s' "${_UCC_DISPLAY_NAME_CACHE_VALUES[$idx]}"
+      return
+    fi
+  done
+
+  if [[ -n "${UCC_TARGETS_MANIFEST:-}" && -n "${UCC_TARGETS_QUERY_SCRIPT:-}" ]]; then
+    if [[ -e "${UCC_TARGETS_MANIFEST}" && -f "${UCC_TARGETS_QUERY_SCRIPT}" ]]; then
+      display_name="$(python3 "$UCC_TARGETS_QUERY_SCRIPT" --display-name "$target" "$UCC_TARGETS_MANIFEST" 2>/dev/null || true)"
+      [[ -n "$display_name" ]] || display_name="$target"
+    fi
+  fi
+
+  _UCC_DISPLAY_NAME_CACHE_KEYS+=("$target")
+  _UCC_DISPLAY_NAME_CACHE_VALUES+=("$display_name")
+  printf '%s' "$display_name"
 }
 
 _ucc_emit_target_line() {
@@ -52,6 +61,74 @@ _ucc_emit_target_line() {
     line=$(printf '      [%-8s] %s' "$status" "$name")
   fi
   _ucc_emit_profile_line "$profile" "$line"
+}
+
+_ucc_observe_yaml_simple_target() {
+  local cfg_dir="$1" yaml="$2" target="$3"
+  local target_type configured_cmd state_model success_raw failure_raw raw_state
+
+  target_type="$(_ucc_yaml_get "$cfg_dir" "$yaml" "targets.${target}.type" "config")"
+  configured_cmd="$(_ucc_yaml_get "$cfg_dir" "$yaml" "targets.${target}.oracle.configured")"
+  state_model="$(_ucc_yaml_get "$cfg_dir" "$yaml" "targets.${target}.state_model" "$target_type")"
+
+  case "$state_model" in
+    package)
+      success_raw="$(_ucc_yaml_get "$cfg_dir" "$yaml" "targets.${target}.observe_success" "present")"
+      failure_raw="$(_ucc_yaml_get "$cfg_dir" "$yaml" "targets.${target}.observe_failure" "absent")"
+      ;;
+    *)
+      success_raw="$(_ucc_yaml_get "$cfg_dir" "$yaml" "targets.${target}.observe_success" "configured")"
+      failure_raw="$(_ucc_yaml_get "$cfg_dir" "$yaml" "targets.${target}.observe_failure" "absent")"
+      ;;
+  esac
+
+  local CFG_DIR="$cfg_dir" YAML_PATH="$yaml" TARGET_NAME="$target"
+  if [[ -n "$configured_cmd" ]] && eval "$configured_cmd" >/dev/null 2>&1; then
+    raw_state="$success_raw"
+  else
+    raw_state="$failure_raw"
+  fi
+
+  case "$state_model" in
+    package)
+      ucc_asm_package_state "$raw_state"
+      ;;
+    *)
+      ucc_asm_config_state "$raw_state"
+      ;;
+  esac
+}
+
+_ucc_run_yaml_action() {
+  local cfg_dir="$1" yaml="$2" target="$3" action_key="$4"
+  local cmd
+  cmd="$(_ucc_yaml_get "$cfg_dir" "$yaml" "targets.${target}.${action_key}")"
+  [[ -n "$cmd" ]] || return 1
+  local CFG_DIR="$cfg_dir" YAML_PATH="$yaml" TARGET_NAME="$target"
+  eval "$cmd"
+}
+
+ucc_yaml_simple_target() {
+  local cfg_dir="$1" yaml="$2" target="$3"
+  local fn profile install_cmd update_cmd
+  fn="${target//[^a-zA-Z0-9]/_}"
+  profile="$(_ucc_yaml_get "$cfg_dir" "$yaml" "targets.${target}.profile" "configured")"
+  install_cmd="$(_ucc_yaml_get "$cfg_dir" "$yaml" "targets.${target}.install_cmd")"
+  update_cmd="$(_ucc_yaml_get "$cfg_dir" "$yaml" "targets.${target}.update_cmd")"
+
+  eval "_uyst_obs_${fn}() { _ucc_observe_yaml_simple_target '${cfg_dir}' '${yaml}' '${target}'; }"
+  eval "_uyst_evd_${fn}() { ucc_eval_evidence_from_yaml '${cfg_dir}' '${yaml}' '${target}'; }"
+  if [[ -n "$install_cmd" ]]; then
+    eval "_uyst_ins_${fn}() { _ucc_run_yaml_action '${cfg_dir}' '${yaml}' '${target}' install_cmd; }"
+  fi
+  if [[ -n "$update_cmd" ]]; then
+    eval "_uyst_upd_${fn}() { _ucc_run_yaml_action '${cfg_dir}' '${yaml}' '${target}' update_cmd; }"
+  fi
+
+  local args=(--name "$target" --profile "$profile" --observe "_uyst_obs_${fn}" --evidence "_uyst_evd_${fn}")
+  [[ -n "$install_cmd" ]] && args+=(--install "_uyst_ins_${fn}")
+  [[ -n "$update_cmd" ]] && args+=(--update "_uyst_upd_${fn}")
+  ucc_target "${args[@]}"
 }
 
 # ucc_brew_target <target-name> <brew-pkg>

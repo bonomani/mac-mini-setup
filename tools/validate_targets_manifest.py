@@ -15,6 +15,7 @@ KNOWN_TARGET_TYPES = {
     "precondition",
     "service",
 }
+KNOWN_STATE_MODELS = {"package", "config"}
 KNOWN_PLATFORMS = {"macos", "linux", "wsl", "wsl1", "wsl2"}
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -219,6 +220,37 @@ def validate(manifest, known_gates):
         if not component:
             errors.append(f"target '{name}' missing component")
 
+        for field in ("display_name", "provided_by_tool", "runtime_manager", "probe_kind", "install_cmd", "update_cmd", "observe_success", "observe_failure"):
+            value = data.get(field)
+            if value is not None and (not isinstance(value, str) or not value.strip()):
+                errors.append(f"target '{name}' field '{field}' must be a non-empty string")
+
+        state_model = data.get("state_model")
+        if state_model is not None and state_model not in KNOWN_STATE_MODELS:
+            errors.append(f"target '{name}' has unknown state_model '{state_model}'")
+
+        oracle = data.get("oracle")
+        if oracle is not None:
+            if not isinstance(oracle, dict):
+                errors.append(f"target '{name}' oracle must be a mapping")
+            else:
+                for level, cmd in oracle.items():
+                    if not isinstance(level, str) or not level.strip():
+                        errors.append(f"target '{name}' oracle contains an empty key")
+                    if not isinstance(cmd, str) or not cmd.strip():
+                        errors.append(f"target '{name}' oracle '{level}' must be a non-empty string")
+
+        evidence = data.get("evidence")
+        if evidence is not None:
+            if not isinstance(evidence, dict):
+                errors.append(f"target '{name}' evidence must be a mapping")
+            else:
+                for key, cmd in evidence.items():
+                    if not isinstance(key, str) or not key.strip():
+                        errors.append(f"target '{name}' evidence contains an empty key")
+                    if not isinstance(cmd, str) or not cmd.strip():
+                        errors.append(f"target '{name}' evidence '{key}' must be a non-empty string")
+
         endpoints = data.get("endpoints")
         if endpoints is not None:
             if not isinstance(endpoints, list):
@@ -228,12 +260,22 @@ def validate(manifest, known_gates):
                     if not isinstance(endpoint, dict):
                         errors.append(f"target '{name}' endpoint {index} must be a mapping")
                         continue
-                    if not endpoint.get("name"):
+                    if not isinstance(endpoint.get("name"), str) or not endpoint.get("name", "").strip():
                         errors.append(f"target '{name}' endpoint {index} missing name")
-                    if not endpoint.get("url"):
+                    if not isinstance(endpoint.get("url"), str) or not endpoint.get("url", "").strip():
                         errors.append(f"target '{name}' endpoint {index} missing url")
+                    note = endpoint.get("note")
+                    if note is not None and not isinstance(note, str):
+                        errors.append(f"target '{name}' endpoint {index} note must be a string")
 
-        for dep in data.get("depends_on", []):
+        depends_on = data.get("depends_on", []) or []
+        if not isinstance(depends_on, list):
+            errors.append(f"target '{name}' depends_on must be a list")
+            depends_on = []
+        for dep in depends_on:
+            if not isinstance(dep, str) or not dep.strip():
+                errors.append(f"target '{name}' depends_on entries must be non-empty strings")
+                continue
             if dep not in targets:
                 errors.append(f"target '{name}' depends_on unknown target '{dep}'")
 
@@ -249,10 +291,20 @@ def validate(manifest, known_gates):
                         errors.append(f"target '{name}' depends_on_by_platform '{platform}' must be a list")
                         continue
                     for dep in deps:
+                        if not isinstance(dep, str) or not dep.strip():
+                            errors.append(f"target '{name}' depends_on_by_platform '{platform}' entries must be non-empty strings")
+                            continue
                         if dep not in targets:
                             errors.append(f"target '{name}' depends_on_by_platform '{platform}' unknown target '{dep}'")
 
-        for dep in data.get("soft_depends_on", []):
+        soft_depends_on = data.get("soft_depends_on", []) or []
+        if not isinstance(soft_depends_on, list):
+            errors.append(f"target '{name}' soft_depends_on must be a list")
+            soft_depends_on = []
+        for dep in soft_depends_on:
+            if not isinstance(dep, str) or not dep.strip():
+                errors.append(f"target '{name}' soft_depends_on entries must be non-empty strings")
+                continue
             if dep.startswith("gate:"):
                 gate = dep.split(":", 1)[1]
                 if gate not in known_gates:
@@ -348,6 +400,7 @@ def component_order(manifest, topo_ordered=None):
 def main():
     args = sys.argv[1:]
     deps_mode = False
+    display_name_mode = False
     soft_deps_mode = False
     components_mode = False
     dispatch_mode = False
@@ -357,6 +410,10 @@ def main():
     target_name = None
     if len(args) >= 2 and args[0] == "--deps":
         deps_mode = True
+        target_name = args[1]
+        args = args[2:]
+    elif len(args) >= 2 and args[0] == "--display-name":
+        display_name_mode = True
         target_name = args[1]
         args = args[2:]
     elif len(args) >= 2 and args[0] == "--soft-deps":
@@ -398,6 +455,15 @@ def main():
     if deps_mode:
         for dep in _effective_target_deps(manifest["targets"].get(target_name, {}) or {}):
             print(dep)
+        return 0
+
+    if display_name_mode:
+        data = manifest["targets"].get(target_name, {}) or {}
+        display_name = data.get("display_name", "")
+        subst_data = data.get("__manifest_scalars__") or {}
+        if isinstance(display_name, str):
+            display_name = substitute_scalars(display_name, data=subst_data)
+        print(display_name)
         return 0
 
     if soft_deps_mode:

@@ -30,6 +30,7 @@ targets:
     component: system
     profile: parametric
     type: config
+    display_name: composition
     depends_on:
       - homebrew
       - git

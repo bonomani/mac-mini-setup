@@ -6,17 +6,13 @@
 run_dev_tools_from_yaml() {
   local cfg_dir="$1" yaml="$2"
 
-  local _NODE_VER _NODE_PREV_VER _OMZ_INSTALLER_URL _OMZ_THEME
-  local _VSCODE_CASK_ID _VSCODE_APP_PATH _VSCODE_CLI_PATH _VSCODE_CLI_LINK_PATH _VSCODE_SETTINGS_PATH _VSCODE_SETTINGS_PATCH
+  local _NODE_VER _NODE_PREV_VER
+  local _VSCODE_CASK_ID _VSCODE_APP_PATH _VSCODE_SETTINGS_PATH _VSCODE_SETTINGS_PATCH
   local _ARIAFLOW_TAP _ARIAFLOW_FORMULA _ARIAFLOW_WEB_FORMULA
   _NODE_VER="$(          yaml_get "$cfg_dir" "$yaml" node_version          24)"
   _NODE_PREV_VER="$(     yaml_get "$cfg_dir" "$yaml" node_previous_version 20)"
-  _OMZ_INSTALLER_URL="$( yaml_get "$cfg_dir" "$yaml" omz_installer_url     "https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh")"
-  _OMZ_THEME="$(         yaml_get "$cfg_dir" "$yaml" omz_theme             agnoster)"
   _VSCODE_CASK_ID="$(    yaml_get "$cfg_dir" "$yaml" vscode_cask_id        visual-studio-code)"
   _VSCODE_APP_PATH="$(   yaml_get "$cfg_dir" "$yaml" vscode_app_path       "/Applications/Visual Studio Code.app")"
-  _VSCODE_CLI_PATH="$(   yaml_get "$cfg_dir" "$yaml" vscode_cli_path       "/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code")"
-  _VSCODE_CLI_LINK_PATH="$(yaml_get "$cfg_dir" "$yaml" vscode_cli_link_path "/usr/local/bin/code")"
   _VSCODE_SETTINGS_PATH="$HOME/$(yaml_get "$cfg_dir" "$yaml" vscode_settings_relpath "Library/Application Support/Code/User/settings.json")"
   _VSCODE_SETTINGS_PATCH="$cfg_dir/$(yaml_get "$cfg_dir" "$yaml" vscode_settings_patch "ucc/software/vscode-settings.json")"
   _ARIAFLOW_TAP="$(      yaml_get "$cfg_dir" "$yaml" ariaflow_tap          bonomani/ariaflow)"
@@ -57,25 +53,7 @@ run_dev_tools_from_yaml() {
     --update   _update_vscode
 
   # ---- code CLI symlink ----
-  _observe_code_cmd()  { ucc_asm_package_state "$(is_installed code && code --version 2>/dev/null | awk 'NR==1 {print $1}' || echo "absent")"; }
-  _evidence_code_cmd() { local p; p=$(command -v code 2>/dev/null || true); [[ -n "$p" ]] && printf 'path=%s' "$p"; }
-  _fix_code_symlink() {
-    if [[ -x "$_VSCODE_CLI_PATH" ]]; then
-      sudo mkdir -p "$(dirname "$_VSCODE_CLI_LINK_PATH")"
-      sudo ln -sf "$_VSCODE_CLI_PATH" "$_VSCODE_CLI_LINK_PATH"
-      export PATH="$(dirname "$_VSCODE_CLI_LINK_PATH"):$PATH"
-      log_warn "Symlink created. If 'code' is still missing in new shells, run: Cmd+Shift+P → 'Shell Command: Install code command in PATH'"
-    else
-      log_warn "VS Code binary not found. Open VS Code manually first."
-      return 1
-    fi
-  }
-
-  ucc_target_nonruntime \
-    --name     "vscode-code-cmd" \
-    --observe  _observe_code_cmd \
-    --evidence _evidence_code_cmd \
-    --install  _fix_code_symlink
+  ucc_yaml_simple_target "$cfg_dir" "$yaml" "vscode-code-cmd"
 
   # ---- VSCode extensions ----
   load_vscode_extensions_from_yaml "$cfg_dir" "$yaml"
@@ -205,66 +183,11 @@ PY
     [[ -n "$_pkg" ]] && ucc_npm_target "$_pkg"
   done < <(yaml_list "$cfg_dir" "$yaml" npm_packages)
 
-  # ---- Oh My Zsh ----
-  _observe_omz()  { ucc_asm_package_state "$([[ -d "$HOME/.oh-my-zsh" ]] && echo "installed" || echo "absent")"; }
-  _evidence_omz() { printf 'folder=%s' "$HOME/.oh-my-zsh"; }
-  _install_omz()  { sh -c "$(curl -fsSL "$_OMZ_INSTALLER_URL")" "" --unattended; }
-  _update_omz()   { [[ -f "$HOME/.oh-my-zsh/tools/upgrade.sh" ]] && bash "$HOME/.oh-my-zsh/tools/upgrade.sh" || true; }
-
-  ucc_target_nonruntime \
-    --name     "oh-my-zsh" \
-    --observe  _observe_omz \
-    --evidence _evidence_omz \
-    --install  _install_omz \
-    --update   _update_omz
-
-  # ---- Oh My Zsh theme ----
-  _observe_omz_theme()  { ucc_asm_config_state "$(grep -q "^ZSH_THEME=\"${_OMZ_THEME}\"" "$HOME/.zshrc" 2>/dev/null && echo "set" || echo "unset")"; }
-  _evidence_omz_theme() { printf 'theme=%s  file=%s' "$_OMZ_THEME" "$HOME/.zshrc"; }
-  _apply_omz_theme() {
-    if grep -q '^ZSH_THEME=' "$HOME/.zshrc" 2>/dev/null; then
-      sed -i '' "s/^ZSH_THEME=.*/ZSH_THEME=\"${_OMZ_THEME}\"/" "$HOME/.zshrc"
-    else
-      printf '\nZSH_THEME="%s"\n' "$_OMZ_THEME" >> "$HOME/.zshrc"
-    fi
-  }
-
-  ucc_target_nonruntime \
-    --name     "omz-theme-${_OMZ_THEME}" \
-    --observe  _observe_omz_theme \
-    --evidence _evidence_omz_theme \
-    --install  _apply_omz_theme \
-    --update   _apply_omz_theme
-
-  # ---- $HOME/bin in PATH ----
-  _observe_home_bin_path()  { ucc_asm_config_state "$(grep -q 'export PATH="$HOME/bin:$PATH"' "$HOME/.zprofile" 2>/dev/null && echo "present" || echo "absent")"; }
-  _evidence_home_bin_path() { printf 'path=%s' "$HOME/bin"; }
-  _add_home_bin_path() {
-    mkdir -p "$HOME/bin"
-    printf '\nexport PATH="$HOME/bin:$PATH"\n' >> "$HOME/.zprofile"
-    export PATH="$HOME/bin:$PATH"
-  }
-
-  ucc_target_nonruntime \
-    --name     "home-bin-in-path" \
-    --observe  _observe_home_bin_path \
-    --evidence _evidence_home_bin_path \
-    --install  _add_home_bin_path
-
-  # ---- ai-healthcheck script ----
-  _observe_healthcheck()  { ucc_asm_package_state "$([[ -x "$HOME/bin/ai-healthcheck" ]] && echo "present" || echo "absent")"; }
-  _evidence_healthcheck() { printf 'path=%s' "$HOME/bin/ai-healthcheck"; }
-  _install_healthcheck() {
-    mkdir -p "$HOME/bin"
-    install -m 755 "$cfg_dir/scripts/ai-healthcheck" "$HOME/bin/ai-healthcheck"
-  }
-
-  ucc_target_nonruntime \
-    --name     "ai-healthcheck" \
-    --observe  _observe_healthcheck \
-    --evidence _evidence_healthcheck \
-    --install  _install_healthcheck \
-    --update   _install_healthcheck
+  # ---- YAML-first simple configured targets ----
+  ucc_yaml_simple_target "$cfg_dir" "$yaml" "oh-my-zsh"
+  ucc_yaml_simple_target "$cfg_dir" "$yaml" "omz-theme-agnoster"
+  ucc_yaml_simple_target "$cfg_dir" "$yaml" "home-bin-in-path"
+  ucc_yaml_simple_target "$cfg_dir" "$yaml" "ai-healthcheck"
 
   # ---- macOS capability: networkQuality CLI ----
   _observe_networkquality() {

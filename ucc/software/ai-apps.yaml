@@ -24,6 +24,7 @@ targets:
     component: ai-apps
     profile: parametric
     type: config
+    display_name: compose file
     evidence:
       path: "printf '%s' \"$COMPOSE_FILE\""
 
@@ -31,6 +32,7 @@ targets:
     component: ai-apps
     profile: runtime
     type: runtime
+    display_name: Open WebUI
     depends_on:
       - docker-desktop
       - ai-stack-compose-file
@@ -47,6 +49,7 @@ targets:
     component: ai-apps
     profile: runtime
     type: runtime
+    display_name: Flowise
     depends_on:
       - docker-desktop
       - ai-stack-compose-file
@@ -63,6 +66,7 @@ targets:
     component: ai-apps
     profile: runtime
     type: runtime
+    display_name: OpenHands
     depends_on:
       - docker-desktop
       - ai-stack-compose-file
@@ -79,6 +83,7 @@ targets:
     component: ai-apps
     profile: runtime
     type: runtime
+    display_name: n8n
     depends_on:
       - docker-desktop
       - ai-stack-compose-file
@@ -95,6 +100,7 @@ targets:
     component: ai-apps
     profile: runtime
     type: runtime
+    display_name: Qdrant
     depends_on:
       - docker-desktop
       - ai-stack-compose-file

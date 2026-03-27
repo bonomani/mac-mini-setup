@@ -15,6 +15,7 @@ targets:
     component: ai-python-stack
     profile: runtime
     type: runtime
+    display_name: Unsloth Studio
     depends_on:
       - python
       - pip-latest

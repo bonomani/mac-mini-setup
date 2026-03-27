@@ -242,6 +242,122 @@ class UccSchedulerTests(unittest.TestCase):
             ).strip()
             self.assertEqual(output, "fake-runtime\tFake API\thttp://127.0.0.1:9999\tprimary")
 
+    def test_display_name_query_reads_target_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            ucc_dir = self._write_manifest(
+                Path(tmp),
+                textwrap.dedent(
+                    """\
+                    component: fake
+                    primary_profile: runtime
+                    libs: fake
+                    runner: run_fake
+                    targets:
+                      fake-runtime:
+                        component: fake
+                        profile: runtime
+                        type: runtime
+                        display_name: Fake Runtime
+                    """
+                ),
+            )
+            output = subprocess.check_output(
+                ["python3", str(QUERY), "--display-name", "fake-runtime", str(ucc_dir)],
+                text=True,
+            ).strip()
+            self.assertEqual(output, "Fake Runtime")
+
+    def test_yaml_simple_target_executes_manifest_declared_commands(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            ucc_dir = self._write_manifest(
+                tmp_path,
+                textwrap.dedent(
+                    """\
+                    component: fake
+                    primary_profile: configured
+                    libs: fake
+                    runner: run_fake
+                    targets:
+                      simple:
+                        component: fake
+                        profile: configured
+                        type: config
+                        oracle:
+                          configured: '[[ -f "$HOME/simple.txt" ]]'
+                        evidence:
+                          path: 'printf "%s" "$HOME/simple.txt"'
+                        install_cmd: |
+                          touch "$HOME/simple.txt"
+                    """
+                ),
+            )
+            home_dir = tmp_path / "home"
+            home_dir.mkdir()
+            state_dir = tmp_path / "state"
+            state_dir.mkdir()
+            status_file = tmp_path / "status.txt"
+            manifest = ucc_dir / "software" / "fake.yaml"
+            result = subprocess.run(
+                [
+                    "bash",
+                    "-lc",
+                    textwrap.dedent(
+                        f"""\
+                        set -euo pipefail
+                        export HOME="{home_dir}"
+                        export ARIA_QUEUE_DIR="{state_dir}"
+                        export UCC_TARGET_DEFER=1
+                        export UCC_TARGETS_MANIFEST="{ucc_dir}"
+                        export UCC_TARGETS_QUERY_SCRIPT="{QUERY}"
+                        export UCC_TARGET_STATUS_FILE="{status_file}"
+                        export UCC_DECLARATION_FILE="{tmp_path / 'decl.jsonl'}"
+                        export UCC_RESULT_FILE="{tmp_path / 'result.jsonl'}"
+                        export UCC_SUMMARY_FILE="{tmp_path / 'summary.txt'}"
+                        export UCC_PROFILE_SUMMARY_FILE="{tmp_path / 'profile.txt'}"
+                        export UCC_CORRELATION_ID="test-run"
+                        source "{ROOT / 'lib/ucc.sh'}"
+
+                        ucc_reset_registered_targets
+                        ucc_yaml_simple_target "{ROOT}" "{manifest}" simple
+                        ucc_flush_registered_targets fake
+                        """
+                    ),
+                ],
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertTrue((home_dir / "simple.txt").exists())
+
+    def test_manifest_validation_rejects_non_string_display_name(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            ucc_dir = self._write_manifest(
+                Path(tmp),
+                textwrap.dedent(
+                    """\
+                    component: fake
+                    primary_profile: configured
+                    libs: fake
+                    runner: run_fake
+                    targets:
+                      bad:
+                        component: fake
+                        profile: configured
+                        type: config
+                        display_name:
+                          nested: nope
+                    """
+                ),
+            )
+            result = subprocess.run(
+                ["python3", str(QUERY), str(ucc_dir)],
+                text=True,
+                capture_output=True,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("field 'display_name' must be a non-empty string", result.stderr)
+
     def test_read_config_records_substitutes_top_level_scalars(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             manifest = self._write_manifest(

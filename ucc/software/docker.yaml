@@ -13,6 +13,7 @@ targets:
     component: docker
     profile: runtime
     type: runtime
+    display_name: Docker Desktop
     depends_on:
       - homebrew
     provided_by_tool: brew-cask
