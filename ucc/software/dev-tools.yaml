@@ -142,6 +142,209 @@ targets:
       pid: "lsof -ti tcp:${ariaflow_web_port} 2>/dev/null | head -1"
       port: "${ariaflow_web_port}"
 
+  cli-jq:
+    component: dev-tools
+    profile: configured
+    type: package
+    depends_on:
+      - homebrew
+
+  cli-wget:
+    component: dev-tools
+    profile: configured
+    type: package
+    depends_on:
+      - homebrew
+
+  cli-curl:
+    component: dev-tools
+    profile: configured
+    type: package
+    depends_on:
+      - homebrew
+
+  cli-htop:
+    component: dev-tools
+    profile: configured
+    type: package
+    depends_on:
+      - homebrew
+
+  cli-tmux:
+    component: dev-tools
+    profile: configured
+    type: package
+    depends_on:
+      - homebrew
+
+  cli-fzf:
+    component: dev-tools
+    profile: configured
+    type: package
+    depends_on:
+      - homebrew
+
+  cli-ripgrep:
+    component: dev-tools
+    profile: configured
+    type: package
+    depends_on:
+      - homebrew
+
+  cli-fd:
+    component: dev-tools
+    profile: configured
+    type: package
+    depends_on:
+      - homebrew
+
+  cli-tree:
+    component: dev-tools
+    profile: configured
+    type: package
+    depends_on:
+      - homebrew
+
+  cli-uv:
+    component: dev-tools
+    profile: configured
+    type: package
+    depends_on:
+      - homebrew
+
+  cli-pnpm:
+    component: dev-tools
+    profile: configured
+    type: package
+    depends_on:
+      - homebrew
+
+  cli-gcc:
+    component: dev-tools
+    profile: configured
+    type: package
+    depends_on:
+      - homebrew
+
+  cli-gh:
+    component: dev-tools
+    profile: configured
+    type: package
+    depends_on:
+      - homebrew
+
+  cli-llama.cpp:
+    component: dev-tools
+    profile: configured
+    type: package
+    depends_on:
+      - homebrew
+
+  cli-opencode:
+    component: dev-tools
+    profile: configured
+    type: package
+    depends_on:
+      - homebrew
+
+  cli-aria2:
+    component: dev-tools
+    profile: configured
+    type: package
+    depends_on:
+      - homebrew
+
+  cli-cmake:
+    component: dev-tools
+    profile: configured
+    type: package
+    depends_on:
+      - homebrew
+
+  vscode-ext-ms-python.python:
+    component: dev-tools
+    profile: configured
+    type: config
+    depends_on:
+      - vscode-code-cmd
+
+  vscode-ext-ms-python.vscode-pylance:
+    component: dev-tools
+    profile: configured
+    type: config
+    depends_on:
+      - vscode-code-cmd
+
+  vscode-ext-ms-toolsai.jupyter:
+    component: dev-tools
+    profile: configured
+    type: config
+    depends_on:
+      - vscode-code-cmd
+
+  vscode-ext-ms-vscode.cpptools:
+    component: dev-tools
+    profile: configured
+    type: config
+    depends_on:
+      - vscode-code-cmd
+
+  vscode-ext-continue.continue:
+    component: dev-tools
+    profile: configured
+    type: config
+    depends_on:
+      - vscode-code-cmd
+
+  vscode-ext-eamodio.gitlens:
+    component: dev-tools
+    profile: configured
+    type: config
+    depends_on:
+      - vscode-code-cmd
+
+  vscode-ext-ms-vscode-remote.remote-containers:
+    component: dev-tools
+    profile: configured
+    type: config
+    depends_on:
+      - vscode-code-cmd
+
+  iterm2:
+    component: dev-tools
+    profile: configured
+    type: package
+    depends_on:
+      - homebrew
+
+  lm-studio:
+    component: dev-tools
+    profile: configured
+    type: package
+    depends_on:
+      - homebrew
+
+  npm-global-@openai/codex:
+    component: dev-tools
+    profile: configured
+    type: package
+    depends_on:
+      - node-lts
+
+  npm-global-@anthropic-ai/claude-code:
+    component: dev-tools
+    profile: configured
+    type: package
+    depends_on:
+      - node-lts
+
+  npm-global-bmad-method:
+    component: dev-tools
+    profile: configured
+    type: package
+    depends_on:
+      - node-lts
+
 # Homebrew formula CLI tools
 cli_tools:
   - jq

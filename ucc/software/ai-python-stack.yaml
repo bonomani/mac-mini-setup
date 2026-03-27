@@ -24,6 +24,97 @@ targets:
     oracle:
       configured: 'launchctl list 2>/dev/null | grep -q "${_UNSLOTH_LABEL}"'
       runtime: 'curl -fsS --max-time 5 "http://127.0.0.1:${_UNSLOTH_PORT}" >/dev/null 2>&1'
+
+  pip-group-pytorch:
+    component: ai-python-stack
+    profile: configured
+    type: package
+    depends_on:
+      - pip-latest
+
+  pip-group-huggingface:
+    component: ai-python-stack
+    profile: configured
+    type: package
+    depends_on:
+      - pip-latest
+
+  pip-group-langchain:
+    component: ai-python-stack
+    profile: configured
+    type: package
+    depends_on:
+      - pip-latest
+
+  pip-group-llamaindex:
+    component: ai-python-stack
+    profile: configured
+    type: package
+    depends_on:
+      - pip-latest
+
+  pip-group-llm-clients:
+    component: ai-python-stack
+    profile: configured
+    type: package
+    depends_on:
+      - pip-latest
+
+  pip-group-vector-dbs:
+    component: ai-python-stack
+    profile: configured
+    type: package
+    depends_on:
+      - pip-latest
+
+  pip-group-jupyter:
+    component: ai-python-stack
+    profile: configured
+    type: package
+    depends_on:
+      - pip-latest
+
+  pip-group-serving:
+    component: ai-python-stack
+    profile: configured
+    type: package
+    depends_on:
+      - pip-latest
+
+  pip-group-data-science:
+    component: ai-python-stack
+    profile: configured
+    type: package
+    depends_on:
+      - pip-latest
+
+  pip-group-utilities:
+    component: ai-python-stack
+    profile: configured
+    type: package
+    depends_on:
+      - pip-latest
+
+  pip-group-dev-tools:
+    component: ai-python-stack
+    profile: configured
+    type: package
+    depends_on:
+      - pip-latest
+
+  pip-group-optimum:
+    component: ai-python-stack
+    profile: configured
+    type: package
+    depends_on:
+      - pip-latest
+
+  mps-available:
+    component: ai-python-stack
+    profile: runtime
+    type: service
+    depends_on:
+      - pip-group-pytorch
 # Fields:
 #   name        ucc-target suffix and _pip_group identifier
 #   probe       package name used for pip show / version detection

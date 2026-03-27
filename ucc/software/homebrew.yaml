@@ -25,6 +25,13 @@ targets:
     provided_by_tool: brew-installer
     oracle:
       configured: "brew --version >/dev/null 2>&1"
+
+  "brew-analytics=off":
+    component: homebrew
+    profile: configured
+    type: config
+    depends_on:
+      - homebrew
 installer_url: "https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh"
 analytics_desired: "off"
 shell_config_file: ".zprofile"
