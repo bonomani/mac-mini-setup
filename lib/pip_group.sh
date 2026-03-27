@@ -28,8 +28,8 @@ sys.exit(0 if Version('${minver}') <= Version(sys.argv[1]) else 1)
     eval "_observe_grp_${fn}() { local raw; raw=\$(_pip_cached_version '${first}' || echo 'absent'); [[ -z \"\$raw\" ]] && raw='absent'; ucc_asm_package_state \"\$raw\"; }"
   fi
   eval "_evidence_grp_${fn}() { local ver; ver=\$(_pip_cached_version '${first}'); [[ -n \"\$ver\" ]] && printf 'version=%s  pkg=${first}' \"\$ver\"; }"
-  eval "_install_grp_${fn}() { ucc_run pip install -q ${pkgs}; }"
-  eval "_update_grp_${fn}()  { ucc_run pip install -q --upgrade ${pkgs}; }"
+  eval "_install_grp_${fn}() { ucc_run pip install -q ${pkgs} && pip_cache_versions; }"
+  eval "_update_grp_${fn}()  { ucc_run pip install -q --upgrade ${pkgs} && pip_cache_versions; }"
 
   ucc_target_nonruntime \
     --name    "pip-group-$name" \
