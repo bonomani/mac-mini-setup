@@ -300,7 +300,9 @@ run_dev_tools_from_yaml() {
     _reset_brew_service "$_ARIAFLOW_FORMULA" "ariaflow"
     brew_upgrade "$_ARIAFLOW_FORMULA"
     ariaflow --version >/dev/null 2>&1 || return 1
-    _ensure_brew_service_started "$_ARIAFLOW_FORMULA" "ariaflow"
+    # A formula upgrade does not reload the running launchd job on its own.
+    # Bring the upgraded API back on the expected endpoint before returning.
+    _restart_brew_service "$_ARIAFLOW_FORMULA" "ariaflow" "http://127.0.0.1:${_ARIAFLOW_PORT}/api/status"
   }
 
   ucc_target_nonruntime \
@@ -379,7 +381,9 @@ run_dev_tools_from_yaml() {
     _reset_brew_service "$_ARIAFLOW_WEB_FORMULA" "ariaflow-web"
     brew_upgrade "$_ARIAFLOW_WEB_FORMULA"
     ariaflow-web --version >/dev/null 2>&1 || return 1
-    _ensure_brew_service_started "$_ARIAFLOW_WEB_FORMULA" "ariaflow-web"
+    # Homebrew only upgrades the files on disk; explicitly reload the web UI
+    # service and wait for the upgraded dashboard endpoint to answer.
+    _restart_brew_service "$_ARIAFLOW_WEB_FORMULA" "ariaflow-web" "http://127.0.0.1:${_ARIAFLOW_WEB_PORT}"
   }
 
   ucc_target_nonruntime \
