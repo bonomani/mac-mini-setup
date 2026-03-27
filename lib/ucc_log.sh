@@ -14,7 +14,6 @@ _UCC_FAILED=0
 
 _ts() { date '+%H:%M:%S'; }
 log_info()   { echo "  $*"; }
-log_notice() { echo "$*"; }
 log_debug()  { [[ "$UCC_DEBUG" == "1" ]] && echo "$(_ts) [DEBUG]  $*" || true; }
 log_warn()   { echo "$(_ts) [WARN]   $*" >&2; }
 log_error()  { echo "$(_ts) [ERROR]  $*" >&2; exit 1; }

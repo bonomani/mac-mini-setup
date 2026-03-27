@@ -388,6 +388,15 @@ load_uic_gates() {
     --target-state "$target_state" --blocking "${blocking:-hard}"
 }
 
+_uic_unquote_scalar() {
+  local value="$1"
+  case "$value" in
+    \"*\") value="${value#\"}"; value="${value%\"}" ;;
+    \'*\') value="${value#\'}"; value="${value%\'}" ;;
+  esac
+  printf '%s' "$value"
+}
+
 load_uic_preferences() {
   local dir="$1"
   local pref_file="$dir/policy/preferences.yaml"
@@ -402,10 +411,10 @@ load_uic_preferences() {
         fi
         name="${_line#  - name: }"; default=""; options=""
         scope="global"; rationale="" ;;
-      "    default: "*)   default="${_line#    default: }" ;;
-      "    options: "*)   options="${_line#    options: }" ;;
-      "    scope: "*)     scope="${_line#    scope: }" ;;
-      "    rationale: "*) rationale="${_line#    rationale: }" ;;
+      "    default: "*)   default="$(_uic_unquote_scalar "${_line#    default: }")" ;;
+      "    options: "*)   options="$(_uic_unquote_scalar "${_line#    options: }")" ;;
+      "    scope: "*)     scope="$(_uic_unquote_scalar "${_line#    scope: }")" ;;
+      "    rationale: "*) rationale="$(_uic_unquote_scalar "${_line#    rationale: }")" ;;
     esac
   done < "$pref_file"
   [[ -n "$name" ]] && uic_preference --name "$name" --default "$default" \

@@ -48,9 +48,9 @@ preferences:
     default: autostart
     options: manual|autostart
     scope: global
-    rationale: autostart: script starts required services (Docker, Ollama) when not running; manual: operator starts services before running the script
+    rationale: 'autostart: script starts required services (Docker, Ollama) when not running; manual: operator starts services before running the script'
   - name: package-update-policy
     default: always-upgrade
     options: install-only|always-upgrade
     scope: global
-    rationale: always-upgrade: upgrade outdated packages on each run; install-only: skip already-installed packages (use to speed up runs when upgrades are not needed)
+    rationale: 'always-upgrade: upgrade outdated packages on each run; install-only: skip already-installed packages (use to speed up runs when upgrades are not needed)'

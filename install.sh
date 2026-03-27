@@ -347,11 +347,6 @@ export UCC_TARGETS_MANIFEST="$DIR/ucc"
 export UCC_TARGETS_QUERY_SCRIPT="$DIR/tools/validate_targets_manifest.py"
 mkdir -p "$HOME/.ai-stack/runs"
 
-_print_verification_section() {
-  [[ -s "$UCC_VERIFICATION_REPORT_FILE" ]] || return 0
-  cat "$UCC_VERIFICATION_REPORT_FILE"
-}
-
 if [[ -d "$DIR/ucc" && -x "$(command -v python3)" ]]; then
   if ! python3 "$DIR/tools/validate_targets_manifest.py" "$DIR/ucc" >/dev/null; then
     log_error "Invalid orchestration manifest directory: $DIR/ucc"

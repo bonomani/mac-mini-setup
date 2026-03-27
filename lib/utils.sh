@@ -40,9 +40,6 @@ for p in pkgs:
 " "$1" 2>/dev/null <<< "$_PIP_VERSIONS_CACHE"
 }
 
-# Check if a pip package is installed (uses version cache when available)
-pip_is_installed() { [[ -n "$(_pip_cached_version "$1")" ]]; }
-
 # Check if a brew formula is installed (uses version cache when available)
 brew_is_installed() {
   if [[ -n "${_BREW_VERSIONS_CACHE+x}" ]]; then

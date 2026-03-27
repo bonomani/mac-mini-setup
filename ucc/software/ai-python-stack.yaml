@@ -21,7 +21,7 @@ targets:
       runtime: 'curl -fsS --max-time 5 "http://127.0.0.1:${unsloth_port}" >/dev/null 2>&1'
     endpoints:
       - name: Unsloth Studio
-        url: http://0.0.0.0:8888
+        url: http://127.0.0.1:8888
 
   pip-group-pytorch:
     component: ai-python-stack
