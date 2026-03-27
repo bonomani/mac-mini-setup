@@ -214,7 +214,7 @@ Expected checkpoints:
 | Service | URL |
 |---------|-----|
 | Ollama API | http://127.0.0.1:11434 |
-| Unsloth Studio | http://0.0.0.0:8888 |
+| Unsloth Studio | http://127.0.0.1:8888 |
 | Open WebUI | http://localhost:3000 |
 | Flowise | http://localhost:3001 |
 | OpenHands | http://localhost:3002 |

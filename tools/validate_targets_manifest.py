@@ -20,6 +20,25 @@ KNOWN_PLATFORMS = {"macos", "linux", "wsl", "wsl1", "wsl2"}
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
+def stringify(value):
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    return str(value)
+
+
+def substitute_scalars(value: str, data: dict) -> str:
+    subst = {
+        key: stringify(raw)
+        for key, raw in data.items()
+        if isinstance(raw, (str, int, float, bool))
+    }
+    import re
+
+    return re.sub(r"\$\{(\w+)\}", lambda m: subst.get(m.group(1), m.group(0)), value)
+
+
 def parse_gate_names(path: Path):
     gate_names = set()
     if not path.exists():
@@ -87,9 +106,25 @@ def parse_manifest(path: Path):
             for name, data in manifest["targets"].items():
                 if name in merged["targets"]:
                     raise ValueError(f"{file}: duplicate target '{name}'")
-                merged["targets"][name] = data
+                target_data = dict(data)
+                target_data["__manifest_scalars__"] = {
+                    key: value
+                    for key, value in manifest.items()
+                    if key not in {"targets"}
+                    and isinstance(value, (str, int, float, bool))
+                }
+                merged["targets"][name] = target_data
         return merged
     manifest = parse_manifest_file(path)
+    for name, data in manifest["targets"].items():
+        target_data = dict(data)
+        target_data["__manifest_scalars__"] = {
+            key: value
+            for key, value in manifest.items()
+            if key not in {"targets"}
+            and isinstance(value, (str, int, float, bool))
+        }
+        manifest["targets"][name] = target_data
     return {"targets": manifest["targets"], "components": {}}
 
 
@@ -417,8 +452,14 @@ def main():
                 url = endpoint.get("url", "")
                 if not url:
                     continue
+                subst_data = data.get("__manifest_scalars__") or {}
+                if isinstance(url, str):
+                    url = substitute_scalars(url, data=subst_data)
+                note = endpoint.get("note", "")
+                if isinstance(note, str):
+                    note = substitute_scalars(note, data=subst_data)
                 print(
-                    f"{name}\t{endpoint.get('name', '')}\t{url}\t{endpoint.get('note', '')}"
+                    f"{name}\t{endpoint.get('name', '')}\t{url}\t{note}"
                 )
         return 0
 

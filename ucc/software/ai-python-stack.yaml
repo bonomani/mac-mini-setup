@@ -31,7 +31,7 @@ targets:
       plist: "printf '%s/Library/LaunchAgents/${unsloth_label}.plist' \"$HOME\""
     endpoints:
       - name: Unsloth Studio
-        url: http://127.0.0.1:8888
+        url: http://127.0.0.1:${unsloth_port}
 
   pip-group-pytorch:
     component: ai-python-stack

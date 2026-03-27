@@ -43,7 +43,7 @@ targets:
       listener: "printf 'tcp:${api_host}:${api_port}'"
     endpoints:
       - name: Ollama API
-        url: http://127.0.0.1:11434
+        url: http://${api_host}:${api_port}
         note: ollama pull <model>
 
 # Model sets — controlled by UIC preference ollama-model-autopull (none|small|medium|large)

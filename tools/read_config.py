@@ -80,7 +80,14 @@ def read_records(path: Path, section: str, fields: list[str]) -> list[str]:
     for index, item in enumerate(value):
         if not isinstance(item, dict):
             raise ValueError(f"section '{section}' entry {index} is not a mapping")
-        rows.append("\t".join(stringify(item.get(field, "")) for field in fields))
+        rendered = []
+        for field in fields:
+            raw = item.get(field, "")
+            value = stringify(raw)
+            if isinstance(raw, str):
+                value = substitute_scalars(value, data)
+            rendered.append(value)
+        rows.append("\t".join(rendered))
     return rows
 
 

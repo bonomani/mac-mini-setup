@@ -212,6 +212,8 @@ class UccSchedulerTests(unittest.TestCase):
                     primary_profile: runtime
                     libs: fake
                     runner: run_fake
+                    probe_host: 127.0.0.1
+                    probe_port: 9999
                     targets:
                       fake-package:
                         component: fake
@@ -226,10 +228,10 @@ class UccSchedulerTests(unittest.TestCase):
                         runtime_manager: brew-service
                         probe_kind: http
                         oracle:
-                          runtime: "curl -fsS http://127.0.0.1:9999 >/dev/null 2>&1"
+                          runtime: "curl -fsS http://${probe_host}:${probe_port} >/dev/null 2>&1"
                         endpoints:
                           - name: Fake API
-                            url: http://127.0.0.1:9999
+                            url: http://${probe_host}:${probe_port}
                             note: primary
                     """
                 ),
@@ -239,6 +241,45 @@ class UccSchedulerTests(unittest.TestCase):
                 text=True,
             ).strip()
             self.assertEqual(output, "fake-runtime\tFake API\thttp://127.0.0.1:9999\tprimary")
+
+    def test_read_config_records_substitutes_top_level_scalars(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest = self._write_manifest(
+                Path(tmp),
+                textwrap.dedent(
+                    """\
+                    component: fake
+                    primary_profile: runtime
+                    libs: fake
+                    runner: run_fake
+                    probe_host: 127.0.0.1
+                    probe_port: 9999
+                    targets:
+                      fake-runtime:
+                        component: fake
+                        profile: runtime
+                        type: runtime
+                        endpoints:
+                          - name: Fake API
+                            url: http://${probe_host}:${probe_port}
+                            note: primary
+                    """
+                ),
+            ) / "software" / "fake.yaml"
+            output = subprocess.check_output(
+                [
+                    "python3",
+                    str(ROOT / "tools" / "read_config.py"),
+                    "--records",
+                    str(manifest),
+                    "targets.fake-runtime.endpoints",
+                    "name",
+                    "url",
+                    "note",
+                ],
+                text=True,
+            ).strip()
+            self.assertEqual(output, "Fake API\thttp://127.0.0.1:9999\tprimary")
 
     def test_read_config_get_substitutes_top_level_scalars(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
