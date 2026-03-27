@@ -88,14 +88,20 @@ run_dev_tools_from_yaml() {
     local svc_status=""
     svc_status="$(_brew_service_status "$service_name")"
     if [[ "$svc_status" == "started" ]]; then
-      if [[ -z "$readiness_url" ]] || _wait_http_ready "$readiness_url"; then
+      if [[ -z "$readiness_url" ]]; then
+        return 0
+      fi
+      if _wait_http_ready "$readiness_url"; then
         return 0
       fi
       _restart_brew_service "$formula_ref" "$service_name" "$readiness_url"
       return $?
     fi
     if ucc_run brew services start "$formula_ref"; then
-      if [[ -z "$readiness_url" ]] || _wait_http_ready "$readiness_url"; then
+      if [[ -z "$readiness_url" ]]; then
+        return 0
+      fi
+      if _wait_http_ready "$readiness_url"; then
         return 0
       fi
     fi
@@ -507,11 +513,23 @@ PY
   _start_ariaflow_web_service() {
     ariaflow-web --version >/dev/null 2>&1 || return 1
     _ensure_brew_service_started "$_ARIAFLOW_WEB_FORMULA" "ariaflow-web" "http://127.0.0.1:${_ARIAFLOW_WEB_PORT}" || return 1
+    if _wait_ariaflow_web_serving_current_version; then
+      return 0
+    fi
+    _reset_brew_service "$_ARIAFLOW_WEB_FORMULA" "ariaflow-web"
+    ucc_run brew services start "$_ARIAFLOW_WEB_FORMULA" || return 1
+    _wait_http_ready "http://127.0.0.1:${_ARIAFLOW_WEB_PORT}" || return 1
     _wait_ariaflow_web_serving_current_version
   }
   _restart_ariaflow_web_service() {
     ariaflow-web --version >/dev/null 2>&1 || return 1
     _restart_brew_service "$_ARIAFLOW_WEB_FORMULA" "ariaflow-web" "http://127.0.0.1:${_ARIAFLOW_WEB_PORT}" || return 1
+    if _wait_ariaflow_web_serving_current_version; then
+      return 0
+    fi
+    _reset_brew_service "$_ARIAFLOW_WEB_FORMULA" "ariaflow-web"
+    ucc_run brew services start "$_ARIAFLOW_WEB_FORMULA" || return 1
+    _wait_http_ready "http://127.0.0.1:${_ARIAFLOW_WEB_PORT}" || return 1
     _wait_ariaflow_web_serving_current_version
   }
 
