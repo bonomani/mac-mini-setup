@@ -1,5 +1,5 @@
 component: docker
-primary_profile: presence
+primary_profile: runtime
 libs: docker
 runner: run_docker_from_yaml
 platforms:
@@ -8,11 +8,25 @@ platforms:
 targets:
   docker-desktop:
     component: docker
-    profile: presence
+    profile: configured
     type: package
     depends_on:
       - homebrew
     provided_by_tool: brew-cask
     oracle:
       configured: "[[ -d /Applications/Docker.app ]]"
+
+  docker-desktop-runtime:
+    component: docker
+    profile: runtime
+    type: runtime
+    depends_on:
+      - docker-desktop
+    runtime_manager: desktop-app
+    probe_kind: command
+    oracle:
+      configured: "[[ -d /Applications/Docker.app ]]"
       runtime: "docker info >/dev/null 2>&1"
+    evidence:
+      version: "defaults read '/Applications/Docker.app/Contents/Info' CFBundleShortVersionString 2>/dev/null || docker --version 2>/dev/null | awk '{print $3}' | tr -d ','"
+      pid: "pgrep -f '/Applications/Docker.app' 2>/dev/null | head -1"

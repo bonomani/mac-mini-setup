@@ -92,30 +92,20 @@ print_summary_section() {
 }
 
 print_services_summary() {
-  local services_file="$1"
-  local name="" url="" note="" line=""
-  [[ -f "$services_file" ]] || return 0
+  local root_dir="$1"
+  local query_script="$root_dir/tools/validate_targets_manifest.py"
+  local manifest_dir="$root_dir/ucc"
+  local rows="" name="" url="" note="" line=""
+  [[ -f "$query_script" && -d "$manifest_dir" ]] || return 0
+  rows="$(python3 "$query_script" --runtime-endpoints "$manifest_dir" 2>/dev/null || true)"
+  [[ -n "$rows" ]] || return 0
   echo "  ──────────────────────────────────────────────────────"
   echo "  Services"
-  while IFS= read -r _line; do
-    case "$_line" in
-      "  - name: "*)
-        if [[ -n "$name" ]]; then
-          line="    $(printf '%-16s' "$name") → ${url}"
-          [[ -n "$note" ]] && line="${line}   (${note})"
-          echo "$line"
-        fi
-        name="${_line#  - name: }"; url=""; note="" ;;
-      "    name: "*)  name="${_line#    name: }" ;;
-      "    url: "*)   url="${_line#    url: }" ;;
-      "    note: "*)  note="${_line#    note: }" ;;
-    esac
-  done < "$services_file"
-  if [[ -n "$name" ]]; then
+  while IFS=$'\t' read -r _target name url note; do
     line="    $(printf '%-16s' "$name") → ${url}"
     [[ -n "$note" ]] && line="${line}   (${note})"
     echo "$line"
-  fi
+  done <<< "$rows"
 }
 
 print_final_summary() {
@@ -158,7 +148,7 @@ print_final_summary() {
 
   [[ ${#FAILED_COMPONENTS[@]} -gt 0 ]] && { echo ""; log_warn "Failed components: ${FAILED_COMPONENTS[*]}"; }
 
-  print_services_summary "$dir/services.yaml"
+  print_services_summary "$dir"
   echo "  ──────────────────────────────────────────────────────"
   echo "  Declarations: $UCC_DECLARATION_FILE"
   echo "  Results:      $UCC_RESULT_FILE"

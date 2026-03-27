@@ -27,7 +27,7 @@ _ucc_display_name() {
   case "$1" in
     ai-stack-compose-file) printf 'stack definition' ;;
     ai-stack-running)      printf 'stack runtime' ;;
-    docker-running)        printf 'docker runtime' ;;
+    docker-desktop-runtime) printf 'docker runtime' ;;
     system-composition)    printf 'composition' ;;
     *)                     printf '%s' "$1" ;;
   esac
@@ -55,6 +55,45 @@ ucc_brew_target() {
   ucc_target --profile presence --name "$tname" --observe "_ubt_obs_${fn}" \
              --evidence "_ubt_evd_${fn}" \
              --install "_ubt_ins_${fn}" --update "_ubt_upd_${fn}"
+}
+
+_ucc_brew_service_status() {
+  local service_name="$1"
+  brew services list 2>/dev/null | awk -v svc="$service_name" '$1==svc {print $2; found=1} END {if (!found) print ""}'
+}
+
+# ucc_brew_formula_target <target-name> <brew-pkg> [brew-ref]
+# Observe using the local formula name, install/upgrade using the given brew ref.
+ucc_brew_formula_target() {
+  local tname="$1" pkg="$2" brew_ref="${3:-$2}"
+  local fn; fn="${tname//[^a-zA-Z0-9]/_}"
+  eval "_ubft_obs_${fn}() { local raw; raw=\$(brew_observe '${pkg}'); ucc_asm_package_state \"\$raw\"; }"
+  eval "_ubft_evd_${fn}() { local ver; ver=\$(_brew_cached_version '${pkg}'); [[ -n \"\$ver\" ]] && printf 'version=%s' \"\$ver\"; }"
+  eval "_ubft_ins_${fn}() { brew_install '${brew_ref}'; }"
+  eval "_ubft_upd_${fn}() { brew_upgrade '${brew_ref}'; }"
+  ucc_target_nonruntime --name "$tname" \
+    --observe "_ubft_obs_${fn}" \
+    --evidence "_ubft_evd_${fn}" \
+    --install "_ubft_ins_${fn}" \
+    --update "_ubft_upd_${fn}"
+}
+
+# ucc_brew_service_target <target-name> <service-name> [brew-ref]
+# Standard brew service: observe via `brew services list`,
+# install=start, update=restart.
+ucc_brew_service_target() {
+  local tname="$1" service_name="$2" brew_ref="${3:-$2}"
+  local fn; fn="${tname//[^a-zA-Z0-9]/_}"
+  eval "_ubst_obs_${fn}() { if [[ \"\$(_ucc_brew_service_status '${service_name}')\" == 'started' ]]; then ucc_asm_service_state 'started'; else ucc_asm_service_state 'stopped'; fi; }"
+  eval "_ubst_evd_${fn}() { local ver; ver=\$(_brew_cached_version '${service_name}'); [[ -n \"\$ver\" ]] && printf 'version=%s' \"\$ver\"; }"
+  eval "_ubst_ins_${fn}() { ucc_run brew services start '${brew_ref}'; }"
+  eval "_ubst_upd_${fn}() { ucc_run brew services restart '${brew_ref}'; }"
+  ucc_target_service --name "$tname" \
+    --observe "_ubst_obs_${fn}" \
+    --evidence "_ubst_evd_${fn}" \
+    --desired "$(ucc_asm_runtime_desired)" \
+    --install "_ubst_ins_${fn}" \
+    --update "_ubst_upd_${fn}"
 }
 
 # ucc_brew_cask_target <target-name> <cask-pkg>

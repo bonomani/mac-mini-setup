@@ -53,46 +53,8 @@ print(",".join(sorted(services.keys())))
 PY
   }
 
-  # ---- Docker running ----
-  _observe_docker_running() {
-    if [[ -d "/Applications/Docker.app" ]] || command -v docker >/dev/null 2>&1; then
-      if docker info &>/dev/null 2>&1; then
-        ucc_asm_state --installation Configured --runtime Running \
-          --health Healthy --admin Enabled --dependencies DepsReady
-      else
-        ucc_asm_state --installation Installed --runtime Stopped \
-          --health Unavailable --admin Enabled --dependencies DepsFailed
-      fi
-    else
-      ucc_asm_state --installation Absent --runtime NeverStarted \
-        --health Unavailable --admin Enabled --dependencies DepsUnknown
-    fi
-  }
-  _evidence_docker_running() { ucc_eval_evidence_from_yaml "$cfg_dir" "$yaml" "docker-running"; }
-  _start_docker() {
-    if [[ "${UIC_PREF_SERVICE_POLICY:-autostart}" != "autostart" ]]; then
-      log_warn "Docker not running — start it manually (service-policy=manual)"
-      return 1
-    fi
-    log_info "Starting Docker Desktop (service-policy=autostart)..."
-    open -a Docker
-    for i in $(seq 1 24); do
-      docker info &>/dev/null 2>&1 && return 0
-      log_debug "Waiting for Docker daemon ($i/24)..."
-      sleep 5
-    done
-    log_warn "Docker daemon did not start in time"
-    return 1
-  }
-
-  ucc_target_service \
-    --name    "docker-running" \
-    --observe _observe_docker_running \
-    --evidence _evidence_docker_running \
-    --desired "$(ucc_asm_runtime_desired)" \
-    --install _start_docker
-
-  # Abort if Docker still not running
+  # Abort if Docker still not running after the docker component runtime target
+  # has had a chance to converge.
   docker info &>/dev/null 2>&1 || {
     log_warn "Docker not running — skipping AI stack"
     return 1

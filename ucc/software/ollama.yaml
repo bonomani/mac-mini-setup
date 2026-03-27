@@ -34,11 +34,13 @@ targets:
   ollama-service:
     component: ollama
     profile: runtime
-    type: service
+    type: runtime
     depends_on:
       - ollama
     soft_depends_on:
       - gate:ollama-api
+    runtime_manager: custom
+    probe_kind: http
     oracle:
       configured: "ollama --version >/dev/null 2>&1"
       runtime: 'curl -fsS "http://${_OLLAMA_API_HOST}:${_OLLAMA_API_PORT}/api/tags" >/dev/null 2>&1'
@@ -46,6 +48,10 @@ targets:
       version: "ollama --version 2>/dev/null | awk '{print $NF}'"
       pid: "pgrep -f 'ollama (serve|app)' 2>/dev/null | head -1"
       port: "${api_port}"
+    endpoints:
+      - name: Ollama API
+        url: http://127.0.0.1:11434
+        note: ollama pull <model>
 
 # Model sets — controlled by UIC preference ollama-model-autopull (none|small|medium|large)
 # Default is none — no automatic downloads.

@@ -10,7 +10,7 @@ system:
   depends_on:
     - homebrew
     - git
-    - docker-running
+    - docker-desktop-runtime
     - python
     - ollama-service
     - ai-stack-running
@@ -29,7 +29,7 @@ targets:
     depends_on:
       - homebrew
       - git
-      - docker-running
+      - docker-desktop-runtime
       - python
       - ollama-service
       - ai-stack-running

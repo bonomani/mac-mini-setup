@@ -31,7 +31,6 @@ state can describe the whole machine, not only individual components.
 | `CLAUDE.md` | Markdown | Local agent instructions | Repo-specific coding guidance |
 | `install.sh` | Bash | Main orchestrator | Runs UIC, UCC, TIC, and summaries |
 | `clean.py` | Python | Cleanup helper | Removes Python cache and build artifacts |
-| `services.yaml` | YAML | Service catalog | URLs shown in the final summary |
 | `.gitignore` | Git config | Ignore rules | Python, venv, IDE, env, system files |
 | `.claude/settings.json` | JSON | Claude tool permissions | Repo-local permission allowlist |
 
@@ -59,7 +58,7 @@ state can describe the whole machine, not only individual components.
 | `lib/uic.sh` | Bash library | UIC preflight engine | Gates, preferences, export/template logic |
 | `lib/tic.sh` | Bash library | TIC test helper | Read-only verification primitive |
 | `lib/tic_runner.sh` | Bash library | TIC YAML runner | Loads test suites and container checks |
-| `lib/summary.sh` | Bash library | Summary renderer | Prints final component/profile/service summary |
+| `lib/summary.sh` | Bash library | Summary renderer | Prints final component/profile/runtime summary |
 | `lib/utils.sh` | Bash library | Shared helpers | PATH setup, YAML wrappers, install helpers |
 | `lib/homebrew.sh` | Bash library | Homebrew component logic | Xcode CLT, Homebrew install, analytics-off |
 | `lib/git.sh` | Bash library | Git component logic | Package install and global config |
@@ -81,7 +80,7 @@ state can describe the whole machine, not only individual components.
 |---|---|---|---|
 | `tools/read_config.py` | Python | Config reader | YAML access helper built on `yaml.safe_load` |
 | `tools/validate_setup_state_artifact.py` | Python | ASM artifact validator | Delegates to external ASM validator |
-| `tools/validate_targets_manifest.py` | Python | UCC manifest validator | Checks targets, deps, components, dispatch |
+| `tools/validate_targets_manifest.py` | Python | UCC manifest validator | Checks targets, deps, components, dispatch, runtime endpoints |
 
 ### Policy
 
@@ -98,11 +97,11 @@ state can describe the whole machine, not only individual components.
 |---|---|---|---|
 | `ucc/software/homebrew.yaml` | YAML manifest | Homebrew component | Xcode CLT and brew targets |
 | `ucc/software/git.yaml` | YAML manifest | Git component | Brew-backed package target |
-| `ucc/software/docker.yaml` | YAML manifest | Docker component | Docker Desktop package/runtime target |
+| `ucc/software/docker.yaml` | YAML manifest | Docker component | Docker Desktop package plus desktop runtime target |
 | `ucc/software/python.yaml` | YAML manifest | Python component | pyenv, xz, python, pip targets |
-| `ucc/software/ollama.yaml` | YAML manifest | Ollama component | Package, service, evidence, model sets |
+| `ucc/software/ollama.yaml` | YAML manifest | Ollama component | Package, runtime target, evidence, model sets |
 | `ucc/software/ai-python-stack.yaml` | YAML manifest | AI Python stack | Pip groups and Unsloth Studio |
-| `ucc/software/ai-apps.yaml` | YAML manifest | AI apps stack | Docker Compose targets and services |
+| `ucc/software/ai-apps.yaml` | YAML manifest | AI apps stack | Docker Compose targets and runtime endpoints |
 | `ucc/software/dev-tools.yaml` | YAML manifest | Dev tools component | VS Code, Node, OMZ, ariaflow, npm |
 | `ucc/software/vscode-settings.json` | JSON | VS Code settings patch | Merged into user settings |
 

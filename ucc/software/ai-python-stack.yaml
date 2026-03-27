@@ -18,12 +18,17 @@ targets:
   unsloth-studio-launchd:
     component: ai-python-stack
     profile: runtime
-    type: service
+    type: runtime
     depends_on:
       - unsloth-studio-setup
+    runtime_manager: launchd
+    probe_kind: http
     oracle:
       configured: 'launchctl list 2>/dev/null | grep -q "${_UNSLOTH_LABEL}"'
       runtime: 'curl -fsS --max-time 5 "http://127.0.0.1:${_UNSLOTH_PORT}" >/dev/null 2>&1'
+    endpoints:
+      - name: Unsloth Studio
+        url: http://0.0.0.0:8888
 
   pip-group-pytorch:
     component: ai-python-stack
@@ -112,9 +117,11 @@ targets:
   mps-available:
     component: ai-python-stack
     profile: runtime
-    type: service
+    type: runtime
     depends_on:
       - pip-group-pytorch
+    runtime_manager: capability
+    probe_kind: command
 # Fields:
 #   name        ucc-target suffix and _pip_group identifier
 #   probe       package name used for pip show / version detection

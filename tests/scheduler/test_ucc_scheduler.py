@@ -130,6 +130,44 @@ class UccSchedulerTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, msg=result.stderr)
             self.assertEqual(order_file.read_text(encoding="utf-8").splitlines(), ["a", "b", "c"])
 
+    def test_runtime_endpoints_query_reads_nested_endpoint_records(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            ucc_dir = self._write_manifest(
+                Path(tmp),
+                textwrap.dedent(
+                    """\
+                    component: fake
+                    primary_profile: runtime
+                    libs: fake
+                    runner: run_fake
+                    targets:
+                      fake-package:
+                        component: fake
+                        profile: configured
+                        type: package
+                      fake-runtime:
+                        component: fake
+                        profile: runtime
+                        type: runtime
+                        depends_on:
+                          - fake-package
+                        runtime_manager: brew-service
+                        probe_kind: http
+                        oracle:
+                          runtime: "curl -fsS http://127.0.0.1:9999 >/dev/null 2>&1"
+                        endpoints:
+                          - name: Fake API
+                            url: http://127.0.0.1:9999
+                            note: primary
+                    """
+                ),
+            )
+            output = subprocess.check_output(
+                ["python3", str(QUERY), "--runtime-endpoints", str(ucc_dir)],
+                text=True,
+            ).strip()
+            self.assertEqual(output, "fake-runtime\tFake API\thttp://127.0.0.1:9999\tprimary")
+
     def test_missing_declared_dependency_raises_execution_error(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)

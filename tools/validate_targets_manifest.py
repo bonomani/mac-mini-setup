@@ -3,6 +3,8 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
+import yaml
+
 
 KNOWN_PROFILES = {"presence", "configured", "runtime", "parametric", "verification"}
 KNOWN_TARGET_TYPES = {
@@ -14,12 +16,6 @@ KNOWN_TARGET_TYPES = {
 }
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-
-
-def _strip_yaml_quotes(value: str):
-    if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
-        return value[1:-1]
-    return value
 
 
 def parse_gate_names(path: Path):
@@ -40,82 +36,20 @@ def parse_gate_names(path: Path):
     return gate_names
 
 def parse_manifest_file(path: Path):
-    manifest = {"component": None, "primary_profile": None, "targets": {}}
-    current = None
-    current_list = None
-    in_targets = False
-    in_top_block = False  # inside a non-targets top-level block (list/nested dict)
+    data = yaml.safe_load(path.read_text()) or {}
+    if not isinstance(data, dict):
+        raise ValueError(f"{path}: manifest must contain a top-level mapping")
 
-    for lineno, raw in enumerate(path.read_text().splitlines(), start=1):
-        if not raw.strip() or raw.lstrip().startswith("#"):
-            continue
-        if raw.rstrip() != raw:
-            raw = raw.rstrip()
-        indent = len(raw) - len(raw.lstrip(" "))
-        text = raw.strip()
+    targets = data.get("targets") or {}
+    if not isinstance(targets, dict):
+        raise ValueError(f"{path}: top-level 'targets' must be a mapping")
 
-        if indent == 0:
-            in_top_block = False
-            if text == "targets:":
-                in_targets = True
-                continue
-            if ":" in text:
-                key, value = text.split(":", 1)
-                key = key.strip()
-                value = value.strip()
-                if not value:
-                    in_top_block = True  # list or nested dict — skip its content
-                    manifest[key] = None
-                else:
-                    manifest[key] = value
-                continue
-            raise ValueError(f"{path}:{lineno}: unsupported top-level structure")
+    manifest = dict(data)
+    manifest["targets"] = targets
 
-        if in_top_block:
-            continue  # skip list/dict content of non-targets top-level blocks
-
-        if not in_targets:
-            raise ValueError(f"{path}:{lineno}: content before 'targets:'")
-
-        if indent == 2 and text.endswith(":"):
-            current = _strip_yaml_quotes(text[:-1].strip())
-            manifest["targets"][current] = {}
-            current_list = None
-            continue
-
-        if current is None:
-            raise ValueError(f"{path}:{lineno}: field without target")
-
-        if indent == 4 and text.endswith(":"):
-            key = text[:-1]
-            if key in {"depends_on", "soft_depends_on"}:
-                manifest["targets"][current][key] = []
-                current_list = key
-            elif key in {"oracle", "evidence"}:
-                manifest["targets"][current][key] = {}
-                current_list = key
-            else:
-                raise ValueError(f"{path}:{lineno}: unsupported list field '{key}'")
-            continue
-
-        if indent == 4 and ":" in text:
-            key, value = text.split(":", 1)
-            manifest["targets"][current][key.strip()] = value.strip()
-            current_list = None
-            continue
-
-        if indent == 6 and text.startswith("- "):
-            if current_list not in {"depends_on", "soft_depends_on"}:
-                raise ValueError(f"{path}:{lineno}: list item without active list")
-            manifest["targets"][current][current_list].append(text[2:].strip())
-            continue
-
-        if indent == 6 and ":" in text and current_list in {"oracle", "evidence"}:
-            key, value = text.split(":", 1)
-            manifest["targets"][current][current_list][key.strip()] = value.strip()
-            continue
-
-        raise ValueError(f"{path}:{lineno}: unsupported structure")
+    for name, target_data in targets.items():
+        if not isinstance(target_data, dict):
+            raise ValueError(f"{path}: target '{name}' must be a mapping")
 
     return manifest
 
@@ -176,6 +110,20 @@ def validate(manifest, known_gates):
             errors.append(f"target '{name}' has unknown type '{target_type}'")
         if not component:
             errors.append(f"target '{name}' missing component")
+
+        endpoints = data.get("endpoints")
+        if endpoints is not None:
+            if not isinstance(endpoints, list):
+                errors.append(f"target '{name}' endpoints must be a list")
+            else:
+                for index, endpoint in enumerate(endpoints):
+                    if not isinstance(endpoint, dict):
+                        errors.append(f"target '{name}' endpoint {index} must be a mapping")
+                        continue
+                    if not endpoint.get("name"):
+                        errors.append(f"target '{name}' endpoint {index} missing name")
+                    if not endpoint.get("url"):
+                        errors.append(f"target '{name}' endpoint {index} missing url")
 
         for dep in data.get("depends_on", []):
             if dep not in targets:
@@ -281,6 +229,7 @@ def main():
     components_mode = False
     dispatch_mode = False
     oracles_mode = False
+    runtime_endpoints_mode = False
     ordered_targets_mode = False
     target_name = None
     if len(args) >= 2 and args[0] == "--deps":
@@ -304,6 +253,9 @@ def main():
         args = args[1:]
     elif len(args) >= 1 and args[0] == "--oracles":
         oracles_mode = True
+        args = args[1:]
+    elif len(args) >= 1 and args[0] == "--runtime-endpoints":
+        runtime_endpoints_mode = True
         args = args[1:]
 
     path = Path(args[0]) if args else Path("ucc")
@@ -360,6 +312,26 @@ def main():
                 continue
             for level, cmd in oracle.items():
                 print(f"{name}\t{profile}\t{level}\t{cmd}")
+        return 0
+
+    if runtime_endpoints_mode:
+        # Output tab-separated: target_name \t endpoint_name \t url \t note
+        for name in ordered:
+            data = manifest["targets"][name]
+            if data.get("profile") != "runtime":
+                continue
+            endpoints = data.get("endpoints") or []
+            if not isinstance(endpoints, list):
+                continue
+            for endpoint in endpoints:
+                if not isinstance(endpoint, dict):
+                    continue
+                url = endpoint.get("url", "")
+                if not url:
+                    continue
+                print(
+                    f"{name}\t{endpoint.get('name', '')}\t{url}\t{endpoint.get('note', '')}"
+                )
         return 0
 
     print(f"OK: {len(manifest['targets'])} orchestration targets validated")
