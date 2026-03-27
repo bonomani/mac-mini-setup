@@ -92,6 +92,25 @@ _ucc_ver_path_evidence() {
 # Check if an ollama model is present
 ollama_model_present() { ollama list 2>/dev/null | grep -q "^$1"; }
 
+# Return installed version of a global npm package, or empty string if absent.
+npm_global_version() {
+  npm ls -g "$1" --depth=0 --json 2>/dev/null | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+deps = d.get('dependencies', {})
+k = next(iter(deps), '')
+if k:
+    print(deps[k].get('version', ''))
+" 2>/dev/null || true
+}
+
+# Observe a global npm package as an ASM package raw state.
+npm_global_observe() {
+  local version
+  version="$(npm_global_version "$1")"
+  printf '%s' "${version:-absent}"
+}
+
 # Install a brew formula (package is absent)
 brew_install() {
   ucc_run brew install "$@" || return $?

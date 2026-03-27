@@ -490,34 +490,6 @@ ucc_brew_runtime_formula_target() {
     --update "_ubrt_upd_${fn}"
 }
 
-# ucc_brew_cask_target <target-name> <cask-pkg>
-# Standard brew cask: install=brew install --cask, update=brew upgrade --cask
-ucc_brew_cask_target() {
-  local tname="$1" pkg="$2"
-  local fn; fn="${pkg//[^a-zA-Z0-9]/_}"
-  eval "_ubct_obs_${fn}() { local raw; raw=\$(brew_cask_observe '${pkg}'); ucc_asm_package_state \"\$raw\"; }"
-  eval "_ubct_evd_${fn}() { local ver; ver=\$(_brew_cask_cached_version '${pkg}'); [[ -n \"\$ver\" ]] && printf 'version=%s' \"\$ver\"; }"
-  eval "_ubct_ins_${fn}() { brew_cask_install '${pkg}'; }"
-  eval "_ubct_upd_${fn}() { brew_cask_upgrade '${pkg}'; }"
-  ucc_target --profile presence --name "$tname" --observe "_ubct_obs_${fn}" \
-             --evidence "_ubct_evd_${fn}" \
-             --install "_ubct_ins_${fn}" --update "_ubct_upd_${fn}"
-}
-
-# ucc_npm_target <npm-pkg>
-# Global npm package: observe=npm ls -g desired=current install=npm install -g update=npm update -g
-ucc_npm_target() {
-  local pkg="$1"
-  local fn; fn="${pkg//[@\/]/_}"
-  eval "_unt_obs_${fn}() { local raw; raw=\$(npm ls -g '${pkg}' --depth=0 --json 2>/dev/null | python3 -c \"import sys,json; d=json.load(sys.stdin); deps=d.get('dependencies',{}); k=next(iter(deps),''); print(deps[k].get('version','present') if k else 'absent')\" 2>/dev/null || echo 'absent'); ucc_asm_package_state \"\$raw\"; }"
-  eval "_unt_evd_${fn}() { local ver; ver=\$(npm ls -g '${pkg}' --depth=0 --json 2>/dev/null | python3 -c \"import sys,json; d=json.load(sys.stdin); deps=d.get('dependencies',{}); k=next(iter(deps),''); print(deps[k].get('version','')) if k else None\" 2>/dev/null); [[ -n \"\$ver\" ]] && printf 'version=%s' \"\$ver\"; }"
-  eval "_unt_ins_${fn}() { ucc_run npm install -g '${pkg}'; }"
-  eval "_unt_upd_${fn}() { ucc_run npm update  -g '${pkg}'; }"
-  ucc_target --profile presence --name "npm-global-${pkg}" --observe "_unt_obs_${fn}" \
-             --evidence "_unt_evd_${fn}" \
-             --install "_unt_ins_${fn}" --update "_unt_upd_${fn}"
-}
-
 # ucc_pyenv_version_target <target-name> <version>
 # pyenv-managed language version: observe=pyenv versions, install=pyenv install+global
 ucc_pyenv_version_target() {

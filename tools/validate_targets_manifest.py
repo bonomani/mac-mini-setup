@@ -279,6 +279,9 @@ def validate(manifest, known_gates):
 
         _validate_generated_target_collection(manifest_data, "vscode_extensions", errors, required_dep="vscode-code-cmd")
         _validate_generated_target_collection(manifest_data, "pip_groups", errors, required_dep="pip-latest")
+        _validate_generated_target_collection(manifest_data, "cli_tools", errors, required_dep="homebrew")
+        _validate_generated_target_collection(manifest_data, "npm_packages", errors, required_dep="node-lts")
+        _validate_generated_target_collection(manifest_data, "casks", errors, required_dep="homebrew")
         for section_name in ("small", "medium", "large"):
             _validate_generated_target_collection(manifest_data, section_name, errors, required_dep="ollama")
 

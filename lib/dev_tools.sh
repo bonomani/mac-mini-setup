@@ -18,12 +18,10 @@ run_dev_tools_from_yaml() {
   _ARIAFLOW_TAP="$(      yaml_get "$cfg_dir" "$yaml" ariaflow_tap          bonomani/ariaflow)"
   _ARIAFLOW_FORMULA="${_ARIAFLOW_TAP}/ariaflow"
   _ARIAFLOW_WEB_FORMULA="${_ARIAFLOW_TAP}/ariaflow-web"
-
-
   # ---- CLI tools (brew) ----
-  local _tool
-  while IFS= read -r _tool; do
-    [[ -n "$_tool" ]] && ucc_brew_target "cli-$_tool" "$_tool"
+  local _target
+  while IFS= read -r _target; do
+    [[ -n "$_target" ]] && ucc_yaml_simple_target "$cfg_dir" "$yaml" "$_target"
   done < <(yaml_list "$cfg_dir" "$yaml" cli_tools)
 
   # ---- VSCode ----
@@ -136,10 +134,9 @@ PY
     --update   _apply_vscode_settings
 
   # ---- GUI tools (brew cask) ----
-  local _cask_name _cask_id
-  while IFS=$'\t' read -r _cask_name _cask_id; do
-    [[ -n "$_cask_name" ]] && ucc_brew_cask_target "$_cask_name" "$_cask_id"
-  done < <(yaml_records "$cfg_dir" "$yaml" casks name id)
+  while IFS= read -r _target; do
+    [[ -n "$_target" ]] && ucc_yaml_simple_target "$cfg_dir" "$yaml" "$_target"
+  done < <(yaml_list "$cfg_dir" "$yaml" casks)
 
   # ---- Node.js LTS ----
   # Ensure node@N is first in PATH before observe so version check sees the right binary
@@ -178,9 +175,8 @@ PY
     --update   _update_node_lts
 
   # ---- npm global packages ----
-  local _pkg
-  while IFS= read -r _pkg; do
-    [[ -n "$_pkg" ]] && ucc_npm_target "$_pkg"
+  while IFS= read -r _target; do
+    [[ -n "$_target" ]] && ucc_yaml_simple_target "$cfg_dir" "$yaml" "$_target"
   done < <(yaml_list "$cfg_dir" "$yaml" npm_packages)
 
   # ---- YAML-first simple configured targets ----

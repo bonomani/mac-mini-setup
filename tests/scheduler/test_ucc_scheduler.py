@@ -478,6 +478,42 @@ class UccSchedulerTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("generated target 'vscode-ext-test.example' in section 'vscode_extensions' requires provided_by_tool", result.stderr)
 
+    def test_manifest_validation_rejects_sparse_cli_generated_targets(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            ucc_dir = self._write_manifest(
+                Path(tmp),
+                textwrap.dedent(
+                    """\
+                    component: fake
+                    primary_profile: configured
+                    libs: fake
+                    runner: run_fake
+                    targets:
+                      homebrew:
+                        component: fake
+                        profile: configured
+                        type: package
+                        state_model: package
+                      cli-fake:
+                        component: fake
+                        profile: configured
+                        type: package
+                        state_model: package
+                        depends_on:
+                          - homebrew
+                    cli_tools:
+                      - cli-fake
+                    """
+                ),
+            )
+            result = subprocess.run(
+                ["python3", str(QUERY), str(ucc_dir)],
+                text=True,
+                capture_output=True,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("generated target 'cli-fake' in section 'cli_tools' requires provided_by_tool", result.stderr)
+
     def test_yaml_capability_target_uses_runtime_oracle_and_yaml_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)

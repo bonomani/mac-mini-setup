@@ -197,6 +197,13 @@ targets:
     state_model: package
     depends_on:
       - homebrew
+    provided_by_tool: brew
+    package_ref: jq
+    observe_cmd: "brew_observe '${package_ref}'"
+    evidence:
+      version: "_brew_cached_version '${package_ref}'"
+    install_cmd: "brew_install '${package_ref}'"
+    update_cmd: "brew_upgrade '${package_ref}'"
 
   cli-wget:
     component: dev-tools
@@ -205,6 +212,13 @@ targets:
     state_model: package
     depends_on:
       - homebrew
+    provided_by_tool: brew
+    package_ref: wget
+    observe_cmd: "brew_observe '${package_ref}'"
+    evidence:
+      version: "_brew_cached_version '${package_ref}'"
+    install_cmd: "brew_install '${package_ref}'"
+    update_cmd: "brew_upgrade '${package_ref}'"
 
   cli-curl:
     component: dev-tools
@@ -213,6 +227,13 @@ targets:
     state_model: package
     depends_on:
       - homebrew
+    provided_by_tool: brew
+    package_ref: curl
+    observe_cmd: "brew_observe '${package_ref}'"
+    evidence:
+      version: "_brew_cached_version '${package_ref}'"
+    install_cmd: "brew_install '${package_ref}'"
+    update_cmd: "brew_upgrade '${package_ref}'"
 
   cli-htop:
     component: dev-tools
@@ -221,6 +242,13 @@ targets:
     state_model: package
     depends_on:
       - homebrew
+    provided_by_tool: brew
+    package_ref: htop
+    observe_cmd: "brew_observe '${package_ref}'"
+    evidence:
+      version: "_brew_cached_version '${package_ref}'"
+    install_cmd: "brew_install '${package_ref}'"
+    update_cmd: "brew_upgrade '${package_ref}'"
 
   cli-tmux:
     component: dev-tools
@@ -229,6 +257,13 @@ targets:
     state_model: package
     depends_on:
       - homebrew
+    provided_by_tool: brew
+    package_ref: tmux
+    observe_cmd: "brew_observe '${package_ref}'"
+    evidence:
+      version: "_brew_cached_version '${package_ref}'"
+    install_cmd: "brew_install '${package_ref}'"
+    update_cmd: "brew_upgrade '${package_ref}'"
 
   cli-fzf:
     component: dev-tools
@@ -237,6 +272,13 @@ targets:
     state_model: package
     depends_on:
       - homebrew
+    provided_by_tool: brew
+    package_ref: fzf
+    observe_cmd: "brew_observe '${package_ref}'"
+    evidence:
+      version: "_brew_cached_version '${package_ref}'"
+    install_cmd: "brew_install '${package_ref}'"
+    update_cmd: "brew_upgrade '${package_ref}'"
 
   cli-ripgrep:
     component: dev-tools
@@ -245,6 +287,13 @@ targets:
     state_model: package
     depends_on:
       - homebrew
+    provided_by_tool: brew
+    package_ref: ripgrep
+    observe_cmd: "brew_observe '${package_ref}'"
+    evidence:
+      version: "_brew_cached_version '${package_ref}'"
+    install_cmd: "brew_install '${package_ref}'"
+    update_cmd: "brew_upgrade '${package_ref}'"
 
   cli-fd:
     component: dev-tools
@@ -253,6 +302,13 @@ targets:
     state_model: package
     depends_on:
       - homebrew
+    provided_by_tool: brew
+    package_ref: fd
+    observe_cmd: "brew_observe '${package_ref}'"
+    evidence:
+      version: "_brew_cached_version '${package_ref}'"
+    install_cmd: "brew_install '${package_ref}'"
+    update_cmd: "brew_upgrade '${package_ref}'"
 
   cli-tree:
     component: dev-tools
@@ -261,6 +317,13 @@ targets:
     state_model: package
     depends_on:
       - homebrew
+    provided_by_tool: brew
+    package_ref: tree
+    observe_cmd: "brew_observe '${package_ref}'"
+    evidence:
+      version: "_brew_cached_version '${package_ref}'"
+    install_cmd: "brew_install '${package_ref}'"
+    update_cmd: "brew_upgrade '${package_ref}'"
 
   cli-uv:
     component: dev-tools
@@ -269,6 +332,13 @@ targets:
     state_model: package
     depends_on:
       - homebrew
+    provided_by_tool: brew
+    package_ref: uv
+    observe_cmd: "brew_observe '${package_ref}'"
+    evidence:
+      version: "_brew_cached_version '${package_ref}'"
+    install_cmd: "brew_install '${package_ref}'"
+    update_cmd: "brew_upgrade '${package_ref}'"
 
   cli-pnpm:
     component: dev-tools
@@ -277,6 +347,13 @@ targets:
     state_model: package
     depends_on:
       - homebrew
+    provided_by_tool: brew
+    package_ref: pnpm
+    observe_cmd: "brew_observe '${package_ref}'"
+    evidence:
+      version: "_brew_cached_version '${package_ref}'"
+    install_cmd: "brew_install '${package_ref}'"
+    update_cmd: "brew_upgrade '${package_ref}'"
 
   cli-gcc:
     component: dev-tools
@@ -285,6 +362,13 @@ targets:
     state_model: package
     depends_on:
       - homebrew
+    provided_by_tool: brew
+    package_ref: gcc
+    observe_cmd: "brew_observe '${package_ref}'"
+    evidence:
+      version: "_brew_cached_version '${package_ref}'"
+    install_cmd: "brew_install '${package_ref}'"
+    update_cmd: "brew_upgrade '${package_ref}'"
 
   cli-gh:
     component: dev-tools
@@ -293,6 +377,13 @@ targets:
     state_model: package
     depends_on:
       - homebrew
+    provided_by_tool: brew
+    package_ref: gh
+    observe_cmd: "brew_observe '${package_ref}'"
+    evidence:
+      version: "_brew_cached_version '${package_ref}'"
+    install_cmd: "brew_install '${package_ref}'"
+    update_cmd: "brew_upgrade '${package_ref}'"
 
   cli-llama.cpp:
     component: dev-tools
@@ -301,6 +392,13 @@ targets:
     state_model: package
     depends_on:
       - homebrew
+    provided_by_tool: brew
+    package_ref: llama.cpp
+    observe_cmd: "brew_observe '${package_ref}'"
+    evidence:
+      version: "_brew_cached_version '${package_ref}'"
+    install_cmd: "brew_install '${package_ref}'"
+    update_cmd: "brew_upgrade '${package_ref}'"
 
   cli-opencode:
     component: dev-tools
@@ -309,6 +407,13 @@ targets:
     state_model: package
     depends_on:
       - homebrew
+    provided_by_tool: brew
+    package_ref: opencode
+    observe_cmd: "brew_observe '${package_ref}'"
+    evidence:
+      version: "_brew_cached_version '${package_ref}'"
+    install_cmd: "brew_install '${package_ref}'"
+    update_cmd: "brew_upgrade '${package_ref}'"
 
   cli-aria2:
     component: dev-tools
@@ -317,6 +422,13 @@ targets:
     state_model: package
     depends_on:
       - homebrew
+    provided_by_tool: brew
+    package_ref: aria2
+    observe_cmd: "brew_observe '${package_ref}'"
+    evidence:
+      version: "_brew_cached_version '${package_ref}'"
+    install_cmd: "brew_install '${package_ref}'"
+    update_cmd: "brew_upgrade '${package_ref}'"
 
   cli-cmake:
     component: dev-tools
@@ -325,6 +437,13 @@ targets:
     state_model: package
     depends_on:
       - homebrew
+    provided_by_tool: brew
+    package_ref: cmake
+    observe_cmd: "brew_observe '${package_ref}'"
+    evidence:
+      version: "_brew_cached_version '${package_ref}'"
+    install_cmd: "brew_install '${package_ref}'"
+    update_cmd: "brew_upgrade '${package_ref}'"
 
   vscode-ext-ms-python.python:
     component: dev-tools
@@ -450,60 +569,100 @@ targets:
     profile: configured
     type: package
     state_model: package
+    display_name: iTerm2
     depends_on:
       - homebrew
+    provided_by_tool: brew-cask
+    cask_ref: iterm2
+    observe_cmd: "brew_cask_observe '${cask_ref}'"
+    evidence:
+      version: "_brew_cask_cached_version '${cask_ref}'"
+    install_cmd: "brew_cask_install '${cask_ref}'"
+    update_cmd: "brew_cask_upgrade '${cask_ref}'"
 
   lm-studio:
     component: dev-tools
     profile: configured
     type: package
     state_model: package
+    display_name: LM Studio
     depends_on:
       - homebrew
+    provided_by_tool: brew-cask
+    cask_ref: lm-studio
+    observe_cmd: "brew_cask_observe '${cask_ref}'"
+    evidence:
+      version: "_brew_cask_cached_version '${cask_ref}'"
+    install_cmd: "brew_cask_install '${cask_ref}'"
+    update_cmd: "brew_cask_upgrade '${cask_ref}'"
 
   npm-global-@openai/codex:
     component: dev-tools
     profile: configured
     type: package
     state_model: package
+    display_name: Codex CLI
     depends_on:
       - node-lts
+    provided_by_tool: npm
+    npm_package: "@openai/codex"
+    observe_cmd: "npm_global_observe '${npm_package}'"
+    evidence:
+      version: "npm_global_version '${npm_package}'"
+    install_cmd: "ucc_run npm install -g '${npm_package}'"
+    update_cmd: "ucc_run npm update -g '${npm_package}'"
 
   npm-global-@anthropic-ai/claude-code:
     component: dev-tools
     profile: configured
     type: package
     state_model: package
+    display_name: Claude Code CLI
     depends_on:
       - node-lts
+    provided_by_tool: npm
+    npm_package: "@anthropic-ai/claude-code"
+    observe_cmd: "npm_global_observe '${npm_package}'"
+    evidence:
+      version: "npm_global_version '${npm_package}'"
+    install_cmd: "ucc_run npm install -g '${npm_package}'"
+    update_cmd: "ucc_run npm update -g '${npm_package}'"
 
   npm-global-bmad-method:
     component: dev-tools
     profile: configured
     type: package
     state_model: package
+    display_name: BMAD Method CLI
     depends_on:
       - node-lts
+    provided_by_tool: npm
+    npm_package: "bmad-method"
+    observe_cmd: "npm_global_observe '${npm_package}'"
+    evidence:
+      version: "npm_global_version '${npm_package}'"
+    install_cmd: "ucc_run npm install -g '${npm_package}'"
+    update_cmd: "ucc_run npm update -g '${npm_package}'"
 
 # Homebrew formula CLI tools
 cli_tools:
-  - jq
-  - wget
-  - curl
-  - htop
-  - tmux
-  - fzf
-  - ripgrep
-  - fd
-  - tree
-  - uv
-  - pnpm
-  - gcc
-  - gh
-  - llama.cpp
-  - opencode
-  - aria2
-  - cmake
+  - cli-jq
+  - cli-wget
+  - cli-curl
+  - cli-htop
+  - cli-tmux
+  - cli-fzf
+  - cli-ripgrep
+  - cli-fd
+  - cli-tree
+  - cli-uv
+  - cli-pnpm
+  - cli-gcc
+  - cli-gh
+  - cli-llama.cpp
+  - cli-opencode
+  - cli-aria2
+  - cli-cmake
 
 # VSCode marketplace extensions
 # Each entry is a target name; target-local metadata carries the extension id and commands.
@@ -518,14 +677,12 @@ vscode_extensions:
 
 # npm global packages
 npm_packages:
-  - "@openai/codex"
-  - "@anthropic-ai/claude-code"
-  - bmad-method
+  - npm-global-@openai/codex
+  - npm-global-@anthropic-ai/claude-code
+  - npm-global-bmad-method
 
 # Homebrew cask GUI tools
-# Fields: name (ucc-target name), id (brew cask identifier)
+# Each entry is a target name; target-local metadata carries the cask ref.
 casks:
-  - name: iterm2
-    id: iterm2
-  - name: lm-studio
-    id: lm-studio
+  - iterm2
+  - lm-studio
