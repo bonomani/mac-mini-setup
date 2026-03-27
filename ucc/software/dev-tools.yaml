@@ -106,7 +106,6 @@ targets:
     type: service
     depends_on:
       - ariaflow
-      - aria2-launchd
     oracle:
       configured: "brew services list 2>/dev/null | awk '$1==\"ariaflow\" {print $2}' | grep -q '^started$'"
       runtime: 'curl -fsS --max-time 5 "http://127.0.0.1:${_ARIAFLOW_PORT}/api/status" >/dev/null 2>&1'
