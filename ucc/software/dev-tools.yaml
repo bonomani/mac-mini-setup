@@ -142,7 +142,7 @@ targets:
   networkquality-available:
     component: dev-tools
     profile: capability
-    type: runtime
+    type: capability
     display_name: networkQuality
     runtime_manager: capability
     probe_kind: command

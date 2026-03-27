@@ -21,6 +21,24 @@ targets:
     component: ollama
     profile: configured
     type: precondition
+    state_model: config
+    oracle:
+      configured: |
+        if [[ "${HOST_PLATFORM:-unknown}" == "macos" ]]; then
+          [[ "$(sw_vers -productVersion 2>/dev/null | awk -F. '{print $1}')" -ge ${macos_min_version} ]]
+        else
+          [[ "${HOST_PLATFORM:-unknown}" == "linux" || "${HOST_PLATFORM_VARIANT:-unknown}" == "wsl2" ]]
+        fi
+    evidence:
+      platform: "printf '%s' \"${HOST_PLATFORM:-unknown}\""
+      version: "if [[ \"${HOST_PLATFORM:-unknown}\" == macos ]]; then sw_vers -productVersion 2>/dev/null || printf unknown; else uname -r 2>/dev/null || printf unknown; fi"
+    install_cmd: |
+      if [[ "${HOST_PLATFORM:-unknown}" == "macos" ]]; then
+        log_warn "Ollama requires macOS ${macos_min_version}+ — current: macOS $(sw_vers -productVersion 2>/dev/null || echo unknown)"
+      else
+        log_warn "Ollama is not supported on host platform: ${HOST_PLATFORM:-unknown}"
+      fi
+      return 1
 
   ollama:
     component: ollama
@@ -33,6 +51,7 @@ targets:
     provided_by_tool: ollama-installer
     runtime_manager: custom
     probe_kind: http
+    stopped_health: Unavailable
     oracle:
       configured: "ollama --version >/dev/null 2>&1"
       runtime: 'curl -fsS "http://${api_host}:${api_port}${api_tags_path}" >/dev/null 2>&1'

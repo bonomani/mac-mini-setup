@@ -12,6 +12,7 @@ KNOWN_TARGET_TYPES = {
     "package",
     "config",
     "runtime",
+    "capability",
     "precondition",
     "service",
 }
@@ -231,8 +232,13 @@ def validate(manifest, known_gates):
             "observe_failure",
             "observe_cmd",
             "desired_value",
+            "desired_cmd",
             "evidence_key",
             "dependency_gate",
+            "stopped_installation",
+            "stopped_runtime",
+            "stopped_health",
+            "stopped_dependencies",
         ):
             value = data.get(field)
             if value is not None and (not isinstance(value, str) or not value.strip()):
@@ -286,9 +292,19 @@ def validate(manifest, known_gates):
             if profile != "runtime":
                 errors.append(f"target '{name}' endpoints require profile 'runtime'")
 
-        if profile in {"runtime", "capability"}:
+        if profile == "runtime":
             if target_type != "runtime":
                 errors.append(f"target '{name}' profile '{profile}' requires type 'runtime'")
+            if not isinstance(data.get("runtime_manager"), str) or not data.get("runtime_manager", "").strip():
+                errors.append(f"target '{name}' profile '{profile}' requires runtime_manager")
+            if not isinstance(data.get("probe_kind"), str) or not data.get("probe_kind", "").strip():
+                errors.append(f"target '{name}' profile '{profile}' requires probe_kind")
+            if not isinstance((oracle or {}).get("runtime"), str) or not (oracle or {}).get("runtime", "").strip():
+                errors.append(f"target '{name}' profile '{profile}' requires oracle.runtime")
+
+        if profile == "capability":
+            if target_type != "capability":
+                errors.append(f"target '{name}' profile '{profile}' requires type 'capability'")
             if not isinstance(data.get("runtime_manager"), str) or not data.get("runtime_manager", "").strip():
                 errors.append(f"target '{name}' profile '{profile}' requires runtime_manager")
             if not isinstance(data.get("probe_kind"), str) or not data.get("probe_kind", "").strip():
@@ -303,8 +319,10 @@ def validate(manifest, known_gates):
                 errors.append(f"target '{name}' state_model 'parametric' requires type 'config'")
             if not isinstance(data.get("observe_cmd"), str) or not data.get("observe_cmd", "").strip():
                 errors.append(f"target '{name}' state_model 'parametric' requires observe_cmd")
-            if not isinstance(data.get("desired_value"), str) or not data.get("desired_value", "").strip():
-                errors.append(f"target '{name}' state_model 'parametric' requires desired_value")
+            has_desired_value = isinstance(data.get("desired_value"), str) and data.get("desired_value", "").strip()
+            has_desired_cmd = isinstance(data.get("desired_cmd"), str) and data.get("desired_cmd", "").strip()
+            if not has_desired_value and not has_desired_cmd:
+                errors.append(f"target '{name}' state_model 'parametric' requires desired_value or desired_cmd")
 
         if data.get("install_cmd") is not None or data.get("update_cmd") is not None:
             if state_model is None:

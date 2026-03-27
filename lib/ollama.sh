@@ -7,10 +7,9 @@
 run_ollama_from_yaml() {
   local cfg_dir="$1" yaml="$2"
 
-  local _OLLAMA_MACOS_MIN _OLLAMA_INSTALLER_URL _OLLAMA_BREW_SERVICE_NAME
+  local _OLLAMA_INSTALLER_URL _OLLAMA_BREW_SERVICE_NAME
   local _OLLAMA_API_HOST _OLLAMA_API_PORT _OLLAMA_API_TAGS_PATH _OLLAMA_LOG
-  local _OLLAMA_STOP_PATTERN _OLLAMA_START_CMD _OLLAMA_API_URL
-  _OLLAMA_MACOS_MIN="$(    yaml_get "$cfg_dir" "$yaml" macos_min_version    14)"
+  local _OLLAMA_STOP_PATTERN _OLLAMA_START_CMD _OLLAMA_API_URL _OLLAMA_HOST_SUPPORTED_CMD
   _OLLAMA_INSTALLER_URL="$(yaml_get "$cfg_dir" "$yaml" installer_url        "https://ollama.com/install.sh")"
   _OLLAMA_BREW_SERVICE_NAME="$(yaml_get "$cfg_dir" "$yaml" brew_service_name ollama)"
   _OLLAMA_API_HOST="$(     yaml_get "$cfg_dir" "$yaml" api_host             "127.0.0.1")"
@@ -20,63 +19,15 @@ run_ollama_from_yaml() {
   _OLLAMA_STOP_PATTERN="$( yaml_get "$cfg_dir" "$yaml" fallback_stop_pattern "ollama (serve|app)")"
   _OLLAMA_START_CMD="$(    yaml_get "$cfg_dir" "$yaml" fallback_start_cmd    "ollama serve")"
   _OLLAMA_API_URL="http://${_OLLAMA_API_HOST}:${_OLLAMA_API_PORT}${_OLLAMA_API_TAGS_PATH}"
+  _OLLAMA_HOST_SUPPORTED_CMD="$(_ucc_yaml_get "$cfg_dir" "$yaml" "targets.ollama-host-supported.oracle.configured")"
 
-  local MACOS_MAJOR=0
-  [[ "${HOST_PLATFORM:-macos}" == "macos" ]] && MACOS_MAJOR="$(sw_vers -productVersion | awk -F. '{print $1}')"
+  ucc_yaml_simple_target "$cfg_dir" "$yaml" "ollama-host-supported"
 
-  # ---- Step 0: host precondition ----
-  _observe_host_prereq() {
-    if [[ "${HOST_PLATFORM:-unknown}" == "macos" && "$MACOS_MAJOR" -ge "$_OLLAMA_MACOS_MIN" ]]; then
-      ucc_asm_config_state "supported"
-    elif [[ "${HOST_PLATFORM:-unknown}" == "linux" || "${HOST_PLATFORM_VARIANT:-unknown}" == "wsl2" ]]; then
-      ucc_asm_config_state "supported"
-    else
-      ucc_asm_config_state "absent"
-    fi
-  }
-  _evidence_host_prereq() {
-    if [[ "${HOST_PLATFORM:-unknown}" == "macos" ]]; then
-      printf 'platform=%s  version=%s' "${HOST_PLATFORM:-unknown}" "$(sw_vers -productVersion 2>/dev/null || echo unknown)"
-    else
-      printf 'platform=%s  kernel=%s' "${HOST_PLATFORM:-unknown}" "$(uname -r 2>/dev/null || echo unknown)"
-    fi
-  }
-  _fail_host_prereq() {
-    if [[ "${HOST_PLATFORM:-unknown}" == "macos" ]]; then
-      log_warn "Ollama requires macOS ${_OLLAMA_MACOS_MIN}+ — current: macOS $MACOS_MAJOR"
-    else
-      log_warn "Ollama is not supported on host platform: ${HOST_PLATFORM:-unknown}"
-    fi
-    return 1
-  }
-
-  ucc_target_nonruntime \
-    --name    "ollama-host-supported" \
-    --observe _observe_host_prereq \
-    --evidence _evidence_host_prereq \
-    --install _fail_host_prereq
-
-  if [[ "${HOST_PLATFORM:-unknown}" == "macos" ]]; then
-    [[ "$MACOS_MAJOR" -ge "$_OLLAMA_MACOS_MIN" ]] || return 1
-  elif [[ "${HOST_PLATFORM:-unknown}" != "linux" && "${HOST_PLATFORM_VARIANT:-unknown}" != "wsl2" ]]; then
+  local CFG_DIR="$cfg_dir" YAML_PATH="$yaml" TARGET_NAME="ollama-host-supported"
+  if [[ -n "$_OLLAMA_HOST_SUPPORTED_CMD" ]] && ! eval "$_OLLAMA_HOST_SUPPORTED_CMD" >/dev/null 2>&1; then
     return 1
   fi
 
-  _observe_ollama() {
-    if ! is_installed ollama; then
-      ucc_asm_state --installation Absent --runtime NeverStarted \
-        --health Unavailable --admin Enabled --dependencies DepsUnknown
-      return
-    fi
-
-    if curl -fsS "$_OLLAMA_API_URL" >/dev/null 2>&1; then
-      ucc_asm_runtime_desired
-    else
-      ucc_asm_state --installation Configured --runtime Stopped \
-        --health Unavailable --admin Enabled --dependencies DepsDegraded
-    fi
-  }
-  _evidence_ollama() { ucc_eval_evidence_from_yaml "$cfg_dir" "$yaml" "ollama"; }
   _start_ollama() {
     if ! is_installed ollama; then
       curl -fsSL "$_OLLAMA_INSTALLER_URL" | sh || return 1
@@ -100,13 +51,7 @@ run_ollama_from_yaml() {
     _start_ollama
   }
 
-  ucc_target_service \
-    --name    "ollama" \
-    --observe _observe_ollama \
-    --evidence _evidence_ollama \
-    --desired "$(ucc_asm_runtime_desired)" \
-    --install _start_ollama \
-    --update  _update_ollama
+  ucc_yaml_runtime_target "$cfg_dir" "$yaml" "ollama" _start_ollama _update_ollama
 
   # ---- API health check (guard before model pulls) ----
   if [[ "$UCC_DRY_RUN" != "1" ]]; then

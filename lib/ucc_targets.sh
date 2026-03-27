@@ -27,6 +27,15 @@ _ucc_yaml_get() {
   printf '%s' "${val:-$default}"
 }
 
+_ucc_eval_scalar_cmd() {
+  local cmd="$1" output trimmed
+  output="$(eval "$cmd" 2>/dev/null || true)"
+  output="${output%%$'\n'*}"
+  trimmed="${output#"${output%%[![:space:]]*}"}"
+  trimmed="${trimmed%"${trimmed##*[![:space:]]}"}"
+  printf '%s' "$trimmed"
+}
+
 # ── Convenience target helpers ────────────────────────────────────────────────
 
 _UCC_DISPLAY_NAME_CACHE_KEYS=()
@@ -202,24 +211,43 @@ _ucc_observe_yaml_parametric_target() {
   local cfg_dir="$1" yaml="$2" target="$3"
   local observe_cmd desired gate current dep_state
   observe_cmd="$(_ucc_yaml_get "$cfg_dir" "$yaml" "targets.${target}.observe_cmd")"
-  desired="$(_ucc_yaml_get "$cfg_dir" "$yaml" "targets.${target}.desired_value")"
+  desired="$(_ucc_yaml_parametric_desired_value "$cfg_dir" "$yaml" "$target")"
   gate="$(_ucc_yaml_get "$cfg_dir" "$yaml" "targets.${target}.dependency_gate")"
   dep_state="$(_ucc_yaml_gate_dependency_state "$gate")"
 
   local CFG_DIR="$cfg_dir" YAML_PATH="$yaml" TARGET_NAME="$target"
-  current="$(eval "$observe_cmd" 2>/dev/null | head -1 | tr -d '[:space:]')"
+  current="$(_ucc_eval_scalar_cmd "$observe_cmd")"
   _ucc_yaml_parametric_observed_state "$current" "$desired" "$dep_state"
 }
 
 _ucc_evidence_yaml_parametric_target() {
   local cfg_dir="$1" yaml="$2" target="$3"
-  local observe_cmd evidence_key current
+  local observe_cmd evidence_key current evidence
   observe_cmd="$(_ucc_yaml_get "$cfg_dir" "$yaml" "targets.${target}.observe_cmd")"
   evidence_key="$(_ucc_yaml_get "$cfg_dir" "$yaml" "targets.${target}.evidence_key" "value")"
 
   local CFG_DIR="$cfg_dir" YAML_PATH="$yaml" TARGET_NAME="$target"
-  current="$(eval "$observe_cmd" 2>/dev/null | head -1 | tr -d '[:space:]')"
+  evidence="$(ucc_eval_evidence_from_yaml "$cfg_dir" "$yaml" "$target")"
+  if [[ -n "$evidence" ]]; then
+    printf '%s' "$evidence"
+    return 0
+  fi
+  current="$(_ucc_eval_scalar_cmd "$observe_cmd")"
   printf '%s=%s' "$evidence_key" "$current"
+}
+
+_ucc_yaml_parametric_desired_value() {
+  local cfg_dir="$1" yaml="$2" target="$3"
+  local desired_cmd desired_value
+  desired_cmd="$(_ucc_yaml_get "$cfg_dir" "$yaml" "targets.${target}.desired_cmd")"
+  desired_value="$(_ucc_yaml_get "$cfg_dir" "$yaml" "targets.${target}.desired_value")"
+
+  local CFG_DIR="$cfg_dir" YAML_PATH="$yaml" TARGET_NAME="$target"
+  if [[ -n "$desired_cmd" ]]; then
+    _ucc_eval_scalar_cmd "$desired_cmd"
+    return 0
+  fi
+  printf '%s' "$desired_value"
 }
 
 ucc_yaml_parametric_target() {
@@ -228,7 +256,7 @@ ucc_yaml_parametric_target() {
   fn="${target//[^a-zA-Z0-9]/_}"
   install_cmd="$(_ucc_yaml_get "$cfg_dir" "$yaml" "targets.${target}.install_cmd")"
   update_cmd="$(_ucc_yaml_get "$cfg_dir" "$yaml" "targets.${target}.update_cmd")"
-  desired="$(_ucc_yaml_get "$cfg_dir" "$yaml" "targets.${target}.desired_value")"
+  desired="$(_ucc_yaml_parametric_desired_value "$cfg_dir" "$yaml" "$target")"
   gate="$(_ucc_yaml_get "$cfg_dir" "$yaml" "targets.${target}.dependency_gate")"
   dep_state="$(_ucc_yaml_gate_dependency_state "$gate")"
 
@@ -251,6 +279,54 @@ ucc_yaml_parametric_target() {
   [[ -n "$install_cmd" ]] && args+=(--install "_uypt_ins_${fn}")
   [[ -n "$update_cmd" ]] && args+=(--update "_uypt_upd_${fn}")
   ucc_target "${args[@]}"
+}
+
+_ucc_observe_yaml_runtime_target() {
+  local cfg_dir="$1" yaml="$2" target="$3"
+  local configured_cmd runtime_cmd stopped_installation stopped_runtime stopped_health stopped_dependencies
+  configured_cmd="$(_ucc_yaml_get "$cfg_dir" "$yaml" "targets.${target}.oracle.configured")"
+  runtime_cmd="$(_ucc_yaml_get "$cfg_dir" "$yaml" "targets.${target}.oracle.runtime")"
+  stopped_installation="$(_ucc_yaml_get "$cfg_dir" "$yaml" "targets.${target}.stopped_installation" "Configured")"
+  stopped_runtime="$(_ucc_yaml_get "$cfg_dir" "$yaml" "targets.${target}.stopped_runtime" "Stopped")"
+  stopped_health="$(_ucc_yaml_get "$cfg_dir" "$yaml" "targets.${target}.stopped_health" "Degraded")"
+  stopped_dependencies="$(_ucc_yaml_get "$cfg_dir" "$yaml" "targets.${target}.stopped_dependencies" "DepsDegraded")"
+
+  local CFG_DIR="$cfg_dir" YAML_PATH="$yaml" TARGET_NAME="$target"
+  if [[ -n "$configured_cmd" ]] && ! eval "$configured_cmd" >/dev/null 2>&1; then
+    ucc_asm_state --installation Absent --runtime NeverStarted --health Unavailable --admin Enabled --dependencies DepsUnknown
+    return
+  fi
+
+  if [[ -n "$runtime_cmd" ]] && eval "$runtime_cmd" >/dev/null 2>&1; then
+    ucc_asm_runtime_desired
+    return
+  fi
+
+  ucc_asm_state \
+    --installation "$stopped_installation" \
+    --runtime "$stopped_runtime" \
+    --health "$stopped_health" \
+    --admin Enabled \
+    --dependencies "$stopped_dependencies"
+}
+
+ucc_yaml_runtime_target() {
+  local cfg_dir="$1" yaml="$2" target="$3" install_fn="${4:-}" update_fn="${5:-}"
+  local fn
+  fn="${target//[^a-zA-Z0-9]/_}"
+
+  eval "_uyrt_obs_${fn}() { _ucc_observe_yaml_runtime_target '${cfg_dir}' '${yaml}' '${target}'; }"
+  eval "_uyrt_evd_${fn}() { ucc_eval_evidence_from_yaml '${cfg_dir}' '${yaml}' '${target}'; }"
+
+  local args=(
+    --name "$target"
+    --observe "_uyrt_obs_${fn}"
+    --evidence "_uyrt_evd_${fn}"
+    --desired "$(ucc_asm_runtime_desired)"
+  )
+  [[ -n "$install_fn" ]] && args+=(--install "$install_fn")
+  [[ -n "$update_fn" ]] && args+=(--update "$update_fn")
+  ucc_target_service "${args[@]}"
 }
 
 # ucc_brew_target <target-name> <brew-pkg>

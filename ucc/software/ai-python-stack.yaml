@@ -23,7 +23,10 @@ targets:
     probe_kind: http
     oracle:
       configured: '[[ -d "$HOME/${unsloth_studio_dir}" ]]'
-      runtime: 'curl -fsS --max-time 5 "http://127.0.0.1:${unsloth_port}" >/dev/null 2>&1'
+      runtime: |
+        launchctl list 2>/dev/null | grep -q "${unsloth_label}" &&
+        grep -qF "${unsloth_plist_marker}" "$HOME/Library/LaunchAgents/${unsloth_label}.plist" 2>/dev/null &&
+        curl -fsS --max-time 5 "http://127.0.0.1:${unsloth_port}" >/dev/null 2>&1
     evidence:
       version: "pip show unsloth 2>/dev/null | awk '/^Version:/{print $2}'"
       folder: "printf '%s' \"$HOME/${unsloth_studio_dir}\""
@@ -121,7 +124,7 @@ targets:
   mps-available:
     component: ai-python-stack
     profile: capability
-    type: runtime
+    type: capability
     display_name: Metal MPS
     depends_on:
       - pip-group-pytorch

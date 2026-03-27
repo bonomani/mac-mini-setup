@@ -17,29 +17,6 @@ register_unsloth_studio_targets() {
   plist="$HOME/Library/LaunchAgents/${label}.plist"
   # launchd does not load pyenv shims — resolve absolute binary path at source time
   bin="$(pyenv which unsloth 2>/dev/null || command -v unsloth)"
-
-  eval "_observe_unsloth_studio() {
-    [[ -d '${studio_dir}' ]] || {
-      ucc_asm_state --installation Absent --runtime NeverStarted --health Unavailable --admin Enabled --dependencies DepsUnknown
-      return
-    }
-    launchctl list 2>/dev/null | grep -q '${label}' || {
-      ucc_asm_state --installation Configured --runtime Stopped --health Degraded --admin Enabled --dependencies DepsDegraded
-      return
-    }
-    grep -qF '${plist_marker}' '${plist}' 2>/dev/null || {
-      ucc_asm_state --installation Configured --runtime Stopped --health Degraded --admin Enabled --dependencies DepsDegraded
-      return
-    }
-    curl -fsS --max-time 5 'http://127.0.0.1:${port}' >/dev/null 2>&1 || {
-      ucc_asm_state --installation Configured --runtime Running --health Degraded --admin Enabled --dependencies DepsDegraded
-      return
-    }
-    ucc_asm_runtime_desired
-  }"
-  eval "_evidence_unsloth_studio() {
-    ucc_eval_evidence_from_yaml '${cfg_dir}' '${yaml}' 'unsloth-studio'
-  }"
   eval "_install_unsloth_studio() {
     [[ -d '${studio_dir}' ]] || ucc_run unsloth studio setup || return 1
     mkdir -p '\$(dirname '${plist}')'
@@ -75,11 +52,5 @@ PLIST
     _install_unsloth_studio
   }"
 
-  ucc_target_service \
-    --name    "unsloth-studio" \
-    --observe _observe_unsloth_studio \
-    --evidence _evidence_unsloth_studio \
-    --desired "$(ucc_asm_runtime_desired)" \
-    --install _install_unsloth_studio \
-    --update  _update_unsloth_studio
+  ucc_yaml_runtime_target "$cfg_dir" "$yaml" "unsloth-studio" _install_unsloth_studio _update_unsloth_studio
 }

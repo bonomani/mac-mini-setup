@@ -15,7 +15,81 @@ targets:
     component: docker-config
     profile: parametric
     type: config
+    state_model: parametric
     depends_on:
       - docker-desktop
+    dependency_gate: docker-settings-file
     soft_depends_on:
       - gate:docker-settings-file
+    observe_cmd: |
+      python3 - <<'PY'
+      import json, os
+
+      path = os.path.expanduser(os.environ["DOCKER_SETTINGS_PATH"])
+      with open(path) as fh:
+          data = json.load(fh)
+
+      mem_gb = int(data.get("memoryMiB", 0)) // 1024
+      cpus = int(data.get("cpus", 0))
+      print(f"mem={mem_gb}GB cpu={cpus}")
+      PY
+    desired_cmd: 'printf "mem=%sGB cpu=%s" "${DOCKER_MEM_GB}" "${DOCKER_CPU_COUNT}"'
+    evidence:
+      memory: |
+        python3 - <<'PY'
+        import json, os
+
+        path = os.path.expanduser(os.environ["DOCKER_SETTINGS_PATH"])
+        with open(path) as fh:
+            data = json.load(fh)
+
+        print(int(data.get("memoryMiB", 0)) // 1024)
+        PY
+      cpus: |
+        python3 - <<'PY'
+        import json, os
+
+        path = os.path.expanduser(os.environ["DOCKER_SETTINGS_PATH"])
+        with open(path) as fh:
+            data = json.load(fh)
+
+        print(int(data.get("cpus", 0)))
+        PY
+    install_cmd: |
+      [[ -f "$DOCKER_SETTINGS_PATH" ]] || { log_warn "Docker settings file not found yet — launch Docker first"; return 1; }
+      python3 - <<'PY'
+      import json, os
+
+      path = os.path.expanduser(os.environ["DOCKER_SETTINGS_PATH"])
+      with open(path) as fh:
+          settings = json.load(fh)
+
+      settings["memoryMiB"] = int(os.environ["DOCKER_MEM_MIB"])
+      settings["cpus"] = int(os.environ["DOCKER_CPU_COUNT"])
+      settings["swapMiB"] = int(os.environ["DOCKER_SWAP_MIB"])
+      settings["diskSizeMiB"] = int(os.environ["DOCKER_DISK_MIB"])
+
+      with open(path, "w") as fh:
+          json.dump(settings, fh, indent=2)
+      PY
+      log_warn "Restart Docker Desktop to apply new resource settings"
+      log_info "Docker resources set: memory=${DOCKER_MEM_GB}GB cpus=${DOCKER_CPU_COUNT} swap=${DOCKER_SWAP_MIB}MiB disk=${DOCKER_DISK_MIB}MiB"
+    update_cmd: |
+      [[ -f "$DOCKER_SETTINGS_PATH" ]] || { log_warn "Docker settings file not found yet — launch Docker first"; return 1; }
+      python3 - <<'PY'
+      import json, os
+
+      path = os.path.expanduser(os.environ["DOCKER_SETTINGS_PATH"])
+      with open(path) as fh:
+          settings = json.load(fh)
+
+      settings["memoryMiB"] = int(os.environ["DOCKER_MEM_MIB"])
+      settings["cpus"] = int(os.environ["DOCKER_CPU_COUNT"])
+      settings["swapMiB"] = int(os.environ["DOCKER_SWAP_MIB"])
+      settings["diskSizeMiB"] = int(os.environ["DOCKER_DISK_MIB"])
+
+      with open(path, "w") as fh:
+          json.dump(settings, fh, indent=2)
+      PY
+      log_warn "Restart Docker Desktop to apply new resource settings"
+      log_info "Docker resources set: memory=${DOCKER_MEM_GB}GB cpus=${DOCKER_CPU_COUNT} swap=${DOCKER_SWAP_MIB}MiB disk=${DOCKER_DISK_MIB}MiB"

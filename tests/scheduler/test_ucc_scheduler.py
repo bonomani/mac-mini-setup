@@ -147,7 +147,7 @@ class UccSchedulerTests(unittest.TestCase):
                       capability:
                         component: fake
                         profile: capability
-                        type: runtime
+                        type: capability
                         runtime_manager: capability
                         probe_kind: command
                         oracle:
@@ -385,7 +385,7 @@ class UccSchedulerTests(unittest.TestCase):
                       cap:
                         component: fake
                         profile: capability
-                        type: runtime
+                        type: capability
                         display_name: Fake Capability
                         runtime_manager: capability
                         probe_kind: command
@@ -482,6 +482,123 @@ class UccSchedulerTests(unittest.TestCase):
             self.assertIn("[installed] setting", result.stdout)
             self.assertIn('config_value=off" -> "installation_state=Configured', result.stdout)
             self.assertTrue((home_dir / "setting.applied").exists())
+
+    def test_yaml_parametric_target_supports_desired_cmd_and_yaml_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            ucc_dir = self._write_manifest(
+                tmp_path,
+                textwrap.dedent(
+                    """\
+                    component: fake
+                    primary_profile: parametric
+                    libs: fake
+                    runner: run_fake
+                    targets:
+                      setting:
+                        component: fake
+                        profile: parametric
+                        type: config
+                        state_model: parametric
+                        observe_cmd: '[[ -f "$HOME/setting.applied" ]] && printf "mode=%s" "$TEST_SETTING_MODE" || printf "mode=off"'
+                        desired_cmd: 'printf "mode=%s" "$TEST_SETTING_MODE"'
+                        evidence:
+                          mode: '[[ -f "$HOME/setting.applied" ]] && printf "%s" "$TEST_SETTING_MODE" || printf off'
+                        install_cmd: 'touch "$HOME/setting.applied"'
+                        update_cmd: 'touch "$HOME/setting.applied"'
+                    """
+                ),
+            )
+            manifest = ucc_dir / "software" / "fake.yaml"
+            home_dir = tmp_path / "home"
+            home_dir.mkdir()
+            result = subprocess.run(
+                [
+                    "bash",
+                    "-lc",
+                    textwrap.dedent(
+                        f"""\
+                        set -euo pipefail
+                        export HOME="{home_dir}"
+                        export TEST_SETTING_MODE="on"
+                        export UCC_DECLARATION_FILE="{tmp_path / 'decl.jsonl'}"
+                        export UCC_RESULT_FILE="{tmp_path / 'result.jsonl'}"
+                        export UCC_SUMMARY_FILE="{tmp_path / 'summary.txt'}"
+                        export UCC_PROFILE_SUMMARY_FILE="{tmp_path / 'profile.txt'}"
+                        export UCC_TARGET_STATUS_FILE="{tmp_path / 'status.txt'}"
+                        export UCC_CORRELATION_ID="test-run"
+                        source "{ROOT / 'lib/ucc.sh'}"
+
+                        ucc_yaml_parametric_target "{ROOT}" "{manifest}" setting
+                        """
+                    ),
+                ],
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertIn("[installed] setting", result.stdout)
+            self.assertIn("mode=on", result.stdout)
+            self.assertTrue((home_dir / "setting.applied").exists())
+
+    def test_yaml_runtime_target_uses_yaml_oracles_and_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            ucc_dir = self._write_manifest(
+                tmp_path,
+                textwrap.dedent(
+                    """\
+                    component: fake
+                    primary_profile: runtime
+                    libs: fake
+                    runner: run_fake
+                    targets:
+                      app:
+                        component: fake
+                        profile: runtime
+                        type: runtime
+                        runtime_manager: custom
+                        probe_kind: command
+                        stopped_health: Unavailable
+                        oracle:
+                          configured: '[[ -f "$HOME/app.installed" ]]'
+                          runtime: '[[ -f "$HOME/app.ready" ]]'
+                        evidence:
+                          version: 'printf 1.2.3'
+                    """
+                ),
+            )
+            manifest = ucc_dir / "software" / "fake.yaml"
+            home_dir = tmp_path / "home"
+            home_dir.mkdir()
+            result = subprocess.run(
+                [
+                    "bash",
+                    "-lc",
+                    textwrap.dedent(
+                        f"""\
+                        set -euo pipefail
+                        export HOME="{home_dir}"
+                        export UCC_DECLARATION_FILE="{tmp_path / 'decl.jsonl'}"
+                        export UCC_RESULT_FILE="{tmp_path / 'result.jsonl'}"
+                        export UCC_SUMMARY_FILE="{tmp_path / 'summary.txt'}"
+                        export UCC_PROFILE_SUMMARY_FILE="{tmp_path / 'profile.txt'}"
+                        export UCC_TARGET_STATUS_FILE="{tmp_path / 'status.txt'}"
+                        export UCC_CORRELATION_ID="test-run"
+                        source "{ROOT / 'lib/ucc.sh'}"
+
+                        install_app() {{ touch "$HOME/app.installed" "$HOME/app.ready"; }}
+                        ucc_yaml_runtime_target "{ROOT}" "{manifest}" app install_app install_app
+                        ucc_yaml_runtime_target "{ROOT}" "{manifest}" app install_app install_app
+                        """
+                    ),
+                ],
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertIn("[installed] app", result.stdout)
+            self.assertIn("version=1.2.3", result.stdout)
 
     def test_read_config_records_substitutes_top_level_scalars(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
