@@ -49,28 +49,31 @@ def main() -> int:
 
     args = parser.parse_args()
 
-    if args.command == "release" and not args.ariaflow_version and not args.ariaflow_web_version:
+    ariaflow_version = getattr(args, "ariaflow_version", None)
+    ariaflow_web_version = getattr(args, "ariaflow_web_version", None)
+
+    if args.command == "release" and not ariaflow_version and not ariaflow_web_version:
         raise SystemExit("Pass at least one explicit version for the release command.")
 
     ariaflow_command = args.command
     ariaflow_web_command = args.command
-    if args.command == "release" and args.ariaflow_version is None:
+    if args.command == "release" and ariaflow_version is None:
         ariaflow_command = "push"
-    if args.command == "release" and args.ariaflow_web_version is None:
+    if args.command == "release" and ariaflow_web_version is None:
         ariaflow_web_command = "push"
 
     run(
         repo_name="ariaflow",
         repo_path=ARIAFLOW,
         subcommand=ariaflow_command,
-        version=args.ariaflow_version,
+        version=ariaflow_version,
         no_tests=args.no_tests,
     )
     run(
         repo_name="ariaflow-web",
         repo_path=ARIAFLOW_WEB,
         subcommand=ariaflow_web_command,
-        version=args.ariaflow_web_version,
+        version=ariaflow_web_version,
         no_tests=args.no_tests,
     )
     return 0
