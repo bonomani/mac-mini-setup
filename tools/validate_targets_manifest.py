@@ -18,6 +18,16 @@ KNOWN_TARGET_TYPES = {
 }
 KNOWN_STATE_MODELS = {"package", "config", "parametric"}
 KNOWN_PLATFORMS = {"macos", "linux", "wsl", "wsl1", "wsl2"}
+KNOWN_PACKAGE_DRIVERS = {
+    "brew-bootstrap",
+    "brew-formula",
+    "brew-cask",
+    "vscode-marketplace",
+    "npm-global",
+    "pip",
+    "pyenv-version",
+    "ollama-model",
+}
 CANONICAL_TARGET_KEY_ORDER = [
     "component",
     "profile",
@@ -28,6 +38,7 @@ CANONICAL_TARGET_KEY_ORDER = [
     "depends_on_by_platform",
     "soft_depends_on",
     "provided_by_tool",
+    "package_driver",
     "runtime_manager",
     "probe_kind",
     "oracle",
@@ -303,6 +314,7 @@ def validate(manifest, known_gates):
         for field in (
             "display_name",
             "provided_by_tool",
+            "package_driver",
             "runtime_manager",
             "probe_kind",
             "install_cmd",
@@ -327,6 +339,23 @@ def validate(manifest, known_gates):
             errors.append(f"target '{name}' has unknown state_model '{state_model}'")
         if target_type == "package" and state_model != "package":
             errors.append(f"target '{name}' type 'package' requires state_model 'package'")
+        if target_type == "package":
+            package_driver = data.get("package_driver")
+            if not isinstance(package_driver, str) or not package_driver.strip():
+                errors.append(f"target '{name}' type 'package' requires package_driver")
+            elif package_driver not in KNOWN_PACKAGE_DRIVERS:
+                errors.append(f"target '{name}' has unknown package_driver '{package_driver}'")
+            if not isinstance(data.get("provided_by_tool"), str) or not data.get("provided_by_tool", "").strip():
+                errors.append(f"target '{name}' type 'package' requires provided_by_tool")
+            has_observe_cmd = isinstance(data.get("observe_cmd"), str) and data.get("observe_cmd", "").strip()
+            if not has_observe_cmd:
+                errors.append(f"target '{name}' type 'package' requires observe_cmd")
+            if not isinstance(data.get("evidence"), dict) or not data.get("evidence"):
+                errors.append(f"target '{name}' type 'package' requires evidence")
+            if not isinstance(data.get("install_cmd"), str) or not data.get("install_cmd", "").strip():
+                errors.append(f"target '{name}' type 'package' requires install_cmd")
+            if not isinstance(data.get("update_cmd"), str) or not data.get("update_cmd", "").strip():
+                errors.append(f"target '{name}' type 'package' requires update_cmd")
         if target_type == "config" and profile != "parametric" and state_model != "config":
             errors.append(f"target '{name}' type 'config' with profile '{profile}' requires state_model 'config'")
         if target_type == "precondition" and state_model != "config":
@@ -391,6 +420,8 @@ def validate(manifest, known_gates):
         if profile == "runtime":
             if target_type != "runtime":
                 errors.append(f"target '{name}' profile '{profile}' requires type 'runtime'")
+            if not isinstance(data.get("display_name"), str) or not data.get("display_name", "").strip():
+                errors.append(f"target '{name}' profile '{profile}' requires display_name")
             if not isinstance(data.get("runtime_manager"), str) or not data.get("runtime_manager", "").strip():
                 errors.append(f"target '{name}' profile '{profile}' requires runtime_manager")
             if not isinstance(data.get("probe_kind"), str) or not data.get("probe_kind", "").strip():

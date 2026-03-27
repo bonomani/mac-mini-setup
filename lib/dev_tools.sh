@@ -6,13 +6,10 @@
 run_dev_tools_from_yaml() {
   local cfg_dir="$1" yaml="$2"
 
-  local _NODE_VER _NODE_PREV_VER
-  local _VSCODE_CASK_ID _VSCODE_APP_PATH _VSCODE_SETTINGS_PATH _VSCODE_SETTINGS_PATCH
+  local _NODE_VER
+  local _VSCODE_SETTINGS_PATH _VSCODE_SETTINGS_PATCH
   local _ARIAFLOW_TAP _ARIAFLOW_FORMULA _ARIAFLOW_WEB_FORMULA
   _NODE_VER="$(          yaml_get "$cfg_dir" "$yaml" node_version          24)"
-  _NODE_PREV_VER="$(     yaml_get "$cfg_dir" "$yaml" node_previous_version 20)"
-  _VSCODE_CASK_ID="$(    yaml_get "$cfg_dir" "$yaml" vscode_cask_id        visual-studio-code)"
-  _VSCODE_APP_PATH="$(   yaml_get "$cfg_dir" "$yaml" vscode_app_path       "/Applications/Visual Studio Code.app")"
   _VSCODE_SETTINGS_PATH="$HOME/$(yaml_get "$cfg_dir" "$yaml" vscode_settings_relpath "Library/Application Support/Code/User/settings.json")"
   _VSCODE_SETTINGS_PATCH="$cfg_dir/$(yaml_get "$cfg_dir" "$yaml" vscode_settings_patch "ucc/software/vscode-settings.json")"
   _ARIAFLOW_TAP="$(      yaml_get "$cfg_dir" "$yaml" ariaflow_tap          bonomani/ariaflow)"
@@ -25,30 +22,7 @@ run_dev_tools_from_yaml() {
   done < <(yaml_list "$cfg_dir" "$yaml" cli_tools)
 
   # ---- VSCode ----
-  _observe_vscode() {
-    local raw
-    if [[ -d "$_VSCODE_APP_PATH" ]] && ! brew_cask_is_installed "$_VSCODE_CASK_ID"; then
-      raw=$(defaults read "${_VSCODE_APP_PATH}/Contents/Info" CFBundleShortVersionString 2>/dev/null \
-        || echo "present")
-      ucc_asm_package_state "$raw"; return
-    fi
-    ucc_asm_package_state "$(brew_cask_observe "$_VSCODE_CASK_ID")"
-  }
-  _evidence_vscode() {
-    local ver
-    ver=$(defaults read "${_VSCODE_APP_PATH}/Contents/Info" CFBundleShortVersionString 2>/dev/null || true)
-    [[ -n "$ver" ]] && printf 'version=%s' "$ver"
-  }
-
-  _install_vscode() { brew_cask_install "$_VSCODE_CASK_ID"; }
-  _update_vscode()  { brew_cask_upgrade "$_VSCODE_CASK_ID"; }
-
-  ucc_target_nonruntime \
-    --name     "vscode" \
-    --observe  _observe_vscode \
-    --evidence _evidence_vscode \
-    --install  _install_vscode \
-    --update   _update_vscode
+  ucc_yaml_simple_target "$cfg_dir" "$yaml" "vscode"
 
   # ---- code CLI symlink ----
   ucc_yaml_simple_target "$cfg_dir" "$yaml" "vscode-code-cmd"
@@ -145,34 +119,7 @@ PY
   elif [[ -d "/usr/local/opt/node@${_NODE_VER}/bin" ]]; then
     export PATH="/usr/local/opt/node@${_NODE_VER}/bin:$PATH"
   fi
-  _observe_node_lts() {
-    local ver
-    ver=$(node --version 2>/dev/null)
-    [[ "$ver" == v${_NODE_VER}.* ]] || { ucc_asm_package_state "absent"; return; }
-    if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-always-upgrade}" == "always-upgrade" ]]; then
-      _brew_is_outdated "node@${_NODE_VER}" && { ucc_asm_package_state "outdated"; return; }
-    fi
-    ucc_asm_package_state "${ver#v}"
-  }
-  _evidence_node_lts() {
-    _ucc_ver_path_evidence \
-      "$(node --version 2>/dev/null | sed 's/^v//')" \
-      "$(command -v node 2>/dev/null || true)"
-  }
-  _install_node_lts() {
-    brew unlink "node@${_NODE_PREV_VER}" 2>/dev/null || true
-    ucc_run brew install "node@${_NODE_VER}" && ucc_run brew link --overwrite --force "node@${_NODE_VER}"
-  }
-  _update_node_lts() {
-    ucc_run brew upgrade "node@${_NODE_VER}" && ucc_run brew link --overwrite --force "node@${_NODE_VER}"
-  }
-
-  ucc_target_nonruntime \
-    --name     "node-lts" \
-    --observe  _observe_node_lts \
-    --evidence _evidence_node_lts \
-    --install  _install_node_lts \
-    --update   _update_node_lts
+  ucc_yaml_simple_target "$cfg_dir" "$yaml" "node-lts"
 
   # ---- npm global packages ----
   while IFS= read -r _target; do

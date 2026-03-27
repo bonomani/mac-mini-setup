@@ -13,8 +13,13 @@ targets:
     profile: configured
     type: package
     state_model: package
+    display_name: Git
     depends_on:
       - homebrew
     provided_by_tool: brew
-    oracle:
-      configured: "git --version >/dev/null 2>&1"
+    package_driver: brew-formula
+    observe_cmd: "brew_observe git"
+    evidence:
+      version: "_brew_cached_version git"
+    install_cmd: "brew_install git"
+    update_cmd: "brew_upgrade git"

@@ -6,11 +6,6 @@
 run_homebrew_from_yaml() {
   local cfg_dir="$1" yaml="$2"
 
-  local _hb_installer_url _hb_shell_config
-  _hb_installer_url="$(yaml_get "$cfg_dir" "$yaml" installer_url "https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh")"
-  _hb_shell_config="$(yaml_get "$cfg_dir" "$yaml" shell_config_file .zprofile)"
-  [[ "${HOST_PLATFORM:-macos}" != "macos" && "$_hb_shell_config" == ".zprofile" ]] && _hb_shell_config=".profile"
-
   # ---- Step 0: Xcode Command Line Tools ----
   if [[ "${HOST_PLATFORM:-macos}" == "macos" ]]; then
     _observe_xcode_clt() {
@@ -45,46 +40,32 @@ run_homebrew_from_yaml() {
   fi
 
   # ---- Homebrew ----
-  _observe_brew() { ucc_asm_package_state "$(is_installed brew && brew --version 2>/dev/null | awk 'NR==1 {print $2}' || echo "absent")"; }
-  _evidence_brew() {
-    _ucc_ver_path_evidence \
-      "$(brew --version 2>/dev/null | awk 'NR==1 {print $2}')" \
-      "$(command -v brew 2>/dev/null || true)"
-  }
-  _setup_brew_path() {
+  ucc_yaml_simple_target "$cfg_dir" "$yaml" "homebrew"
+
+  _homebrew_shellenv() {
+    local shell_config
+    shell_config="$(yaml_get "$cfg_dir" "$yaml" shell_config_file .zprofile)"
+    [[ "${HOST_PLATFORM:-macos}" != "macos" && "$shell_config" == ".zprofile" ]] && shell_config=".profile"
     if [[ -x /opt/homebrew/bin/brew ]]; then
-      if ! grep -q 'opt/homebrew/bin/brew shellenv' "$HOME/${_hb_shell_config}" 2>/dev/null; then
-        echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> "$HOME/${_hb_shell_config}"
+      if ! grep -q 'opt/homebrew/bin/brew shellenv' "$HOME/${shell_config}" 2>/dev/null; then
+        echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> "$HOME/${shell_config}"
       fi
       eval "$(/opt/homebrew/bin/brew shellenv)"
     elif [[ -x /usr/local/bin/brew ]]; then
-      if ! grep -q 'usr/local/bin/brew shellenv' "$HOME/${_hb_shell_config}" 2>/dev/null; then
-        echo 'eval "$(/usr/local/bin/brew shellenv)"' >> "$HOME/${_hb_shell_config}"
+      if ! grep -q 'usr/local/bin/brew shellenv' "$HOME/${shell_config}" 2>/dev/null; then
+        echo 'eval "$(/usr/local/bin/brew shellenv)"' >> "$HOME/${shell_config}"
       fi
       eval "$(/usr/local/bin/brew shellenv)"
     elif [[ -x /home/linuxbrew/.linuxbrew/bin/brew ]]; then
-      if ! grep -q 'linuxbrew/.linuxbrew/bin/brew shellenv' "$HOME/${_hb_shell_config}" 2>/dev/null; then
-        echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> "$HOME/${_hb_shell_config}"
+      if ! grep -q 'linuxbrew/.linuxbrew/bin/brew shellenv' "$HOME/${shell_config}" 2>/dev/null; then
+        echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> "$HOME/${shell_config}"
       fi
       eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
     fi
   }
-  _install_brew() {
-    /bin/bash -c "$(curl -fsSL "$_hb_installer_url")"
-    _setup_brew_path
-  }
-  _update_brew() { brew update && brew upgrade; }
-
-  ucc_target_nonruntime \
-    --name    "homebrew" \
-    --observe _observe_brew \
-    --evidence _evidence_brew \
-    --install _install_brew \
-    --update  _update_brew
 
   # Ensure brew is in PATH for the rest of this session
-  is_installed brew || _setup_brew_path
-
+  is_installed brew || _homebrew_shellenv
 
   # ---- Disable analytics ----
   ucc_yaml_parametric_target "$cfg_dir" "$yaml" "brew-analytics=off"

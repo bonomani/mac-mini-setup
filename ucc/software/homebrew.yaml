@@ -31,12 +31,49 @@ targets:
     profile: configured
     type: package
     state_model: package
+    display_name: Homebrew
     depends_on_by_platform:
       macos:
         - xcode-command-line-tools
     provided_by_tool: brew-installer
-    oracle:
-      configured: "brew --version >/dev/null 2>&1"
+    package_driver: brew-bootstrap
+    observe_cmd: |
+      if is_installed brew; then
+        brew --version 2>/dev/null | awk 'NR==1 {print $2}'
+      else
+        printf 'absent'
+      fi
+    evidence:
+      version: "brew --version 2>/dev/null | awk 'NR==1 {print $2}'"
+      path: "command -v brew 2>/dev/null || true"
+    install_cmd: |
+      _hb_shell_config="${shell_config_file}"
+      [[ "${HOST_PLATFORM:-macos}" != "macos" && "$_hb_shell_config" == ".zprofile" ]] && _hb_shell_config=".profile"
+      /bin/bash -c "$(curl -fsSL "${installer_url}")"
+      if [[ -x /opt/homebrew/bin/brew ]]; then
+        grep -q 'opt/homebrew/bin/brew shellenv' "$HOME/${_hb_shell_config}" 2>/dev/null || echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> "$HOME/${_hb_shell_config}"
+        eval "$(/opt/homebrew/bin/brew shellenv)"
+      elif [[ -x /usr/local/bin/brew ]]; then
+        grep -q 'usr/local/bin/brew shellenv' "$HOME/${_hb_shell_config}" 2>/dev/null || echo 'eval "$(/usr/local/bin/brew shellenv)"' >> "$HOME/${_hb_shell_config}"
+        eval "$(/usr/local/bin/brew shellenv)"
+      elif [[ -x /home/linuxbrew/.linuxbrew/bin/brew ]]; then
+        grep -q 'linuxbrew/.linuxbrew/bin/brew shellenv' "$HOME/${_hb_shell_config}" 2>/dev/null || echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> "$HOME/${_hb_shell_config}"
+        eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+      fi
+    update_cmd: |
+      _hb_shell_config="${shell_config_file}"
+      [[ "${HOST_PLATFORM:-macos}" != "macos" && "$_hb_shell_config" == ".zprofile" ]] && _hb_shell_config=".profile"
+      if [[ -x /opt/homebrew/bin/brew ]]; then
+        grep -q 'opt/homebrew/bin/brew shellenv' "$HOME/${_hb_shell_config}" 2>/dev/null || echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> "$HOME/${_hb_shell_config}"
+        eval "$(/opt/homebrew/bin/brew shellenv)"
+      elif [[ -x /usr/local/bin/brew ]]; then
+        grep -q 'usr/local/bin/brew shellenv' "$HOME/${_hb_shell_config}" 2>/dev/null || echo 'eval "$(/usr/local/bin/brew shellenv)"' >> "$HOME/${_hb_shell_config}"
+        eval "$(/usr/local/bin/brew shellenv)"
+      elif [[ -x /home/linuxbrew/.linuxbrew/bin/brew ]]; then
+        grep -q 'linuxbrew/.linuxbrew/bin/brew shellenv' "$HOME/${_hb_shell_config}" 2>/dev/null || echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> "$HOME/${_hb_shell_config}"
+        eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+      fi
+      brew update && brew upgrade
 
   "brew-analytics=off":
     component: homebrew

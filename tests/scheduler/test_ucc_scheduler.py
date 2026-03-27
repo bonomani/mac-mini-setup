@@ -162,6 +162,7 @@ class UccSchedulerTests(unittest.TestCase):
                         component: fake
                         profile: runtime
                         type: runtime
+                        display_name: Fake App
                         soft_depends_on:
                           - capability
                         runtime_manager: custom
@@ -234,10 +235,18 @@ class UccSchedulerTests(unittest.TestCase):
                         profile: configured
                         type: package
                         state_model: package
+                        provided_by_tool: fake
+                        package_driver: brew-formula
+                        observe_cmd: "printf present"
+                        evidence:
+                          version: "printf 1.0.0"
+                        install_cmd: "true"
+                        update_cmd: "true"
                       fake-runtime:
                         component: fake
                         profile: runtime
                         type: runtime
+                        display_name: Fake Runtime
                         depends_on:
                           - fake-package
                         runtime_manager: brew-service
@@ -992,6 +1001,13 @@ class UccSchedulerTests(unittest.TestCase):
                         depends_on_by_platform:
                           macos:
                             - xcode
+                        provided_by_tool: fake
+                        package_driver: brew-formula
+                        observe_cmd: "printf present"
+                        evidence:
+                          version: "printf 1.0.0"
+                        install_cmd: "true"
+                        update_cmd: "true"
                     """
                 ),
             )
@@ -1033,10 +1049,18 @@ class UccSchedulerTests(unittest.TestCase):
                         profile: configured
                         type: package
                         state_model: package
+                        provided_by_tool: fake
+                        package_driver: brew-formula
+                        observe_cmd: "printf present"
+                        evidence:
+                          version: "printf 1.2.3"
+                        install_cmd: "true"
+                        update_cmd: "true"
                       fake-service:
                         component: fake
                         profile: runtime
                         type: runtime
+                        display_name: Fake Service
                         depends_on:
                           - fake-package
                         runtime_manager: brew-service
@@ -1102,10 +1126,18 @@ class UccSchedulerTests(unittest.TestCase):
                         profile: configured
                         type: package
                         state_model: package
+                        provided_by_tool: fake
+                        package_driver: brew-formula
+                        observe_cmd: "printf present"
+                        evidence:
+                          version: "printf 1.2.3"
+                        install_cmd: "true"
+                        update_cmd: "true"
                       fake-service:
                         component: fake
                         profile: runtime
                         type: runtime
+                        display_name: Fake Service
                         depends_on:
                           - fake-package
                         runtime_manager: brew-service

@@ -46,6 +46,7 @@ targets:
     depends_on:
       - pip-latest
     provided_by_tool: pip
+    package_driver: pip
     probe_pkg: torch
     install_packages: torch torchvision torchaudio
     min_version: ""
@@ -71,6 +72,7 @@ targets:
     depends_on:
       - pip-latest
     provided_by_tool: pip
+    package_driver: pip
     probe_pkg: transformers
     install_packages: transformers diffusers accelerate datasets tokenizers sentencepiece huggingface-hub peft trl
     min_version: ""
@@ -96,6 +98,7 @@ targets:
     depends_on:
       - pip-latest
     provided_by_tool: pip
+    package_driver: pip
     probe_pkg: langchain-core
     install_packages: langchain-core>=1.0.0 langchain langchain-community langchain-ollama langgraph
     min_version: 1.0.0
@@ -123,6 +126,7 @@ targets:
     depends_on:
       - pip-latest
     provided_by_tool: pip
+    package_driver: pip
     probe_pkg: llama-index
     install_packages: llama-index llama-index-llms-ollama llama-index-embeddings-ollama
     min_version: ""
@@ -148,6 +152,7 @@ targets:
     depends_on:
       - pip-latest
     provided_by_tool: pip
+    package_driver: pip
     probe_pkg: openai
     install_packages: openai anthropic
     min_version: ""
@@ -173,6 +178,7 @@ targets:
     depends_on:
       - pip-latest
     provided_by_tool: pip
+    package_driver: pip
     probe_pkg: chromadb
     install_packages: chromadb faiss-cpu qdrant-client
     min_version: ""
@@ -198,6 +204,7 @@ targets:
     depends_on:
       - pip-latest
     provided_by_tool: pip
+    package_driver: pip
     probe_pkg: jupyterlab
     install_packages: jupyterlab ipywidgets nbformat
     min_version: ""
@@ -223,6 +230,7 @@ targets:
     depends_on:
       - pip-latest
     provided_by_tool: pip
+    package_driver: pip
     probe_pkg: fastapi
     install_packages: fastapi uvicorn gradio
     min_version: ""
@@ -248,6 +256,7 @@ targets:
     depends_on:
       - pip-latest
     provided_by_tool: pip
+    package_driver: pip
     probe_pkg: numpy
     install_packages: numpy pandas scipy scikit-learn matplotlib seaborn
     min_version: ""
@@ -273,6 +282,7 @@ targets:
     depends_on:
       - pip-latest
     provided_by_tool: pip
+    package_driver: pip
     probe_pkg: python-dotenv
     install_packages: python-dotenv rich tqdm
     min_version: ""
@@ -298,6 +308,7 @@ targets:
     depends_on:
       - pip-latest
     provided_by_tool: pip
+    package_driver: pip
     probe_pkg: ruff
     install_packages: ruff
     min_version: ""
@@ -323,6 +334,7 @@ targets:
     depends_on:
       - pip-latest
     provided_by_tool: pip
+    package_driver: pip
     probe_pkg: optimum
     install_packages: optimum
     min_version: ""
