@@ -194,6 +194,11 @@ _ucc_require_declared_dependencies_resolved() {
 # ── ucc_target — full UCC Steps 0-6 lifecycle per target ─────────────────────
 
 _ucc_execute_target() {
+  local _ucc_snapshot="${UCC_EXEC_SNAPSHOT:-}"
+  if [[ -n "$_ucc_snapshot" ]]; then
+    eval "$_ucc_snapshot"
+  fi
+
   local name="" observe_fn="" desired="" install_fn="" update_fn="" axes="" profile="" evidence_fn=""
 
   while [[ $# -gt 0 ]]; do
@@ -210,11 +215,6 @@ _ucc_execute_target() {
       *) shift ;;
     esac
   done
-
-  local _ucc_snapshot="${_UCC_EXEC_SNAPSHOT:-}"
-  if [[ -n "$_ucc_snapshot" ]]; then
-    eval "$_ucc_snapshot"
-  fi
 
   [[ -z "$axes" && -n "$profile" ]] && axes="$(_ucc_profile_axes "$profile")"
   if [[ -z "$desired" && "$profile" == "parametric" ]]; then
