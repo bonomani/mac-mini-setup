@@ -43,10 +43,22 @@ targets:
     component: python
     profile: configured
     type: config
+    state_model: config
     depends_on:
       - python
     oracle:
       configured: "pip --version >/dev/null 2>&1"
+    evidence:
+      version: "pip --version 2>/dev/null | awk '{print $2}'"
+      path: "command -v pip 2>/dev/null || true"
+    install_cmd: |
+      local pkgs
+      pkgs="$(python3 "$CFG_DIR/tools/read_config.py" --list "$YAML_PATH" pip_bootstrap 2>/dev/null | xargs)"
+      [[ -n "$pkgs" ]] && pip install --upgrade $pkgs
+    update_cmd: |
+      local pkgs
+      pkgs="$(python3 "$CFG_DIR/tools/read_config.py" --list "$YAML_PATH" pip_bootstrap 2>/dev/null | xargs)"
+      [[ -n "$pkgs" ]] && pip install --upgrade $pkgs
 
 pyenv_packages:
   - pyenv

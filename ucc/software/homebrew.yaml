@@ -38,10 +38,16 @@ targets:
 
   "brew-analytics=off":
     component: homebrew
-    profile: configured
+    profile: parametric
     type: config
+    state_model: parametric
     depends_on:
       - homebrew
+    observe_cmd: "brew analytics state 2>/dev/null | grep -qi disabled && echo off || echo on"
+    desired_value: "${analytics_desired}"
+    evidence_key: analytics
+    install_cmd: "ucc_run brew analytics off"
+    update_cmd: "ucc_run brew analytics off"
 installer_url: "https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh"
 analytics_desired: "off"
 shell_config_file: ".zprofile"

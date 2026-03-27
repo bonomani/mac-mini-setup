@@ -6,14 +6,10 @@
 run_python_from_yaml() {
   local cfg_dir="$1" yaml="$2"
 
-  local _pyenv_pkgs=() _pip_bootstrap=()
+  local _pyenv_pkgs=()
   while IFS= read -r p; do [[ -n "$p" ]] && _pyenv_pkgs+=("$p"); done \
     < <(yaml_list "$cfg_dir" "$yaml" pyenv_packages)
   [[ ${#_pyenv_pkgs[@]} -gt 0 ]] || _pyenv_pkgs=(pyenv pyenv-virtualenv)
-
-  while IFS= read -r p; do [[ -n "$p" ]] && _pip_bootstrap+=("$p"); done \
-    < <(yaml_list "$cfg_dir" "$yaml" pip_bootstrap)
-  [[ ${#_pip_bootstrap[@]} -gt 0 ]] || _pip_bootstrap=(pip setuptools wheel)
 
   local python_version="${UIC_PREF_PYTHON_VERSION:-$(yaml_get "$cfg_dir" "$yaml" python_version 3.12.3)}"
 
@@ -50,18 +46,5 @@ run_python_from_yaml() {
   ucc_pyenv_version_target "python" "$python_version"
 
   # ---- pip up-to-date ----
-  _observe_pip()  { ucc_asm_package_state "$(is_installed pip && pip --version 2>/dev/null | awk '{print $2}' || echo "absent")"; }
-  _evidence_pip() {
-    _ucc_ver_path_evidence \
-      "$(pip --version 2>/dev/null | awk '{print $2}')" \
-      "$(command -v pip 2>/dev/null || true)"
-  }
-  _upgrade_pip() { pip install --upgrade "${_pip_bootstrap[@]}"; }
-
-  ucc_target_nonruntime \
-    --name    "pip-latest" \
-    --observe  _observe_pip \
-    --evidence _evidence_pip \
-    --install  _upgrade_pip \
-    --update   _upgrade_pip
+  ucc_yaml_simple_target "$cfg_dir" "$yaml" "pip-latest"
 }

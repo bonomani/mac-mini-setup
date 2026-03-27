@@ -15,7 +15,7 @@ KNOWN_TARGET_TYPES = {
     "precondition",
     "service",
 }
-KNOWN_STATE_MODELS = {"package", "config"}
+KNOWN_STATE_MODELS = {"package", "config", "parametric"}
 KNOWN_PLATFORMS = {"macos", "linux", "wsl", "wsl1", "wsl2"}
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -220,7 +220,20 @@ def validate(manifest, known_gates):
         if not component:
             errors.append(f"target '{name}' missing component")
 
-        for field in ("display_name", "provided_by_tool", "runtime_manager", "probe_kind", "install_cmd", "update_cmd", "observe_success", "observe_failure"):
+        for field in (
+            "display_name",
+            "provided_by_tool",
+            "runtime_manager",
+            "probe_kind",
+            "install_cmd",
+            "update_cmd",
+            "observe_success",
+            "observe_failure",
+            "observe_cmd",
+            "desired_value",
+            "evidence_key",
+            "dependency_gate",
+        ):
             value = data.get(field)
             if value is not None and (not isinstance(value, str) or not value.strip()):
                 errors.append(f"target '{name}' field '{field}' must be a non-empty string")
@@ -228,6 +241,9 @@ def validate(manifest, known_gates):
         state_model = data.get("state_model")
         if state_model is not None and state_model not in KNOWN_STATE_MODELS:
             errors.append(f"target '{name}' has unknown state_model '{state_model}'")
+        dependency_gate = data.get("dependency_gate")
+        if isinstance(dependency_gate, str) and dependency_gate and dependency_gate not in known_gates:
+            errors.append(f"target '{name}' dependency_gate unknown gate '{dependency_gate}'")
 
         oracle = data.get("oracle")
         if oracle is not None:
@@ -280,10 +296,22 @@ def validate(manifest, known_gates):
             if not isinstance((oracle or {}).get("runtime"), str) or not (oracle or {}).get("runtime", "").strip():
                 errors.append(f"target '{name}' profile '{profile}' requires oracle.runtime")
 
+        if state_model == "parametric":
+            if profile != "parametric":
+                errors.append(f"target '{name}' state_model 'parametric' requires profile 'parametric'")
+            if target_type != "config":
+                errors.append(f"target '{name}' state_model 'parametric' requires type 'config'")
+            if not isinstance(data.get("observe_cmd"), str) or not data.get("observe_cmd", "").strip():
+                errors.append(f"target '{name}' state_model 'parametric' requires observe_cmd")
+            if not isinstance(data.get("desired_value"), str) or not data.get("desired_value", "").strip():
+                errors.append(f"target '{name}' state_model 'parametric' requires desired_value")
+
         if data.get("install_cmd") is not None or data.get("update_cmd") is not None:
             if state_model is None:
                 errors.append(f"target '{name}' with install/update commands requires state_model")
-            if not isinstance((oracle or {}).get("configured"), str) or not (oracle or {}).get("configured", "").strip():
+            elif state_model == "parametric":
+                pass
+            elif not isinstance((oracle or {}).get("configured"), str) or not (oracle or {}).get("configured", "").strip():
                 errors.append(f"target '{name}' with install/update commands requires oracle.configured")
 
         depends_on = data.get("depends_on", []) or []

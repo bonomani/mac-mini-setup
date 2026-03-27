@@ -87,21 +87,5 @@ run_homebrew_from_yaml() {
 
 
   # ---- Disable analytics ----
-  if is_installed brew; then
-    local _analytics_desired
-    _analytics_desired="$(yaml_get "$cfg_dir" "$yaml" analytics_desired off)"
-
-    eval "_obs_ba()  { ucc_asm_config_state \"\$(brew analytics state 2>/dev/null | grep -qi disabled && echo off || echo on)\" '${_analytics_desired}'; }"
-    eval "_evd_ba()  { printf 'analytics=%s' \"\$(brew analytics state 2>/dev/null | grep -qi disabled && echo off || echo on)\"; }"
-    eval "_fix_ba()  { ucc_run brew analytics off; }"
-
-    ucc_target \
-      --name    "brew-analytics=${_analytics_desired}" \
-      --profile  parametric \
-      --observe  _obs_ba \
-      --evidence _evd_ba \
-      --desired  "$(ucc_asm_config_desired "$_analytics_desired")" \
-      --install  _fix_ba \
-      --update   _fix_ba
-  fi
+  ucc_yaml_parametric_target "$cfg_dir" "$yaml" "brew-analytics=off"
 }

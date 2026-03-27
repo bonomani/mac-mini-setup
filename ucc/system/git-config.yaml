@@ -12,10 +12,28 @@ targets:
     component: git-config
     profile: configured
     type: config
+    state_model: config
     depends_on:
       - git
     oracle:
       configured: "git config --global user.name >/dev/null 2>&1"
+    evidence:
+      user: "git config --global user.name 2>/dev/null || true"
+      email: "git config --global user.email 2>/dev/null || true"
+    install_cmd: |
+      if [[ ! -t 0 ]]; then
+        log_warn "git-global-config: non-interactive shell — skipping. Set manually:"
+        log_warn "  git config --global user.name  'Your Name'"
+        log_warn "  git config --global user.email 'you@example.com'"
+        return 1
+      fi
+      read -rp "Git username: " GIT_USER
+      read -rp "Git email:    " GIT_EMAIL
+      git config --global user.name "$GIT_USER"
+      git config --global user.email "$GIT_EMAIL"
+      while IFS=$'\t' read -r cfg_key cfg_val; do
+        [[ -n "$cfg_key" ]] && git config --global "$cfg_key" "$cfg_val"
+      done < <(yaml_records "$CFG_DIR" "$YAML_PATH" global_config key value)
 
 global_config:
   - key: init.defaultBranch

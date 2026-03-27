@@ -158,6 +158,101 @@ ucc_yaml_capability_target() {
     --evidence "_uyct_evd_${fn}"
 }
 
+_ucc_yaml_gate_dependency_state() {
+  local gate="$1" dep_state="DepsReady" gate_key=""
+  [[ -n "$gate" ]] || { printf '%s' "$dep_state"; return; }
+  gate_key="UIC_GATE_FAILED_$(echo "${gate//-/_}" | tr '[:lower:]' '[:upper:]')"
+  [[ "${!gate_key:-0}" == "1" ]] && dep_state="DepsDegraded"
+  printf '%s' "$dep_state"
+}
+
+_ucc_yaml_parametric_observed_state() {
+  local current="$1" desired="$2" dep_state="$3"
+  if [[ "$current" == "$desired" ]]; then
+    ucc_asm_state \
+      --installation Configured \
+      --runtime Stopped \
+      --health Healthy \
+      --admin Enabled \
+      --dependencies "$dep_state" \
+      --config-value "$current"
+  else
+    ucc_asm_state \
+      --installation Installed \
+      --runtime Stopped \
+      --health Degraded \
+      --admin Enabled \
+      --dependencies "$dep_state" \
+      --config-value "$current"
+  fi
+}
+
+_ucc_yaml_parametric_desired_state() {
+  local desired="$1" dep_state="$2"
+  ucc_asm_state \
+    --installation Configured \
+    --runtime Stopped \
+    --health Healthy \
+    --admin Enabled \
+    --dependencies "$dep_state" \
+    --config-value "$desired"
+}
+
+_ucc_observe_yaml_parametric_target() {
+  local cfg_dir="$1" yaml="$2" target="$3"
+  local observe_cmd desired gate current dep_state
+  observe_cmd="$(_ucc_yaml_get "$cfg_dir" "$yaml" "targets.${target}.observe_cmd")"
+  desired="$(_ucc_yaml_get "$cfg_dir" "$yaml" "targets.${target}.desired_value")"
+  gate="$(_ucc_yaml_get "$cfg_dir" "$yaml" "targets.${target}.dependency_gate")"
+  dep_state="$(_ucc_yaml_gate_dependency_state "$gate")"
+
+  local CFG_DIR="$cfg_dir" YAML_PATH="$yaml" TARGET_NAME="$target"
+  current="$(eval "$observe_cmd" 2>/dev/null | head -1 | tr -d '[:space:]')"
+  _ucc_yaml_parametric_observed_state "$current" "$desired" "$dep_state"
+}
+
+_ucc_evidence_yaml_parametric_target() {
+  local cfg_dir="$1" yaml="$2" target="$3"
+  local observe_cmd evidence_key current
+  observe_cmd="$(_ucc_yaml_get "$cfg_dir" "$yaml" "targets.${target}.observe_cmd")"
+  evidence_key="$(_ucc_yaml_get "$cfg_dir" "$yaml" "targets.${target}.evidence_key" "value")"
+
+  local CFG_DIR="$cfg_dir" YAML_PATH="$yaml" TARGET_NAME="$target"
+  current="$(eval "$observe_cmd" 2>/dev/null | head -1 | tr -d '[:space:]')"
+  printf '%s=%s' "$evidence_key" "$current"
+}
+
+ucc_yaml_parametric_target() {
+  local cfg_dir="$1" yaml="$2" target="$3"
+  local fn install_cmd update_cmd desired gate dep_state
+  fn="${target//[^a-zA-Z0-9]/_}"
+  install_cmd="$(_ucc_yaml_get "$cfg_dir" "$yaml" "targets.${target}.install_cmd")"
+  update_cmd="$(_ucc_yaml_get "$cfg_dir" "$yaml" "targets.${target}.update_cmd")"
+  desired="$(_ucc_yaml_get "$cfg_dir" "$yaml" "targets.${target}.desired_value")"
+  gate="$(_ucc_yaml_get "$cfg_dir" "$yaml" "targets.${target}.dependency_gate")"
+  dep_state="$(_ucc_yaml_gate_dependency_state "$gate")"
+
+  eval "_uypt_obs_${fn}() { _ucc_observe_yaml_parametric_target '${cfg_dir}' '${yaml}' '${target}'; }"
+  eval "_uypt_evd_${fn}() { _ucc_evidence_yaml_parametric_target '${cfg_dir}' '${yaml}' '${target}'; }"
+  if [[ -n "$install_cmd" ]]; then
+    eval "_uypt_ins_${fn}() { _ucc_run_yaml_action '${cfg_dir}' '${yaml}' '${target}' install_cmd; }"
+  fi
+  if [[ -n "$update_cmd" ]]; then
+    eval "_uypt_upd_${fn}() { _ucc_run_yaml_action '${cfg_dir}' '${yaml}' '${target}' update_cmd; }"
+  fi
+
+  local args=(
+    --name "$target"
+    --profile parametric
+    --observe "_uypt_obs_${fn}"
+    --evidence "_uypt_evd_${fn}"
+    --desired "$(_ucc_yaml_parametric_desired_state "$desired" "$dep_state")"
+  )
+  [[ -n "$install_cmd" ]] && args+=(--install "_uypt_ins_${fn}")
+  [[ -n "$update_cmd" ]] && args+=(--update "_uypt_upd_${fn}")
+  ucc_target "${args[@]}"
+}
+
 # ucc_brew_target <target-name> <brew-pkg>
 # Standard brew formula: install=brew install, update=brew upgrade
 ucc_brew_target() {

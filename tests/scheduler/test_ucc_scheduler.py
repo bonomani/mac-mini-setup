@@ -427,6 +427,62 @@ class UccSchedulerTests(unittest.TestCase):
             self.assertIn("gpu=TestGPU", result.stdout)
             self.assertIn("status=available", result.stdout)
 
+    def test_yaml_parametric_target_uses_observe_cmd_and_desired_value(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            ucc_dir = self._write_manifest(
+                tmp_path,
+                textwrap.dedent(
+                    """\
+                    component: fake
+                    primary_profile: parametric
+                    libs: fake
+                    runner: run_fake
+                    targets:
+                      setting:
+                        component: fake
+                        profile: parametric
+                        type: config
+                        state_model: parametric
+                        observe_cmd: '[[ -f "$HOME/setting.applied" ]] && printf on || printf off'
+                        desired_value: 'on'
+                        evidence_key: mode
+                        install_cmd: 'touch "$HOME/setting.applied"'
+                        update_cmd: 'touch "$HOME/setting.applied"'
+                    """
+                ),
+            )
+            manifest = ucc_dir / "software" / "fake.yaml"
+            home_dir = tmp_path / "home"
+            home_dir.mkdir()
+            result = subprocess.run(
+                [
+                    "bash",
+                    "-lc",
+                    textwrap.dedent(
+                        f"""\
+                        set -euo pipefail
+                        export HOME="{home_dir}"
+                        export UCC_DECLARATION_FILE="{tmp_path / 'decl.jsonl'}"
+                        export UCC_RESULT_FILE="{tmp_path / 'result.jsonl'}"
+                        export UCC_SUMMARY_FILE="{tmp_path / 'summary.txt'}"
+                        export UCC_PROFILE_SUMMARY_FILE="{tmp_path / 'profile.txt'}"
+                        export UCC_TARGET_STATUS_FILE="{tmp_path / 'status.txt'}"
+                        export UCC_CORRELATION_ID="test-run"
+                        source "{ROOT / 'lib/ucc.sh'}"
+
+                        ucc_yaml_parametric_target "{ROOT}" "{manifest}" setting
+                        """
+                    ),
+                ],
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertIn("[installed] setting", result.stdout)
+            self.assertIn('config_value=off" -> "installation_state=Configured', result.stdout)
+            self.assertTrue((home_dir / "setting.applied").exists())
+
     def test_read_config_records_substitutes_top_level_scalars(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             manifest = self._write_manifest(
