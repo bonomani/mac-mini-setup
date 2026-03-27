@@ -27,7 +27,7 @@ targets:
     evidence:
       path: "printf '%s' \"$COMPOSE_FILE\""
 
-  ai-stack-running:
+  open-webui-runtime:
     component: ai-apps
     profile: runtime
     type: runtime
@@ -36,15 +36,73 @@ targets:
       - ai-stack-compose-file
     provided_by_tool: docker-compose
     runtime_manager: docker-compose
-    probe_kind: container-set
+    probe_kind: http
+    oracle:
+      runtime: 'curl -fsS --max-time 5 http://127.0.0.1:3000 >/dev/null 2>&1'
     endpoints:
       - name: Open WebUI
         url: http://localhost:3000
+
+  flowise-runtime:
+    component: ai-apps
+    profile: runtime
+    type: runtime
+    depends_on:
+      - docker-desktop-runtime
+      - ai-stack-compose-file
+    provided_by_tool: docker-compose
+    runtime_manager: docker-compose
+    probe_kind: http
+    oracle:
+      runtime: 'curl -fsS --max-time 5 http://127.0.0.1:3001 >/dev/null 2>&1'
+    endpoints:
       - name: Flowise
         url: http://localhost:3001
+
+  openhands-runtime:
+    component: ai-apps
+    profile: runtime
+    type: runtime
+    depends_on:
+      - docker-desktop-runtime
+      - ai-stack-compose-file
+    provided_by_tool: docker-compose
+    runtime_manager: docker-compose
+    probe_kind: http
+    oracle:
+      runtime: 'curl -fsS --max-time 5 http://127.0.0.1:3002 >/dev/null 2>&1'
+    endpoints:
       - name: OpenHands
         url: http://localhost:3002
+
+  n8n-runtime:
+    component: ai-apps
+    profile: runtime
+    type: runtime
+    depends_on:
+      - docker-desktop-runtime
+      - ai-stack-compose-file
+    provided_by_tool: docker-compose
+    runtime_manager: docker-compose
+    probe_kind: http
+    oracle:
+      runtime: 'curl -fsS --max-time 5 http://127.0.0.1:5678 >/dev/null 2>&1'
+    endpoints:
       - name: n8n
         url: http://localhost:5678
+
+  qdrant-runtime:
+    component: ai-apps
+    profile: runtime
+    type: runtime
+    depends_on:
+      - docker-desktop-runtime
+      - ai-stack-compose-file
+    provided_by_tool: docker-compose
+    runtime_manager: docker-compose
+    probe_kind: http
+    oracle:
+      runtime: 'curl -fsS --max-time 5 http://127.0.0.1:6333/collections >/dev/null 2>&1'
+    endpoints:
       - name: Qdrant
         url: http://localhost:6333

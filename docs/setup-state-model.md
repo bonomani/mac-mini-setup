@@ -37,8 +37,9 @@ Modeling rule:
 - the host setup state is a composition of component states
 - software-layer components use the `presence` or `configured` ASM profile
 - `ai-apps` uses both a parametric configuration target (`ai-stack-compose-file`)
-  and a runtime target (`ai-stack-running`) because the desired stack
-  definition and the running stack are governed separately
+  and per-app runtime targets (`open-webui-runtime`, `flowise-runtime`,
+  `openhands-runtime`, `n8n-runtime`, `qdrant-runtime`) because the desired
+  stack definition and the running apps are governed separately
 - system-layer value-convergence components (`docker-config`, `macos-defaults`) use the
   `parametric` ASM profile (axes include `config_value`)
 - the `system` component uses a parametric composition target
@@ -147,7 +148,7 @@ Meaning:
 - stack-definition example:
   `marker=# ai-stack v2 services=flowise,n8n,open-webui,openhands,qdrant`
 - system-composition example:
-  `kind=host-composition targets=ai-stack-running,ariaflow-service,ariaflow-web-service,docker-desktop-runtime,docker-resources,finder-show-hidden=1,git,git-global-config,homebrew,ollama-service,pmset-ac-sleep=0,python,unsloth-studio-launchd`
+  `kind=host-composition targets=ariaflow-service,ariaflow-web-service,docker-desktop-runtime,docker-resources,flowise-runtime,finder-show-hidden=1,git,git-global-config,homebrew,n8n-runtime,ollama-service,open-webui-runtime,openhands-runtime,pmset-ac-sleep=0,python,qdrant-runtime,unsloth-studio-launchd`
 
 ## 3. Derived states
 

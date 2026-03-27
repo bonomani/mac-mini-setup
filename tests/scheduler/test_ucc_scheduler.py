@@ -200,7 +200,7 @@ class UccSchedulerTests(unittest.TestCase):
                         evidence:
                           version: "printf 1.2.3"
                           pid: "printf 4321"
-                          port: "printf 9999"
+                          listener: "printf tcp:127.0.0.1:9999"
                     """
                 ),
             )
@@ -233,7 +233,7 @@ class UccSchedulerTests(unittest.TestCase):
             self.assertIn("[ok      ] fake-service", result.stdout)
             self.assertIn("version=1.2.3", result.stdout)
             self.assertIn("pid=4321", result.stdout)
-            self.assertIn("port=9999", result.stdout)
+            self.assertIn("listener=tcp:127.0.0.1:9999", result.stdout)
 
     def test_brew_runtime_target_restarts_started_service_when_probe_fails(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

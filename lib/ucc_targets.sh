@@ -31,8 +31,12 @@ _ucc_yaml_get() {
 
 _ucc_display_name() {
   case "$1" in
-    ai-stack-compose-file) printf 'stack definition' ;;
-    ai-stack-running)      printf 'stack runtime' ;;
+    ai-stack-compose-file) printf 'compose file' ;;
+    open-webui-runtime)    printf 'Open WebUI' ;;
+    flowise-runtime)       printf 'Flowise' ;;
+    openhands-runtime)     printf 'OpenHands' ;;
+    n8n-runtime)           printf 'n8n' ;;
+    qdrant-runtime)        printf 'Qdrant' ;;
     docker-desktop-runtime) printf 'docker runtime' ;;
     system-composition)    printf 'composition' ;;
     *)                     printf '%s' "$1" ;;

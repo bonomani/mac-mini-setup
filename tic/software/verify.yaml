@@ -67,24 +67,24 @@ tests:
     component: ai-apps
     intent: "Open WebUI must answer HTTP requests on port 3000"
     oracle: "curl -fsS --max-time 5 http://127.0.0.1:3000 >/dev/null 2>&1"
-    trace: "component:ai-apps / ucc-target:ai-stack-running"
+    trace: "component:ai-apps / ucc-target:open-webui-runtime"
   - name: flowise-http-ready
     component: ai-apps
     intent: "Flowise must answer HTTP requests on port 3001"
     oracle: "curl -fsS --max-time 5 http://127.0.0.1:3001 >/dev/null 2>&1"
-    trace: "component:ai-apps / ucc-target:ai-stack-running"
+    trace: "component:ai-apps / ucc-target:flowise-runtime"
   - name: openhands-http-ready
     component: ai-apps
     intent: "OpenHands must answer HTTP requests on port 3002"
     oracle: "curl -fsS --max-time 5 http://127.0.0.1:3002 >/dev/null 2>&1"
-    trace: "component:ai-apps / ucc-target:ai-stack-running"
+    trace: "component:ai-apps / ucc-target:openhands-runtime"
   - name: n8n-http-ready
     component: ai-apps
     intent: "n8n must answer HTTP requests on port 5678"
     oracle: "curl -fsS --max-time 5 http://127.0.0.1:5678 >/dev/null 2>&1"
-    trace: "component:ai-apps / ucc-target:ai-stack-running"
+    trace: "component:ai-apps / ucc-target:n8n-runtime"
   - name: qdrant-http-ready
     component: ai-apps
     intent: "Qdrant must answer HTTP requests on port 6333"
     oracle: "curl -fsS --max-time 5 http://127.0.0.1:6333/collections >/dev/null 2>&1"
-    trace: "component:ai-apps / ucc-target:ai-stack-running"
+    trace: "component:ai-apps / ucc-target:qdrant-runtime"

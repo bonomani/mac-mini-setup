@@ -67,7 +67,7 @@ state can describe the whole machine, not only individual components.
 | `lib/docker.sh` | Bash library | Docker component logic | Docker Desktop and resource settings |
 | `lib/ollama.sh` | Bash library | Ollama component logic | Installer, service startup, API checks |
 | `lib/ollama_models.sh` | Bash library | Ollama model targets | Autopull groups by size preference |
-| `lib/ai_apps.sh` | Bash library | AI app stack logic | Compose file install and stack runtime |
+| `lib/ai_apps.sh` | Bash library | AI app stack logic | Compose file install and per-app runtimes |
 | `lib/dev_tools.sh` | Bash library | Dev tools logic | VS Code, Node, npm, OMZ, ariaflow |
 | `lib/vscode_ext.sh` | Bash library | VS Code extension targets | Dynamic extension install targets |
 | `lib/macos_defaults.sh` | Bash library | macOS defaults logic | Parametric config targets and UI restarts |
@@ -201,8 +201,8 @@ Expected checkpoints:
 - `--preflight` should show `macos-platform` as `ok`
 - `--dry-run ai-apps` should evaluate `docker-daemon`, `docker-compose-cli`,
   and `ai-apps-template`
-- `ai-apps` should converge both `ai-stack-compose-file` and
-  `ai-stack-running`
+- `ai-apps` should converge `ai-stack-compose-file` plus the per-app
+  runtime targets for Open WebUI, Flowise, OpenHands, n8n, and Qdrant
 - `verify` should pass the AI app HTTP readiness checks for Open WebUI,
   Flowise, OpenHands, n8n, and Qdrant
 - `verify` may skip `system-composition-converged` when run standalone,

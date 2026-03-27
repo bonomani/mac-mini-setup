@@ -103,7 +103,7 @@ targets:
     evidence:
       version: "_brew_cached_version ariaflow"
       pid: "lsof -ti tcp:${ariaflow_port} 2>/dev/null | head -1"
-      port: "${ariaflow_port}"
+      listener: "printf 'tcp:127.0.0.1:${ariaflow_port}'"
     endpoints:
       - name: aria2 RPC
         url: http://127.0.0.1:6800
@@ -136,7 +136,7 @@ targets:
     evidence:
       version: "_brew_cached_version ariaflow-web"
       pid: "lsof -ti tcp:${ariaflow_web_port} 2>/dev/null | head -1"
-      port: "${ariaflow_web_port}"
+      listener: "printf 'tcp:127.0.0.1:${ariaflow_web_port}'"
     endpoints:
       - name: ariaflow web UI
         url: http://127.0.0.1:8001

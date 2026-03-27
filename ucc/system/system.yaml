@@ -13,7 +13,11 @@ system:
     - docker-desktop-runtime
     - python
     - ollama-service
-    - ai-stack-running
+    - open-webui-runtime
+    - flowise-runtime
+    - openhands-runtime
+    - n8n-runtime
+    - qdrant-runtime
     - ariaflow-service
     - ariaflow-web-service
     - unsloth-studio-launchd
@@ -32,7 +36,11 @@ targets:
       - docker-desktop-runtime
       - python
       - ollama-service
-      - ai-stack-running
+      - open-webui-runtime
+      - flowise-runtime
+      - openhands-runtime
+      - n8n-runtime
+      - qdrant-runtime
       - ariaflow-service
       - ariaflow-web-service
       - unsloth-studio-launchd

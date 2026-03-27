@@ -47,7 +47,7 @@ targets:
     evidence:
       version: "ollama --version 2>/dev/null | awk '{print $NF}'"
       pid: "pgrep -f 'ollama (serve|app)' 2>/dev/null | head -1"
-      port: "${api_port}"
+      listener: "printf 'tcp:127.0.0.1:${api_port}'"
     endpoints:
       - name: Ollama API
         url: http://127.0.0.1:11434
