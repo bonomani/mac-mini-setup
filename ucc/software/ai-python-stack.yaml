@@ -4,6 +4,7 @@ libs: pip_group unsloth_studio
 runner: run_ai_python_stack_from_yaml
 platforms:
   - macos
+unsloth_label: ai.unsloth.studio
 unsloth_port: 8888
 unsloth_studio_dir: .unsloth/studio
 targets:
@@ -19,6 +20,12 @@ targets:
     oracle:
       configured: '[[ -d "$HOME/${unsloth_studio_dir}" ]]'
       runtime: 'curl -fsS --max-time 5 "http://127.0.0.1:${unsloth_port}" >/dev/null 2>&1'
+    evidence:
+      version: "pip show unsloth 2>/dev/null | awk '/^Version:/{print $2}'"
+      folder: "printf '%s' \"$HOME/${unsloth_studio_dir}\""
+      pid: "pgrep -f 'unsloth.*studio' 2>/dev/null | head -1 || true"
+      listener: "printf 'tcp:127.0.0.1:${unsloth_port}'"
+      plist: "printf '%s/Library/LaunchAgents/${unsloth_label}.plist' \"$HOME\""
     endpoints:
       - name: Unsloth Studio
         url: http://127.0.0.1:8888

@@ -8,7 +8,8 @@ register_unsloth_studio_targets() {
 
   local label plist_marker port host studio_dir log_file plist bin
 
-  label="$(python3 "$cfg_dir/tools/read_config.py" --get "$yaml" unsloth_studio.label 2>/dev/null)"
+  label="$(python3 "$cfg_dir/tools/read_config.py" --get "$yaml" unsloth_label 2>/dev/null || true)"
+  [[ -n "$label" ]] || label="$(python3 "$cfg_dir/tools/read_config.py" --get "$yaml" unsloth_studio.label 2>/dev/null)"
   plist_marker="$(python3 "$cfg_dir/tools/read_config.py" --get "$yaml" unsloth_studio.plist_marker 2>/dev/null)"
   port="$(python3 "$cfg_dir/tools/read_config.py" --get "$yaml" unsloth_studio.port 2>/dev/null)"
   host="$(python3 "$cfg_dir/tools/read_config.py" --get "$yaml" unsloth_studio.host 2>/dev/null)"
@@ -38,13 +39,7 @@ register_unsloth_studio_targets() {
     ucc_asm_runtime_desired
   }"
   eval "_evidence_unsloth_studio() {
-    local pid ver
-    ver=\$(pip show unsloth 2>/dev/null | awk '/^Version:/{print \$2}')
-    pid=\$(pgrep -f 'unsloth.*studio' 2>/dev/null | head -1 || true)
-    [[ -n \"\$ver\" ]] && printf 'version=%s' \"\$ver\"
-    printf '  folder=${studio_dir}'
-    [[ -n \"\$pid\" ]] && printf '  pid=%s' \"\$pid\"
-    printf '  listener=tcp:127.0.0.1:${port}  plist=${plist}'
+    ucc_eval_evidence_from_yaml '${cfg_dir}' '${yaml}' 'unsloth-studio'
   }"
   eval "_install_unsloth_studio() {
     [[ -d '${studio_dir}' ]] || ucc_run unsloth studio setup || return 1
