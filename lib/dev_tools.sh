@@ -79,6 +79,15 @@ run_dev_tools_from_yaml() {
 
   _ensure_brew_service_started() {
     local formula_ref="$1" service_name="$2" readiness_url="${3:-}"
+    local svc_status=""
+    svc_status="$(_brew_service_status "$service_name")"
+    if [[ "$svc_status" == "started" ]]; then
+      if [[ -z "$readiness_url" ]] || _wait_http_ready "$readiness_url"; then
+        return 0
+      fi
+      _restart_brew_service "$formula_ref" "$service_name" "$readiness_url"
+      return $?
+    fi
     if ucc_run brew services start "$formula_ref"; then
       if [[ -z "$readiness_url" ]] || _wait_http_ready "$readiness_url"; then
         return 0
