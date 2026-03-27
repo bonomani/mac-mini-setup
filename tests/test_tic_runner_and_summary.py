@@ -83,6 +83,51 @@ class TicRunnerAndSummaryTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, msg=result.stderr)
             self.assertIn("Capability", result.stdout)
 
+    def test_tic_runner_supports_conditional_skip_when(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            verify_yaml = tmp_path / "verify.yaml"
+            status_file = tmp_path / "status.txt"
+            verify_yaml.write_text(
+                textwrap.dedent(
+                    """\
+                    tests:
+                      - name: conditional-skip
+                        component: ai-python-stack
+                        intent: "skip on MPS hosts"
+                        oracle: "false"
+                        trace: "component:ai-python-stack / smoke"
+                        skip: "skip on mps hosts"
+                        skip_when: '_tic_target_status_is "mps-available" "ok"'
+                    """
+                ),
+                encoding="utf-8",
+            )
+            status_file.write_text("mps-available|ok\n", encoding="utf-8")
+
+            result = subprocess.run(
+                [
+                    "bash",
+                    "-lc",
+                    textwrap.dedent(
+                        f"""\
+                        set -euo pipefail
+                        export HOST_PLATFORM=macos
+                        export UCC_TARGET_STATUS_FILE="{status_file}"
+                        source "{ROOT / 'lib/utils.sh'}"
+                        source "{ROOT / 'lib/tic.sh'}"
+                        source "{ROOT / 'lib/tic_runner.sh'}"
+                        run_tic_tests_from_yaml "{ROOT}" "{verify_yaml}"
+                        """
+                    ),
+                ],
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertIn("[skip    ] conditional-skip", result.stdout)
+            self.assertIn("skip on mps hosts", result.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

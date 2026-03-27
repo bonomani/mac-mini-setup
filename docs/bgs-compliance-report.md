@@ -17,7 +17,7 @@ The assessed scope is the one declared in [`../BGS.md`](../BGS.md):
 
 - AI workstation setup across 13 governed components
 - full macOS profile
-- portable Linux/WSL subset with unsupported components skipped by manifest scope and policy
+- portable Linux/WSL2 subset with unsupported components skipped by manifest scope and policy
 - governed preflight, convergence, and post-convergence verification
 
 ## Reviewed Evidence
@@ -127,7 +127,7 @@ Status: compliant
 
 These do not invalidate the current slice claim, but they remain important:
 
-- macOS is still the only full-profile target; Linux and WSL run a governed subset only
+- macOS is still the only full-profile target; Linux and WSL2 run a governed subset only
 - TIC remains verification evidence, not convergence
 - credentials, IAM, and most privacy controls are delegated to upstream tooling
 - runtime evidence is partly outside the repository under `~/.ai-stack/runs/`

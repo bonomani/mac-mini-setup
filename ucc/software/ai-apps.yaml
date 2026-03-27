@@ -6,7 +6,7 @@ on_fail: ignore
 platforms:
   - macos
   - linux
-  - wsl
+  - wsl2
 stack:
   kind: docker-compose
   compose_dir: ".ai-stack"

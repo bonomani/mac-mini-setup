@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import os
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -14,6 +15,7 @@ KNOWN_TARGET_TYPES = {
     "precondition",
     "service",
 }
+KNOWN_PLATFORMS = {"macos", "linux", "wsl", "wsl1", "wsl2"}
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -91,10 +93,81 @@ def parse_manifest(path: Path):
     return {"targets": manifest["targets"], "components": {}}
 
 
+def _declared_platforms(manifest_data):
+    platforms = manifest_data.get("platforms") or []
+    if isinstance(platforms, list):
+        return [p for p in platforms if isinstance(p, str)]
+    return []
+
+
+def _target_dep_union(data):
+    deps = list(data.get("depends_on", []) or [])
+    platform_deps = data.get("depends_on_by_platform") or {}
+    if isinstance(platform_deps, dict):
+        for items in platform_deps.values():
+            if isinstance(items, list):
+                deps.extend(items)
+    return deps
+
+
+def _target_soft_dep_targets(data):
+    deps = []
+    for dep in data.get("soft_depends_on", []) or []:
+        if isinstance(dep, str) and dep and not dep.startswith("gate:"):
+            deps.append(dep)
+    return deps
+
+
+def _target_order_union(data):
+    return _target_dep_union(data) + _target_soft_dep_targets(data)
+
+
+def _effective_target_deps(data):
+    deps = list(data.get("depends_on", []) or [])
+    platform = (os.environ.get("HOST_PLATFORM_VARIANT") or "").strip()
+    family = (os.environ.get("HOST_PLATFORM") or "").strip()
+    candidates = []
+    if platform:
+        candidates.append(platform)
+    if family and family not in candidates:
+        candidates.append(family)
+    if family == "wsl" and "linux" not in candidates:
+        candidates.append("linux")
+
+    platform_deps = data.get("depends_on_by_platform") or {}
+    if isinstance(platform_deps, dict):
+        for candidate in candidates:
+            items = platform_deps.get(candidate) or []
+            if isinstance(items, list):
+                deps.extend(items)
+    return deps
+
+
 def validate(manifest, known_gates):
     targets = manifest["targets"]
     components = manifest["components"]
     errors = []
+
+    for component, meta in components.items():
+        file_path = meta.get("file")
+        manifest_data = parse_manifest_file(Path(file_path)) if file_path else {}
+        platforms = _declared_platforms(manifest_data)
+        for platform in platforms:
+            if platform not in KNOWN_PLATFORMS:
+                errors.append(f"component '{component}' declares unknown platform '{platform}'")
+
+        platform_tool_preferences = manifest_data.get("platform_tool_preferences") or {}
+        if platform_tool_preferences:
+            if not isinstance(platform_tool_preferences, dict):
+                errors.append(f"component '{component}' platform_tool_preferences must be a mapping")
+            else:
+                for platform, tools in platform_tool_preferences.items():
+                    if platform not in KNOWN_PLATFORMS:
+                        errors.append(f"component '{component}' tool preference declares unknown platform '{platform}'")
+                    if platforms and platform not in platforms:
+                        errors.append(f"component '{component}' tool preference platform '{platform}' not declared in platforms")
+                    if not isinstance(tools, list) or not tools or not all(isinstance(tool, str) and tool for tool in tools):
+                        errors.append(f"component '{component}' tool preference for '{platform}' must be a non-empty list of strings")
 
     for name, data in targets.items():
         profile = data.get("profile")
@@ -129,6 +202,21 @@ def validate(manifest, known_gates):
             if dep not in targets:
                 errors.append(f"target '{name}' depends_on unknown target '{dep}'")
 
+        platform_deps = data.get("depends_on_by_platform") or {}
+        if platform_deps:
+            if not isinstance(platform_deps, dict):
+                errors.append(f"target '{name}' depends_on_by_platform must be a mapping")
+            else:
+                for platform, deps in platform_deps.items():
+                    if platform not in KNOWN_PLATFORMS:
+                        errors.append(f"target '{name}' depends_on_by_platform unknown platform '{platform}'")
+                    if not isinstance(deps, list):
+                        errors.append(f"target '{name}' depends_on_by_platform '{platform}' must be a list")
+                        continue
+                    for dep in deps:
+                        if dep not in targets:
+                            errors.append(f"target '{name}' depends_on_by_platform '{platform}' unknown target '{dep}'")
+
         for dep in data.get("soft_depends_on", []):
             if dep.startswith("gate:"):
                 gate = dep.split(":", 1)[1]
@@ -158,7 +246,7 @@ def validate(manifest, known_gates):
     graph = defaultdict(list)
     indegree = {name: 0 for name in targets}
     for name, data in targets.items():
-        for dep in data.get("depends_on", []):
+        for dep in _target_order_union(data):
             graph[dep].append(name)
             indegree[name] += 1
 
@@ -198,7 +286,7 @@ def component_order(manifest, topo_ordered=None):
         comp = tdata.get("component")
         if not comp or comp not in comp_deps:
             continue
-        for dep_target in tdata.get("depends_on", []):
+        for dep_target in _target_order_union(tdata):
             dep_comp = targets.get(dep_target, {}).get("component")
             if dep_comp and dep_comp != comp and dep_comp not in comp_deps[comp]:
                 comp_deps[comp].add(dep_comp)
@@ -273,7 +361,7 @@ def main():
         return 1
 
     if deps_mode:
-        for dep in manifest["targets"].get(target_name, {}).get("depends_on", []):
+        for dep in _effective_target_deps(manifest["targets"].get(target_name, {}) or {}):
             print(dep)
         return 0
 

@@ -5,7 +5,7 @@ runner: run_python_from_yaml
 platforms:
   - macos
   - linux
-  - wsl
+  - wsl2
 python_version: 3.12.3
 targets:
   pyenv:

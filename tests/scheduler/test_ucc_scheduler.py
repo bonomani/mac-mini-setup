@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import subprocess
 import tempfile
 import textwrap
@@ -87,6 +88,7 @@ class UccSchedulerTests(unittest.TestCase):
                 ),
             )
             order_file = tmp_path / "order.txt"
+            app_marker = tmp_path / "app.done"
             state_dir = tmp_path / "state"
             state_dir.mkdir()
             status_file = tmp_path / "status.txt"
@@ -129,6 +131,76 @@ class UccSchedulerTests(unittest.TestCase):
             )
             self.assertEqual(result.returncode, 0, msg=result.stderr)
             self.assertEqual(order_file.read_text(encoding="utf-8").splitlines(), ["a", "b", "c"])
+
+    def test_soft_dependencies_influence_order_without_becoming_blocking(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            ucc_dir = self._write_manifest(
+                tmp_path,
+                textwrap.dedent(
+                    """\
+                    component: fake
+                    primary_profile: runtime
+                    libs: fake
+                    runner: run_fake
+                    targets:
+                      capability:
+                        component: fake
+                        profile: capability
+                        type: runtime
+                      app:
+                        component: fake
+                        profile: runtime
+                        type: runtime
+                        soft_depends_on:
+                          - capability
+                    """
+                ),
+            )
+            ordered = subprocess.check_output(
+                ["python3", str(QUERY), "--ordered-targets", "fake", str(ucc_dir)],
+                text=True,
+            ).strip().splitlines()
+            self.assertEqual(ordered, ["capability", "app"])
+
+            order_file = tmp_path / "order.txt"
+            app_marker = tmp_path / "app.done"
+            state_dir = tmp_path / "state"
+            state_dir.mkdir()
+            status_file = tmp_path / "status.txt"
+            result = subprocess.run(
+                [
+                    "bash",
+                    "-lc",
+                    textwrap.dedent(
+                        f"""\
+                        set -euo pipefail
+                        export ARIA_QUEUE_DIR="{state_dir}"
+                        export UCC_TARGET_DEFER=1
+                        export UCC_TARGETS_MANIFEST="{ucc_dir}"
+                        export UCC_TARGETS_QUERY_SCRIPT="{QUERY}"
+                        export UCC_TARGET_STATUS_FILE="{status_file}"
+                        export UCC_DECLARATION_FILE="{tmp_path / 'decl.jsonl'}"
+                        export UCC_RESULT_FILE="{tmp_path / 'result.jsonl'}"
+                        export UCC_SUMMARY_FILE="{tmp_path / 'summary.txt'}"
+                        export UCC_PROFILE_SUMMARY_FILE="{tmp_path / 'profile.txt'}"
+                        export UCC_CORRELATION_ID="test-run"
+                        source "{ROOT / 'lib/ucc.sh'}"
+
+                        obs_app() {{ [[ -f "{app_marker}" ]] && ucc_asm_runtime_desired || ucc_asm_state --installation Absent --runtime NeverStarted --health Unavailable --admin Enabled --dependencies DepsUnknown; }}
+                        ins_app() {{ echo app >> "{order_file}"; touch "{app_marker}"; }}
+
+                        ucc_reset_registered_targets
+                        ucc_target_service --name app --observe obs_app --install ins_app
+                        ucc_flush_registered_targets fake
+                        """
+                    ),
+                ],
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertEqual(order_file.read_text(encoding="utf-8").splitlines(), ["app"])
 
     def test_runtime_endpoints_query_reads_nested_endpoint_records(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -195,6 +267,63 @@ class UccSchedulerTests(unittest.TestCase):
             ).strip()
             self.assertEqual(output, 'curl -fsS http://127.0.0.1:9999 >/dev/null 2>&1')
 
+    def test_platform_specific_dependencies_follow_host_variant(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            ucc_dir = self._write_manifest(
+                Path(tmp),
+                textwrap.dedent(
+                    """\
+                    component: fake
+                    primary_profile: configured
+                    libs: fake
+                    runner: run_fake
+                    platforms:
+                      - macos
+                      - linux
+                      - wsl2
+                    platform_tool_preferences:
+                      macos:
+                        - brew-installer
+                      linux:
+                        - native-package-manager
+                        - brew-installer
+                      wsl2:
+                        - native-package-manager
+                        - brew-installer
+                    targets:
+                      xcode:
+                        component: fake
+                        profile: configured
+                        type: precondition
+                      pkg:
+                        component: fake
+                        profile: configured
+                        type: package
+                        depends_on_by_platform:
+                          macos:
+                            - xcode
+                    """
+                ),
+            )
+            macos_output = subprocess.check_output(
+                ["python3", str(QUERY), "--deps", "pkg", str(ucc_dir)],
+                text=True,
+                env={**os.environ, **{"HOST_PLATFORM": "macos", "HOST_PLATFORM_VARIANT": "macos"}},
+            ).strip().splitlines()
+            linux_output = subprocess.check_output(
+                ["python3", str(QUERY), "--deps", "pkg", str(ucc_dir)],
+                text=True,
+                env={**os.environ, **{"HOST_PLATFORM": "linux", "HOST_PLATFORM_VARIANT": "linux"}},
+            ).strip()
+            wsl2_output = subprocess.check_output(
+                ["python3", str(QUERY), "--deps", "pkg", str(ucc_dir)],
+                text=True,
+                env={**os.environ, **{"HOST_PLATFORM": "wsl", "HOST_PLATFORM_VARIANT": "wsl2"}},
+            ).strip()
+            self.assertEqual(macos_output, ["xcode"])
+            self.assertEqual(linux_output, "")
+            self.assertEqual(wsl2_output, "")
+
     def test_brew_runtime_target_uses_yaml_probe_and_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
@@ -247,9 +376,10 @@ class UccSchedulerTests(unittest.TestCase):
                         export UCC_CORRELATION_ID="test-run"
                         source "{ROOT / 'lib/ucc.sh'}"
 
+                        brew_observe() {{ printf '1.2.3'; }}
                         _ucc_brew_service_status() {{ printf 'started'; }}
 
-                        ucc_brew_service_target "fake-service" "fake" "fake-ref" "{ROOT}" "{manifest}"
+                        ucc_brew_runtime_formula_target "fake-service" "fake" "fake-ref" "{ROOT}" "{manifest}"
                         """
                     ),
                 ],
@@ -312,13 +442,14 @@ class UccSchedulerTests(unittest.TestCase):
                         export UCC_CORRELATION_ID="test-run"
                         source "{ROOT / 'lib/ucc.sh'}"
 
+                        brew_observe() {{ printf '1.2.3'; }}
                         _ucc_brew_service_status() {{ printf 'started'; }}
                         brew() {{
                           printf '%s\\n' "$*" >> "{commands}"
                           touch "{marker}"
                         }}
 
-                        ucc_brew_service_target "fake-service" "fake" "fake-ref" "{ROOT}" "{manifest}"
+                        ucc_brew_runtime_formula_target "fake-service" "fake" "fake-ref" "{ROOT}" "{manifest}"
                         """
                     ),
                 ],
@@ -382,6 +513,7 @@ class UccSchedulerTests(unittest.TestCase):
                         export UCC_RUNTIME_WAIT_INTERVAL=0.01
                         source "{ROOT / 'lib/ucc.sh'}"
 
+                        brew_observe() {{ printf '1.2.3'; }}
                         _ucc_brew_service_status() {{
                           [[ -f "{started}" ]] && printf 'started' || printf 'stopped'
                         }}
@@ -394,7 +526,7 @@ class UccSchedulerTests(unittest.TestCase):
                           ) &
                         }}
 
-                        ucc_brew_service_target "fake-service" "fake" "fake-ref" "{ROOT}" "{manifest}"
+                        ucc_brew_runtime_formula_target "fake-service" "fake" "fake-ref" "{ROOT}" "{manifest}"
                         """
                     ),
                 ],

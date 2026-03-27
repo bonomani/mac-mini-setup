@@ -55,6 +55,7 @@ _tic_component_supported_for_host() {
   done < <(yaml_list "$cfg_dir" "$config" platforms)
   [[ ${#supported[@]} -eq 0 ]] && return 0
   for platform in "${supported[@]}"; do
+    [[ "$platform" == "${HOST_PLATFORM_VARIANT:-unknown}" ]] && return 0
     [[ "$platform" == "${HOST_PLATFORM:-unknown}" ]] && return 0
     [[ "${HOST_PLATFORM:-unknown}" == "wsl" && "$platform" == "linux" ]] && return 0
   done
@@ -94,17 +95,45 @@ _tic_requires_status_skip_reason() {
   return 1
 }
 
+_tic_target_status() {
+  local target="$1"
+  [[ -n "$target" ]] || return 1
+  [[ -n "${UCC_TARGET_STATUS_FILE:-}" && -f "${UCC_TARGET_STATUS_FILE:-}" ]] || return 1
+  awk -F'|' -v target="$target" '$1==target {val=$2} END {print val}' "${UCC_TARGET_STATUS_FILE:-/dev/null}" 2>/dev/null || true
+}
+
+_tic_target_status_is() {
+  local target="$1" expected="$2"
+  [[ -n "$target" && -n "$expected" ]] || return 1
+  [[ "$(_tic_target_status "$target")" == "$expected" ]]
+}
+
+_tic_skip_when_reason() {
+  local condition="$1" reason="${2:-conditional skip}"
+  [[ -n "$condition" ]] || return 1
+  if eval "$condition"; then
+    printf '%s' "$reason"
+    return 0
+  fi
+  return 1
+}
+
 # Run all tic_tests declared in a YAML file.
 # Usage: run_tic_tests_from_yaml <cfg_dir> <yaml_path>
 run_tic_tests_from_yaml() {
   local cfg_dir="$1" yaml="$2"
-  local t_name t_component t_requires_status t_intent t_oracle t_trace t_skip skip_reason row
+  local t_name t_component t_requires_status t_intent t_oracle t_trace t_skip t_skip_when skip_reason row
   local _tic_sep=$'\x1f'
   while IFS= read -r row; do
     row="${row//$'\t'/${_tic_sep}}"
-    IFS="${_tic_sep}" read -r t_name t_component t_requires_status t_intent t_oracle t_trace t_skip <<< "${row}${_tic_sep}"
+    IFS="${_tic_sep}" read -r t_name t_component t_requires_status t_intent t_oracle t_trace t_skip t_skip_when <<< "${row}${_tic_sep}"
     [[ -n "$t_name" ]] || continue
-    skip_reason="$t_skip"
+    skip_reason=""
+    if [[ -n "$t_skip_when" ]]; then
+      skip_reason="$(_tic_skip_when_reason "$t_skip_when" "$t_skip" || true)"
+    else
+      skip_reason="$t_skip"
+    fi
     if [[ -z "$skip_reason" ]]; then
       skip_reason="$(_tic_component_skip_reason "$cfg_dir" "$t_component" || true)"
     fi
@@ -117,7 +146,7 @@ run_tic_tests_from_yaml() {
     else
       tic_test --name "$t_name" --intent "$t_intent" --oracle "$t_oracle" --trace "$t_trace"
     fi
-  done < <(yaml_records "$cfg_dir" "$yaml" tests name component requires_status_target intent oracle trace skip)
+  done < <(yaml_records "$cfg_dir" "$yaml" tests name component requires_status_target intent oracle trace skip skip_when)
 }
 
 # Run all TIC suites and emit summary.
@@ -125,17 +154,8 @@ run_tic_tests_from_yaml() {
 run_verify() {
   local cfg_dir="$1"
 
-  local _NODE_VER _ARIA2_PORT _ARIAFLOW_PORT _ARIAFLOW_WEB_PORT _OLLAMA_API_HOST _OLLAMA_API_PORT
-  local _UNSLOTH_PORT _UNSLOTH_LABEL _UNSLOTH_STUDIO_DIR
-  _NODE_VER="$(          yaml_get "$cfg_dir" "$cfg_dir/ucc/software/dev-tools.yaml"       node_version          24)"
-  _ARIA2_PORT="$(        yaml_get "$cfg_dir" "$cfg_dir/ucc/software/dev-tools.yaml"       aria2_port            6800)"
-  _ARIAFLOW_PORT="$(     yaml_get "$cfg_dir" "$cfg_dir/ucc/software/dev-tools.yaml"       ariaflow_port         8000)"
-  _ARIAFLOW_WEB_PORT="$( yaml_get "$cfg_dir" "$cfg_dir/ucc/software/dev-tools.yaml"       ariaflow_web_port     8001)"
-  _OLLAMA_API_HOST="$(   yaml_get "$cfg_dir" "$cfg_dir/ucc/software/ollama.yaml"          api_host              127.0.0.1)"
-  _OLLAMA_API_PORT="$(   yaml_get "$cfg_dir" "$cfg_dir/ucc/software/ollama.yaml"          api_port              11434)"
-  _UNSLOTH_PORT="$(      yaml_get "$cfg_dir" "$cfg_dir/ucc/software/ai-python-stack.yaml" unsloth_studio.port   8888)"
-  _UNSLOTH_LABEL="$(     yaml_get "$cfg_dir" "$cfg_dir/ucc/software/ai-python-stack.yaml" unsloth_studio.label  ai.unsloth.studio)"
-  _UNSLOTH_STUDIO_DIR="$HOME/$(yaml_get "$cfg_dir" "$cfg_dir/ucc/software/ai-python-stack.yaml" unsloth_studio.studio_dir .unsloth/studio)"
+  local _NODE_VER
+  _NODE_VER="$(yaml_get "$cfg_dir" "$cfg_dir/ucc/software/dev-tools.yaml" node_version 24)"
   _tic_load_component_policies "$cfg_dir"
 
   # Ensure pyenv and node are in PATH so oracle commands resolve correctly

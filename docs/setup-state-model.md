@@ -11,7 +11,7 @@ bounded lifecycle and explicit admissible transitions.
 
 Scope:
 - AI workstation setup
-- macOS is the full-profile target; Linux and WSL use the portable subset
+- macOS is the full-profile target; Linux and WSL2 use the portable subset
 - 13 governed components across two layers:
 
   Software layer (`ucc/software/`) — presence convergence:

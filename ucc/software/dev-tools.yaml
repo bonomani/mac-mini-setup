@@ -77,12 +77,25 @@ targets:
     oracle:
       configured: '[[ -x "$HOME/bin/ai-healthcheck" ]]'
 
+  networkquality-available:
+    component: dev-tools
+    profile: capability
+    type: runtime
+    runtime_manager: capability
+    probe_kind: command
+    oracle:
+      runtime: "command -v networkQuality >/dev/null 2>&1"
+    evidence:
+      path: "command -v networkQuality 2>/dev/null"
+
   ariaflow:
     component: dev-tools
     profile: runtime
     type: runtime
     depends_on:
       - homebrew
+    soft_depends_on:
+      - networkquality-available
     provided_by_tool: brew
     runtime_manager: brew-service
     probe_kind: http

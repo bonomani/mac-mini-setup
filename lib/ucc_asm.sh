@@ -238,23 +238,6 @@ ucc_asm_config_desired() {
     --config-value "$1"
 }
 
-ucc_asm_service_state() {
-  case "$1" in
-    absent|stopped)
-      ucc_asm_state --installation Configured --runtime Stopped --health Unavailable --admin Enabled --dependencies DepsReady
-      ;;
-    outdated)
-      ucc_asm_state --installation Configured --runtime Running --health Degraded --admin Enabled --dependencies DepsReady
-      ;;
-    loaded|started|running)
-      ucc_asm_state --installation Configured --runtime Running --health Healthy --admin Enabled --dependencies DepsReady
-      ;;
-    *)
-      ucc_asm_state --installation Configured --runtime Running --health Healthy --admin Enabled --dependencies DepsReady
-      ;;
-  esac
-}
-
 # ── Profile loading ───────────────────────────────────────────────────────────
 
 _UCC_PROFILE_IDS=()
@@ -338,15 +321,6 @@ _ucc_profile_index() {
     done
   done
   printf ''
-}
-
-ucc_asm_configured_desired() {
-  ucc_asm_state \
-    --installation Configured \
-    --runtime Stopped \
-    --health Healthy \
-    --admin Enabled \
-    --dependencies DepsReady
 }
 
 ucc_asm_runtime_desired() {

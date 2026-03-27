@@ -264,6 +264,26 @@ PY
     --install  _install_healthcheck \
     --update   _install_healthcheck
 
+  # ---- macOS capability: networkQuality CLI ----
+  _observe_networkquality() {
+    if command -v networkQuality >/dev/null 2>&1; then
+      ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady
+    else
+      ucc_asm_state --installation Installed --runtime Stopped --health Degraded --admin Enabled --dependencies DepsReady
+    fi
+  }
+  _evidence_networkquality() {
+    local path
+    path="$(command -v networkQuality 2>/dev/null || true)"
+    [[ -n "$path" ]] && printf 'path=%s' "$path"
+  }
+
+  ucc_target \
+    --name     "networkquality-available" \
+    --profile  capability \
+    --observe  _observe_networkquality \
+    --evidence _evidence_networkquality
+
   ucc_brew_runtime_formula_target "ariaflow" "ariaflow" "$_ARIAFLOW_FORMULA" "$cfg_dir" "$yaml"
   ucc_brew_runtime_formula_target "ariaflow-web" "ariaflow-web" "$_ARIAFLOW_WEB_FORMULA" "$cfg_dir" "$yaml"
 }

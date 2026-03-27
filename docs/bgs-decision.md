@@ -6,7 +6,7 @@ bgs_slice: BGS-State-Modeled-Governed
 declared_scope: >
   AI workstation setup — full installation lifecycle across 13
   governed components in two layers. macOS is the primary/full profile;
-  Linux and WSL run the portable subset with unsupported components
+  Linux and WSL2 run the portable subset with unsupported components
   skipped by manifest platform scope and component policy:
   software layer (ucc/software/): homebrew, git, docker, python, ollama,
   ai-python-stack, ai-apps, dev-tools;
@@ -81,7 +81,7 @@ evidence_refs:
   - ~/.ai-stack/runs/*.result.jsonl       # runtime evidence outside the repo
 
 limitations:
-  - macOS remains the only full-profile target. Linux and WSL currently
+  - macOS remains the only full-profile target. Linux and WSL2 currently
     run the portable subset only; macOS-specific components are skipped.
   - Does not claim privacy enforcement beyond disabling brew analytics;
     all network calls reach upstream public registries.

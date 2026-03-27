@@ -78,7 +78,26 @@ _detect_host_platform() {
   esac
 }
 
+_detect_host_platform_variant() {
+  case "$(uname)" in
+    Darwin) echo "macos" ;;
+    Linux)
+      if grep -qiE 'wsl2' /proc/sys/kernel/osrelease 2>/dev/null \
+         || grep -qiE 'wsl2' /proc/version 2>/dev/null; then
+        echo "wsl2"
+      elif grep -qiE 'microsoft|wsl' /proc/sys/kernel/osrelease 2>/dev/null \
+         || grep -qiE 'microsoft|wsl' /proc/version 2>/dev/null; then
+        echo "wsl1"
+      else
+        echo "linux"
+      fi
+      ;;
+    *) echo "unknown" ;;
+  esac
+}
+
 export HOST_PLATFORM="$(_detect_host_platform)"
+export HOST_PLATFORM_VARIANT="$(_detect_host_platform_variant)"
 source "$DIR/lib/ucc.sh"
 source "$DIR/lib/uic.sh"
 source "$DIR/lib/tic.sh"
@@ -88,8 +107,7 @@ source "$DIR/lib/summary.sh"
 # ============================================================
 #  UIC gate condition functions (read-only, no side effects)
 # ============================================================
-_gate_supported_platform(){ [[ "$HOST_PLATFORM" == "macos" || "$HOST_PLATFORM" == "linux" || "$HOST_PLATFORM" == "wsl" ]]; }
-_gate_macos()           { [[ "$(uname)" == "Darwin" ]]; }
+_gate_supported_platform(){ [[ "$HOST_PLATFORM_VARIANT" == "macos" || "$HOST_PLATFORM_VARIANT" == "linux" || "$HOST_PLATFORM_VARIANT" == "wsl2" ]]; }
 _gate_arm64()           { [[ "$(uname -m)" == "arm64" ]]; }
 _gate_docker_daemon()   { docker info &>/dev/null 2>&1; }
 _gate_docker_compose()  { docker compose version &>/dev/null 2>&1; }
@@ -157,6 +175,7 @@ _component_supported_for() {
   done < <(yaml_list "$DIR" "$config" platforms)
   [[ ${#supported[@]} -eq 0 ]] && return 0
   for platform in "${supported[@]}"; do
+    [[ "$platform" == "${HOST_PLATFORM_VARIANT:-unknown}" ]] && return 0
     [[ "$platform" == "$HOST_PLATFORM" ]] && return 0
     [[ "$HOST_PLATFORM" == "wsl" && "$platform" == "linux" ]] && return 0
   done

@@ -6,7 +6,7 @@ on_fail: ignore
 platforms:
   - macos
   - linux
-  - wsl
+  - wsl2
 macos_min_version: 14
 installer_url: https://ollama.com/install.sh
 api_host: 127.0.0.1

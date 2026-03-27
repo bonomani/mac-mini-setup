@@ -1,7 +1,7 @@
 # Mac Mini AI Setup
 
 Scripts to set up an AI workstation.
-macOS remains the primary target, while Linux and WSL run the portable subset
+macOS remains the primary target, while Linux and WSL2 run the portable subset
 and skip unsupported components automatically.
 The repo also declares a local system-level composition target so the governed
 state can describe the whole machine, not only individual components.
@@ -227,6 +227,6 @@ Expected checkpoints:
 ## Requirements
 
 - macOS 14+ for the full workstation profile
-- Linux or WSL for the portable subset
+- Linux or WSL2 for the portable subset
 - Apple Silicon is recommended when you want MPS/Metal acceleration
 - 64 GB RAM is recommended for large local model workflows, but not required

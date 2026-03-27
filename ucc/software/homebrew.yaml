@@ -6,7 +6,16 @@ on_fail: exit
 platforms:
   - macos
   - linux
-  - wsl
+  - wsl2
+platform_tool_preferences:
+  macos:
+    - brew-installer
+  linux:
+    - native-package-manager
+    - brew-installer
+  wsl2:
+    - native-package-manager
+    - brew-installer
 targets:
   xcode-command-line-tools:
     component: homebrew
@@ -20,8 +29,9 @@ targets:
     component: homebrew
     profile: configured
     type: package
-    depends_on:
-      - xcode-command-line-tools
+    depends_on_by_platform:
+      macos:
+        - xcode-command-line-tools
     provided_by_tool: brew-installer
     oracle:
       configured: "brew --version >/dev/null 2>&1"
