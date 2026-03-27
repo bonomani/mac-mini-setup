@@ -16,6 +16,12 @@ KNOWN_TARGET_TYPES = {
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
+def _strip_yaml_quotes(value: str):
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
+        return value[1:-1]
+    return value
+
+
 def parse_gate_names(path: Path):
     gate_names = set()
     if not path.exists():
@@ -72,7 +78,7 @@ def parse_manifest_file(path: Path):
             raise ValueError(f"{path}:{lineno}: content before 'targets:'")
 
         if indent == 2 and text.endswith(":"):
-            current = text[:-1]
+            current = _strip_yaml_quotes(text[:-1].strip())
             manifest["targets"][current] = {}
             current_list = None
             continue
