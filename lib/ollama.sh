@@ -19,7 +19,7 @@ run_ollama_from_yaml() {
   _OLLAMA_STOP_PATTERN="$( yaml_get "$cfg_dir" "$yaml" fallback_stop_pattern "ollama (serve|app)")"
   _OLLAMA_START_CMD="$(    yaml_get "$cfg_dir" "$yaml" fallback_start_cmd    "ollama serve")"
   _OLLAMA_API_URL="http://${_OLLAMA_API_HOST}:${_OLLAMA_API_PORT}${_OLLAMA_API_TAGS_PATH}"
-  _OLLAMA_HOST_SUPPORTED_CMD="$(_ucc_yaml_get "$cfg_dir" "$yaml" "targets.ollama-host-supported.oracle.configured")"
+  _OLLAMA_HOST_SUPPORTED_CMD="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "ollama-host-supported" "oracle.configured")"
 
   ucc_yaml_simple_target "$cfg_dir" "$yaml" "ollama-host-supported"
 

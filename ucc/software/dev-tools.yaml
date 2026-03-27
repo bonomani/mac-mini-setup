@@ -329,58 +329,121 @@ targets:
   vscode-ext-ms-python.python:
     component: dev-tools
     profile: configured
-    type: config
-    state_model: config
+    type: package
+    state_model: package
+    display_name: VS Code Python
     depends_on:
       - vscode-code-cmd
+    provided_by_tool: vscode-marketplace
+    extension_id: ms-python.python
+    observe_cmd: |
+      ver="$(code --list-extensions --show-versions 2>/dev/null | awk -F@ 'tolower($1)==tolower("${extension_id}") {print $2; exit}')"
+      printf '%s' "${ver:-absent}"
+    evidence:
+      version: "code --list-extensions --show-versions 2>/dev/null | awk -F@ 'tolower($1)==tolower(\"${extension_id}\") {print $2; exit}'"
+    install_cmd: "ucc_run code --install-extension '${extension_id}' --force"
 
   vscode-ext-ms-python.vscode-pylance:
     component: dev-tools
     profile: configured
-    type: config
-    state_model: config
+    type: package
+    state_model: package
+    display_name: VS Code Pylance
     depends_on:
       - vscode-code-cmd
+    provided_by_tool: vscode-marketplace
+    extension_id: ms-python.vscode-pylance
+    observe_cmd: |
+      ver="$(code --list-extensions --show-versions 2>/dev/null | awk -F@ 'tolower($1)==tolower("${extension_id}") {print $2; exit}')"
+      printf '%s' "${ver:-absent}"
+    evidence:
+      version: "code --list-extensions --show-versions 2>/dev/null | awk -F@ 'tolower($1)==tolower(\"${extension_id}\") {print $2; exit}'"
+    install_cmd: "ucc_run code --install-extension '${extension_id}' --force"
 
   vscode-ext-ms-toolsai.jupyter:
     component: dev-tools
     profile: configured
-    type: config
-    state_model: config
+    type: package
+    state_model: package
+    display_name: VS Code Jupyter
     depends_on:
       - vscode-code-cmd
+    provided_by_tool: vscode-marketplace
+    extension_id: ms-toolsai.jupyter
+    observe_cmd: |
+      ver="$(code --list-extensions --show-versions 2>/dev/null | awk -F@ 'tolower($1)==tolower("${extension_id}") {print $2; exit}')"
+      printf '%s' "${ver:-absent}"
+    evidence:
+      version: "code --list-extensions --show-versions 2>/dev/null | awk -F@ 'tolower($1)==tolower(\"${extension_id}\") {print $2; exit}'"
+    install_cmd: "ucc_run code --install-extension '${extension_id}' --force"
 
   vscode-ext-ms-vscode.cpptools:
     component: dev-tools
     profile: configured
-    type: config
-    state_model: config
+    type: package
+    state_model: package
+    display_name: VS Code C/C++
     depends_on:
       - vscode-code-cmd
+    provided_by_tool: vscode-marketplace
+    extension_id: ms-vscode.cpptools
+    observe_cmd: |
+      ver="$(code --list-extensions --show-versions 2>/dev/null | awk -F@ 'tolower($1)==tolower("${extension_id}") {print $2; exit}')"
+      printf '%s' "${ver:-absent}"
+    evidence:
+      version: "code --list-extensions --show-versions 2>/dev/null | awk -F@ 'tolower($1)==tolower(\"${extension_id}\") {print $2; exit}'"
+    install_cmd: "ucc_run code --install-extension '${extension_id}' --force"
 
   vscode-ext-continue.continue:
     component: dev-tools
     profile: configured
-    type: config
-    state_model: config
+    type: package
+    state_model: package
+    display_name: VS Code Continue
     depends_on:
       - vscode-code-cmd
+    provided_by_tool: vscode-marketplace
+    extension_id: continue.continue
+    observe_cmd: |
+      ver="$(code --list-extensions --show-versions 2>/dev/null | awk -F@ 'tolower($1)==tolower("${extension_id}") {print $2; exit}')"
+      printf '%s' "${ver:-absent}"
+    evidence:
+      version: "code --list-extensions --show-versions 2>/dev/null | awk -F@ 'tolower($1)==tolower(\"${extension_id}\") {print $2; exit}'"
+    install_cmd: "ucc_run code --install-extension '${extension_id}' --force"
 
   vscode-ext-eamodio.gitlens:
     component: dev-tools
     profile: configured
-    type: config
-    state_model: config
+    type: package
+    state_model: package
+    display_name: VS Code GitLens
     depends_on:
       - vscode-code-cmd
+    provided_by_tool: vscode-marketplace
+    extension_id: eamodio.gitlens
+    observe_cmd: |
+      ver="$(code --list-extensions --show-versions 2>/dev/null | awk -F@ 'tolower($1)==tolower("${extension_id}") {print $2; exit}')"
+      printf '%s' "${ver:-absent}"
+    evidence:
+      version: "code --list-extensions --show-versions 2>/dev/null | awk -F@ 'tolower($1)==tolower(\"${extension_id}\") {print $2; exit}'"
+    install_cmd: "ucc_run code --install-extension '${extension_id}' --force"
 
   vscode-ext-ms-vscode-remote.remote-containers:
     component: dev-tools
     profile: configured
-    type: config
-    state_model: config
+    type: package
+    state_model: package
+    display_name: VS Code Dev Containers
     depends_on:
       - vscode-code-cmd
+    provided_by_tool: vscode-marketplace
+    extension_id: ms-vscode-remote.remote-containers
+    observe_cmd: |
+      ver="$(code --list-extensions --show-versions 2>/dev/null | awk -F@ 'tolower($1)==tolower("${extension_id}") {print $2; exit}')"
+      printf '%s' "${ver:-absent}"
+    evidence:
+      version: "code --list-extensions --show-versions 2>/dev/null | awk -F@ 'tolower($1)==tolower(\"${extension_id}\") {print $2; exit}'"
+    install_cmd: "ucc_run code --install-extension '${extension_id}' --force"
 
   iterm2:
     component: dev-tools
@@ -443,15 +506,15 @@ cli_tools:
   - cmake
 
 # VSCode marketplace extensions
-# Note: Claude Code is a CLI tool (npm), not a VSCode marketplace extension
+# Each entry is a target name; target-local metadata carries the extension id and commands.
 vscode_extensions:
-  - ms-python.python
-  - ms-python.vscode-pylance
-  - ms-toolsai.jupyter
-  - ms-vscode.cpptools
-  - continue.continue
-  - eamodio.gitlens
-  - ms-vscode-remote.remote-containers
+  - vscode-ext-ms-python.python
+  - vscode-ext-ms-python.vscode-pylance
+  - vscode-ext-ms-toolsai.jupyter
+  - vscode-ext-ms-vscode.cpptools
+  - vscode-ext-continue.continue
+  - vscode-ext-eamodio.gitlens
+  - vscode-ext-ms-vscode-remote.remote-containers
 
 # npm global packages
 npm_packages:

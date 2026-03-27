@@ -225,7 +225,7 @@ PY
       return
     fi
 
-    runtime_cmd="$(_ucc_yaml_get "$cfg_dir" "$yaml" "targets.${target}.oracle.runtime")"
+    runtime_cmd="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "oracle.runtime")"
     if [[ -n "$runtime_cmd" ]] && ! eval "$runtime_cmd" >/dev/null 2>&1; then
       ucc_asm_state --installation Configured --runtime Running \
         --health Degraded --admin Enabled --dependencies DepsReady

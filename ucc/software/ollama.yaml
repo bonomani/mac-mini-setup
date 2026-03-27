@@ -65,18 +65,123 @@ targets:
         note: ollama pull <model>
     stopped_health: Unavailable
 
+  ollama-model-llama3.2:
+    component: ollama
+    profile: configured
+    type: package
+    state_model: package
+    display_name: Ollama llama3.2
+    depends_on:
+      - ollama
+    provided_by_tool: ollama
+    model_ref: llama3.2
+    observe_cmd: "ollama_model_present '${model_ref}' && printf '%s' '${model_ref}' || printf absent"
+    evidence:
+      model: "printf '%s' '${model_ref}'"
+    install_cmd: "log_info 'Pulling model: ${model_ref}'; ucc_run ollama pull '${model_ref}'"
+
+  ollama-model-nomic-embed-text:
+    component: ollama
+    profile: configured
+    type: package
+    state_model: package
+    display_name: Ollama nomic-embed-text
+    depends_on:
+      - ollama
+    provided_by_tool: ollama
+    model_ref: nomic-embed-text
+    observe_cmd: "ollama_model_present '${model_ref}' && printf '%s' '${model_ref}' || printf absent"
+    evidence:
+      model: "printf '%s' '${model_ref}'"
+    install_cmd: "log_info 'Pulling model: ${model_ref}'; ucc_run ollama pull '${model_ref}'"
+
+  ollama-model-qwen3-latest:
+    component: ollama
+    profile: configured
+    type: package
+    state_model: package
+    display_name: Ollama qwen3:latest
+    depends_on:
+      - ollama
+    provided_by_tool: ollama
+    model_ref: qwen3:latest
+    observe_cmd: "ollama_model_present '${model_ref}' && printf '%s' '${model_ref}' || printf absent"
+    evidence:
+      model: "printf '%s' '${model_ref}'"
+    install_cmd: "log_info 'Pulling model: ${model_ref}'; ucc_run ollama pull '${model_ref}'"
+
+  ollama-model-llama3.1-8b:
+    component: ollama
+    profile: configured
+    type: package
+    state_model: package
+    display_name: Ollama llama3.1:8b
+    depends_on:
+      - ollama
+    provided_by_tool: ollama
+    model_ref: llama3.1:8b
+    observe_cmd: "ollama_model_present '${model_ref}' && printf '%s' '${model_ref}' || printf absent"
+    evidence:
+      model: "printf '%s' '${model_ref}'"
+    install_cmd: "log_info 'Pulling model: ${model_ref}'; ucc_run ollama pull '${model_ref}'"
+
+  ollama-model-mistral-7b:
+    component: ollama
+    profile: configured
+    type: package
+    state_model: package
+    display_name: Ollama mistral:7b
+    depends_on:
+      - ollama
+    provided_by_tool: ollama
+    model_ref: mistral:7b
+    observe_cmd: "ollama_model_present '${model_ref}' && printf '%s' '${model_ref}' || printf absent"
+    evidence:
+      model: "printf '%s' '${model_ref}'"
+    install_cmd: "log_info 'Pulling model: ${model_ref}'; ucc_run ollama pull '${model_ref}'"
+
+  ollama-model-qwen2.5-coder-32b:
+    component: ollama
+    profile: configured
+    type: package
+    state_model: package
+    display_name: Ollama qwen2.5-coder:32b
+    depends_on:
+      - ollama
+    provided_by_tool: ollama
+    model_ref: qwen2.5-coder:32b
+    observe_cmd: "ollama_model_present '${model_ref}' && printf '%s' '${model_ref}' || printf absent"
+    evidence:
+      model: "printf '%s' '${model_ref}'"
+    install_cmd: "log_info 'Pulling model: ${model_ref}'; ucc_run ollama pull '${model_ref}'"
+
+  ollama-model-llama3.1-70b:
+    component: ollama
+    profile: configured
+    type: package
+    state_model: package
+    display_name: Ollama llama3.1:70b
+    depends_on:
+      - ollama
+    provided_by_tool: ollama
+    model_ref: llama3.1:70b
+    observe_cmd: "ollama_model_present '${model_ref}' && printf '%s' '${model_ref}' || printf absent"
+    evidence:
+      model: "printf '%s' '${model_ref}'"
+    install_cmd: "log_info 'Pulling model: ${model_ref}'; ucc_run ollama pull '${model_ref}'"
+
 # Model sets — controlled by UIC preference ollama-model-autopull (none|small|medium|large)
-# Default is none — no automatic downloads.
+# Each entry is a target name; target-local metadata carries the Ollama model ref.
 
 small:
-  - llama3.2
-  - nomic-embed-text
+  - ollama-model-llama3.2
+  - ollama-model-nomic-embed-text
 
 medium:
-  - qwen3:latest
-  - llama3.1:8b
-  - mistral:7b
+  - ollama-model-qwen3-latest
+  - ollama-model-llama3.1-8b
+  - ollama-model-mistral-7b
 
 large:
-  - qwen2.5-coder:32b
-  - llama3.1:70b
+  - ollama-model-qwen2.5-coder-32b
+  - ollama-model-llama3.1-70b

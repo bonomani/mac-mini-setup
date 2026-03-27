@@ -42,96 +42,302 @@ targets:
     profile: configured
     type: package
     state_model: package
+    display_name: PyTorch packages
     depends_on:
       - pip-latest
+    provided_by_tool: pip
+    probe_pkg: torch
+    install_packages: torch torchvision torchaudio
+    min_version: ""
+    observe_cmd: |
+      ver="$(_pip_cached_version "${probe_pkg}")"
+      if [[ -z "$ver" ]]; then
+        printf 'absent'
+      else
+        printf '%s' "$ver"
+      fi
+    evidence:
+      version: "_pip_cached_version '${probe_pkg}'"
+      pkg: "printf '%s' '${probe_pkg}'"
+    install_cmd: "ucc_run pip install -q ${install_packages} && pip_cache_versions"
+    update_cmd: "ucc_run pip install -q --upgrade ${install_packages} && pip_cache_versions"
 
   pip-group-huggingface:
     component: ai-python-stack
     profile: configured
     type: package
     state_model: package
+    display_name: Hugging Face packages
     depends_on:
       - pip-latest
+    provided_by_tool: pip
+    probe_pkg: transformers
+    install_packages: transformers diffusers accelerate datasets tokenizers sentencepiece huggingface-hub peft trl
+    min_version: ""
+    observe_cmd: |
+      ver="$(_pip_cached_version "${probe_pkg}")"
+      if [[ -z "$ver" ]]; then
+        printf 'absent'
+      else
+        printf '%s' "$ver"
+      fi
+    evidence:
+      version: "_pip_cached_version '${probe_pkg}'"
+      pkg: "printf '%s' '${probe_pkg}'"
+    install_cmd: "ucc_run pip install -q ${install_packages} && pip_cache_versions"
+    update_cmd: "ucc_run pip install -q --upgrade ${install_packages} && pip_cache_versions"
 
   pip-group-langchain:
     component: ai-python-stack
     profile: configured
     type: package
     state_model: package
+    display_name: LangChain packages
     depends_on:
       - pip-latest
+    provided_by_tool: pip
+    probe_pkg: langchain-core
+    install_packages: langchain-core>=1.0.0 langchain langchain-community langchain-ollama langgraph
+    min_version: 1.0.0
+    observe_cmd: |
+      ver="$(_pip_cached_version "${probe_pkg}")"
+      if [[ -z "$ver" ]]; then
+        printf 'absent'
+      elif python3 -c "from packaging.version import Version; import sys; raise SystemExit(0 if Version('${min_version}') <= Version(sys.argv[1]) else 1)" "$ver" 2>/dev/null; then
+        printf '%s' "$ver"
+      else
+        printf 'absent'
+      fi
+    evidence:
+      version: "_pip_cached_version '${probe_pkg}'"
+      pkg: "printf '%s' '${probe_pkg}'"
+    install_cmd: "ucc_run pip install -q ${install_packages} && pip_cache_versions"
+    update_cmd: "ucc_run pip install -q --upgrade ${install_packages} && pip_cache_versions"
 
   pip-group-llamaindex:
     component: ai-python-stack
     profile: configured
     type: package
     state_model: package
+    display_name: LlamaIndex packages
     depends_on:
       - pip-latest
+    provided_by_tool: pip
+    probe_pkg: llama-index
+    install_packages: llama-index llama-index-llms-ollama llama-index-embeddings-ollama
+    min_version: ""
+    observe_cmd: |
+      ver="$(_pip_cached_version "${probe_pkg}")"
+      if [[ -z "$ver" ]]; then
+        printf 'absent'
+      else
+        printf '%s' "$ver"
+      fi
+    evidence:
+      version: "_pip_cached_version '${probe_pkg}'"
+      pkg: "printf '%s' '${probe_pkg}'"
+    install_cmd: "ucc_run pip install -q ${install_packages} && pip_cache_versions"
+    update_cmd: "ucc_run pip install -q --upgrade ${install_packages} && pip_cache_versions"
 
   pip-group-llm-clients:
     component: ai-python-stack
     profile: configured
     type: package
     state_model: package
+    display_name: LLM client packages
     depends_on:
       - pip-latest
+    provided_by_tool: pip
+    probe_pkg: openai
+    install_packages: openai anthropic
+    min_version: ""
+    observe_cmd: |
+      ver="$(_pip_cached_version "${probe_pkg}")"
+      if [[ -z "$ver" ]]; then
+        printf 'absent'
+      else
+        printf '%s' "$ver"
+      fi
+    evidence:
+      version: "_pip_cached_version '${probe_pkg}'"
+      pkg: "printf '%s' '${probe_pkg}'"
+    install_cmd: "ucc_run pip install -q ${install_packages} && pip_cache_versions"
+    update_cmd: "ucc_run pip install -q --upgrade ${install_packages} && pip_cache_versions"
 
   pip-group-vector-dbs:
     component: ai-python-stack
     profile: configured
     type: package
     state_model: package
+    display_name: Vector database packages
     depends_on:
       - pip-latest
+    provided_by_tool: pip
+    probe_pkg: chromadb
+    install_packages: chromadb faiss-cpu qdrant-client
+    min_version: ""
+    observe_cmd: |
+      ver="$(_pip_cached_version "${probe_pkg}")"
+      if [[ -z "$ver" ]]; then
+        printf 'absent'
+      else
+        printf '%s' "$ver"
+      fi
+    evidence:
+      version: "_pip_cached_version '${probe_pkg}'"
+      pkg: "printf '%s' '${probe_pkg}'"
+    install_cmd: "ucc_run pip install -q ${install_packages} && pip_cache_versions"
+    update_cmd: "ucc_run pip install -q --upgrade ${install_packages} && pip_cache_versions"
 
   pip-group-jupyter:
     component: ai-python-stack
     profile: configured
     type: package
     state_model: package
+    display_name: Jupyter packages
     depends_on:
       - pip-latest
+    provided_by_tool: pip
+    probe_pkg: jupyterlab
+    install_packages: jupyterlab ipywidgets nbformat
+    min_version: ""
+    observe_cmd: |
+      ver="$(_pip_cached_version "${probe_pkg}")"
+      if [[ -z "$ver" ]]; then
+        printf 'absent'
+      else
+        printf '%s' "$ver"
+      fi
+    evidence:
+      version: "_pip_cached_version '${probe_pkg}'"
+      pkg: "printf '%s' '${probe_pkg}'"
+    install_cmd: "ucc_run pip install -q ${install_packages} && pip_cache_versions"
+    update_cmd: "ucc_run pip install -q --upgrade ${install_packages} && pip_cache_versions"
 
   pip-group-serving:
     component: ai-python-stack
     profile: configured
     type: package
     state_model: package
+    display_name: Serving packages
     depends_on:
       - pip-latest
+    provided_by_tool: pip
+    probe_pkg: fastapi
+    install_packages: fastapi uvicorn gradio
+    min_version: ""
+    observe_cmd: |
+      ver="$(_pip_cached_version "${probe_pkg}")"
+      if [[ -z "$ver" ]]; then
+        printf 'absent'
+      else
+        printf '%s' "$ver"
+      fi
+    evidence:
+      version: "_pip_cached_version '${probe_pkg}'"
+      pkg: "printf '%s' '${probe_pkg}'"
+    install_cmd: "ucc_run pip install -q ${install_packages} && pip_cache_versions"
+    update_cmd: "ucc_run pip install -q --upgrade ${install_packages} && pip_cache_versions"
 
   pip-group-data-science:
     component: ai-python-stack
     profile: configured
     type: package
     state_model: package
+    display_name: Data science packages
     depends_on:
       - pip-latest
+    provided_by_tool: pip
+    probe_pkg: numpy
+    install_packages: numpy pandas scipy scikit-learn matplotlib seaborn
+    min_version: ""
+    observe_cmd: |
+      ver="$(_pip_cached_version "${probe_pkg}")"
+      if [[ -z "$ver" ]]; then
+        printf 'absent'
+      else
+        printf '%s' "$ver"
+      fi
+    evidence:
+      version: "_pip_cached_version '${probe_pkg}'"
+      pkg: "printf '%s' '${probe_pkg}'"
+    install_cmd: "ucc_run pip install -q ${install_packages} && pip_cache_versions"
+    update_cmd: "ucc_run pip install -q --upgrade ${install_packages} && pip_cache_versions"
 
   pip-group-utilities:
     component: ai-python-stack
     profile: configured
     type: package
     state_model: package
+    display_name: Utility packages
     depends_on:
       - pip-latest
+    provided_by_tool: pip
+    probe_pkg: python-dotenv
+    install_packages: python-dotenv rich tqdm
+    min_version: ""
+    observe_cmd: |
+      ver="$(_pip_cached_version "${probe_pkg}")"
+      if [[ -z "$ver" ]]; then
+        printf 'absent'
+      else
+        printf '%s' "$ver"
+      fi
+    evidence:
+      version: "_pip_cached_version '${probe_pkg}'"
+      pkg: "printf '%s' '${probe_pkg}'"
+    install_cmd: "ucc_run pip install -q ${install_packages} && pip_cache_versions"
+    update_cmd: "ucc_run pip install -q --upgrade ${install_packages} && pip_cache_versions"
 
   pip-group-dev-tools:
     component: ai-python-stack
     profile: configured
     type: package
     state_model: package
+    display_name: Python dev tools
     depends_on:
       - pip-latest
+    provided_by_tool: pip
+    probe_pkg: ruff
+    install_packages: ruff
+    min_version: ""
+    observe_cmd: |
+      ver="$(_pip_cached_version "${probe_pkg}")"
+      if [[ -z "$ver" ]]; then
+        printf 'absent'
+      else
+        printf '%s' "$ver"
+      fi
+    evidence:
+      version: "_pip_cached_version '${probe_pkg}'"
+      pkg: "printf '%s' '${probe_pkg}'"
+    install_cmd: "ucc_run pip install -q ${install_packages} && pip_cache_versions"
+    update_cmd: "ucc_run pip install -q --upgrade ${install_packages} && pip_cache_versions"
 
   pip-group-optimum:
     component: ai-python-stack
     profile: configured
     type: package
     state_model: package
+    display_name: Optimum packages
     depends_on:
       - pip-latest
+    provided_by_tool: pip
+    probe_pkg: optimum
+    install_packages: optimum
+    min_version: ""
+    observe_cmd: |
+      ver="$(_pip_cached_version "${probe_pkg}")"
+      if [[ -z "$ver" ]]; then
+        printf 'absent'
+      else
+        printf '%s' "$ver"
+      fi
+    evidence:
+      version: "_pip_cached_version '${probe_pkg}'"
+      pkg: "printf '%s' '${probe_pkg}'"
+    install_cmd: "ucc_run pip install -q ${install_packages} && pip_cache_versions"
+    update_cmd: "ucc_run pip install -q --upgrade ${install_packages} && pip_cache_versions"
 
   mps-available:
     component: ai-python-stack
@@ -147,59 +353,17 @@ targets:
     evidence:
       gpu: "printf 'Metal'"
       status: "python3 -c \"import torch; print('available' if torch.backends.mps.is_available() else 'unavailable (CPU only)')\" 2>/dev/null || printf 'unavailable (CPU only)'"
-# Fields:
-#   name        ucc-target suffix and _pip_group identifier
-#   probe       package name used for pip show / version detection
-#   packages    space-separated packages passed to pip install
-#   min_version (optional) minimum acceptable version of the probe package;
-#               triggers a version-aware observe that forces upgrade if below this
-
+# Each entry is a target name; target-local metadata carries the pip probe and install set.
 pip_groups:
-  - name: pytorch
-    probe: torch
-    packages: torch torchvision torchaudio
-
-  - name: huggingface
-    probe: transformers
-    packages: transformers diffusers accelerate datasets tokenizers sentencepiece huggingface-hub peft trl
-
-  - name: langchain
-    probe: langchain-core
-    min_version: 1.0.0
-    packages: langchain-core>=1.0.0 langchain langchain-community langchain-ollama langgraph
-
-  - name: llamaindex
-    probe: llama-index
-    packages: llama-index llama-index-llms-ollama llama-index-embeddings-ollama
-
-  - name: llm-clients
-    probe: openai
-    packages: openai anthropic
-
-  - name: vector-dbs
-    probe: chromadb
-    packages: chromadb faiss-cpu qdrant-client
-
-  - name: jupyter
-    probe: jupyterlab
-    packages: jupyterlab ipywidgets nbformat
-
-  - name: serving
-    probe: fastapi
-    packages: fastapi uvicorn gradio
-
-  - name: data-science
-    probe: numpy
-    packages: numpy pandas scipy scikit-learn matplotlib seaborn
-
-  - name: utilities
-    probe: python-dotenv
-    packages: python-dotenv rich tqdm
-
-  - name: dev-tools
-    probe: ruff
-    packages: ruff
-
-  - name: optimum
-    probe: optimum
-    packages: optimum
+  - pip-group-pytorch
+  - pip-group-huggingface
+  - pip-group-langchain
+  - pip-group-llamaindex
+  - pip-group-llm-clients
+  - pip-group-vector-dbs
+  - pip-group-jupyter
+  - pip-group-serving
+  - pip-group-data-science
+  - pip-group-utilities
+  - pip-group-dev-tools
+  - pip-group-optimum

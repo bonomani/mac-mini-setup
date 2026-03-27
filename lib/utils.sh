@@ -66,6 +66,14 @@ yaml_get() {
   echo "${val:-${4:-}}"
 }
 
+# yaml_target_get <cfg_dir> <yaml_path> <target> <key> [<default>]
+# Read a scalar from a named target in a YAML config file.
+yaml_target_get() {
+  local val
+  val="$(python3 "$1/tools/read_config.py" --target-get "$2" "$3" "$4" 2>/dev/null)"
+  echo "${val:-${5:-}}"
+}
+
 # yaml_list <cfg_dir> <yaml_path> <section>
 # Output each item in a YAML list section, one per line.
 yaml_list() { python3 "$1/tools/read_config.py" --list "$2" "$3" 2>/dev/null; }

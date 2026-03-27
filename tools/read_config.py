@@ -13,6 +13,9 @@ Usage:
       Outputs a scalar value. key may be a dotted path such as
       "section.key" or "section.nested.key".
 
+  read_config.py --target-get <file> <target> <key>
+      Outputs a scalar value from a named target mapping.
+
   read_config.py --evidence <file> <target>
       Outputs tab-delimited evidence key/command pairs for a target.
 """
@@ -58,6 +61,25 @@ def substitute_scalars(value: str, data: dict) -> str:
     return re.sub(r"\$\{(\w+)\}", lambda m: subst.get(m.group(1), m.group(0)), value)
 
 
+def top_level_scalars(data: dict) -> dict:
+    return {
+        key: stringify(raw)
+        for key, raw in data.items()
+        if key != "targets" and isinstance(raw, (str, int, float, bool))
+    }
+
+
+def target_scalars(data: dict, target_name: str) -> dict:
+    merged = top_level_scalars(data)
+    targets = data.get("targets") or {}
+    target = targets.get(target_name) or {}
+    if isinstance(target, dict):
+        for key, raw in target.items():
+            if isinstance(raw, (str, int, float, bool)):
+                merged[key] = stringify(raw)
+    return merged
+
+
 def read_list(path: Path, section: str) -> list[str]:
     data = load_yaml(path)
     value = get_path(data, section)
@@ -85,10 +107,27 @@ def read_records(path: Path, section: str, fields: list[str]) -> list[str]:
             raw = item.get(field, "")
             value = stringify(raw)
             if isinstance(raw, str):
-                value = substitute_scalars(value, data)
+                value = substitute_scalars(value, top_level_scalars(data))
             rendered.append(value)
         rows.append("\t".join(rendered))
     return rows
+
+
+def read_target_scalar(path: Path, target_name: str, key: str) -> str:
+    data = load_yaml(path)
+    targets = data.get("targets") or {}
+    if not isinstance(targets, dict):
+        raise ValueError("top-level 'targets' must be a mapping")
+    target = targets.get(target_name)
+    if not isinstance(target, dict):
+        return ""
+    value = get_path(target, key)
+    if isinstance(value, (dict, list)):
+        return ""
+    rendered = stringify(value)
+    if isinstance(value, str):
+        rendered = substitute_scalars(rendered, target_scalars(data, target_name))
+    return rendered
 
 
 def read_scalar(path: Path, key: str) -> str:
@@ -98,7 +137,7 @@ def read_scalar(path: Path, key: str) -> str:
         return ""
     rendered = stringify(value)
     if isinstance(value, str):
-        rendered = substitute_scalars(rendered, data)
+        rendered = substitute_scalars(rendered, top_level_scalars(data))
     return rendered
 
 
@@ -115,8 +154,9 @@ def read_evidence(path: Path, target_name: str) -> list[str]:
         raise ValueError(f"target '{target_name}' evidence must be a mapping")
 
     rows = []
+    scalars = target_scalars(data, target_name)
     for key, cmd in evidence.items():
-        rendered = substitute_scalars(stringify(cmd), data)
+        rendered = substitute_scalars(stringify(cmd), scalars)
         rows.append(f"{key}\t{rendered}")
     return rows
 
@@ -155,6 +195,21 @@ def main() -> int:
             return 1
         try:
             print(read_scalar(path, key))
+        except Exception as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 1
+        return 0
+
+    if mode == "--target-get":
+        if len(args) < 4:
+            print("Usage: read_config.py --target-get <file> <target> <key>", file=sys.stderr)
+            return 1
+        path = Path(args[1])
+        if not path.exists():
+            print(f"ERROR: {path} not found", file=sys.stderr)
+            return 1
+        try:
+            print(read_target_scalar(path, args[2], args[3]))
         except Exception as exc:
             print(f"ERROR: {exc}", file=sys.stderr)
             return 1

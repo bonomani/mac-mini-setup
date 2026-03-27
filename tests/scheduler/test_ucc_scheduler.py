@@ -350,6 +350,70 @@ class UccSchedulerTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, msg=result.stderr)
             self.assertTrue((home_dir / "simple.txt").exists())
 
+    def test_yaml_simple_target_supports_dotted_target_names_and_target_local_scalars(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            ucc_dir = self._write_manifest(
+                tmp_path,
+                textwrap.dedent(
+                    """\
+                    component: fake
+                    primary_profile: configured
+                    libs: fake
+                    runner: run_fake
+                    targets:
+                      pkg.with.dot:
+                        component: fake
+                        profile: configured
+                        type: package
+                        state_model: package
+                        provided_by_tool: fake
+                        package_ref: demo
+                        observe_cmd: '[[ -f "$HOME/demo.txt" ]] && printf "%s" "${package_ref}" || printf absent'
+                        evidence:
+                          version: 'printf "%s" "${package_ref}"'
+                        install_cmd: |
+                          touch "$HOME/demo.txt"
+                    """
+                ),
+            )
+            home_dir = tmp_path / "home"
+            home_dir.mkdir()
+            state_dir = tmp_path / "state"
+            state_dir.mkdir()
+            manifest = ucc_dir / "software" / "fake.yaml"
+            result = subprocess.run(
+                [
+                    "bash",
+                    "-lc",
+                    textwrap.dedent(
+                        f"""\
+                        set -euo pipefail
+                        export HOME="{home_dir}"
+                        export ARIA_QUEUE_DIR="{state_dir}"
+                        export UCC_TARGET_DEFER=1
+                        export UCC_TARGETS_MANIFEST="{ucc_dir}"
+                        export UCC_TARGETS_QUERY_SCRIPT="{QUERY}"
+                        export UCC_TARGET_STATUS_FILE="{tmp_path / 'status.txt'}"
+                        export UCC_DECLARATION_FILE="{tmp_path / 'decl.jsonl'}"
+                        export UCC_RESULT_FILE="{tmp_path / 'result.jsonl'}"
+                        export UCC_SUMMARY_FILE="{tmp_path / 'summary.txt'}"
+                        export UCC_PROFILE_SUMMARY_FILE="{tmp_path / 'profile.txt'}"
+                        export UCC_CORRELATION_ID="test-run"
+                        source "{ROOT / 'lib/ucc.sh'}"
+
+                        ucc_reset_registered_targets
+                        ucc_yaml_simple_target "{ROOT}" "{manifest}" "pkg.with.dot"
+                        ucc_flush_registered_targets fake
+                        """
+                    ),
+                ],
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertTrue((home_dir / "demo.txt").exists())
+
     def test_manifest_validation_rejects_non_string_display_name(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             ucc_dir = self._write_manifest(
@@ -377,6 +441,42 @@ class UccSchedulerTests(unittest.TestCase):
             )
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("field 'display_name' must be a non-empty string", result.stderr)
+
+    def test_manifest_validation_rejects_sparse_generated_targets(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            ucc_dir = self._write_manifest(
+                Path(tmp),
+                textwrap.dedent(
+                    """\
+                    component: fake
+                    primary_profile: configured
+                    libs: fake
+                    runner: run_fake
+                    targets:
+                      vscode-ext-test.example:
+                        component: fake
+                        profile: configured
+                        type: package
+                        state_model: package
+                        depends_on:
+                          - vscode-code-cmd
+                      vscode-code-cmd:
+                        component: fake
+                        profile: configured
+                        type: config
+                        state_model: config
+                    vscode_extensions:
+                      - vscode-ext-test.example
+                    """
+                ),
+            )
+            result = subprocess.run(
+                ["python3", str(QUERY), str(ucc_dir)],
+                text=True,
+                capture_output=True,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("generated target 'vscode-ext-test.example' in section 'vscode_extensions' requires provided_by_tool", result.stderr)
 
     def test_yaml_capability_target_uses_runtime_oracle_and_yaml_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -783,6 +883,41 @@ class UccSchedulerTests(unittest.TestCase):
                 text=True,
             ).strip()
             self.assertEqual(output, 'curl -fsS http://127.0.0.1:9999 >/dev/null 2>&1')
+
+    def test_read_config_target_get_substitutes_target_local_scalars(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest = self._write_manifest(
+                Path(tmp),
+                textwrap.dedent(
+                    """\
+                    component: fake
+                    primary_profile: configured
+                    libs: fake
+                    runner: run_fake
+                    targets:
+                      pkg.with.dot:
+                        component: fake
+                        profile: configured
+                        type: package
+                        state_model: package
+                        provided_by_tool: fake
+                        package_ref: demo
+                        observe_cmd: "printf '%s' '${package_ref}'"
+                        evidence:
+                          version: "printf '%s' '${package_ref}'"
+                    """
+                ),
+            ) / "software" / "fake.yaml"
+            observe_cmd = subprocess.check_output(
+                ["python3", str(ROOT / "tools" / "read_config.py"), "--target-get", str(manifest), "pkg.with.dot", "observe_cmd"],
+                text=True,
+            ).strip()
+            evidence = subprocess.check_output(
+                ["python3", str(ROOT / "tools" / "read_config.py"), "--evidence", str(manifest), "pkg.with.dot"],
+                text=True,
+            ).strip()
+            self.assertEqual(observe_cmd, "printf '%s' 'demo'")
+            self.assertEqual(evidence, "version\tprintf '%s' 'demo'")
 
     def test_platform_specific_dependencies_follow_host_variant(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

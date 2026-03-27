@@ -163,6 +163,51 @@ def _declared_platforms(manifest_data):
     return []
 
 
+def _validate_generated_target_collection(
+    manifest_data: dict,
+    section_name: str,
+    errors: list[str],
+    *,
+    required_dep: str | None = None,
+):
+    target_names = manifest_data.get(section_name)
+    if target_names is None:
+        return
+    if not isinstance(target_names, list):
+        errors.append(f"component '{manifest_data.get('component', '?')}' section '{section_name}' must be a list")
+        return
+
+    targets = manifest_data.get("targets") or {}
+    for item in target_names:
+        if not isinstance(item, str) or not item.strip():
+            errors.append(
+                f"component '{manifest_data.get('component', '?')}' section '{section_name}' entries must be non-empty target names"
+            )
+            continue
+        target = targets.get(item)
+        if not isinstance(target, dict):
+            errors.append(
+                f"component '{manifest_data.get('component', '?')}' section '{section_name}' references unknown target '{item}'"
+            )
+            continue
+        if target.get("profile") != "configured":
+            errors.append(f"generated target '{item}' in section '{section_name}' must use profile 'configured'")
+        if target.get("type") != "package":
+            errors.append(f"generated target '{item}' in section '{section_name}' must use type 'package'")
+        if target.get("state_model") != "package":
+            errors.append(f"generated target '{item}' in section '{section_name}' must use state_model 'package'")
+        if not isinstance(target.get("provided_by_tool"), str) or not target.get("provided_by_tool", "").strip():
+            errors.append(f"generated target '{item}' in section '{section_name}' requires provided_by_tool")
+        if not isinstance(target.get("observe_cmd"), str) or not target.get("observe_cmd", "").strip():
+            errors.append(f"generated target '{item}' in section '{section_name}' requires observe_cmd")
+        if not isinstance(target.get("install_cmd"), str) or not target.get("install_cmd", "").strip():
+            errors.append(f"generated target '{item}' in section '{section_name}' requires install_cmd")
+        if required_dep and required_dep not in (target.get("depends_on") or []):
+            errors.append(
+                f"generated target '{item}' in section '{section_name}' must depend on '{required_dep}'"
+            )
+
+
 def _target_dep_union(data):
     deps = list(data.get("depends_on", []) or [])
     platform_deps = data.get("depends_on_by_platform") or {}
@@ -231,6 +276,11 @@ def validate(manifest, known_gates):
                         errors.append(f"component '{component}' tool preference platform '{platform}' not declared in platforms")
                     if not isinstance(tools, list) or not tools or not all(isinstance(tool, str) and tool for tool in tools):
                         errors.append(f"component '{component}' tool preference for '{platform}' must be a non-empty list of strings")
+
+        _validate_generated_target_collection(manifest_data, "vscode_extensions", errors, required_dep="vscode-code-cmd")
+        _validate_generated_target_collection(manifest_data, "pip_groups", errors, required_dep="pip-latest")
+        for section_name in ("small", "medium", "large"):
+            _validate_generated_target_collection(manifest_data, section_name, errors, required_dep="ollama")
 
     for name, data in targets.items():
         profile = data.get("profile")
@@ -370,12 +420,15 @@ def validate(manifest, known_gates):
                 errors.append(f"target '{name}' state_model 'parametric' with install/update commands requires desired_value or desired_cmd")
 
         if data.get("install_cmd") is not None or data.get("update_cmd") is not None:
+            has_observe_cmd = isinstance(data.get("observe_cmd"), str) and data.get("observe_cmd", "").strip()
             if state_model is None:
                 errors.append(f"target '{name}' with install/update commands requires state_model")
             elif state_model == "parametric":
                 pass
-            elif not isinstance((oracle or {}).get("configured"), str) or not (oracle or {}).get("configured", "").strip():
-                errors.append(f"target '{name}' with install/update commands requires oracle.configured")
+            elif not has_observe_cmd and (
+                not isinstance((oracle or {}).get("configured"), str) or not (oracle or {}).get("configured", "").strip()
+            ):
+                errors.append(f"target '{name}' with install/update commands requires observe_cmd or oracle.configured")
 
         depends_on = data.get("depends_on", []) or []
         if not isinstance(depends_on, list):
