@@ -290,7 +290,7 @@ _ucc_execute_target() {
             "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$verified" "$axes"),\"observed_after\":$(_ucc_state_obj "$verified")}" \
             "{\"observation\":\"ok\",\"outcome\":\"changed\",\"completion\":\"complete\",\"proof\":{\"change\":\"update_applied\"}}"
         else
-          _ucc_emit_target_line "$profile" "fail" "$display_name" "verify after update: \"$(_ucc_display_state "${verified:-?}" "$axes")\""
+          _ucc_emit_target_line "$profile" "fail" "$display_name" "verify after update: \"$(_ucc_display_state "${verified:-?}" "$axes")\"  $(_ucc_compose_evidence "$name" "${verified:-$observed}" "$axes" "$evidence_fn")"
           _ucc_record_outcome "$profile" "$name" "FAILED" "failed" "failed" "$msg_id" "$started_at" \
             "{}" "{\"observation\":\"failed\",\"message\":\"post-update verify did not reach desired state\"}"
         fi
@@ -346,12 +346,12 @@ _ucc_execute_target() {
         "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$verified" "$axes"),\"observed_after\":$(_ucc_state_obj "$verified")}" \
         "{\"observation\":\"ok\",\"outcome\":\"changed\",\"completion\":\"complete\",\"proof\":{\"change\":\"verify_pass\"}}"
     else
-      _ucc_emit_target_line "$profile" "fail" "$display_name" "verify after install: \"$(_ucc_display_state "${verified:-?}" "$axes")\""
+      _ucc_emit_target_line "$profile" "fail" "$display_name" "verify after install: \"$(_ucc_display_state "${verified:-?}" "$axes")\"  $(_ucc_compose_evidence "$name" "${verified:-$observed}" "$axes" "$evidence_fn")"
       _ucc_record_outcome "$profile" "$name" "FAILED" "failed" "failed" "$msg_id" "$started_at" \
         "{}" "{\"observation\":\"failed\",\"message\":\"post-install verify did not reach desired state\"}"
     fi
   else
-    _ucc_emit_target_line "$profile" "fail" "$display_name" "install error was=\"$(_ucc_display_state "$observed" "$axes")\""
+    _ucc_emit_target_line "$profile" "fail" "$display_name" "install error was=\"$(_ucc_display_state "$observed" "$axes")\"  $(_ucc_compose_evidence "$name" "$observed" "$axes" "$evidence_fn")"
     _ucc_record_outcome "$profile" "$name" "FAILED" "failed" "failed" "$msg_id" "$started_at" \
       "{}" "{\"observation\":\"failed\",\"message\":\"install function failed\"}"
   fi

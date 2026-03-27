@@ -62,6 +62,12 @@ run_dev_tools_from_yaml() {
     ariaflow-web --version 2>/dev/null | awk 'NR==1 {print $2}'
   }
 
+  _ariaflow_web_served_version() {
+    curl -fsS --max-time 5 "http://127.0.0.1:${_ARIAFLOW_WEB_PORT}" 2>/dev/null \
+      | sed -n 's/.*id="chip-web-version">v\([^<]*\)<.*/\1/p' \
+      | head -1
+  }
+
   _wait_ariaflow_web_serving_current_version() {
     local version=""
     version="$(_ariaflow_web_installed_version)"
@@ -483,7 +489,21 @@ PY
       ucc_asm_service_state "stopped"
     fi
   }
-  _evidence_ariaflow_web_service() { ucc_eval_evidence_from_yaml "$cfg_dir" "$yaml" "ariaflow-web-service"; }
+  _evidence_ariaflow_web_service() {
+    local evidence installed served pid
+    evidence="$(ucc_eval_evidence_from_yaml "$cfg_dir" "$yaml" "ariaflow-web-service")"
+    installed="$(_ariaflow_web_installed_version)"
+    served="$(_ariaflow_web_served_version)"
+    pid="$(lsof -ti tcp:${_ARIAFLOW_WEB_PORT} 2>/dev/null | head -1)"
+    [[ -n "$installed" ]] && evidence+="${evidence:+  }installed_version=${installed}"
+    if [[ -n "$served" ]]; then
+      evidence+="${evidence:+  }served_version=${served}"
+    else
+      evidence+="${evidence:+  }served_version=unreachable"
+    fi
+    [[ -n "$pid" ]] && evidence+="${evidence:+  }pid=${pid}"
+    printf '%s' "$evidence"
+  }
   _start_ariaflow_web_service() {
     ariaflow-web --version >/dev/null 2>&1 || return 1
     _ensure_brew_service_started "$_ARIAFLOW_WEB_FORMULA" "ariaflow-web" "http://127.0.0.1:${_ARIAFLOW_WEB_PORT}" || return 1
