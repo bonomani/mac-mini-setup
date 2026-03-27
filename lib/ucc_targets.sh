@@ -21,6 +21,12 @@ ucc_eval_evidence_from_yaml() {
   done < <(python3 "$cfg_dir/tools/read_config.py" --evidence "$yaml" "$target" 2>/dev/null)
 }
 
+_ucc_yaml_get() {
+  local cfg_dir="$1" yaml="$2" key="$3" default="${4:-}" val=""
+  val="$(python3 "$cfg_dir/tools/read_config.py" --get "$yaml" "$key" 2>/dev/null || true)"
+  printf '%s' "${val:-$default}"
+}
+
 # ── Convenience target helpers ────────────────────────────────────────────────
 
 _ucc_display_name() {
@@ -78,15 +84,58 @@ ucc_brew_formula_target() {
     --update "_ubft_upd_${fn}"
 }
 
-# ucc_brew_service_target <target-name> <service-name> [brew-ref]
-# Standard brew service: observe via `brew services list`,
-# install=start, update=restart.
+# ucc_brew_service_target <target-name> <service-name> [brew-ref] [cfg_dir] [yaml]
+# Standard brew service: observe via `brew services list` plus optional YAML
+# runtime probe, install=start or restart depending on current service state,
+# update=restart.
 ucc_brew_service_target() {
-  local tname="$1" service_name="$2" brew_ref="${3:-$2}"
+  local tname="$1" service_name="$2" brew_ref="${3:-$2}" cfg_dir="${4:-}" yaml="${5:-}"
   local fn; fn="${tname//[^a-zA-Z0-9]/_}"
-  eval "_ubst_obs_${fn}() { if [[ \"\$(_ucc_brew_service_status '${service_name}')\" == 'started' ]]; then ucc_asm_service_state 'started'; else ucc_asm_service_state 'stopped'; fi; }"
-  eval "_ubst_evd_${fn}() { local ver; ver=\$(_brew_cached_version '${service_name}'); [[ -n \"\$ver\" ]] && printf 'version=%s' \"\$ver\"; }"
-  eval "_ubst_ins_${fn}() { ucc_run brew services start '${brew_ref}'; }"
+  eval "_ubst_obs_${fn}() {
+    local svc_status runtime_cmd configured_cmd
+    svc_status=\"\$(_ucc_brew_service_status '${service_name}')\"
+    if [[ -n '${cfg_dir}' && -n '${yaml}' ]]; then
+      runtime_cmd=\"\$(_ucc_yaml_get '${cfg_dir}' '${yaml}' 'targets.${tname}.oracle.runtime')\"
+      configured_cmd=\"\$(_ucc_yaml_get '${cfg_dir}' '${yaml}' 'targets.${tname}.oracle.configured')\"
+    fi
+
+    if [[ \"\$svc_status\" != 'started' ]]; then
+      ucc_asm_service_state 'stopped'
+      return
+    fi
+
+    if [[ -n \"\$configured_cmd\" ]] && ! eval \"\$configured_cmd\" >/dev/null 2>&1; then
+      ucc_asm_state --installation Installed --runtime Stopped --health Degraded --admin Enabled --dependencies DepsDegraded
+      return
+    fi
+
+    if [[ -n \"\$runtime_cmd\" ]]; then
+      if eval \"\$runtime_cmd\" >/dev/null 2>&1; then
+        ucc_asm_runtime_desired
+      else
+        ucc_asm_state --installation Configured --runtime Running --health Degraded --admin Enabled --dependencies DepsDegraded
+      fi
+      return
+    fi
+
+    ucc_asm_service_state 'started'
+  }"
+  eval "_ubst_evd_${fn}() {
+    if [[ -n '${cfg_dir}' && -n '${yaml}' ]]; then
+      ucc_eval_evidence_from_yaml '${cfg_dir}' '${yaml}' '${tname}'
+      return
+    fi
+    local ver
+    ver=\$(_brew_cached_version '${service_name}')
+    [[ -n \"\$ver\" ]] && printf 'version=%s' \"\$ver\"
+  }"
+  eval "_ubst_ins_${fn}() {
+    if [[ \"\$(_ucc_brew_service_status '${service_name}')\" == 'started' ]]; then
+      ucc_run brew services restart '${brew_ref}'
+    else
+      ucc_run brew services start '${brew_ref}'
+    fi
+  }"
   eval "_ubst_upd_${fn}() { ucc_run brew services restart '${brew_ref}'; }"
   ucc_target_service --name "$tname" \
     --observe "_ubst_obs_${fn}" \

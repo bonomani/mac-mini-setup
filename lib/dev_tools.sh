@@ -265,7 +265,7 @@ PY
     --update   _install_healthcheck
 
   ucc_brew_formula_target "ariaflow" "ariaflow" "$_ARIAFLOW_FORMULA"
-  ucc_brew_service_target "ariaflow-service" "ariaflow" "$_ARIAFLOW_FORMULA"
+  ucc_brew_service_target "ariaflow-service" "ariaflow" "$_ARIAFLOW_FORMULA" "$cfg_dir" "$yaml"
   ucc_brew_formula_target "ariaflow-web" "ariaflow-web" "$_ARIAFLOW_WEB_FORMULA"
-  ucc_brew_service_target "ariaflow-web-service" "ariaflow-web" "$_ARIAFLOW_WEB_FORMULA"
+  ucc_brew_service_target "ariaflow-web-service" "ariaflow-web" "$_ARIAFLOW_WEB_FORMULA" "$cfg_dir" "$yaml"
 }

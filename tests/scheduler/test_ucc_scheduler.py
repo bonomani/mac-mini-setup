@@ -168,6 +168,140 @@ class UccSchedulerTests(unittest.TestCase):
             ).strip()
             self.assertEqual(output, "fake-runtime\tFake API\thttp://127.0.0.1:9999\tprimary")
 
+    def test_brew_runtime_target_uses_yaml_probe_and_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            marker = tmp_path / "runtime.ok"
+            marker.write_text("ok", encoding="utf-8")
+            ucc_dir = self._write_manifest(
+                tmp_path,
+                textwrap.dedent(
+                    f"""\
+                    component: fake
+                    primary_profile: runtime
+                    libs: fake
+                    runner: run_fake
+                    targets:
+                      fake-package:
+                        component: fake
+                        profile: configured
+                        type: package
+                      fake-service:
+                        component: fake
+                        profile: runtime
+                        type: runtime
+                        depends_on:
+                          - fake-package
+                        runtime_manager: brew-service
+                        probe_kind: command
+                        oracle:
+                          configured: "true"
+                          runtime: '[[ -f "{marker}" ]]'
+                        evidence:
+                          version: "printf 1.2.3"
+                          pid: "printf 4321"
+                          port: "printf 9999"
+                    """
+                ),
+            )
+            manifest = ucc_dir / "software" / "fake.yaml"
+            result = subprocess.run(
+                [
+                    "bash",
+                    "-lc",
+                    textwrap.dedent(
+                        f"""\
+                        set -euo pipefail
+                        export UCC_DECLARATION_FILE="{tmp_path / 'decl.jsonl'}"
+                        export UCC_RESULT_FILE="{tmp_path / 'result.jsonl'}"
+                        export UCC_SUMMARY_FILE="{tmp_path / 'summary.txt'}"
+                        export UCC_PROFILE_SUMMARY_FILE="{tmp_path / 'profile.txt'}"
+                        export UCC_TARGET_STATUS_FILE="{tmp_path / 'status.txt'}"
+                        export UCC_CORRELATION_ID="test-run"
+                        source "{ROOT / 'lib/ucc.sh'}"
+
+                        _ucc_brew_service_status() {{ printf 'started'; }}
+
+                        ucc_brew_service_target "fake-service" "fake" "fake-ref" "{ROOT}" "{manifest}"
+                        """
+                    ),
+                ],
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertIn("[ok      ] fake-service", result.stdout)
+            self.assertIn("version=1.2.3", result.stdout)
+            self.assertIn("pid=4321", result.stdout)
+            self.assertIn("port=9999", result.stdout)
+
+    def test_brew_runtime_target_restarts_started_service_when_probe_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            marker = tmp_path / "runtime.ok"
+            commands = tmp_path / "commands.txt"
+            ucc_dir = self._write_manifest(
+                tmp_path,
+                textwrap.dedent(
+                    f"""\
+                    component: fake
+                    primary_profile: runtime
+                    libs: fake
+                    runner: run_fake
+                    targets:
+                      fake-package:
+                        component: fake
+                        profile: configured
+                        type: package
+                      fake-service:
+                        component: fake
+                        profile: runtime
+                        type: runtime
+                        depends_on:
+                          - fake-package
+                        runtime_manager: brew-service
+                        probe_kind: command
+                        oracle:
+                          configured: "true"
+                          runtime: '[[ -f "{marker}" ]]'
+                        evidence:
+                          version: "printf 1.2.3"
+                    """
+                ),
+            )
+            manifest = ucc_dir / "software" / "fake.yaml"
+            result = subprocess.run(
+                [
+                    "bash",
+                    "-lc",
+                    textwrap.dedent(
+                        f"""\
+                        set -euo pipefail
+                        export UCC_DECLARATION_FILE="{tmp_path / 'decl.jsonl'}"
+                        export UCC_RESULT_FILE="{tmp_path / 'result.jsonl'}"
+                        export UCC_SUMMARY_FILE="{tmp_path / 'summary.txt'}"
+                        export UCC_PROFILE_SUMMARY_FILE="{tmp_path / 'profile.txt'}"
+                        export UCC_TARGET_STATUS_FILE="{tmp_path / 'status.txt'}"
+                        export UCC_CORRELATION_ID="test-run"
+                        source "{ROOT / 'lib/ucc.sh'}"
+
+                        _ucc_brew_service_status() {{ printf 'started'; }}
+                        brew() {{
+                          printf '%s\\n' "$*" >> "{commands}"
+                          touch "{marker}"
+                        }}
+
+                        ucc_brew_service_target "fake-service" "fake" "fake-ref" "{ROOT}" "{manifest}"
+                        """
+                    ),
+                ],
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertIn("services restart fake-ref", commands.read_text(encoding="utf-8"))
+            self.assertIn("fake-service", result.stdout)
+
     def test_missing_declared_dependency_raises_execution_error(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
