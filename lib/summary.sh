@@ -5,10 +5,16 @@
 
 init_summary_counters() {
   _total_ok=0; _total_chg=0; _total_fail=0; _total_skip=0
-  _profile_presence_ok=0;   _profile_presence_chg=0;   _profile_presence_fail=0
-  _profile_configured_ok=0; _profile_configured_chg=0; _profile_configured_fail=0
-  _profile_runtime_ok=0;    _profile_runtime_chg=0;    _profile_runtime_fail=0
-  _profile_parametric_ok=0; _profile_parametric_chg=0; _profile_parametric_fail=0
+  _summary_profiles=()
+  local profile prefix
+  for profile in "${_UCC_PROFILE_IDS[@]}"; do
+    [[ -n "$profile" && "$profile" != "verification" ]] || continue
+    _summary_profiles+=("$profile")
+    prefix="$(_profile_var_prefix "$profile")"
+    eval "${prefix}_ok=0"
+    eval "${prefix}_chg=0"
+    eval "${prefix}_fail=0"
+  done
 }
 
 _summary_line() {
@@ -20,13 +26,8 @@ _summary_line() {
 }
 
 _profile_var_prefix() {
-  case "$1" in
-    presence)   printf '_profile_presence'   ;;
-    configured) printf '_profile_configured' ;;
-    runtime)    printf '_profile_runtime'    ;;
-    parametric) printf '_profile_parametric' ;;
-    *)          printf ''                    ;;
-  esac
+  local normalized="${1//[^a-zA-Z0-9_]/_}"
+  [[ -n "$normalized" ]] && printf '_profile_%s' "$normalized" || printf ''
 }
 
 profile_bump() {
@@ -44,7 +45,8 @@ profile_bump() {
 
 print_profile_contracts() {
   local profile expected
-  for profile in presence configured runtime parametric; do
+  for profile in "${_UCC_PROFILE_IDS[@]}"; do
+    [[ -n "$profile" && "$profile" != "verification" ]] || continue
     expected="$(ucc_profile_expected_text "$profile")"
     [[ -n "$expected" ]] || continue
     printf '  Profile %-10s | baseline: %s\n' "$(ucc_profile_label "$profile")" "$expected"
@@ -135,15 +137,18 @@ print_final_summary() {
   printf '  %-22s  %s\n' "Total" "$_total_line"
 
   if [[ -f "$UCC_PROFILE_SUMMARY_FILE" ]]; then
+    local profile prefix
     while IFS='|' read -r _profile _outcome; do
       profile_bump "$_profile" "$_outcome"
     done < "$UCC_PROFILE_SUMMARY_FILE"
     echo "  ──────────────────────────────────────────────────────"
     echo "  By Profile"
-    printf '  %-22s  %s\n' "$(ucc_profile_label presence)"   "$(_summary_line "$_profile_presence_ok"   "$_profile_presence_chg"   "$_profile_presence_fail")"
-    printf '  %-22s  %s\n' "$(ucc_profile_label configured)" "$(_summary_line "$_profile_configured_ok" "$_profile_configured_chg" "$_profile_configured_fail")"
-    printf '  %-22s  %s\n' "$(ucc_profile_label runtime)"    "$(_summary_line "$_profile_runtime_ok"    "$_profile_runtime_chg"    "$_profile_runtime_fail")"
-    printf '  %-22s  %s\n' "$(ucc_profile_label parametric)" "$(_summary_line "$_profile_parametric_ok" "$_profile_parametric_chg" "$_profile_parametric_fail")"
+    for profile in "${_summary_profiles[@]}"; do
+      prefix="$(_profile_var_prefix "$profile")"
+      printf '  %-22s  %s\n' \
+        "$(ucc_profile_label "$profile")" \
+        "$(_summary_line "$(eval "printf '%s' \"\${${prefix}_ok}\"")" "$(eval "printf '%s' \"\${${prefix}_chg}\"")" "$(eval "printf '%s' \"\${${prefix}_fail}\"")")"
+    done
   fi
 
   [[ ${#FAILED_COMPONENTS[@]} -gt 0 ]] && { echo ""; log_warn "Failed components: ${FAILED_COMPONENTS[*]}"; }

@@ -98,8 +98,11 @@ _tic_requires_status_skip_reason() {
 # Usage: run_tic_tests_from_yaml <cfg_dir> <yaml_path>
 run_tic_tests_from_yaml() {
   local cfg_dir="$1" yaml="$2"
-  local t_name t_component t_requires_status t_intent t_oracle t_trace t_skip skip_reason
-  while IFS=$'\t' read -r t_name t_component t_requires_status t_intent t_oracle t_trace t_skip; do
+  local t_name t_component t_requires_status t_intent t_oracle t_trace t_skip skip_reason row
+  local _tic_sep=$'\x1f'
+  while IFS= read -r row; do
+    row="${row//$'\t'/${_tic_sep}}"
+    IFS="${_tic_sep}" read -r t_name t_component t_requires_status t_intent t_oracle t_trace t_skip <<< "${row}${_tic_sep}"
     [[ -n "$t_name" ]] || continue
     skip_reason="$t_skip"
     if [[ -z "$skip_reason" ]]; then
