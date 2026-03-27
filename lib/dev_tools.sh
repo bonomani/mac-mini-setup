@@ -47,6 +47,28 @@ run_dev_tools_from_yaml() {
     return 1
   }
 
+  _wait_http_contains() {
+    local url="$1" needle="$2" attempts="${3:-15}" delay="${4:-1}"
+    local _i body=""
+    for ((_i = 1; _i <= attempts; _i++)); do
+      body="$(curl -fsS --max-time 5 "$url" 2>/dev/null || true)"
+      [[ -n "$body" ]] && grep -Fq "$needle" <<<"$body" && return 0
+      sleep "$delay"
+    done
+    return 1
+  }
+
+  _ariaflow_web_installed_version() {
+    ariaflow-web --version 2>/dev/null | awk 'NR==1 {print $2}'
+  }
+
+  _wait_ariaflow_web_serving_current_version() {
+    local version=""
+    version="$(_ariaflow_web_installed_version)"
+    [[ -n "$version" ]] || return 1
+    _wait_http_contains "http://127.0.0.1:${_ARIAFLOW_WEB_PORT}" "id=\"chip-web-version\">v${version}<"
+  }
+
   _reset_brew_service() {
     local formula_ref="$1" service_name="$2"
     local plist="$HOME/Library/LaunchAgents/homebrew.mxcl.${service_name}.plist"
@@ -396,7 +418,7 @@ run_dev_tools_from_yaml() {
   # ---- ariaflow-web service ----
   _observe_ariaflow_web_service() {
     local svc_status=""
-    if curl -fsS --max-time 5 "http://127.0.0.1:${_ARIAFLOW_WEB_PORT}" >/dev/null 2>&1; then
+    if _wait_ariaflow_web_serving_current_version >/dev/null 2>&1; then
       ucc_asm_service_state "started"
       return
     fi
@@ -410,11 +432,13 @@ run_dev_tools_from_yaml() {
   _evidence_ariaflow_web_service() { ucc_eval_evidence_from_yaml "$cfg_dir" "$yaml" "ariaflow-web-service"; }
   _start_ariaflow_web_service() {
     ariaflow-web --version >/dev/null 2>&1 || return 1
-    _ensure_brew_service_started "$_ARIAFLOW_WEB_FORMULA" "ariaflow-web" "http://127.0.0.1:${_ARIAFLOW_WEB_PORT}"
+    _ensure_brew_service_started "$_ARIAFLOW_WEB_FORMULA" "ariaflow-web" "http://127.0.0.1:${_ARIAFLOW_WEB_PORT}" || return 1
+    _wait_ariaflow_web_serving_current_version
   }
   _restart_ariaflow_web_service() {
     ariaflow-web --version >/dev/null 2>&1 || return 1
-    _restart_brew_service "$_ARIAFLOW_WEB_FORMULA" "ariaflow-web" "http://127.0.0.1:${_ARIAFLOW_WEB_PORT}"
+    _restart_brew_service "$_ARIAFLOW_WEB_FORMULA" "ariaflow-web" "http://127.0.0.1:${_ARIAFLOW_WEB_PORT}" || return 1
+    _wait_ariaflow_web_serving_current_version
   }
 
   ucc_target_service \
