@@ -466,9 +466,9 @@ _run_comp() {
   for _lib in $_libs; do _src="${_src}source \"${DIR}/lib/${_lib}.sh\"; "; done
   local _run
   case "$_on_fail" in
-    exit)   _run="${_runner} \"${DIR}\" \"${_config}\" || { ucc_summary \"${comp}\"; exit 1; }" ;;
-    ignore) _run="${_runner} \"${DIR}\" \"${_config}\" || true" ;;
-    *)      _run="${_runner} \"${DIR}\" \"${_config}\"" ;;
+    exit)   _run="ucc_reset_registered_targets; export UCC_TARGET_DEFER=1; ${_runner} \"${DIR}\" \"${_config}\" && ucc_flush_registered_targets \"${comp}\" || { ucc_summary \"${comp}\"; exit 1; }" ;;
+    ignore) _run="ucc_reset_registered_targets; export UCC_TARGET_DEFER=1; ${_runner} \"${DIR}\" \"${_config}\" && ucc_flush_registered_targets \"${comp}\" || true" ;;
+    *)      _run="ucc_reset_registered_targets; export UCC_TARGET_DEFER=1; ${_runner} \"${DIR}\" \"${_config}\" && ucc_flush_registered_targets \"${comp}\"" ;;
   esac
   if ! bash -c "${_comp_prelude}; ${_src}${_run}; ucc_summary \"${comp}\""; then
     log_warn "Component failed: $comp"

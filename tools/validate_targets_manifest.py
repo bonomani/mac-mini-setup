@@ -275,6 +275,7 @@ def main():
     components_mode = False
     dispatch_mode = False
     oracles_mode = False
+    ordered_targets_mode = False
     target_name = None
     if len(args) >= 2 and args[0] == "--deps":
         deps_mode = True
@@ -288,6 +289,10 @@ def main():
         dispatch_mode = True
         target_name = args[1]
         args = args[2:]
+    elif len(args) >= 2 and args[0] == "--ordered-targets":
+        target_name = args[1]
+        args = args[2:]
+        ordered_targets_mode = True
     elif len(args) >= 1 and args[0] == "--components":
         components_mode = True
         args = args[1:]
@@ -325,6 +330,13 @@ def main():
         print(meta.get("runner", ""))
         print(meta.get("on_fail", ""))
         print(meta.get("file", ""))
+        return 0
+
+    if ordered_targets_mode:
+        for name in ordered:
+            data = manifest["targets"].get(name, {})
+            if data.get("component") == target_name:
+                print(name)
         return 0
 
     if components_mode:

@@ -114,9 +114,63 @@ _ucc_record_outcome() {
   _ucc_record_result "$_mid" "$_dur" "$_dif" "$_res"
 }
 
+_UCC_REGISTERED_NAMES=()
+_UCC_REGISTERED_ARGS=()
+
+ucc_reset_registered_targets() {
+  _UCC_REGISTERED_NAMES=()
+  _UCC_REGISTERED_ARGS=()
+}
+
+_ucc_register_target() {
+  local args=("$@") name="" argv="" arg
+  while [[ ${#args[@]} -gt 0 ]]; do
+    case "${args[0]}" in
+      --name) name="${args[1]:-}"; args=("${args[@]:2}") ;;
+      *) args=("${args[@]:1}") ;;
+    esac
+  done
+  [[ -n "$name" ]] || { log_error "Attempted to register unnamed target"; return 1; }
+  for arg in "$@"; do
+    argv+="$(printf '%q ' "$arg")"
+  done
+  _UCC_REGISTERED_NAMES+=("$name")
+  _UCC_REGISTERED_ARGS+=("${argv% }")
+}
+
+_ucc_registered_index() {
+  local needle="$1" i
+  for i in "${!_UCC_REGISTERED_NAMES[@]}"; do
+    [[ "${_UCC_REGISTERED_NAMES[$i]}" == "$needle" ]] && { printf '%s' "$i"; return 0; }
+  done
+  return 1
+}
+
+_ucc_target_status_value() {
+  local target="$1"
+  [[ -n "${UCC_TARGET_STATUS_FILE:-}" && -f "${UCC_TARGET_STATUS_FILE:-}" ]] || return 0
+  awk -F'|' -v dep="$target" '$1==dep {val=$2} END {print val}' "$UCC_TARGET_STATUS_FILE" 2>/dev/null || true
+}
+
+_ucc_require_declared_dependencies_resolved() {
+  local target="$1" deps="" dep status
+  [[ -n "${UCC_TARGETS_MANIFEST:-}" && -n "${UCC_TARGETS_QUERY_SCRIPT:-}" ]] || return 0
+  deps=$(python3 "$UCC_TARGETS_QUERY_SCRIPT" --deps "$target" "$UCC_TARGETS_MANIFEST" 2>/dev/null || true)
+  [[ -n "$deps" ]] || return 0
+  while IFS= read -r dep; do
+    [[ -n "$dep" ]] || continue
+    status="$(_ucc_target_status_value "$dep")"
+    [[ -n "$status" ]] || {
+      printf '      [%-8s] %-30s declared dependency unresolved: %s\n' "dep-fail" "$(_ucc_display_name "$target")" "$dep"
+      return 1
+    }
+  done <<< "$deps"
+  return 0
+}
+
 # ── ucc_target — full UCC Steps 0-6 lifecycle per target ─────────────────────
 
-ucc_target() {
+_ucc_execute_target() {
   local name="" observe_fn="" desired="" install_fn="" update_fn="" axes="" profile="" evidence_fn=""
 
   while [[ $# -gt 0 ]]; do
@@ -272,6 +326,52 @@ ucc_target() {
     _ucc_emit_target_line "$profile" "fail" "$display_name" "install error was=\"$(_ucc_display_state "$observed" "$axes")\""
     _ucc_record_outcome "$profile" "$name" "FAILED" "failed" "failed" "$msg_id" "$started_at" \
       "{}" "{\"observation\":\"failed\",\"message\":\"install function failed\"}"
+  fi
+}
+
+ucc_flush_registered_targets() {
+  local component="$1" ordered="" target idx
+  local declared=() undeclared=()
+  [[ ${#_UCC_REGISTERED_NAMES[@]} -gt 0 ]] || return 0
+
+  if [[ -n "${UCC_TARGETS_MANIFEST:-}" && -n "${UCC_TARGETS_QUERY_SCRIPT:-}" ]]; then
+    ordered="$(python3 "$UCC_TARGETS_QUERY_SCRIPT" --ordered-targets "$component" "$UCC_TARGETS_MANIFEST" 2>/dev/null || true)"
+  fi
+
+  while IFS= read -r target; do
+    [[ -n "$target" ]] || continue
+    declared+=("$target")
+  done <<< "$ordered"
+
+  for target in "${declared[@]}"; do
+    idx="$(_ucc_registered_index "$target" || true)"
+    [[ -n "$idx" ]] || continue
+    _ucc_require_declared_dependencies_resolved "$target" || return 1
+    eval "_ucc_execute_target ${_UCC_REGISTERED_ARGS[$idx]}" || return 1
+  done
+
+  local name seen
+  for idx in "${!_UCC_REGISTERED_NAMES[@]}"; do
+    name="${_UCC_REGISTERED_NAMES[$idx]}"
+    seen=0
+    for target in "${declared[@]}"; do
+      [[ "$target" == "$name" ]] && { seen=1; break; }
+    done
+    [[ "$seen" -eq 1 ]] && continue
+    log_warn "Target '$name' is not declared in the manifest; executing after topo-sorted targets with no dependencies"
+    undeclared+=("$idx")
+  done
+
+  for idx in "${undeclared[@]}"; do
+    eval "_ucc_execute_target ${_UCC_REGISTERED_ARGS[$idx]}" || return 1
+  done
+}
+
+ucc_target() {
+  if [[ "${UCC_TARGET_DEFER:-0}" == "1" ]]; then
+    _ucc_register_target "$@"
+  else
+    _ucc_execute_target "$@"
   fi
 }
 
