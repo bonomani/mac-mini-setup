@@ -19,7 +19,6 @@ targets:
     desired_value: "0"
     evidence_key: sleep
     install_cmd: "ucc_run sudo pmset -c sleep 0"
-    update_cmd: "ucc_run sudo pmset -c sleep 0"
 
   pmset-disksleep=0:
     component: macos-defaults
@@ -35,7 +34,6 @@ targets:
     desired_value: "0"
     evidence_key: disksleep
     install_cmd: "ucc_run sudo pmset -c disksleep 0"
-    update_cmd: "ucc_run sudo pmset -c disksleep 0"
 
   pmset-standby=0:
     component: macos-defaults
@@ -51,7 +49,6 @@ targets:
     desired_value: "0"
     evidence_key: standby
     install_cmd: "ucc_run sudo pmset -c standby 0"
-    update_cmd: "ucc_run sudo pmset -c standby 0"
 
   app-nap=disabled:
     component: macos-defaults
@@ -67,7 +64,6 @@ targets:
     desired_value: "1"
     evidence_key: NSAppSleepDisabled
     install_cmd: "ucc_run defaults write NSGlobalDomain NSAppSleepDisabled -bool YES"
-    update_cmd: "ucc_run defaults write NSGlobalDomain NSAppSleepDisabled -bool YES"
 
   finder-show-hidden=1:
     component: macos-defaults
@@ -83,7 +79,6 @@ targets:
     desired_value: "1"
     evidence_key: AppleShowAllFiles
     install_cmd: "ucc_run defaults write com.apple.finder AppleShowAllFiles -bool true"
-    update_cmd: "ucc_run defaults write com.apple.finder AppleShowAllFiles -bool true"
 
   show-all-extensions=1:
     component: macos-defaults
@@ -99,7 +94,6 @@ targets:
     desired_value: "1"
     evidence_key: AppleShowAllExtensions
     install_cmd: "ucc_run defaults write NSGlobalDomain AppleShowAllExtensions -bool true"
-    update_cmd: "ucc_run defaults write NSGlobalDomain AppleShowAllExtensions -bool true"
 
   dock-autohide=1:
     component: macos-defaults
@@ -115,7 +109,6 @@ targets:
     desired_value: "1"
     evidence_key: autohide
     install_cmd: "ucc_run defaults write com.apple.dock autohide -bool true"
-    update_cmd: "ucc_run defaults write com.apple.dock autohide -bool true"
 restart_processes:
   - Finder
   - Dock

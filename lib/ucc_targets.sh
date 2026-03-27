@@ -112,6 +112,9 @@ _ucc_run_yaml_action() {
   local cfg_dir="$1" yaml="$2" target="$3" action_key="$4"
   local cmd
   cmd="$(_ucc_yaml_get "$cfg_dir" "$yaml" "targets.${target}.${action_key}")"
+  if [[ -z "$cmd" && "$action_key" == "update_cmd" ]]; then
+    cmd="$(_ucc_yaml_get "$cfg_dir" "$yaml" "targets.${target}.install_cmd")"
+  fi
   [[ -n "$cmd" ]] || return 1
   local CFG_DIR="$cfg_dir" YAML_PATH="$yaml" TARGET_NAME="$target"
   eval "$cmd"
@@ -129,14 +132,12 @@ ucc_yaml_simple_target() {
   eval "_uyst_evd_${fn}() { ucc_eval_evidence_from_yaml '${cfg_dir}' '${yaml}' '${target}'; }"
   if [[ -n "$install_cmd" ]]; then
     eval "_uyst_ins_${fn}() { _ucc_run_yaml_action '${cfg_dir}' '${yaml}' '${target}' install_cmd; }"
-  fi
-  if [[ -n "$update_cmd" ]]; then
     eval "_uyst_upd_${fn}() { _ucc_run_yaml_action '${cfg_dir}' '${yaml}' '${target}' update_cmd; }"
   fi
 
   local args=(--name "$target" --profile "$profile" --observe "_uyst_obs_${fn}" --evidence "_uyst_evd_${fn}")
   [[ -n "$install_cmd" ]] && args+=(--install "_uyst_ins_${fn}")
-  [[ -n "$update_cmd" ]] && args+=(--update "_uyst_upd_${fn}")
+  [[ -n "$install_cmd" ]] && args+=(--update "_uyst_upd_${fn}")
   ucc_target "${args[@]}"
 }
 
@@ -264,8 +265,6 @@ ucc_yaml_parametric_target() {
   eval "_uypt_evd_${fn}() { _ucc_evidence_yaml_parametric_target '${cfg_dir}' '${yaml}' '${target}'; }"
   if [[ -n "$install_cmd" ]]; then
     eval "_uypt_ins_${fn}() { _ucc_run_yaml_action '${cfg_dir}' '${yaml}' '${target}' install_cmd; }"
-  fi
-  if [[ -n "$update_cmd" ]]; then
     eval "_uypt_upd_${fn}() { _ucc_run_yaml_action '${cfg_dir}' '${yaml}' '${target}' update_cmd; }"
   fi
 
@@ -277,7 +276,7 @@ ucc_yaml_parametric_target() {
     --desired "$(_ucc_yaml_parametric_desired_state "$desired" "$dep_state")"
   )
   [[ -n "$install_cmd" ]] && args+=(--install "_uypt_ins_${fn}")
-  [[ -n "$update_cmd" ]] && args+=(--update "_uypt_upd_${fn}")
+  [[ -n "$install_cmd" ]] && args+=(--update "_uypt_upd_${fn}")
   ucc_target "${args[@]}"
 }
 

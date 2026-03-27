@@ -100,12 +100,6 @@ targets:
       else
         printf '\nZSH_THEME="%s"\n' "${omz_theme}" >> "$HOME/.zshrc"
       fi
-    update_cmd: |
-      if grep -q '^ZSH_THEME=' "$HOME/.zshrc" 2>/dev/null; then
-        sed -i '' "s/^ZSH_THEME=.*/ZSH_THEME=\"${omz_theme}\"/" "$HOME/.zshrc"
-      else
-        printf '\nZSH_THEME="%s"\n' "${omz_theme}" >> "$HOME/.zshrc"
-      fi
 
   home-bin-in-path:
     component: dev-tools
@@ -133,9 +127,6 @@ targets:
     evidence:
       path: "printf '%s' \"$HOME/bin/ai-healthcheck\""
     install_cmd: |
-      mkdir -p "$HOME/bin"
-      install -m 755 "$CFG_DIR/scripts/ai-healthcheck" "$HOME/bin/ai-healthcheck"
-    update_cmd: |
       mkdir -p "$HOME/bin"
       install -m 755 "$CFG_DIR/scripts/ai-healthcheck" "$HOME/bin/ai-healthcheck"
 

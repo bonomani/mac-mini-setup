@@ -541,6 +541,59 @@ class UccSchedulerTests(unittest.TestCase):
             self.assertIn("mode=on", result.stdout)
             self.assertTrue((home_dir / "setting.applied").exists())
 
+    def test_yaml_parametric_target_reuses_install_cmd_for_update_when_update_cmd_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            ucc_dir = self._write_manifest(
+                tmp_path,
+                textwrap.dedent(
+                    """\
+                    component: fake
+                    primary_profile: parametric
+                    libs: fake
+                    runner: run_fake
+                    targets:
+                      setting:
+                        component: fake
+                        profile: parametric
+                        type: config
+                        state_model: parametric
+                        observe_cmd: 'printf off'
+                        desired_value: 'on'
+                        install_cmd: 'printf updated > "$HOME/update.txt"'
+                    """
+                ),
+            )
+            manifest = ucc_dir / "software" / "fake.yaml"
+            home_dir = tmp_path / "home"
+            home_dir.mkdir()
+            result = subprocess.run(
+                [
+                    "bash",
+                    "-lc",
+                    textwrap.dedent(
+                        f"""\
+                        set -euo pipefail
+                        export HOME="{home_dir}"
+                        export UCC_MODE=update
+                        export UCC_DECLARATION_FILE="{tmp_path / 'decl.jsonl'}"
+                        export UCC_RESULT_FILE="{tmp_path / 'result.jsonl'}"
+                        export UCC_SUMMARY_FILE="{tmp_path / 'summary.txt'}"
+                        export UCC_PROFILE_SUMMARY_FILE="{tmp_path / 'profile.txt'}"
+                        export UCC_TARGET_STATUS_FILE="{tmp_path / 'status.txt'}"
+                        export UCC_CORRELATION_ID="test-run"
+                        source "{ROOT / 'lib/ucc.sh'}"
+
+                        ucc_yaml_parametric_target "{ROOT}" "{manifest}" setting
+                        """
+                    ),
+                ],
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertTrue((home_dir / "update.txt").exists())
+
     def test_yaml_runtime_target_uses_yaml_oracles_and_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)

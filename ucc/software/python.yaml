@@ -55,10 +55,6 @@ targets:
       local pkgs
       pkgs="$(python3 "$CFG_DIR/tools/read_config.py" --list "$YAML_PATH" pip_bootstrap 2>/dev/null | xargs)"
       [[ -n "$pkgs" ]] && pip install --upgrade $pkgs
-    update_cmd: |
-      local pkgs
-      pkgs="$(python3 "$CFG_DIR/tools/read_config.py" --list "$YAML_PATH" pip_bootstrap 2>/dev/null | xargs)"
-      [[ -n "$pkgs" ]] && pip install --upgrade $pkgs
 
 pyenv_packages:
   - pyenv
