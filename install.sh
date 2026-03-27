@@ -111,14 +111,28 @@ _gate_supported_platform(){ [[ "$HOST_PLATFORM_VARIANT" == "macos" || "$HOST_PLA
 _gate_arm64()           { [[ "$(uname -m)" == "arm64" ]]; }
 _gate_docker_daemon()   { docker info &>/dev/null 2>&1; }
 _gate_docker_compose()  { docker compose version &>/dev/null 2>&1; }
-_gate_docker_settings() { [[ -f "$HOME/Library/Group Containers/group.com.docker/settings.json" ]]; }
+_gate_docker_settings() {
+  local rel
+  rel="$(python3 "$DIR/tools/read_config.py" --get "$DIR/ucc/system/docker-config.yaml" settings_relpath 2>/dev/null || true)"
+  [[ -z "$rel" ]] && rel="Library/Group Containers/group.com.docker/settings.json"
+  [[ -f "$HOME/$rel" ]]
+}
 _gate_ai_apps_template(){
   local rel
   rel="$(python3 "$DIR/tools/read_config.py" --get "$DIR/ucc/software/ai-apps.yaml" stack.definition_template 2>/dev/null || true)"
   [[ -z "$rel" ]] && rel="stack/docker-compose.yml"
   [[ -f "$DIR/$rel" ]]
 }
-_gate_ollama_api()      { curl -fsS http://127.0.0.1:11434/api/tags >/dev/null 2>&1; }
+_gate_ollama_api()      {
+  local host port path
+  host="$(python3 "$DIR/tools/read_config.py" --get "$DIR/ucc/software/ollama.yaml" api_host 2>/dev/null || true)"
+  port="$(python3 "$DIR/tools/read_config.py" --get "$DIR/ucc/software/ollama.yaml" api_port 2>/dev/null || true)"
+  path="$(python3 "$DIR/tools/read_config.py" --get "$DIR/ucc/software/ollama.yaml" api_tags_path 2>/dev/null || true)"
+  [[ -z "$host" ]] && host="127.0.0.1"
+  [[ -z "$port" ]] && port="11434"
+  [[ -z "$path" ]] && path="/api/tags"
+  curl -fsS "http://${host}:${port}${path}" >/dev/null 2>&1
+}
 _gate_sudo()            { sudo -n true 2>/dev/null; }
 
 _load_components() {

@@ -4,6 +4,9 @@ libs: docker
 runner: run_docker_from_yaml
 platforms:
   - macos
+docker_desktop_cask_id: docker
+docker_desktop_app_name: Docker
+docker_desktop_app_path: /Applications/Docker.app
 
 targets:
   docker-desktop:
@@ -16,8 +19,8 @@ targets:
     runtime_manager: desktop-app
     probe_kind: command
     oracle:
-      configured: "[[ -d /Applications/Docker.app ]]"
+      configured: '[[ -d "${docker_desktop_app_path}" ]]'
       runtime: "docker info >/dev/null 2>&1"
     evidence:
-      version: "defaults read '/Applications/Docker.app/Contents/Info' CFBundleShortVersionString 2>/dev/null || docker --version 2>/dev/null | awk '{print $3}' | tr -d ','"
-      pid: "pgrep -f '/Applications/Docker.app' 2>/dev/null | head -1"
+      version: "defaults read \"${docker_desktop_app_path}/Contents/Info\" CFBundleShortVersionString 2>/dev/null || docker --version 2>/dev/null | awk '{print $3}' | tr -d ','"
+      pid: "pgrep -f \"${docker_desktop_app_path}\" 2>/dev/null | head -1"

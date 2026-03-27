@@ -5,22 +5,26 @@
 # Usage: run_docker_from_yaml <cfg_dir> <yaml_path>
 run_docker_from_yaml() {
   local cfg_dir="$1" yaml="$2"
+  local _DOCKER_CASK_ID _DOCKER_APP_NAME _DOCKER_APP_PATH
+  _DOCKER_CASK_ID="$(yaml_get "$cfg_dir" "$yaml" docker_desktop_cask_id docker)"
+  _DOCKER_APP_NAME="$(yaml_get "$cfg_dir" "$yaml" docker_desktop_app_name Docker)"
+  _DOCKER_APP_PATH="$(yaml_get "$cfg_dir" "$yaml" docker_desktop_app_path /Applications/Docker.app)"
 
   _docker_desktop_version() {
-    defaults read "/Applications/Docker.app/Contents/Info" CFBundleShortVersionString 2>/dev/null \
+    defaults read "${_DOCKER_APP_PATH}/Contents/Info" CFBundleShortVersionString 2>/dev/null \
       || docker --version 2>/dev/null | awk '{print $3}' | tr -d ','
   }
   _docker_desktop_pkg_state() {
-    if [[ -d "/Applications/Docker.app" ]] && ! brew_cask_is_installed docker; then
+    if [[ -d "$_DOCKER_APP_PATH" ]] && ! brew_cask_is_installed "$_DOCKER_CASK_ID"; then
       printf 'installed'
       return
     fi
-    brew_cask_observe docker
+    brew_cask_observe "$_DOCKER_CASK_ID"
   }
   _observe_docker_desktop() {
     local observed
     observed="$(_docker_desktop_pkg_state)"
-    if [[ "$observed" == "absent" ]] && [[ ! -d "/Applications/Docker.app" ]] && ! command -v docker >/dev/null 2>&1; then
+    if [[ "$observed" == "absent" ]] && [[ ! -d "$_DOCKER_APP_PATH" ]] && ! command -v docker >/dev/null 2>&1; then
       ucc_asm_state --installation Absent --runtime NeverStarted \
         --health Unavailable --admin Enabled --dependencies DepsUnknown
       return
@@ -45,7 +49,7 @@ run_docker_from_yaml() {
   }
   _evidence_docker_desktop() {
     local pid ver
-    pid="$(pgrep -f '/Applications/Docker.app' 2>/dev/null | head -1 || true)"
+    pid="$(pgrep -f "$_DOCKER_APP_PATH" 2>/dev/null | head -1 || true)"
     ver="$(_docker_desktop_version)"
     [[ -n "$ver" ]] && printf 'version=%s' "$ver"
     [[ -n "$pid" ]] && printf '  pid=%s' "$pid"
@@ -54,11 +58,11 @@ run_docker_from_yaml() {
     local observed
     observed="$(_docker_desktop_pkg_state)"
     if [[ "$observed" == "absent" ]]; then
-      brew_cask_install docker || return 1
+      brew_cask_install "$_DOCKER_CASK_ID" || return 1
     elif [[ "$observed" == "outdated" ]]; then
-      brew_cask_upgrade docker || return 1
+      brew_cask_upgrade "$_DOCKER_CASK_ID" || return 1
     fi
-    open -a Docker
+    open -a "$_DOCKER_APP_NAME"
     log_info "Waiting for Docker daemon..."
     for i in $(seq 1 24); do
       docker info &>/dev/null && return 0
@@ -80,6 +84,8 @@ run_docker_from_yaml() {
 # Usage: run_docker_config_from_yaml <cfg_dir> <yaml_path>
 run_docker_config_from_yaml() {
   local cfg_dir="$1" yaml="$2"
+  local _DOCKER_SETTINGS_PATH
+  _DOCKER_SETTINGS_PATH="$HOME/$(yaml_get "$cfg_dir" "$yaml" settings_relpath "Library/Group Containers/group.com.docker/settings.json")"
 
   if [[ "${UIC_GATE_FAILED_DOCKER_SETTINGS_FILE:-0}" == "1" ]]; then
     ucc_skip_target "docker-resources" "gate=docker-settings-file:warn (launch Docker Desktop first)"
@@ -99,7 +105,7 @@ run_docker_config_from_yaml() {
       --config-value "mem=${_DOCKER_MEM_GB}GB cpu=${_DOCKER_CPUS}"
   }
   _observe_docker_settings() {
-    local f="$HOME/Library/Group Containers/group.com.docker/settings.json"
+    local f="$_DOCKER_SETTINGS_PATH"
     [[ -f "$f" ]] || {
       ucc_asm_state --installation Installed --runtime Stopped \
         --health Unavailable --admin Enabled --dependencies DepsFailed
@@ -121,19 +127,19 @@ run_docker_config_from_yaml() {
     fi
   }
   _evidence_docker_settings() {
-    local f="$HOME/Library/Group Containers/group.com.docker/settings.json" mem cpus
+    local f="$_DOCKER_SETTINGS_PATH" mem cpus
     [[ -f "$f" ]] || { printf 'gate=docker-settings-file:warn (launch Docker to create settings file)'; return; }
     mem=$(python3  -c "import json; d=json.load(open('$f')); print(d.get('memoryMiB',0)//1024)" 2>/dev/null)
     cpus=$(python3 -c "import json; d=json.load(open('$f')); print(d.get('cpus',0))" 2>/dev/null)
     printf 'memory=%sGB  cpus=%s' "${mem:-0}" "${cpus:-0}"
   }
   _configure_docker_settings() {
-    local f="$HOME/Library/Group Containers/group.com.docker/settings.json"
+    local f="$_DOCKER_SETTINGS_PATH"
     [[ -f "$f" ]] || { log_warn "Docker settings file not found yet — launch Docker first"; return 1; }
-    MEM_MIB="$_DOCKER_MEM_MIB" CPU_COUNT="$_DOCKER_CPUS" \
+    DOCKER_SETTINGS_PATH="$f" MEM_MIB="$_DOCKER_MEM_MIB" CPU_COUNT="$_DOCKER_CPUS" \
     SWAP_MIB="$_DOCKER_SWAP_MIB" DISK_MIB="$_DOCKER_DISK_MIB" python3 - <<'EOF'
 import json, os
-path = os.path.expanduser("~/Library/Group Containers/group.com.docker/settings.json")
+path = os.environ["DOCKER_SETTINGS_PATH"]
 with open(path) as f:
     s = json.load(f)
 s["memoryMiB"]   = int(os.environ["MEM_MIB"])

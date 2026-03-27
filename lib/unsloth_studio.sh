@@ -8,13 +8,12 @@ register_unsloth_studio_targets() {
 
   local label plist_marker port host studio_dir log_file plist bin
 
-  label="$(python3 "$cfg_dir/tools/read_config.py" --get "$yaml" unsloth_label 2>/dev/null || true)"
-  [[ -n "$label" ]] || label="$(python3 "$cfg_dir/tools/read_config.py" --get "$yaml" unsloth_studio.label 2>/dev/null)"
-  plist_marker="$(python3 "$cfg_dir/tools/read_config.py" --get "$yaml" unsloth_studio.plist_marker 2>/dev/null)"
-  port="$(python3 "$cfg_dir/tools/read_config.py" --get "$yaml" unsloth_studio.port 2>/dev/null)"
-  host="$(python3 "$cfg_dir/tools/read_config.py" --get "$yaml" unsloth_studio.host 2>/dev/null)"
-  studio_dir="$HOME/$(python3 "$cfg_dir/tools/read_config.py" --get "$yaml" unsloth_studio.studio_dir 2>/dev/null)"
-  log_file="$HOME/$(python3 "$cfg_dir/tools/read_config.py" --get "$yaml" unsloth_studio.log_file 2>/dev/null)"
+  label="$(python3 "$cfg_dir/tools/read_config.py" --get "$yaml" unsloth_label 2>/dev/null)"
+  plist_marker="$(python3 "$cfg_dir/tools/read_config.py" --get "$yaml" unsloth_plist_marker 2>/dev/null)"
+  port="$(python3 "$cfg_dir/tools/read_config.py" --get "$yaml" unsloth_port 2>/dev/null)"
+  host="$(python3 "$cfg_dir/tools/read_config.py" --get "$yaml" unsloth_host 2>/dev/null)"
+  studio_dir="$HOME/$(python3 "$cfg_dir/tools/read_config.py" --get "$yaml" unsloth_studio_dir 2>/dev/null)"
+  log_file="$HOME/$(python3 "$cfg_dir/tools/read_config.py" --get "$yaml" unsloth_log_file 2>/dev/null)"
   plist="$HOME/Library/LaunchAgents/${label}.plist"
   # launchd does not load pyenv shims — resolve absolute binary path at source time
   bin="$(pyenv which unsloth 2>/dev/null || command -v unsloth)"

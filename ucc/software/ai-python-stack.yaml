@@ -5,6 +5,9 @@ runner: run_ai_python_stack_from_yaml
 platforms:
   - macos
 unsloth_label: ai.unsloth.studio
+unsloth_plist_marker: "<!-- ai.unsloth.studio v2 -->"
+unsloth_host: 0.0.0.0
+unsloth_log_file: .unsloth-studio.log
 unsloth_port: 8888
 unsloth_studio_dir: .unsloth/studio
 targets:
@@ -178,12 +181,3 @@ pip_groups:
   - name: optimum
     probe: optimum
     packages: optimum
-
-# Unsloth Studio service configuration
-unsloth_studio:
-  label: "ai.unsloth.studio"
-  plist_marker: "<!-- ai.unsloth.studio v2 -->"
-  port: "8888"
-  host: "0.0.0.0"
-  studio_dir: ".unsloth/studio"
-  log_file: ".unsloth-studio.log"

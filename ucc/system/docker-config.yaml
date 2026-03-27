@@ -4,6 +4,7 @@ libs: docker
 runner: run_docker_config_from_yaml
 platforms:
   - macos
+settings_relpath: Library/Group Containers/group.com.docker/settings.json
 memory_gb: 48
 cpu_count: 10
 swap_mib: 4096

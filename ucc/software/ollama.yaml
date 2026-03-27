@@ -9,9 +9,13 @@ platforms:
   - wsl2
 macos_min_version: 14
 installer_url: https://ollama.com/install.sh
+brew_service_name: ollama
 api_host: 127.0.0.1
 api_port: 11434
+api_tags_path: /api/tags
 log_file: /tmp/ollama.log
+fallback_stop_pattern: ollama (serve|app)
+fallback_start_cmd: ollama serve
 targets:
   ollama-host-supported:
     component: ollama
@@ -31,12 +35,12 @@ targets:
     probe_kind: http
     oracle:
       configured: "ollama --version >/dev/null 2>&1"
-      runtime: 'curl -fsS "http://${api_host}:${api_port}/api/tags" >/dev/null 2>&1'
+      runtime: 'curl -fsS "http://${api_host}:${api_port}${api_tags_path}" >/dev/null 2>&1'
     evidence:
       version: "ollama --version 2>/dev/null | awk '{print $NF}'"
       path: "command -v ollama 2>/dev/null"
       pid: "pgrep -f 'ollama (serve|app)' 2>/dev/null | head -1"
-      listener: "printf 'tcp:127.0.0.1:${api_port}'"
+      listener: "printf 'tcp:${api_host}:${api_port}'"
     endpoints:
       - name: Ollama API
         url: http://127.0.0.1:11434

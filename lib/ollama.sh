@@ -7,12 +7,19 @@
 run_ollama_from_yaml() {
   local cfg_dir="$1" yaml="$2"
 
-  local _OLLAMA_MACOS_MIN _OLLAMA_INSTALLER_URL _OLLAMA_API_HOST _OLLAMA_API_PORT _OLLAMA_LOG
+  local _OLLAMA_MACOS_MIN _OLLAMA_INSTALLER_URL _OLLAMA_BREW_SERVICE_NAME
+  local _OLLAMA_API_HOST _OLLAMA_API_PORT _OLLAMA_API_TAGS_PATH _OLLAMA_LOG
+  local _OLLAMA_STOP_PATTERN _OLLAMA_START_CMD _OLLAMA_API_URL
   _OLLAMA_MACOS_MIN="$(    yaml_get "$cfg_dir" "$yaml" macos_min_version    14)"
   _OLLAMA_INSTALLER_URL="$(yaml_get "$cfg_dir" "$yaml" installer_url        "https://ollama.com/install.sh")"
+  _OLLAMA_BREW_SERVICE_NAME="$(yaml_get "$cfg_dir" "$yaml" brew_service_name ollama)"
   _OLLAMA_API_HOST="$(     yaml_get "$cfg_dir" "$yaml" api_host             "127.0.0.1")"
   _OLLAMA_API_PORT="$(     yaml_get "$cfg_dir" "$yaml" api_port             "11434")"
+  _OLLAMA_API_TAGS_PATH="$(yaml_get "$cfg_dir" "$yaml" api_tags_path        "/api/tags")"
   _OLLAMA_LOG="$(          yaml_get "$cfg_dir" "$yaml" log_file             "/tmp/ollama.log")"
+  _OLLAMA_STOP_PATTERN="$( yaml_get "$cfg_dir" "$yaml" fallback_stop_pattern "ollama (serve|app)")"
+  _OLLAMA_START_CMD="$(    yaml_get "$cfg_dir" "$yaml" fallback_start_cmd    "ollama serve")"
+  _OLLAMA_API_URL="http://${_OLLAMA_API_HOST}:${_OLLAMA_API_PORT}${_OLLAMA_API_TAGS_PATH}"
 
   local MACOS_MAJOR=0
   [[ "${HOST_PLATFORM:-macos}" == "macos" ]] && MACOS_MAJOR="$(sw_vers -productVersion | awk -F. '{print $1}')"
@@ -21,7 +28,7 @@ run_ollama_from_yaml() {
   _observe_host_prereq() {
     if [[ "${HOST_PLATFORM:-unknown}" == "macos" && "$MACOS_MAJOR" -ge "$_OLLAMA_MACOS_MIN" ]]; then
       ucc_asm_config_state "supported"
-    elif [[ "${HOST_PLATFORM:-unknown}" == "linux" || "${HOST_PLATFORM:-unknown}" == "wsl" ]]; then
+    elif [[ "${HOST_PLATFORM:-unknown}" == "linux" || "${HOST_PLATFORM_VARIANT:-unknown}" == "wsl2" ]]; then
       ucc_asm_config_state "supported"
     else
       ucc_asm_config_state "absent"
@@ -51,7 +58,7 @@ run_ollama_from_yaml() {
 
   if [[ "${HOST_PLATFORM:-unknown}" == "macos" ]]; then
     [[ "$MACOS_MAJOR" -ge "$_OLLAMA_MACOS_MIN" ]] || return 1
-  elif [[ "${HOST_PLATFORM:-unknown}" != "linux" && "${HOST_PLATFORM:-unknown}" != "wsl" ]]; then
+  elif [[ "${HOST_PLATFORM:-unknown}" != "linux" && "${HOST_PLATFORM_VARIANT:-unknown}" != "wsl2" ]]; then
     return 1
   fi
 
@@ -62,7 +69,7 @@ run_ollama_from_yaml() {
       return
     fi
 
-    if curl -fsS "http://${_OLLAMA_API_HOST}:${_OLLAMA_API_PORT}/api/tags" >/dev/null 2>&1; then
+    if curl -fsS "$_OLLAMA_API_URL" >/dev/null 2>&1; then
       ucc_asm_runtime_desired
     else
       ucc_asm_state --installation Configured --runtime Stopped \
@@ -75,18 +82,18 @@ run_ollama_from_yaml() {
       curl -fsSL "$_OLLAMA_INSTALLER_URL" | sh || return 1
     fi
 
-    if is_installed brew && brew list ollama &>/dev/null 2>&1; then
-      if brew services list 2>/dev/null | awk '$1=="ollama" {print $2}' | grep -q '^started$'; then
-        brew services restart ollama
+    if is_installed brew && brew list "$_OLLAMA_BREW_SERVICE_NAME" &>/dev/null 2>&1; then
+      if brew services list 2>/dev/null | awk -v svc="$_OLLAMA_BREW_SERVICE_NAME" '$1==svc {print $2}' | grep -q '^started$'; then
+        brew services restart "$_OLLAMA_BREW_SERVICE_NAME"
       else
-        brew services start ollama
+        brew services start "$_OLLAMA_BREW_SERVICE_NAME"
       fi
     else
-      pkill -f 'ollama (serve|app)' 2>/dev/null || true
-      nohup ollama serve >"$_OLLAMA_LOG" 2>&1 &
+      pkill -f "$_OLLAMA_STOP_PATTERN" 2>/dev/null || true
+      nohup bash -lc "$_OLLAMA_START_CMD" >"$_OLLAMA_LOG" 2>&1 &
     fi
 
-    _ucc_wait_for_runtime_probe "curl -fsS \"http://${_OLLAMA_API_HOST}:${_OLLAMA_API_PORT}/api/tags\" >/dev/null 2>&1"
+    _ucc_wait_for_runtime_probe "curl -fsS \"$_OLLAMA_API_URL\" >/dev/null 2>&1"
   }
   _update_ollama() {
     curl -fsSL "$_OLLAMA_INSTALLER_URL" | sh || return 1
@@ -103,8 +110,8 @@ run_ollama_from_yaml() {
 
   # ---- API health check (guard before model pulls) ----
   if [[ "$UCC_DRY_RUN" != "1" ]]; then
-    if ! curl -fsS "http://${_OLLAMA_API_HOST}:${_OLLAMA_API_PORT}/api/tags" >/dev/null 2>&1; then
-      log_warn "Ollama API not responding at http://${_OLLAMA_API_HOST}:${_OLLAMA_API_PORT} — models will not be pulled"
+    if ! curl -fsS "$_OLLAMA_API_URL" >/dev/null 2>&1; then
+      log_warn "Ollama API not responding at $_OLLAMA_API_URL — models will not be pulled"
       return 1
     fi
   fi

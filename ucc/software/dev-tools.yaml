@@ -8,6 +8,12 @@ node_version: 24
 node_previous_version: 20
 omz_theme: agnoster
 omz_installer_url: https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh
+vscode_cask_id: visual-studio-code
+vscode_app_path: /Applications/Visual Studio Code.app
+vscode_cli_path: /Applications/Visual Studio Code.app/Contents/Resources/app/bin/code
+vscode_cli_link_path: /usr/local/bin/code
+vscode_settings_relpath: Library/Application Support/Code/User/settings.json
+vscode_settings_patch: ucc/software/vscode-settings.json
 ariaflow_tap: bonomani/ariaflow
 aria2_port: 6800
 ariaflow_port: 8000
@@ -21,7 +27,7 @@ targets:
       - homebrew
     provided_by_tool: brew-cask
     oracle:
-      configured: "[[ -d '/Applications/Visual Studio Code.app' ]] || is_installed code"
+      configured: '[[ -d "${vscode_app_path}" ]] || is_installed code'
 
   vscode-code-cmd:
     component: dev-tools
@@ -47,7 +53,7 @@ targets:
       - homebrew
     provided_by_tool: brew
     oracle:
-      configured: 'node --version 2>/dev/null | grep -q "^v${_NODE_VER}\."'
+      configured: 'node --version 2>/dev/null | grep -q "^v${node_version}\."'
 
   oh-my-zsh:
     component: dev-tools
