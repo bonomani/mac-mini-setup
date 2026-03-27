@@ -168,13 +168,37 @@ run_dev_tools_from_yaml() {
   load_vscode_extensions_from_yaml "$cfg_dir" "$yaml"
 
   # ---- VSCode settings.json (merge, not overwrite) ----
+  _vscode_settings_match_patch() {
+    local settings_file="$1" patch_file="$2"
+    python3 - "$settings_file" "$patch_file" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+settings_path = Path(sys.argv[1])
+patch_path = Path(sys.argv[2])
+
+try:
+    settings = json.loads(settings_path.read_text())
+    patch = json.loads(patch_path.read_text())
+except Exception:
+    raise SystemExit(1)
+
+if not isinstance(settings, dict) or not isinstance(patch, dict):
+    raise SystemExit(1)
+
+for key, value in patch.items():
+    if settings.get(key) != value:
+        raise SystemExit(1)
+
+raise SystemExit(0)
+PY
+  }
   _observe_vscode_settings() {
     local f="$HOME/Library/Application Support/Code/User/settings.json"
     local patch_file="$cfg_dir/ucc/software/vscode-settings.json"
     [[ -f "$f" ]] || { ucc_asm_config_state "absent"; return; }
-    local first_key
-    first_key=$(jq -r 'keys[0]' "$patch_file" 2>/dev/null)
-    if [[ -n "$first_key" ]] && jq -e --arg k "$first_key" '.[$k]' "$f" >/dev/null 2>&1; then
+    if _vscode_settings_match_patch "$f" "$patch_file"; then
       ucc_asm_config_state "configured"
     else
       ucc_asm_config_state "needs-update"
@@ -185,14 +209,35 @@ run_dev_tools_from_yaml() {
     local f="$HOME/Library/Application Support/Code/User/settings.json"
     local patch_file="$cfg_dir/ucc/software/vscode-settings.json"
     mkdir -p "$(dirname "$f")"
-    local tmp patch
+    local tmp
     tmp="$(mktemp)"
-    patch=$(cat "$patch_file")
-    if [[ -f "$f" ]] && jq empty "$f" >/dev/null 2>&1; then
-      jq --argjson p "$patch" '. + $p' "$f" > "$tmp"
-    else
-      echo "$patch" | jq '.' > "$tmp"
-    fi
+    python3 - "$f" "$patch_file" "$tmp" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+settings_path = Path(sys.argv[1])
+patch_path = Path(sys.argv[2])
+tmp_path = Path(sys.argv[3])
+
+patch = json.loads(patch_path.read_text())
+if not isinstance(patch, dict):
+    raise SystemExit(1)
+
+if settings_path.exists():
+    try:
+      settings = json.loads(settings_path.read_text())
+    except Exception:
+      settings = {}
+else:
+    settings = {}
+
+if not isinstance(settings, dict):
+    settings = {}
+
+settings.update(patch)
+tmp_path.write_text(json.dumps(settings, indent=2, sort_keys=True) + "\n")
+PY
     mv "$tmp" "$f"
   }
 
