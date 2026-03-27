@@ -131,6 +131,33 @@ ucc_yaml_simple_target() {
   ucc_target "${args[@]}"
 }
 
+_ucc_observe_yaml_capability_target() {
+  local cfg_dir="$1" yaml="$2" target="$3"
+  local runtime_cmd
+  runtime_cmd="$(_ucc_yaml_get "$cfg_dir" "$yaml" "targets.${target}.oracle.runtime")"
+  local CFG_DIR="$cfg_dir" YAML_PATH="$yaml" TARGET_NAME="$target"
+  if [[ -n "$runtime_cmd" ]] && eval "$runtime_cmd" >/dev/null 2>&1; then
+    ucc_asm_state --installation Configured --runtime Running --health Healthy --admin Enabled --dependencies DepsReady
+  else
+    ucc_asm_state --installation Configured --runtime Stopped --health Degraded --admin Enabled --dependencies DepsReady
+  fi
+}
+
+ucc_yaml_capability_target() {
+  local cfg_dir="$1" yaml="$2" target="$3"
+  local fn
+  fn="${target//[^a-zA-Z0-9]/_}"
+
+  eval "_uyct_obs_${fn}() { _ucc_observe_yaml_capability_target '${cfg_dir}' '${yaml}' '${target}'; }"
+  eval "_uyct_evd_${fn}() { ucc_eval_evidence_from_yaml '${cfg_dir}' '${yaml}' '${target}'; }"
+
+  ucc_target \
+    --name "$target" \
+    --profile capability \
+    --observe "_uyct_obs_${fn}" \
+    --evidence "_uyct_evd_${fn}"
+}
+
 # ucc_brew_target <target-name> <brew-pkg>
 # Standard brew formula: install=brew install, update=brew upgrade
 ucc_brew_target() {

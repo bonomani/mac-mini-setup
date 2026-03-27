@@ -122,10 +122,16 @@ targets:
     component: ai-python-stack
     profile: capability
     type: runtime
+    display_name: Metal MPS
     depends_on:
       - pip-group-pytorch
     runtime_manager: capability
     probe_kind: command
+    oracle:
+      runtime: "python3 -c \"import torch; raise SystemExit(0 if torch.backends.mps.is_available() else 1)\" 2>/dev/null"
+    evidence:
+      gpu: "printf 'Metal'"
+      status: "python3 -c \"import torch; print('available' if torch.backends.mps.is_available() else 'unavailable (CPU only)')\" 2>/dev/null || printf 'unavailable (CPU only)'"
 # Fields:
 #   name        ucc-target suffix and _pip_group identifier
 #   probe       package name used for pip show / version detection

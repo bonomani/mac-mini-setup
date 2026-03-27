@@ -57,21 +57,6 @@ run_ai_python_stack_from_yaml() {
   load_pip_groups_from_yaml "$cfg_dir" "$yaml"
   register_unsloth_studio_targets "$cfg_dir" "$yaml"
   if [[ "$UCC_DRY_RUN" != "1" ]] && is_installed python3; then
-    _MPS_STATUS=$(python3 -c "import torch; print('ok' if torch.backends.mps.is_available() else 'fail')" 2>/dev/null || echo "fail")
-    _observe_mps() {
-      if [[ "$_MPS_STATUS" == "ok" ]]; then
-        ucc_asm_state --installation Configured --runtime Running --health Healthy --admin Enabled --dependencies DepsReady
-      else
-        ucc_asm_state --installation Configured --runtime Stopped --health Degraded --admin Enabled --dependencies DepsReady
-      fi
-    }
-    _evidence_mps() {
-      [[ "$_MPS_STATUS" == "ok" ]] && printf 'gpu=Metal  status=available' || printf 'gpu=Metal  status=unavailable (CPU only)'
-    }
-    ucc_target \
-      --name    "mps-available" \
-      --profile capability \
-      --observe _observe_mps \
-      --evidence _evidence_mps
+    ucc_yaml_capability_target "$cfg_dir" "$yaml" "mps-available"
   fi
 }

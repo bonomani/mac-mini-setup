@@ -143,6 +143,7 @@ targets:
     component: dev-tools
     profile: capability
     type: runtime
+    display_name: networkQuality
     runtime_manager: capability
     probe_kind: command
     oracle:

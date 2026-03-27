@@ -148,10 +148,18 @@ class UccSchedulerTests(unittest.TestCase):
                         component: fake
                         profile: capability
                         type: runtime
+                        runtime_manager: capability
+                        probe_kind: command
+                        oracle:
+                          runtime: "true"
                       app:
                         component: fake
                         profile: runtime
                         type: runtime
+                        runtime_manager: custom
+                        probe_kind: command
+                        oracle:
+                          runtime: "true"
                         soft_depends_on:
                           - capability
                     """
@@ -257,6 +265,10 @@ class UccSchedulerTests(unittest.TestCase):
                         component: fake
                         profile: runtime
                         type: runtime
+                        runtime_manager: custom
+                        probe_kind: command
+                        oracle:
+                          runtime: "true"
                         display_name: Fake Runtime
                     """
                 ),
@@ -357,6 +369,63 @@ class UccSchedulerTests(unittest.TestCase):
             )
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("field 'display_name' must be a non-empty string", result.stderr)
+
+    def test_yaml_capability_target_uses_runtime_oracle_and_yaml_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            ucc_dir = self._write_manifest(
+                tmp_path,
+                textwrap.dedent(
+                    """\
+                    component: fake
+                    primary_profile: runtime
+                    libs: fake
+                    runner: run_fake
+                    targets:
+                      cap:
+                        component: fake
+                        profile: capability
+                        type: runtime
+                        display_name: Fake Capability
+                        runtime_manager: capability
+                        probe_kind: command
+                        oracle:
+                          runtime: "true"
+                        evidence:
+                          gpu: "printf TestGPU"
+                          status: "printf available"
+                    """
+                ),
+            )
+            manifest = ucc_dir / "software" / "fake.yaml"
+            result = subprocess.run(
+                [
+                    "bash",
+                    "-lc",
+                    textwrap.dedent(
+                        f"""\
+                        set -euo pipefail
+                        export UCC_DECLARATION_FILE="{tmp_path / 'decl.jsonl'}"
+                        export UCC_RESULT_FILE="{tmp_path / 'result.jsonl'}"
+                        export UCC_SUMMARY_FILE="{tmp_path / 'summary.txt'}"
+                        export UCC_PROFILE_SUMMARY_FILE="{tmp_path / 'profile.txt'}"
+                        export UCC_TARGET_STATUS_FILE="{tmp_path / 'status.txt'}"
+                        export UCC_CORRELATION_ID="test-run"
+                        export UCC_TARGETS_MANIFEST="{ucc_dir}"
+                        export UCC_TARGETS_QUERY_SCRIPT="{QUERY}"
+                        source "{ROOT / 'lib/ucc.sh'}"
+
+                        ucc_yaml_capability_target "{ROOT}" "{manifest}" cap
+                        """
+                    ),
+                ],
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertIn("[ok      ] Fake Capability", result.stdout)
+            self.assertIn("gpu=TestGPU", result.stdout)
+            self.assertIn("status=available", result.stdout)
 
     def test_read_config_records_substitutes_top_level_scalars(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

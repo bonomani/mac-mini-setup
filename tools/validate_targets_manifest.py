@@ -267,6 +267,24 @@ def validate(manifest, known_gates):
                     note = endpoint.get("note")
                     if note is not None and not isinstance(note, str):
                         errors.append(f"target '{name}' endpoint {index} note must be a string")
+            if profile != "runtime":
+                errors.append(f"target '{name}' endpoints require profile 'runtime'")
+
+        if profile in {"runtime", "capability"}:
+            if target_type != "runtime":
+                errors.append(f"target '{name}' profile '{profile}' requires type 'runtime'")
+            if not isinstance(data.get("runtime_manager"), str) or not data.get("runtime_manager", "").strip():
+                errors.append(f"target '{name}' profile '{profile}' requires runtime_manager")
+            if not isinstance(data.get("probe_kind"), str) or not data.get("probe_kind", "").strip():
+                errors.append(f"target '{name}' profile '{profile}' requires probe_kind")
+            if not isinstance((oracle or {}).get("runtime"), str) or not (oracle or {}).get("runtime", "").strip():
+                errors.append(f"target '{name}' profile '{profile}' requires oracle.runtime")
+
+        if data.get("install_cmd") is not None or data.get("update_cmd") is not None:
+            if state_model is None:
+                errors.append(f"target '{name}' with install/update commands requires state_model")
+            if not isinstance((oracle or {}).get("configured"), str) or not (oracle or {}).get("configured", "").strip():
+                errors.append(f"target '{name}' with install/update commands requires oracle.configured")
 
         depends_on = data.get("depends_on", []) or []
         if not isinstance(depends_on, list):
