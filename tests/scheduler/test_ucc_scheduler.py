@@ -456,6 +456,79 @@ class UccSchedulerTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, msg=result.stderr)
             self.assertTrue((home_dir / "demo.txt").exists())
 
+    def test_read_config_get_many_returns_multiple_scalar_rows(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest = self._write_manifest(
+                Path(tmp),
+                textwrap.dedent(
+                    """\
+                    component: fake
+                    primary_profile: configured
+                    libs: fake
+                    runner: run_fake
+                    api_host: 127.0.0.1
+                    api_port: 9999
+                    endpoint_url: http://${api_host}:${api_port}
+                    targets: {}
+                    """
+                ),
+            ) / "software" / "fake.yaml"
+            rows = subprocess.check_output(
+                [
+                    "python3",
+                    str(ROOT / "tools" / "read_config.py"),
+                    "--get-many",
+                    str(manifest),
+                    "api_host",
+                    "endpoint_url",
+                ],
+                text=True,
+            ).strip().splitlines()
+            self.assertEqual(rows, ["api_host\t127.0.0.1", "endpoint_url\thttp://127.0.0.1:9999"])
+
+    def test_read_config_target_get_many_substitutes_target_scalars(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest = self._write_manifest(
+                Path(tmp),
+                textwrap.dedent(
+                    """\
+                    component: fake
+                    primary_profile: configured
+                    libs: fake
+                    runner: run_fake
+                    root_dir: demo
+                    targets:
+                      pkg:
+                        component: fake
+                        profile: configured
+                        type: package
+                        state_model: package
+                        provided_by_tool: fake
+                        driver:
+                          kind: brew-formula
+                          ref: demo
+                        observe_cmd: "printf '%s' '${driver.ref}'"
+                        evidence:
+                          version: "printf '%s' '${driver.ref}'"
+                        actions:
+                          install: "printf '%s/%s' '${root_dir}' '${driver.ref}'"
+                    """
+                ),
+            ) / "software" / "fake.yaml"
+            rows = subprocess.check_output(
+                [
+                    "python3",
+                    str(ROOT / "tools" / "read_config.py"),
+                    "--target-get-many",
+                    str(manifest),
+                    "pkg",
+                    "observe_cmd",
+                    "actions.install",
+                ],
+                text=True,
+            ).strip().splitlines()
+            self.assertEqual(rows, ["observe_cmd\tprintf '%s' 'demo'", "actions.install\tprintf '%s/%s' 'demo' 'demo'"])
+
     def test_manifest_validation_rejects_non_string_display_name(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             ucc_dir = self._write_manifest(

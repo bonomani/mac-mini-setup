@@ -13,8 +13,14 @@ Usage:
       Outputs a scalar value. key may be a dotted path such as
       "section.key" or "section.nested.key".
 
+  read_config.py --get-many <file> <key1> [key2 ...]
+      Outputs tab-delimited key/value rows for top-level scalar lookups.
+
   read_config.py --target-get <file> <target> <key>
       Outputs a scalar value from a named target mapping.
+
+  read_config.py --target-get-many <file> <target> <key1> [key2 ...]
+      Outputs tab-delimited key/value rows for scalar lookups in one target.
 
   read_config.py --evidence <file> <target>
       Outputs tab-delimited evidence key/command pairs for a target.
@@ -149,6 +155,45 @@ def read_scalar(path: Path, key: str) -> str:
     return rendered
 
 
+def read_scalars(path: Path, keys: list[str]) -> list[str]:
+    data = load_yaml(path)
+    scalars = top_level_scalars(data)
+    rows = []
+    for key in keys:
+        value = get_path(data, key)
+        if isinstance(value, (dict, list)):
+            rendered = ""
+        else:
+            rendered = stringify(value)
+            if isinstance(value, str):
+                rendered = substitute_scalars(rendered, scalars)
+        rows.append(f"{key}\t{rendered}")
+    return rows
+
+
+def read_target_scalars(path: Path, target_name: str, keys: list[str]) -> list[str]:
+    data = load_yaml(path)
+    targets = data.get("targets") or {}
+    if not isinstance(targets, dict):
+        raise ValueError("top-level 'targets' must be a mapping")
+    target = targets.get(target_name)
+    if not isinstance(target, dict):
+        return [f"{key}\t" for key in keys]
+
+    scalars = target_scalars(data, target_name)
+    rows = []
+    for key in keys:
+        value = get_path(target, key)
+        if isinstance(value, (dict, list)):
+            rendered = ""
+        else:
+            rendered = stringify(value)
+            if isinstance(value, str):
+                rendered = substitute_scalars(rendered, scalars)
+        rows.append(f"{key}\t{rendered}")
+    return rows
+
+
 def read_evidence(path: Path, target_name: str) -> list[str]:
     data = load_yaml(path)
     targets = data.get("targets") or {}
@@ -208,6 +253,22 @@ def main() -> int:
             return 1
         return 0
 
+    if mode == "--get-many":
+        if len(args) < 3:
+            print("Usage: read_config.py --get-many <file> <key1> [key2 ...]", file=sys.stderr)
+            return 1
+        path = Path(args[1])
+        if not path.exists():
+            print(f"ERROR: {path} not found", file=sys.stderr)
+            return 1
+        try:
+            for row in read_scalars(path, args[2:]):
+                print(row)
+        except Exception as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 1
+        return 0
+
     if mode == "--target-get":
         if len(args) < 4:
             print("Usage: read_config.py --target-get <file> <target> <key>", file=sys.stderr)
@@ -218,6 +279,22 @@ def main() -> int:
             return 1
         try:
             print(read_target_scalar(path, args[2], args[3]))
+        except Exception as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 1
+        return 0
+
+    if mode == "--target-get-many":
+        if len(args) < 4:
+            print("Usage: read_config.py --target-get-many <file> <target> <key1> [key2 ...]", file=sys.stderr)
+            return 1
+        path = Path(args[1])
+        if not path.exists():
+            print(f"ERROR: {path} not found", file=sys.stderr)
+            return 1
+        try:
+            for row in read_target_scalars(path, args[2], args[3:]):
+                print(row)
         except Exception as exc:
             print(f"ERROR: {exc}", file=sys.stderr)
             return 1

@@ -33,6 +33,12 @@ _ucc_yaml_target_get() {
   printf '%s' "${val:-$default}"
 }
 
+_ucc_yaml_target_get_many() {
+  local cfg_dir="$1" yaml="$2" target="$3"
+  shift 3
+  python3 "$cfg_dir/tools/read_config.py" --target-get-many "$yaml" "$target" "$@" 2>/dev/null || true
+}
+
 _ucc_yaml_target_driver_get() {
   local cfg_dir="$1" yaml="$2" target="$3" key="$4" legacy_key="${5:-}" default="${6:-}" val=""
   val="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.$key")"
@@ -103,10 +109,16 @@ _ucc_observe_yaml_simple_target() {
   local cfg_dir="$1" yaml="$2" target="$3"
   local target_type configured_cmd observe_cmd state_model success_raw failure_raw raw_state
 
-  target_type="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "type" "config")"
-  configured_cmd="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "oracle.configured")"
-  observe_cmd="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "observe_cmd")"
-  state_model="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "state_model" "$target_type")"
+  while IFS=$'\t' read -r key value; do
+    case "$key" in
+      type) target_type="$value" ;;
+      oracle.configured) configured_cmd="$value" ;;
+      observe_cmd) observe_cmd="$value" ;;
+      state_model) state_model="$value" ;;
+    esac
+  done < <(_ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" type oracle.configured observe_cmd state_model)
+  [[ -n "$target_type" ]] || target_type="config"
+  [[ -n "$state_model" ]] || state_model="$target_type"
 
   if [[ -n "$observe_cmd" ]]; then
     local CFG_DIR="$cfg_dir" YAML_PATH="$yaml" TARGET_NAME="$target"
@@ -261,9 +273,13 @@ _ucc_yaml_parametric_desired_state() {
 _ucc_observe_yaml_parametric_target() {
   local cfg_dir="$1" yaml="$2" target="$3"
   local observe_cmd desired gate current dep_state
-  observe_cmd="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "observe_cmd")"
+  while IFS=$'\t' read -r key value; do
+    case "$key" in
+      observe_cmd) observe_cmd="$value" ;;
+      dependency_gate) gate="$value" ;;
+    esac
+  done < <(_ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" observe_cmd dependency_gate)
   desired="$(_ucc_yaml_parametric_desired_value "$cfg_dir" "$yaml" "$target")"
-  gate="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "dependency_gate")"
   dep_state="$(_ucc_yaml_gate_dependency_state "$gate")"
 
   local CFG_DIR="$cfg_dir" YAML_PATH="$yaml" TARGET_NAME="$target"
@@ -274,7 +290,11 @@ _ucc_observe_yaml_parametric_target() {
 _ucc_evidence_yaml_parametric_target() {
   local cfg_dir="$1" yaml="$2" target="$3"
   local observe_cmd current evidence
-  observe_cmd="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "observe_cmd")"
+  while IFS=$'\t' read -r key value; do
+    case "$key" in
+      observe_cmd) observe_cmd="$value" ;;
+    esac
+  done < <(_ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" observe_cmd)
 
   local CFG_DIR="$cfg_dir" YAML_PATH="$yaml" TARGET_NAME="$target"
   evidence="$(ucc_eval_evidence_from_yaml "$cfg_dir" "$yaml" "$target")"
@@ -289,8 +309,12 @@ _ucc_evidence_yaml_parametric_target() {
 _ucc_yaml_parametric_desired_value() {
   local cfg_dir="$1" yaml="$2" target="$3"
   local desired_cmd desired_value
-  desired_cmd="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "desired_cmd")"
-  desired_value="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "desired_value")"
+  while IFS=$'\t' read -r key value; do
+    case "$key" in
+      desired_cmd) desired_cmd="$value" ;;
+      desired_value) desired_value="$value" ;;
+    esac
+  done < <(_ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" desired_cmd desired_value)
 
   local CFG_DIR="$cfg_dir" YAML_PATH="$yaml" TARGET_NAME="$target"
   if [[ -n "$desired_cmd" ]]; then
@@ -349,12 +373,21 @@ _ucc_observe_yaml_runtime_target() {
 _ucc_observe_yaml_runtime_oracle_target() {
   local cfg_dir="$1" yaml="$2" target="$3"
   local configured_cmd runtime_cmd stopped_installation stopped_runtime stopped_health stopped_dependencies
-  configured_cmd="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "oracle.configured")"
-  runtime_cmd="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "oracle.runtime")"
-  stopped_installation="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "stopped_installation" "Configured")"
-  stopped_runtime="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "stopped_runtime" "Stopped")"
-  stopped_health="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "stopped_health" "Degraded")"
-  stopped_dependencies="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "stopped_dependencies" "DepsDegraded")"
+  while IFS=$'\t' read -r key value; do
+    case "$key" in
+      oracle.configured) configured_cmd="$value" ;;
+      oracle.runtime) runtime_cmd="$value" ;;
+      stopped_installation) stopped_installation="$value" ;;
+      stopped_runtime) stopped_runtime="$value" ;;
+      stopped_health) stopped_health="$value" ;;
+      stopped_dependencies) stopped_dependencies="$value" ;;
+    esac
+  done < <(_ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" \
+    oracle.configured oracle.runtime stopped_installation stopped_runtime stopped_health stopped_dependencies)
+  [[ -n "$stopped_installation" ]] || stopped_installation="Configured"
+  [[ -n "$stopped_runtime" ]] || stopped_runtime="Stopped"
+  [[ -n "$stopped_health" ]] || stopped_health="Degraded"
+  [[ -n "$stopped_dependencies" ]] || stopped_dependencies="DepsDegraded"
 
   local CFG_DIR="$cfg_dir" YAML_PATH="$yaml" TARGET_NAME="$target"
   if [[ -n "$configured_cmd" ]] && ! eval "$configured_cmd" >/dev/null 2>&1; then
@@ -378,10 +411,15 @@ _ucc_observe_yaml_runtime_oracle_target() {
 _ucc_observe_yaml_desktop_app_runtime_target() {
   local cfg_dir="$1" yaml="$2" target="$3"
   local configured_cmd runtime_cmd package_ref app_path observed
-  configured_cmd="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "oracle.configured")"
-  runtime_cmd="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "oracle.runtime")"
-  package_ref="$(_ucc_yaml_target_driver_get "$cfg_dir" "$yaml" "$target" "package_ref" "package_ref")"
-  app_path="$(_ucc_yaml_target_driver_get "$cfg_dir" "$yaml" "$target" "app_path" "app_path")"
+  while IFS=$'\t' read -r key value; do
+    case "$key" in
+      oracle.configured) configured_cmd="$value" ;;
+      oracle.runtime) runtime_cmd="$value" ;;
+      driver.package_ref|package_ref) [[ -z "$package_ref" ]] && package_ref="$value" ;;
+      driver.app_path|app_path) [[ -z "$app_path" ]] && app_path="$value" ;;
+    esac
+  done < <(_ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" \
+    oracle.configured oracle.runtime driver.package_ref package_ref driver.app_path app_path)
 
   observed="installed"
   if [[ -n "$package_ref" ]] && command -v brew_cask_observe >/dev/null 2>&1; then
@@ -418,8 +456,12 @@ _ucc_observe_yaml_desktop_app_runtime_target() {
 _ucc_observe_yaml_docker_compose_runtime_target() {
   local cfg_dir="$1" yaml="$2" target="$3"
   local runtime_cmd service_name state
-  runtime_cmd="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "oracle.runtime")"
-  service_name="$(_ucc_yaml_target_driver_get "$cfg_dir" "$yaml" "$target" "service_name" "service_name")"
+  while IFS=$'\t' read -r key value; do
+    case "$key" in
+      oracle.runtime) runtime_cmd="$value" ;;
+      driver.service_name|service_name) [[ -z "$service_name" ]] && service_name="$value" ;;
+    esac
+  done < <(_ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" oracle.runtime driver.service_name service_name)
 
   [[ -f "${COMPOSE_FILE:-}" ]] || {
     ucc_asm_state --installation Absent --runtime Stopped --health Unavailable --admin Enabled --dependencies DepsFailed

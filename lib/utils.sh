@@ -123,12 +123,28 @@ yaml_get() {
   echo "${val:-${4:-}}"
 }
 
+# yaml_get_many <cfg_dir> <yaml_path> <key1> [key2 ...]
+# Output tab-delimited key/value rows for multiple scalar lookups.
+yaml_get_many() {
+  local d="$1" y="$2"
+  shift 2
+  python3 "$d/tools/read_config.py" --get-many "$y" "$@" 2>/dev/null
+}
+
 # yaml_target_get <cfg_dir> <yaml_path> <target> <key> [<default>]
 # Read a scalar from a named target in a YAML config file.
 yaml_target_get() {
   local val
   val="$(python3 "$1/tools/read_config.py" --target-get "$2" "$3" "$4" 2>/dev/null)"
   echo "${val:-${5:-}}"
+}
+
+# yaml_target_get_many <cfg_dir> <yaml_path> <target> <key1> [key2 ...]
+# Output tab-delimited key/value rows for multiple target scalar lookups.
+yaml_target_get_many() {
+  local d="$1" y="$2" t="$3"
+  shift 3
+  python3 "$d/tools/read_config.py" --target-get-many "$y" "$t" "$@" 2>/dev/null
 }
 
 # yaml_list <cfg_dir> <yaml_path> <section>
