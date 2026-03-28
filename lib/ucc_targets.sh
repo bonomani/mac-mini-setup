@@ -11,10 +11,9 @@
 ucc_eval_evidence_from_yaml() {
   local cfg_dir="$1" yaml="$2" target="$3"
   local _first=1 _key _cmd _val
-  local CFG_DIR="$cfg_dir" YAML_PATH="$yaml" TARGET_NAME="$target"
   while IFS=$'\t' read -r -d '' _key _cmd; do
     [[ -z "$_key" || -z "$_cmd" ]] && continue
-    _val=$(eval "$_cmd" 2>/dev/null || true)
+    _val=$(_ucc_eval_yaml_expr "$cfg_dir" "$yaml" "$target" "$_cmd" 2>/dev/null || true)
     [[ -z "$_val" ]] && continue
     [[ $_first -eq 0 ]] && printf '  '
     printf '%s=%s' "$_key" "$_val"
@@ -76,6 +75,26 @@ _ucc_yaml_target_admin_required() {
 _ucc_eval_scalar_cmd() {
   local cmd="$1" output trimmed
   output="$(eval "$cmd" 2>/dev/null || true)"
+  output="${output%%$'\n'*}"
+  trimmed="${output#"${output%%[![:space:]]*}"}"
+  trimmed="${trimmed%"${trimmed##*[![:space:]]}"}"
+  printf '%s' "$trimmed"
+}
+
+_ucc_eval_yaml_expr() {
+  local cfg_dir="$1" yaml="$2" target="$3" expr="$4"
+  local CFG_DIR="$cfg_dir" YAML_PATH="$yaml" TARGET_NAME="$target"
+  eval "$expr"
+}
+
+_ucc_yaml_expr_succeeds() {
+  local cfg_dir="$1" yaml="$2" target="$3" expr="$4"
+  _ucc_eval_yaml_expr "$cfg_dir" "$yaml" "$target" "$expr" >/dev/null 2>&1
+}
+
+_ucc_eval_yaml_scalar_cmd() {
+  local cfg_dir="$1" yaml="$2" target="$3" cmd="$4" output trimmed
+  output="$(_ucc_eval_yaml_expr "$cfg_dir" "$yaml" "$target" "$cmd" 2>/dev/null || true)"
   output="${output%%$'\n'*}"
   trimmed="${output#"${output%%[![:space:]]*}"}"
   trimmed="${trimmed%"${trimmed##*[![:space:]]}"}"
@@ -176,8 +195,7 @@ _ucc_observe_yaml_simple_target() {
   [[ -n "$state_model" ]] || state_model="$target_type"
 
   if [[ -n "$observe_cmd" ]]; then
-    local CFG_DIR="$cfg_dir" YAML_PATH="$yaml" TARGET_NAME="$target"
-    raw_state="$(_ucc_eval_scalar_cmd "$observe_cmd")"
+    raw_state="$(_ucc_eval_yaml_scalar_cmd "$cfg_dir" "$yaml" "$target" "$observe_cmd")"
     [[ -n "$raw_state" ]] || raw_state="absent"
     case "$state_model" in
       package)
@@ -201,8 +219,7 @@ _ucc_observe_yaml_simple_target() {
       ;;
   esac
 
-  local CFG_DIR="$cfg_dir" YAML_PATH="$yaml" TARGET_NAME="$target"
-  if [[ -n "$configured_cmd" ]] && eval "$configured_cmd" >/dev/null 2>&1; then
+  if [[ -n "$configured_cmd" ]] && _ucc_yaml_expr_succeeds "$cfg_dir" "$yaml" "$target" "$configured_cmd"; then
     raw_state="$success_raw"
   else
     raw_state="$failure_raw"
@@ -239,8 +256,7 @@ _ucc_run_yaml_action() {
       return 125
     fi
   fi
-  local CFG_DIR="$cfg_dir" YAML_PATH="$yaml" TARGET_NAME="$target"
-  eval "$cmd"
+  _ucc_eval_yaml_expr "$cfg_dir" "$yaml" "$target" "$cmd"
 }
 
 ucc_yaml_simple_target() {
@@ -271,8 +287,7 @@ _ucc_observe_yaml_capability_target() {
   local cfg_dir="$1" yaml="$2" target="$3"
   local runtime_cmd
   runtime_cmd="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "oracle.runtime")"
-  local CFG_DIR="$cfg_dir" YAML_PATH="$yaml" TARGET_NAME="$target"
-  if [[ -n "$runtime_cmd" ]] && eval "$runtime_cmd" >/dev/null 2>&1; then
+  if [[ -n "$runtime_cmd" ]] && _ucc_yaml_expr_succeeds "$cfg_dir" "$yaml" "$target" "$runtime_cmd"; then
     ucc_asm_state --installation Configured --runtime Running --health Healthy --admin Enabled --dependencies DepsReady
   else
     ucc_asm_state --installation Configured --runtime Stopped --health Degraded --admin Enabled --dependencies DepsReady
@@ -346,8 +361,7 @@ _ucc_observe_yaml_parametric_target() {
   desired="$(_ucc_yaml_parametric_desired_value "$cfg_dir" "$yaml" "$target")"
   dep_state="$(_ucc_yaml_gate_dependency_state "$gate")"
 
-  local CFG_DIR="$cfg_dir" YAML_PATH="$yaml" TARGET_NAME="$target"
-  current="$(_ucc_eval_scalar_cmd "$observe_cmd")"
+  current="$(_ucc_eval_yaml_scalar_cmd "$cfg_dir" "$yaml" "$target" "$observe_cmd")"
   _ucc_yaml_parametric_observed_state "$current" "$desired" "$dep_state"
 }
 
@@ -366,7 +380,7 @@ _ucc_evidence_yaml_parametric_target() {
     printf '%s' "$evidence"
     return 0
   fi
-  current="$(_ucc_eval_scalar_cmd "$observe_cmd")"
+  current="$(_ucc_eval_yaml_scalar_cmd "$cfg_dir" "$yaml" "$target" "$observe_cmd")"
   printf 'value=%s' "$current"
 }
 
@@ -380,9 +394,8 @@ _ucc_yaml_parametric_desired_value() {
     esac
   done < <(_ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" desired_cmd desired_value)
 
-  local CFG_DIR="$cfg_dir" YAML_PATH="$yaml" TARGET_NAME="$target"
   if [[ -n "$desired_cmd" ]]; then
-    _ucc_eval_scalar_cmd "$desired_cmd"
+    _ucc_eval_yaml_scalar_cmd "$cfg_dir" "$yaml" "$target" "$desired_cmd"
     return 0
   fi
   printf '%s' "$desired_value"
@@ -453,13 +466,12 @@ _ucc_observe_yaml_runtime_oracle_target() {
   [[ -n "$stopped_health" ]] || stopped_health="Degraded"
   [[ -n "$stopped_dependencies" ]] || stopped_dependencies="DepsDegraded"
 
-  local CFG_DIR="$cfg_dir" YAML_PATH="$yaml" TARGET_NAME="$target"
-  if [[ -n "$configured_cmd" ]] && ! eval "$configured_cmd" >/dev/null 2>&1; then
+  if [[ -n "$configured_cmd" ]] && ! _ucc_yaml_expr_succeeds "$cfg_dir" "$yaml" "$target" "$configured_cmd"; then
     ucc_asm_state --installation Absent --runtime NeverStarted --health Unavailable --admin Enabled --dependencies DepsUnknown
     return
   fi
 
-  if [[ -n "$runtime_cmd" ]] && eval "$runtime_cmd" >/dev/null 2>&1; then
+  if [[ -n "$runtime_cmd" ]] && _ucc_yaml_expr_succeeds "$cfg_dir" "$yaml" "$target" "$runtime_cmd"; then
     ucc_asm_runtime_desired
     return
   fi
@@ -505,16 +517,16 @@ _ucc_observe_yaml_desktop_app_runtime_target() {
       printf 'needs-update'
       return
     fi
-  elif [[ -n "$configured_cmd" ]] && ! eval "$configured_cmd" >/dev/null 2>&1; then
+  elif [[ -n "$configured_cmd" ]] && ! _ucc_yaml_expr_succeeds "$cfg_dir" "$yaml" "$target" "$configured_cmd"; then
     observed="absent"
   fi
 
-  if [[ "$observed" == "absent" ]] && [[ -n "$configured_cmd" ]] && ! eval "$configured_cmd" >/dev/null 2>&1; then
+  if [[ "$observed" == "absent" ]] && [[ -n "$configured_cmd" ]] && ! _ucc_yaml_expr_succeeds "$cfg_dir" "$yaml" "$target" "$configured_cmd"; then
     ucc_asm_state --installation Absent --runtime NeverStarted --health Unavailable --admin Enabled --dependencies DepsUnknown
     return
   fi
 
-  if [[ -n "$runtime_cmd" ]] && eval "$runtime_cmd" >/dev/null 2>&1; then
+  if [[ -n "$runtime_cmd" ]] && _ucc_yaml_expr_succeeds "$cfg_dir" "$yaml" "$target" "$runtime_cmd"; then
     if [[ "$observed" == "outdated" ]]; then
       ucc_asm_state --installation Installed --runtime Running --health Degraded --admin Enabled --dependencies DepsDegraded
     else
@@ -540,7 +552,6 @@ _ucc_observe_yaml_docker_compose_runtime_target() {
       driver.service_name) service_name="$value" ;;
     esac
   done < <(_ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" oracle.runtime driver.service_name)
-
   [[ -f "${COMPOSE_FILE:-}" ]] || {
     ucc_asm_state --installation Absent --runtime Stopped --health Unavailable --admin Enabled --dependencies DepsFailed
     return
@@ -556,7 +567,7 @@ _ucc_observe_yaml_docker_compose_runtime_target() {
     return
   fi
 
-  if [[ -n "$runtime_cmd" ]] && ! eval "$runtime_cmd" >/dev/null 2>&1; then
+  if [[ -n "$runtime_cmd" ]] && ! _ucc_yaml_expr_succeeds "$cfg_dir" "$yaml" "$target" "$runtime_cmd"; then
     ucc_asm_state --installation Configured --runtime Running --health Degraded --admin Enabled --dependencies DepsReady
     return
   fi
@@ -579,7 +590,7 @@ ucc_yaml_runtime_target() {
       _ucc_run_yaml_action '${cfg_dir}' '${yaml}' '${target}' install || rc=\$?
       if [[ \$rc -eq 0 ]]; then
         runtime_cmd=\"\$(_ucc_yaml_target_get '${cfg_dir}' '${yaml}' '${target}' 'oracle.runtime')\"
-        [[ -n \"\$runtime_cmd\" ]] && _ucc_wait_for_runtime_probe \"\$runtime_cmd\" || true
+        [[ -n \"\$runtime_cmd\" ]] && _ucc_wait_for_yaml_runtime_probe '${cfg_dir}' '${yaml}' '${target}' \"\$runtime_cmd\" || true
       fi
       return \$rc
     }"
@@ -591,7 +602,7 @@ ucc_yaml_runtime_target() {
       _ucc_run_yaml_action '${cfg_dir}' '${yaml}' '${target}' update || rc=\$?
       if [[ \$rc -eq 0 ]]; then
         runtime_cmd=\"\$(_ucc_yaml_target_get '${cfg_dir}' '${yaml}' '${target}' 'oracle.runtime')\"
-        [[ -n \"\$runtime_cmd\" ]] && _ucc_wait_for_runtime_probe \"\$runtime_cmd\" || true
+        [[ -n \"\$runtime_cmd\" ]] && _ucc_wait_for_yaml_runtime_probe '${cfg_dir}' '${yaml}' '${target}' \"\$runtime_cmd\" || true
       fi
       return \$rc
     }"
@@ -615,7 +626,7 @@ _ucc_brew_service_status() {
 }
 
 _ucc_observe_brew_runtime_formula() {
-  local pkg="$1" service_name="$2" runtime_cmd="${3:-}" configured_cmd="${4:-}"
+  local pkg="$1" service_name="$2" runtime_cmd="${3:-}" configured_cmd="${4:-}" cfg_dir="${5:-}" yaml="${6:-}" target="${7:-}"
   local pkg_state svc_status
 
   pkg_state="$(brew_observe "$pkg")"
@@ -635,7 +646,7 @@ _ucc_observe_brew_runtime_formula() {
     return
   fi
 
-  if [[ -n "$configured_cmd" ]] && ! eval "$configured_cmd" >/dev/null 2>&1; then
+  if [[ -n "$configured_cmd" ]] && ! _ucc_yaml_expr_succeeds "$cfg_dir" "$yaml" "$target" "$configured_cmd"; then
     ucc_asm_state --installation Installed --runtime Stopped --health Degraded --admin Enabled --dependencies DepsDegraded
     return
   fi
@@ -645,7 +656,7 @@ _ucc_observe_brew_runtime_formula() {
     return
   fi
 
-  if [[ -n "$runtime_cmd" ]] && ! eval "$runtime_cmd" >/dev/null 2>&1; then
+  if [[ -n "$runtime_cmd" ]] && ! _ucc_yaml_expr_succeeds "$cfg_dir" "$yaml" "$target" "$runtime_cmd"; then
     ucc_asm_state --installation Configured --runtime Running --health Degraded --admin Enabled --dependencies DepsDegraded
     return
   fi
@@ -654,7 +665,7 @@ _ucc_observe_brew_runtime_formula() {
 }
 
 _ucc_apply_brew_runtime_formula() {
-  local pkg="$1" brew_ref="$2" service_name="$3" runtime_cmd="${4:-}" mode="${5:-install}"
+  local pkg="$1" brew_ref="$2" service_name="$3" runtime_cmd="${4:-}" mode="${5:-install}" cfg_dir="${6:-}" yaml="${7:-}" target="${8:-}"
   local pkg_state
 
   pkg_state="$(brew_observe "$pkg")"
@@ -670,7 +681,7 @@ _ucc_apply_brew_runtime_formula() {
     ucc_run brew services start "$brew_ref" || return 1
   fi
 
-  [[ -n "$runtime_cmd" ]] && _ucc_wait_for_runtime_probe "$runtime_cmd"
+  [[ -n "$runtime_cmd" ]] && _ucc_wait_for_yaml_runtime_probe "$cfg_dir" "$yaml" "$target" "$runtime_cmd"
 }
 
 _ucc_wait_for_runtime_probe() {
@@ -691,6 +702,24 @@ _ucc_wait_for_runtime_probe() {
   return 1
 }
 
+_ucc_wait_for_yaml_runtime_probe() {
+  local cfg_dir="$1" yaml="$2" target="$3" runtime_cmd="$4"
+  local attempts="${UCC_RUNTIME_WAIT_ATTEMPTS:-20}"
+  local interval="${UCC_RUNTIME_WAIT_INTERVAL:-1}"
+  local i
+
+  [[ -n "$runtime_cmd" ]] || return 0
+
+  for ((i = 1; i <= attempts; i++)); do
+    if _ucc_yaml_expr_succeeds "$cfg_dir" "$yaml" "$target" "$runtime_cmd"; then
+      return 0
+    fi
+    [[ "$i" -lt "$attempts" ]] && sleep "$interval"
+  done
+
+  return 1
+}
+
 # ucc_brew_runtime_formula_target <target-name> <brew-pkg> [brew-ref] [cfg_dir] [yaml] [service-name]
 # Software-centric brew formula target: package presence, service lifecycle, and
 # runtime probe are governed as one runtime-profile target.
@@ -698,12 +727,12 @@ ucc_brew_runtime_formula_target() {
   local tname="$1" pkg="$2" brew_ref="${3:-$2}" cfg_dir="${4:-}" yaml="${5:-}" service_name="${6:-$2}"
   local fn; fn="${tname//[^a-zA-Z0-9]/_}"
   eval "_ubrt_obs_${fn}() {
-    local CFG_DIR='${cfg_dir}' YAML_PATH='${yaml}' TARGET_NAME='${tname}' runtime_cmd configured_cmd
+    local runtime_cmd configured_cmd
     if [[ -n '${cfg_dir}' && -n '${yaml}' ]]; then
       runtime_cmd=\"\$(_ucc_yaml_target_get '${cfg_dir}' '${yaml}' '${tname}' 'oracle.runtime')\"
       configured_cmd=\"\$(_ucc_yaml_target_get '${cfg_dir}' '${yaml}' '${tname}' 'oracle.configured')\"
     fi
-    _ucc_observe_brew_runtime_formula '${pkg}' '${service_name}' \"\$runtime_cmd\" \"\$configured_cmd\"
+    _ucc_observe_brew_runtime_formula '${pkg}' '${service_name}' \"\$runtime_cmd\" \"\$configured_cmd\" '${cfg_dir}' '${yaml}' '${tname}'
   }"
   eval "_ubrt_evd_${fn}() {
     if [[ -n '${cfg_dir}' && -n '${yaml}' ]]; then
@@ -715,18 +744,18 @@ ucc_brew_runtime_formula_target() {
     [[ -n \"\$ver\" ]] && printf 'version=%s' \"\$ver\"
   }"
   eval "_ubrt_ins_${fn}() {
-    local CFG_DIR='${cfg_dir}' YAML_PATH='${yaml}' TARGET_NAME='${tname}' runtime_cmd=''
+    local runtime_cmd=''
     if [[ -n '${cfg_dir}' && -n '${yaml}' ]]; then
       runtime_cmd=\"\$(_ucc_yaml_target_get '${cfg_dir}' '${yaml}' '${tname}' 'oracle.runtime')\"
     fi
-    _ucc_apply_brew_runtime_formula '${pkg}' '${brew_ref}' '${service_name}' \"\$runtime_cmd\" install
+    _ucc_apply_brew_runtime_formula '${pkg}' '${brew_ref}' '${service_name}' \"\$runtime_cmd\" install '${cfg_dir}' '${yaml}' '${tname}'
   }"
   eval "_ubrt_upd_${fn}() {
-    local CFG_DIR='${cfg_dir}' YAML_PATH='${yaml}' TARGET_NAME='${tname}' runtime_cmd=''
+    local runtime_cmd=''
     if [[ -n '${cfg_dir}' && -n '${yaml}' ]]; then
       runtime_cmd=\"\$(_ucc_yaml_target_get '${cfg_dir}' '${yaml}' '${tname}' 'oracle.runtime')\"
     fi
-    _ucc_apply_brew_runtime_formula '${pkg}' '${brew_ref}' '${service_name}' \"\$runtime_cmd\" update
+    _ucc_apply_brew_runtime_formula '${pkg}' '${brew_ref}' '${service_name}' \"\$runtime_cmd\" update '${cfg_dir}' '${yaml}' '${tname}'
   }"
   ucc_target_service --name "$tname" \
     --observe "_ubrt_obs_${fn}" \

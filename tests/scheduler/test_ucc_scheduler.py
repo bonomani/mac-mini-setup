@@ -1201,6 +1201,60 @@ class UccSchedulerTests(unittest.TestCase):
             self.assertIn("gpu=TestGPU", result.stdout)
             self.assertIn("status=available", result.stdout)
 
+    def test_yaml_capability_target_sets_yaml_context_for_runtime_oracle(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            ucc_dir = self._write_manifest(
+                tmp_path,
+                textwrap.dedent(
+                    f"""\
+                    component: fake
+                    primary_profile: runtime
+                    libs: fake
+                    runner: run_fake
+                    targets:
+                      cap:
+                        component: fake
+                        profile: capability
+                        type: capability
+                        display_name: Fake Capability
+                        runtime_manager: capability
+                        probe_kind: command
+                        oracle:
+                          runtime: '[[ "$CFG_DIR" == "{ROOT}" && "$YAML_PATH" == "{tmp_path / "ucc" / "software" / "fake.yaml"}" && "$TARGET_NAME" == "cap" ]]'
+                        evidence:
+                          gpu: "printf TestGPU"
+                    """
+                ),
+            )
+            manifest = ucc_dir / "software" / "fake.yaml"
+            result = subprocess.run(
+                [
+                    "bash",
+                    "-lc",
+                    textwrap.dedent(
+                        f"""\
+                        set -euo pipefail
+                        export UCC_DECLARATION_FILE="{tmp_path / 'decl.jsonl'}"
+                        export UCC_RESULT_FILE="{tmp_path / 'result.jsonl'}"
+                        export UCC_SUMMARY_FILE="{tmp_path / 'summary.txt'}"
+                        export UCC_PROFILE_SUMMARY_FILE="{tmp_path / 'profile.txt'}"
+                        export UCC_TARGET_STATUS_FILE="{tmp_path / 'status.txt'}"
+                        export UCC_CORRELATION_ID="test-run"
+                        export UCC_TARGETS_MANIFEST="{ucc_dir}"
+                        export UCC_TARGETS_QUERY_SCRIPT="{QUERY}"
+                        source "{ROOT / 'lib/ucc.sh'}"
+
+                        ucc_yaml_capability_target "{ROOT}" "{manifest}" cap
+                        """
+                    ),
+                ],
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertIn("[ok      ] Fake Capability", result.stdout)
+
     def test_yaml_parametric_target_uses_observe_cmd_and_desired_value(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
@@ -1261,6 +1315,64 @@ class UccSchedulerTests(unittest.TestCase):
             self.assertIn("[updated ] setting", result.stdout)
             self.assertIn("mode=on", result.stdout)
             self.assertTrue((home_dir / "setting.applied").exists())
+
+    def test_yaml_parametric_target_sets_yaml_context_for_observe_and_desired_cmd(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            ucc_dir = self._write_manifest(
+                tmp_path,
+                textwrap.dedent(
+                    f"""\
+                    component: fake
+                    primary_profile: parametric
+                    libs: fake
+                    runner: run_fake
+                    targets:
+                      setting:
+                        component: fake
+                        profile: parametric
+                        type: config
+                        state_model: parametric
+                        driver:
+                          kind: shell-file-edit
+                        observe_cmd: '[[ "$CFG_DIR" == "{ROOT}" && "$YAML_PATH" == "{tmp_path / "ucc" / "software" / "fake.yaml"}" && "$TARGET_NAME" == "setting" ]] && [[ -f "$HOME/setting.applied" ]] && printf on || ([[ "$CFG_DIR" == "{ROOT}" && "$YAML_PATH" == "{tmp_path / "ucc" / "software" / "fake.yaml"}" && "$TARGET_NAME" == "setting" ]] && printf off || printf broken)'
+                        desired_cmd: '[[ "$CFG_DIR" == "{ROOT}" && "$YAML_PATH" == "{tmp_path / "ucc" / "software" / "fake.yaml"}" && "$TARGET_NAME" == "setting" ]] && printf on || printf broken'
+                        evidence:
+                          mode: 'printf off'
+                        actions:
+                          install: 'printf on > "$HOME/setting.applied"'
+                          update: 'printf on > "$HOME/setting.applied"'
+                    """
+                ),
+            )
+            manifest = ucc_dir / "software" / "fake.yaml"
+            home_dir = tmp_path / "home"
+            home_dir.mkdir()
+            result = subprocess.run(
+                [
+                    "bash",
+                    "-lc",
+                    textwrap.dedent(
+                        f"""\
+                        set -euo pipefail
+                        export HOME="{home_dir}"
+                        export UCC_DECLARATION_FILE="{tmp_path / 'decl.jsonl'}"
+                        export UCC_RESULT_FILE="{tmp_path / 'result.jsonl'}"
+                        export UCC_SUMMARY_FILE="{tmp_path / 'summary.txt'}"
+                        export UCC_PROFILE_SUMMARY_FILE="{tmp_path / 'profile.txt'}"
+                        export UCC_TARGET_STATUS_FILE="{tmp_path / 'status.txt'}"
+                        export UCC_CORRELATION_ID="test-run"
+                        source "{ROOT / 'lib/ucc.sh'}"
+
+                        ucc_yaml_parametric_target "{ROOT}" "{manifest}" setting
+                        """
+                    ),
+                ],
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertIn("[updated ] setting", result.stdout)
 
     def test_parametric_mismatch_observes_configured_but_degraded(self) -> None:
         result = subprocess.run(
@@ -1580,6 +1692,78 @@ class UccSchedulerTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, msg=result.stderr)
             self.assertIn("[installed] app", result.stdout)
             self.assertTrue((home_dir / "app.ready").exists())
+
+    def test_yaml_docker_compose_runtime_sets_yaml_context_for_probe_and_wait(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            marker = tmp_path / "runtime.ok"
+            compose_file = tmp_path / "docker-compose.yml"
+            compose_file.write_text("services: {}\n", encoding="utf-8")
+            ucc_dir = self._write_manifest(
+                tmp_path,
+                textwrap.dedent(
+                    f"""\
+                    component: fake
+                    primary_profile: runtime
+                    libs: fake
+                    runner: run_fake
+                    targets:
+                      app:
+                        component: fake
+                        profile: runtime
+                        type: runtime
+                        display_name: App
+                        driver:
+                          kind: docker-compose
+                          service_name: app
+                        runtime_manager: docker-compose
+                        probe_kind: command
+                        oracle:
+                          runtime: '[[ "$CFG_DIR" == "{ROOT}" && "$YAML_PATH" == "{tmp_path / "ucc" / "software" / "fake.yaml"}" && "$TARGET_NAME" == "app" && -f "{marker}" ]]'
+                        evidence:
+                          version: 'printf 1.2.3'
+                        actions:
+                          install: 'touch "{marker}"'
+                    """
+                ),
+            )
+            manifest = ucc_dir / "software" / "fake.yaml"
+            result = subprocess.run(
+                [
+                    "bash",
+                    "-lc",
+                    textwrap.dedent(
+                        f"""\
+                        set -euo pipefail
+                        export UCC_DECLARATION_FILE="{tmp_path / 'decl.jsonl'}"
+                        export UCC_RESULT_FILE="{tmp_path / 'result.jsonl'}"
+                        export UCC_SUMMARY_FILE="{tmp_path / 'summary.txt'}"
+                        export UCC_PROFILE_SUMMARY_FILE="{tmp_path / 'profile.txt'}"
+                        export UCC_TARGET_STATUS_FILE="{tmp_path / 'status.txt'}"
+                        export UCC_CORRELATION_ID="test-run"
+                        export UCC_RUNTIME_WAIT_ATTEMPTS=5
+                        export UCC_RUNTIME_WAIT_INTERVAL=0.01
+                        source "{ROOT / 'lib/ucc.sh'}"
+
+                        docker() {{
+                          if [[ "$1" == inspect && "$2" == --format && "$3" == '{{{{.State.Status}}}}' && "$4" == app ]]; then
+                            [[ -f "{marker}" ]] && printf '%s\\n' running
+                            return 0
+                          fi
+                          return 1
+                        }}
+
+                        source "{ROOT / 'lib/ucc_targets.sh'}"
+                        COMPOSE_FILE="{compose_file}"
+                        ucc_yaml_runtime_target "{ROOT}" "{manifest}" app
+                        """
+                    ),
+                ],
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertIn("[installed] app", result.stdout)
 
     def test_desktop_app_runtime_observe_respects_greedy_auto_updates(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
