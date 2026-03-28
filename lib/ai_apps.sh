@@ -28,13 +28,13 @@ run_ai_apps_from_yaml() {
   AI_SERVICES=()
   while IFS= read -r _svc; do [[ -n "$_svc" ]] && AI_SERVICES+=("$_svc"); done \
     < <(yaml_list "$cfg_dir" "$yaml" stack.services)
-  local _AI_COMPOSE_APPLY_DONE=0
   STACK_SERVICES="${#AI_SERVICES[@]}"
   STACK_SIGNATURE="$(printf '%s\n' "${AI_SERVICES[@]}" | LC_ALL=C sort | paste -sd, -)"
   STACK_DEFINITION_VALUE="marker=${COMPOSE_MARKER} services=${STACK_SIGNATURE}"
   IMAGE_POLICY="${UIC_PREF_AI_APPS_IMAGE_POLICY:-reuse-local}"
   _AI_APPS_CFG_DIR="$cfg_dir"
   _AI_APPS_TEMPLATE_FILE="$cfg_dir/${stack_template_rel}"
+  _AI_APPS_APPLY_SENTINEL="$HOME/.ai-stack/runs/${UCC_CORRELATION_ID:-manual}.ai-apps-compose.applied"
   export _AI_SERVICE_IMAGE_CACHE="" _AI_IMAGE_VERSION_CACHE="" _AI_IMAGE_DIGEST_CACHE=""
   local _AI_CACHE_VALUE="" _AI_SERVICE_IMAGE_VALUE="" _AI_IMAGE_VERSION_VALUE="" _AI_IMAGE_DIGEST_VALUE=""
 
@@ -362,7 +362,7 @@ PY
     done
   }
   _ai_apply_compose_runtime() {
-    if [[ "$_AI_COMPOSE_APPLY_DONE" == "1" ]]; then
+    if [[ -f "$_AI_APPS_APPLY_SENTINEL" ]]; then
       return 0
     fi
     _remove_legacy_containers
@@ -371,7 +371,8 @@ PY
     fi
     ucc_run docker compose -f "$COMPOSE_FILE" up -d
     _ai_warm_metadata_cache
-    _AI_COMPOSE_APPLY_DONE=1
+    mkdir -p "$(dirname "$_AI_APPS_APPLY_SENTINEL")"
+    : > "$_AI_APPS_APPLY_SENTINEL"
   }
 
   local svc target

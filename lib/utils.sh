@@ -215,9 +215,14 @@ _ucc_endpoint_listener() {
 
 _ucc_http_probe_endpoint() {
   local cfg_dir="$1" yaml="$2" target="$3" endpoint_name="${4:-}"
+  _ucc_http_probe_endpoint_timeout "$cfg_dir" "$yaml" "$target" "$endpoint_name" 5
+}
+
+_ucc_http_probe_endpoint_timeout() {
+  local cfg_dir="$1" yaml="$2" target="$3" endpoint_name="${4:-}" max_time="${5:-5}"
   local url=""
   url="$(_ucc_endpoint_url "$cfg_dir" "$yaml" "$target" "$endpoint_name")" || return 1
-  curl -fsS --max-time 5 "$url" >/dev/null 2>&1
+  curl -fsS --max-time "$max_time" "$url" >/dev/null 2>&1
 }
 
 # _ucc_ver_path_evidence <ver> <path> [label=path]

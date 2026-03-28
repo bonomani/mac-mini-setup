@@ -2534,6 +2534,170 @@ class UccSchedulerTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, msg=result.stderr)
             self.assertEqual(result.stdout.strip(), "1")
 
+    def test_ai_app_compose_apply_runs_once_with_deferred_target_execution(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            cfg_dir = tmp_path / "cfg"
+            (cfg_dir / "stack").mkdir(parents=True, exist_ok=True)
+            (cfg_dir / "tools").symlink_to(ROOT / "tools")
+            (cfg_dir / "stack" / "docker-compose.yml").write_text(
+                textwrap.dedent(
+                    """\
+                    # ai-stack test
+                    services:
+                      open-webui:
+                        image: ghcr.io/example/open-webui:latest
+                      flowise:
+                        image: ghcr.io/example/flowise:latest
+                      openhands:
+                        image: ghcr.io/example/openhands:latest
+                      n8n:
+                        image: ghcr.io/example/n8n:latest
+                      qdrant:
+                        image: ghcr.io/example/qdrant:latest
+                    """
+                ),
+                encoding="utf-8",
+            )
+            ucc_dir = self._write_manifest(
+                tmp_path,
+                textwrap.dedent(
+                    """\
+                    component: fake
+                    primary_profile: runtime
+                    libs: ai_apps
+                    runner: run_ai_apps_from_yaml
+                    stack:
+                      compose_dir: .ai-stack
+                      compose_file: docker-compose.yml
+                      definition_template: stack/docker-compose.yml
+                      marker: '# ai-stack test'
+                      services:
+                      - open-webui
+                      - flowise
+                      - openhands
+                      - n8n
+                      - qdrant
+                    targets:
+                      ai-stack-compose-file:
+                        component: fake
+                        profile: parametric
+                        type: config
+                        state_model: parametric
+                        display_name: compose file
+                        driver:
+                          kind: compose-file
+                        evidence:
+                          path: printf '%s' "$COMPOSE_FILE"
+                      open-webui-runtime:
+                        component: fake
+                        profile: runtime
+                        type: runtime
+                        display_name: Open WebUI
+                        depends_on:
+                        - ai-stack-compose-file
+                        driver:
+                          kind: docker-compose
+                          service_name: open-webui
+                        runtime_manager: docker-compose
+                        probe_kind: http
+                        oracle:
+                          runtime: "true"
+                        actions:
+                          install: _ai_apply_compose_runtime
+                      flowise-runtime:
+                        component: fake
+                        profile: runtime
+                        type: runtime
+                        display_name: Flowise
+                        depends_on:
+                        - ai-stack-compose-file
+                        driver:
+                          kind: docker-compose
+                          service_name: flowise
+                        runtime_manager: docker-compose
+                        probe_kind: http
+                        oracle:
+                          runtime: "true"
+                        actions:
+                          install: _ai_apply_compose_runtime
+                    """
+                ),
+            )
+            manifest_path = ucc_dir / "software" / "fake.yaml"
+            compose_counter = tmp_path / "compose-count.txt"
+            started = tmp_path / "compose-started"
+            result = subprocess.run(
+                [
+                    "bash",
+                    "-lc",
+                    textwrap.dedent(
+                        f"""\
+                        set -euo pipefail
+                        printf '0' > "{compose_counter}"
+                        export UCC_TARGET_DEFER=1
+                        export UCC_TARGETS_MANIFEST="{ucc_dir}"
+                        export UCC_TARGETS_QUERY_SCRIPT="{QUERY}"
+                        export UCC_TARGET_STATUS_FILE="{tmp_path / 'status.txt'}"
+                        export UCC_DECLARATION_FILE="{tmp_path / 'decl.jsonl'}"
+                        export UCC_RESULT_FILE="{tmp_path / 'result.jsonl'}"
+                        export UCC_SUMMARY_FILE="{tmp_path / 'summary.txt'}"
+                        export UCC_PROFILE_SUMMARY_FILE="{tmp_path / 'profile.txt'}"
+                        export UCC_CORRELATION_ID="test-run"
+                        export HOME="{tmp_path / 'home'}"
+                        mkdir -p "$HOME"
+                        source "{ROOT / 'lib/ucc.sh'}"
+                        source "{ROOT / 'lib/utils.sh'}"
+                        source "{ROOT / 'lib/ucc_targets.sh'}"
+                        source "{ROOT / 'lib/ai_apps.sh'}"
+                        log_info() {{ :; }}
+                        log_warn() {{ :; }}
+                        docker() {{
+                          if [[ "$1" == info ]]; then
+                            return 0
+                          fi
+                          if [[ "$1" == inspect && "$2" != --format ]]; then
+                            [[ -f "{started}" ]] && return 0 || return 1
+                          fi
+                          if [[ "$1" == inspect && "$2" == --format && "$3" == '{{{{.State.Status}}}}' ]]; then
+                            [[ -f "{started}" ]] && printf '%s\\n' running
+                            return 0
+                          fi
+                          if [[ "$1" == inspect && "$2" == --format && "$3" == '{{{{.Config.Image}}}}' ]]; then
+                            printf 'ghcr.io/example/%s:latest\\n' "$4"
+                            return 0
+                          fi
+                          if [[ "$1" == inspect && "$2" == --format && "$3" == '{{{{ index .Config.Labels "com.docker.compose.project" }}}}' ]]; then
+                            [[ -f "{started}" ]] && printf '%s\\n' ai-stack || printf '%s\\n' '<no value>'
+                            return 0
+                          fi
+                          if [[ "$1" == image && "$2" == inspect ]]; then
+                            printf '%s\\n' '|<no value>|'
+                            return 0
+                          fi
+                          if [[ "$1" == compose && "$4" == up ]]; then
+                            local count
+                            count="$(cat "{compose_counter}")"
+                            printf '%s' "$((count + 1))" > "{compose_counter}"
+                            touch "{started}"
+                            return 0
+                          fi
+                          return 0
+                        }}
+                        export UIC_PREF_AI_APPS_IMAGE_POLICY=reuse-local
+                        ucc_reset_registered_targets
+                        run_ai_apps_from_yaml "{cfg_dir}" "{manifest_path}"
+                        ucc_flush_registered_targets fake
+                        cat "{compose_counter}"
+                        """
+                    ),
+                ],
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertEqual(result.stdout.strip().splitlines()[-1], "1")
+
     def test_ai_app_legacy_cleanup_skips_compose_managed_containers(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
