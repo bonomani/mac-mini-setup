@@ -164,14 +164,41 @@ _ucc_endpoint_default_port() {
   esac
 }
 
+_UCC_ENDPOINT_CACHE_KEYS=()
+_UCC_ENDPOINT_CACHE_VALUES=()
+_UCC_ENDPOINT_FIELDS_VALUE=""
+
+_ucc_tsv_field() {
+  local row="$1" index="$2" i
+  for ((i = 1; i < index; i++)); do
+    [[ "$row" == *$'\t'* ]] || { printf ''; return 0; }
+    row="${row#*$'\t'}"
+  done
+  if [[ "$row" == *$'\t'* ]]; then
+    printf '%s' "${row%%$'\t'*}"
+  else
+    printf '%s' "$row"
+  fi
+}
+
 _ucc_endpoint_fields() {
   local cfg_dir="$1" yaml="$2" target="$3" endpoint_name="${4:-}"
-  local row="" row_name=""
+  local row="" row_name="" key="" idx
+  _UCC_ENDPOINT_FIELDS_VALUE=""
+  key="${cfg_dir}|${yaml}|${target}|${endpoint_name}"
+  for idx in "${!_UCC_ENDPOINT_CACHE_KEYS[@]}"; do
+    if [[ "${_UCC_ENDPOINT_CACHE_KEYS[$idx]}" == "$key" ]]; then
+      _UCC_ENDPOINT_FIELDS_VALUE="${_UCC_ENDPOINT_CACHE_VALUES[$idx]}"
+      return 0
+    fi
+  done
   while IFS= read -r row; do
-    row_name="$(printf '%s\n' "$row" | awk -F'\t' '{print $1}')"
+    row_name="$(_ucc_tsv_field "$row" 1)"
     [[ -n "$row_name" ]] || continue
     if [[ -z "$endpoint_name" || "$row_name" == "$endpoint_name" ]]; then
-      printf '%s' "$row"
+      _UCC_ENDPOINT_CACHE_KEYS+=("$key")
+      _UCC_ENDPOINT_CACHE_VALUES+=("$row")
+      _UCC_ENDPOINT_FIELDS_VALUE="$row"
       return 0
     fi
   done < <(yaml_records "$cfg_dir" "$yaml" "targets.${target}.endpoints" name url scheme host port path note)
@@ -181,12 +208,13 @@ _ucc_endpoint_fields() {
 _ucc_endpoint_url() {
   local cfg_dir="$1" yaml="$2" target="$3" endpoint_name="${4:-}"
   local row="" url="" scheme="" host="" port="" path=""
-  row="$(_ucc_endpoint_fields "$cfg_dir" "$yaml" "$target" "$endpoint_name")" || return 1
-  url="$(printf '%s\n' "$row" | awk -F'\t' '{print $2}')"
-  scheme="$(printf '%s\n' "$row" | awk -F'\t' '{print $3}')"
-  host="$(printf '%s\n' "$row" | awk -F'\t' '{print $4}')"
-  port="$(printf '%s\n' "$row" | awk -F'\t' '{print $5}')"
-  path="$(printf '%s\n' "$row" | awk -F'\t' '{print $6}')"
+  _ucc_endpoint_fields "$cfg_dir" "$yaml" "$target" "$endpoint_name" || return 1
+  row="$_UCC_ENDPOINT_FIELDS_VALUE"
+  url="$(_ucc_tsv_field "$row" 2)"
+  scheme="$(_ucc_tsv_field "$row" 3)"
+  host="$(_ucc_tsv_field "$row" 4)"
+  port="$(_ucc_tsv_field "$row" 5)"
+  path="$(_ucc_tsv_field "$row" 6)"
   [[ -n "$url" ]] || {
     [[ -n "$scheme" && -n "$host" ]] || return 1
     [[ -n "$port" ]] || port="$(_ucc_endpoint_default_port "$scheme" 2>/dev/null || true)"
@@ -203,10 +231,11 @@ _ucc_endpoint_url() {
 _ucc_endpoint_listener() {
   local cfg_dir="$1" yaml="$2" target="$3" endpoint_name="${4:-}"
   local row="" scheme="" host="" port=""
-  row="$(_ucc_endpoint_fields "$cfg_dir" "$yaml" "$target" "$endpoint_name")" || return 1
-  scheme="$(printf '%s\n' "$row" | awk -F'\t' '{print $3}')"
-  host="$(printf '%s\n' "$row" | awk -F'\t' '{print $4}')"
-  port="$(printf '%s\n' "$row" | awk -F'\t' '{print $5}')"
+  _ucc_endpoint_fields "$cfg_dir" "$yaml" "$target" "$endpoint_name" || return 1
+  row="$_UCC_ENDPOINT_FIELDS_VALUE"
+  scheme="$(_ucc_tsv_field "$row" 3)"
+  host="$(_ucc_tsv_field "$row" 4)"
+  port="$(_ucc_tsv_field "$row" 5)"
   [[ -n "$host" ]] || return 1
   [[ -n "$port" ]] || port="$(_ucc_endpoint_default_port "$scheme" 2>/dev/null || true)"
   [[ -n "$port" ]] || return 1

@@ -403,6 +403,37 @@ class UccSchedulerTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, msg=result.stderr)
             self.assertEqual(result.stdout.strip(), "listener=tcp:127.0.0.1:9999")
 
+    def test_endpoint_helpers_cache_yaml_endpoint_records(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            counter = tmp_path / "records-count.txt"
+            result = subprocess.run(
+                [
+                    "bash",
+                    "-lc",
+                    textwrap.dedent(
+                        f"""\
+                        set -euo pipefail
+                        printf '0' > "{counter}"
+                        source "{ROOT / 'lib/utils.sh'}"
+                        yaml_records() {{
+                          local count
+                          count="$(cat "{counter}")"
+                          printf '%s' "$((count + 1))" > "{counter}"
+                          printf 'Fake API\\t\\thttp\\t127.0.0.1\\t9999\\t/health\\tprimary\\n'
+                        }}
+                        _ucc_endpoint_url cfg manifest target "Fake API" >/dev/null
+                        _ucc_endpoint_listener cfg manifest target "Fake API" >/dev/null
+                        cat "{counter}"
+                        """
+                    ),
+                ],
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertEqual(result.stdout.strip(), "1")
+
     def test_display_name_query_reads_target_metadata(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             ucc_dir = self._write_manifest(
