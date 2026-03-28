@@ -53,17 +53,17 @@ targets:
     provided_by_tool: pip
     driver:
       kind: pip
-    observe_cmd: "ver=\"$(_pip_cached_version \"${probe_pkg}\")\"\nif [[ -z \"$ver\"\
-      \ ]]; then\n  printf 'absent'\nelse\n  printf '%s' \"$ver\"\nfi\n"
+      probe_pkg: torch
+      install_packages: torch torchvision torchaudio
+      min_version: ''
+    observe_cmd: "ver=\"$(_pip_cached_version \"${driver.probe_pkg}\")\"\nif [[ -z\
+      \ \"$ver\" ]]; then\n  printf 'absent'\nelse\n  printf '%s' \"$ver\"\nfi\n"
     evidence:
-      version: _pip_cached_version '${probe_pkg}'
-      pkg: printf '%s' '${probe_pkg}'
+      version: _pip_cached_version '${driver.probe_pkg}'
+      pkg: printf '%s' '${driver.probe_pkg}'
     actions:
-      install: ucc_run pip install -q ${install_packages} && pip_cache_versions
-      update: ucc_run pip install -q --upgrade ${install_packages} && pip_cache_versions
-    probe_pkg: torch
-    install_packages: torch torchvision torchaudio
-    min_version: ''
+      install: ucc_run pip install -q ${driver.install_packages} && pip_cache_versions
+      update: ucc_run pip install -q --upgrade ${driver.install_packages} && pip_cache_versions
   pip-group-huggingface:
     component: ai-python-stack
     profile: configured
@@ -75,18 +75,18 @@ targets:
     provided_by_tool: pip
     driver:
       kind: pip
-    observe_cmd: "ver=\"$(_pip_cached_version \"${probe_pkg}\")\"\nif [[ -z \"$ver\"\
-      \ ]]; then\n  printf 'absent'\nelse\n  printf '%s' \"$ver\"\nfi\n"
+      probe_pkg: transformers
+      install_packages: transformers diffusers accelerate datasets tokenizers sentencepiece
+        huggingface-hub peft trl
+      min_version: ''
+    observe_cmd: "ver=\"$(_pip_cached_version \"${driver.probe_pkg}\")\"\nif [[ -z\
+      \ \"$ver\" ]]; then\n  printf 'absent'\nelse\n  printf '%s' \"$ver\"\nfi\n"
     evidence:
-      version: _pip_cached_version '${probe_pkg}'
-      pkg: printf '%s' '${probe_pkg}'
+      version: _pip_cached_version '${driver.probe_pkg}'
+      pkg: printf '%s' '${driver.probe_pkg}'
     actions:
-      install: ucc_run pip install -q ${install_packages} && pip_cache_versions
-      update: ucc_run pip install -q --upgrade ${install_packages} && pip_cache_versions
-    probe_pkg: transformers
-    install_packages: transformers diffusers accelerate datasets tokenizers sentencepiece
-      huggingface-hub peft trl
-    min_version: ''
+      install: ucc_run pip install -q ${driver.install_packages} && pip_cache_versions
+      update: ucc_run pip install -q --upgrade ${driver.install_packages} && pip_cache_versions
   pip-group-langchain:
     component: ai-python-stack
     profile: configured
@@ -98,21 +98,21 @@ targets:
     provided_by_tool: pip
     driver:
       kind: pip
-    observe_cmd: "ver=\"$(_pip_cached_version \"${probe_pkg}\")\"\nif [[ -z \"$ver\"\
-      \ ]]; then\n  printf 'absent'\nelif python3 -c \"from packaging.version import\
-      \ Version; import sys; raise SystemExit(0 if Version('${min_version}') <= Version(sys.argv[1])\
-      \ else 1)\" \"$ver\" 2>/dev/null; then\n  printf '%s' \"$ver\"\nelse\n  printf\
-      \ 'absent'\nfi\n"
+      probe_pkg: langchain-core
+      install_packages: langchain-core>=1.0.0 langchain langchain-community langchain-ollama
+        langgraph
+      min_version: 1.0.0
+    observe_cmd: "ver=\"$(_pip_cached_version \"${driver.probe_pkg}\")\"\nif [[ -z\
+      \ \"$ver\" ]]; then\n  printf 'absent'\nelif python3 -c \"from packaging.version\
+      \ import Version; import sys; raise SystemExit(0 if Version('${driver.min_version}')\
+      \ <= Version(sys.argv[1]) else 1)\" \"$ver\" 2>/dev/null; then\n  printf '%s'\
+      \ \"$ver\"\nelse\n  printf 'absent'\nfi\n"
     evidence:
-      version: _pip_cached_version '${probe_pkg}'
-      pkg: printf '%s' '${probe_pkg}'
+      version: _pip_cached_version '${driver.probe_pkg}'
+      pkg: printf '%s' '${driver.probe_pkg}'
     actions:
-      install: ucc_run pip install -q ${install_packages} && pip_cache_versions
-      update: ucc_run pip install -q --upgrade ${install_packages} && pip_cache_versions
-    probe_pkg: langchain-core
-    install_packages: langchain-core>=1.0.0 langchain langchain-community langchain-ollama
-      langgraph
-    min_version: 1.0.0
+      install: ucc_run pip install -q ${driver.install_packages} && pip_cache_versions
+      update: ucc_run pip install -q --upgrade ${driver.install_packages} && pip_cache_versions
   pip-group-llamaindex:
     component: ai-python-stack
     profile: configured
@@ -124,17 +124,17 @@ targets:
     provided_by_tool: pip
     driver:
       kind: pip
-    observe_cmd: "ver=\"$(_pip_cached_version \"${probe_pkg}\")\"\nif [[ -z \"$ver\"\
-      \ ]]; then\n  printf 'absent'\nelse\n  printf '%s' \"$ver\"\nfi\n"
+      probe_pkg: llama-index
+      install_packages: llama-index llama-index-llms-ollama llama-index-embeddings-ollama
+      min_version: ''
+    observe_cmd: "ver=\"$(_pip_cached_version \"${driver.probe_pkg}\")\"\nif [[ -z\
+      \ \"$ver\" ]]; then\n  printf 'absent'\nelse\n  printf '%s' \"$ver\"\nfi\n"
     evidence:
-      version: _pip_cached_version '${probe_pkg}'
-      pkg: printf '%s' '${probe_pkg}'
+      version: _pip_cached_version '${driver.probe_pkg}'
+      pkg: printf '%s' '${driver.probe_pkg}'
     actions:
-      install: ucc_run pip install -q ${install_packages} && pip_cache_versions
-      update: ucc_run pip install -q --upgrade ${install_packages} && pip_cache_versions
-    probe_pkg: llama-index
-    install_packages: llama-index llama-index-llms-ollama llama-index-embeddings-ollama
-    min_version: ''
+      install: ucc_run pip install -q ${driver.install_packages} && pip_cache_versions
+      update: ucc_run pip install -q --upgrade ${driver.install_packages} && pip_cache_versions
   pip-group-llm-clients:
     component: ai-python-stack
     profile: configured
@@ -146,17 +146,17 @@ targets:
     provided_by_tool: pip
     driver:
       kind: pip
-    observe_cmd: "ver=\"$(_pip_cached_version \"${probe_pkg}\")\"\nif [[ -z \"$ver\"\
-      \ ]]; then\n  printf 'absent'\nelse\n  printf '%s' \"$ver\"\nfi\n"
+      probe_pkg: openai
+      install_packages: openai anthropic
+      min_version: ''
+    observe_cmd: "ver=\"$(_pip_cached_version \"${driver.probe_pkg}\")\"\nif [[ -z\
+      \ \"$ver\" ]]; then\n  printf 'absent'\nelse\n  printf '%s' \"$ver\"\nfi\n"
     evidence:
-      version: _pip_cached_version '${probe_pkg}'
-      pkg: printf '%s' '${probe_pkg}'
+      version: _pip_cached_version '${driver.probe_pkg}'
+      pkg: printf '%s' '${driver.probe_pkg}'
     actions:
-      install: ucc_run pip install -q ${install_packages} && pip_cache_versions
-      update: ucc_run pip install -q --upgrade ${install_packages} && pip_cache_versions
-    probe_pkg: openai
-    install_packages: openai anthropic
-    min_version: ''
+      install: ucc_run pip install -q ${driver.install_packages} && pip_cache_versions
+      update: ucc_run pip install -q --upgrade ${driver.install_packages} && pip_cache_versions
   pip-group-vector-dbs:
     component: ai-python-stack
     profile: configured
@@ -168,17 +168,17 @@ targets:
     provided_by_tool: pip
     driver:
       kind: pip
-    observe_cmd: "ver=\"$(_pip_cached_version \"${probe_pkg}\")\"\nif [[ -z \"$ver\"\
-      \ ]]; then\n  printf 'absent'\nelse\n  printf '%s' \"$ver\"\nfi\n"
+      probe_pkg: chromadb
+      install_packages: chromadb faiss-cpu qdrant-client
+      min_version: ''
+    observe_cmd: "ver=\"$(_pip_cached_version \"${driver.probe_pkg}\")\"\nif [[ -z\
+      \ \"$ver\" ]]; then\n  printf 'absent'\nelse\n  printf '%s' \"$ver\"\nfi\n"
     evidence:
-      version: _pip_cached_version '${probe_pkg}'
-      pkg: printf '%s' '${probe_pkg}'
+      version: _pip_cached_version '${driver.probe_pkg}'
+      pkg: printf '%s' '${driver.probe_pkg}'
     actions:
-      install: ucc_run pip install -q ${install_packages} && pip_cache_versions
-      update: ucc_run pip install -q --upgrade ${install_packages} && pip_cache_versions
-    probe_pkg: chromadb
-    install_packages: chromadb faiss-cpu qdrant-client
-    min_version: ''
+      install: ucc_run pip install -q ${driver.install_packages} && pip_cache_versions
+      update: ucc_run pip install -q --upgrade ${driver.install_packages} && pip_cache_versions
   pip-group-jupyter:
     component: ai-python-stack
     profile: configured
@@ -190,17 +190,17 @@ targets:
     provided_by_tool: pip
     driver:
       kind: pip
-    observe_cmd: "ver=\"$(_pip_cached_version \"${probe_pkg}\")\"\nif [[ -z \"$ver\"\
-      \ ]]; then\n  printf 'absent'\nelse\n  printf '%s' \"$ver\"\nfi\n"
+      probe_pkg: jupyterlab
+      install_packages: jupyterlab ipywidgets nbformat
+      min_version: ''
+    observe_cmd: "ver=\"$(_pip_cached_version \"${driver.probe_pkg}\")\"\nif [[ -z\
+      \ \"$ver\" ]]; then\n  printf 'absent'\nelse\n  printf '%s' \"$ver\"\nfi\n"
     evidence:
-      version: _pip_cached_version '${probe_pkg}'
-      pkg: printf '%s' '${probe_pkg}'
+      version: _pip_cached_version '${driver.probe_pkg}'
+      pkg: printf '%s' '${driver.probe_pkg}'
     actions:
-      install: ucc_run pip install -q ${install_packages} && pip_cache_versions
-      update: ucc_run pip install -q --upgrade ${install_packages} && pip_cache_versions
-    probe_pkg: jupyterlab
-    install_packages: jupyterlab ipywidgets nbformat
-    min_version: ''
+      install: ucc_run pip install -q ${driver.install_packages} && pip_cache_versions
+      update: ucc_run pip install -q --upgrade ${driver.install_packages} && pip_cache_versions
   pip-group-serving:
     component: ai-python-stack
     profile: configured
@@ -212,17 +212,17 @@ targets:
     provided_by_tool: pip
     driver:
       kind: pip
-    observe_cmd: "ver=\"$(_pip_cached_version \"${probe_pkg}\")\"\nif [[ -z \"$ver\"\
-      \ ]]; then\n  printf 'absent'\nelse\n  printf '%s' \"$ver\"\nfi\n"
+      probe_pkg: fastapi
+      install_packages: fastapi uvicorn gradio
+      min_version: ''
+    observe_cmd: "ver=\"$(_pip_cached_version \"${driver.probe_pkg}\")\"\nif [[ -z\
+      \ \"$ver\" ]]; then\n  printf 'absent'\nelse\n  printf '%s' \"$ver\"\nfi\n"
     evidence:
-      version: _pip_cached_version '${probe_pkg}'
-      pkg: printf '%s' '${probe_pkg}'
+      version: _pip_cached_version '${driver.probe_pkg}'
+      pkg: printf '%s' '${driver.probe_pkg}'
     actions:
-      install: ucc_run pip install -q ${install_packages} && pip_cache_versions
-      update: ucc_run pip install -q --upgrade ${install_packages} && pip_cache_versions
-    probe_pkg: fastapi
-    install_packages: fastapi uvicorn gradio
-    min_version: ''
+      install: ucc_run pip install -q ${driver.install_packages} && pip_cache_versions
+      update: ucc_run pip install -q --upgrade ${driver.install_packages} && pip_cache_versions
   pip-group-data-science:
     component: ai-python-stack
     profile: configured
@@ -234,17 +234,17 @@ targets:
     provided_by_tool: pip
     driver:
       kind: pip
-    observe_cmd: "ver=\"$(_pip_cached_version \"${probe_pkg}\")\"\nif [[ -z \"$ver\"\
-      \ ]]; then\n  printf 'absent'\nelse\n  printf '%s' \"$ver\"\nfi\n"
+      probe_pkg: numpy
+      install_packages: numpy pandas scipy scikit-learn matplotlib seaborn
+      min_version: ''
+    observe_cmd: "ver=\"$(_pip_cached_version \"${driver.probe_pkg}\")\"\nif [[ -z\
+      \ \"$ver\" ]]; then\n  printf 'absent'\nelse\n  printf '%s' \"$ver\"\nfi\n"
     evidence:
-      version: _pip_cached_version '${probe_pkg}'
-      pkg: printf '%s' '${probe_pkg}'
+      version: _pip_cached_version '${driver.probe_pkg}'
+      pkg: printf '%s' '${driver.probe_pkg}'
     actions:
-      install: ucc_run pip install -q ${install_packages} && pip_cache_versions
-      update: ucc_run pip install -q --upgrade ${install_packages} && pip_cache_versions
-    probe_pkg: numpy
-    install_packages: numpy pandas scipy scikit-learn matplotlib seaborn
-    min_version: ''
+      install: ucc_run pip install -q ${driver.install_packages} && pip_cache_versions
+      update: ucc_run pip install -q --upgrade ${driver.install_packages} && pip_cache_versions
   pip-group-utilities:
     component: ai-python-stack
     profile: configured
@@ -256,17 +256,17 @@ targets:
     provided_by_tool: pip
     driver:
       kind: pip
-    observe_cmd: "ver=\"$(_pip_cached_version \"${probe_pkg}\")\"\nif [[ -z \"$ver\"\
-      \ ]]; then\n  printf 'absent'\nelse\n  printf '%s' \"$ver\"\nfi\n"
+      probe_pkg: python-dotenv
+      install_packages: python-dotenv rich tqdm
+      min_version: ''
+    observe_cmd: "ver=\"$(_pip_cached_version \"${driver.probe_pkg}\")\"\nif [[ -z\
+      \ \"$ver\" ]]; then\n  printf 'absent'\nelse\n  printf '%s' \"$ver\"\nfi\n"
     evidence:
-      version: _pip_cached_version '${probe_pkg}'
-      pkg: printf '%s' '${probe_pkg}'
+      version: _pip_cached_version '${driver.probe_pkg}'
+      pkg: printf '%s' '${driver.probe_pkg}'
     actions:
-      install: ucc_run pip install -q ${install_packages} && pip_cache_versions
-      update: ucc_run pip install -q --upgrade ${install_packages} && pip_cache_versions
-    probe_pkg: python-dotenv
-    install_packages: python-dotenv rich tqdm
-    min_version: ''
+      install: ucc_run pip install -q ${driver.install_packages} && pip_cache_versions
+      update: ucc_run pip install -q --upgrade ${driver.install_packages} && pip_cache_versions
   pip-group-dev-tools:
     component: ai-python-stack
     profile: configured
@@ -278,17 +278,17 @@ targets:
     provided_by_tool: pip
     driver:
       kind: pip
-    observe_cmd: "ver=\"$(_pip_cached_version \"${probe_pkg}\")\"\nif [[ -z \"$ver\"\
-      \ ]]; then\n  printf 'absent'\nelse\n  printf '%s' \"$ver\"\nfi\n"
+      probe_pkg: ruff
+      install_packages: ruff
+      min_version: ''
+    observe_cmd: "ver=\"$(_pip_cached_version \"${driver.probe_pkg}\")\"\nif [[ -z\
+      \ \"$ver\" ]]; then\n  printf 'absent'\nelse\n  printf '%s' \"$ver\"\nfi\n"
     evidence:
-      version: _pip_cached_version '${probe_pkg}'
-      pkg: printf '%s' '${probe_pkg}'
+      version: _pip_cached_version '${driver.probe_pkg}'
+      pkg: printf '%s' '${driver.probe_pkg}'
     actions:
-      install: ucc_run pip install -q ${install_packages} && pip_cache_versions
-      update: ucc_run pip install -q --upgrade ${install_packages} && pip_cache_versions
-    probe_pkg: ruff
-    install_packages: ruff
-    min_version: ''
+      install: ucc_run pip install -q ${driver.install_packages} && pip_cache_versions
+      update: ucc_run pip install -q --upgrade ${driver.install_packages} && pip_cache_versions
   pip-group-optimum:
     component: ai-python-stack
     profile: configured
@@ -300,17 +300,17 @@ targets:
     provided_by_tool: pip
     driver:
       kind: pip
-    observe_cmd: "ver=\"$(_pip_cached_version \"${probe_pkg}\")\"\nif [[ -z \"$ver\"\
-      \ ]]; then\n  printf 'absent'\nelse\n  printf '%s' \"$ver\"\nfi\n"
+      probe_pkg: optimum
+      install_packages: optimum
+      min_version: ''
+    observe_cmd: "ver=\"$(_pip_cached_version \"${driver.probe_pkg}\")\"\nif [[ -z\
+      \ \"$ver\" ]]; then\n  printf 'absent'\nelse\n  printf '%s' \"$ver\"\nfi\n"
     evidence:
-      version: _pip_cached_version '${probe_pkg}'
-      pkg: printf '%s' '${probe_pkg}'
+      version: _pip_cached_version '${driver.probe_pkg}'
+      pkg: printf '%s' '${driver.probe_pkg}'
     actions:
-      install: ucc_run pip install -q ${install_packages} && pip_cache_versions
-      update: ucc_run pip install -q --upgrade ${install_packages} && pip_cache_versions
-    probe_pkg: optimum
-    install_packages: optimum
-    min_version: ''
+      install: ucc_run pip install -q ${driver.install_packages} && pip_cache_versions
+      update: ucc_run pip install -q --upgrade ${driver.install_packages} && pip_cache_versions
   mps-available:
     component: ai-python-stack
     profile: capability

@@ -597,17 +597,17 @@ targets:
     provided_by_tool: vscode-marketplace
     driver:
       kind: vscode-marketplace
-    observe_cmd: 'ver="$(_vscode_extension_cached_version ''${extension_id}'')"
+      extension_id: ms-python.python
+    observe_cmd: 'ver="$(_vscode_extension_cached_version ''${driver.extension_id}'')"
 
       printf ''%s'' "${ver:-absent}"
 
       '
     evidence:
-      version: _vscode_extension_cached_version '${extension_id}'
+      version: _vscode_extension_cached_version '${driver.extension_id}'
     actions:
-      install: vscode_extension_install '${extension_id}'
-      update: vscode_extension_update '${extension_id}'
-    extension_id: ms-python.python
+      install: vscode_extension_install '${driver.extension_id}'
+      update: vscode_extension_update '${driver.extension_id}'
   vscode-ext-ms-python.vscode-pylance:
     component: dev-tools
     profile: configured
@@ -619,17 +619,17 @@ targets:
     provided_by_tool: vscode-marketplace
     driver:
       kind: vscode-marketplace
-    observe_cmd: 'ver="$(_vscode_extension_cached_version ''${extension_id}'')"
+      extension_id: ms-python.vscode-pylance
+    observe_cmd: 'ver="$(_vscode_extension_cached_version ''${driver.extension_id}'')"
 
       printf ''%s'' "${ver:-absent}"
 
       '
     evidence:
-      version: _vscode_extension_cached_version '${extension_id}'
+      version: _vscode_extension_cached_version '${driver.extension_id}'
     actions:
-      install: vscode_extension_install '${extension_id}'
-      update: vscode_extension_update '${extension_id}'
-    extension_id: ms-python.vscode-pylance
+      install: vscode_extension_install '${driver.extension_id}'
+      update: vscode_extension_update '${driver.extension_id}'
   vscode-ext-ms-toolsai.jupyter:
     component: dev-tools
     profile: configured
@@ -641,17 +641,17 @@ targets:
     provided_by_tool: vscode-marketplace
     driver:
       kind: vscode-marketplace
-    observe_cmd: 'ver="$(_vscode_extension_cached_version ''${extension_id}'')"
+      extension_id: ms-toolsai.jupyter
+    observe_cmd: 'ver="$(_vscode_extension_cached_version ''${driver.extension_id}'')"
 
       printf ''%s'' "${ver:-absent}"
 
       '
     evidence:
-      version: _vscode_extension_cached_version '${extension_id}'
+      version: _vscode_extension_cached_version '${driver.extension_id}'
     actions:
-      install: vscode_extension_install '${extension_id}'
-      update: vscode_extension_update '${extension_id}'
-    extension_id: ms-toolsai.jupyter
+      install: vscode_extension_install '${driver.extension_id}'
+      update: vscode_extension_update '${driver.extension_id}'
   vscode-ext-ms-vscode.cpptools:
     component: dev-tools
     profile: configured
@@ -663,17 +663,17 @@ targets:
     provided_by_tool: vscode-marketplace
     driver:
       kind: vscode-marketplace
-    observe_cmd: 'ver="$(_vscode_extension_cached_version ''${extension_id}'')"
+      extension_id: ms-vscode.cpptools
+    observe_cmd: 'ver="$(_vscode_extension_cached_version ''${driver.extension_id}'')"
 
       printf ''%s'' "${ver:-absent}"
 
       '
     evidence:
-      version: _vscode_extension_cached_version '${extension_id}'
+      version: _vscode_extension_cached_version '${driver.extension_id}'
     actions:
-      install: vscode_extension_install '${extension_id}'
-      update: vscode_extension_update '${extension_id}'
-    extension_id: ms-vscode.cpptools
+      install: vscode_extension_install '${driver.extension_id}'
+      update: vscode_extension_update '${driver.extension_id}'
   vscode-ext-continue.continue:
     component: dev-tools
     profile: configured
@@ -685,17 +685,17 @@ targets:
     provided_by_tool: vscode-marketplace
     driver:
       kind: vscode-marketplace
-    observe_cmd: 'ver="$(_vscode_extension_cached_version ''${extension_id}'')"
+      extension_id: continue.continue
+    observe_cmd: 'ver="$(_vscode_extension_cached_version ''${driver.extension_id}'')"
 
       printf ''%s'' "${ver:-absent}"
 
       '
     evidence:
-      version: _vscode_extension_cached_version '${extension_id}'
+      version: _vscode_extension_cached_version '${driver.extension_id}'
     actions:
-      install: vscode_extension_install '${extension_id}'
-      update: vscode_extension_update '${extension_id}'
-    extension_id: continue.continue
+      install: vscode_extension_install '${driver.extension_id}'
+      update: vscode_extension_update '${driver.extension_id}'
   vscode-ext-eamodio.gitlens:
     component: dev-tools
     profile: configured
@@ -707,17 +707,17 @@ targets:
     provided_by_tool: vscode-marketplace
     driver:
       kind: vscode-marketplace
-    observe_cmd: 'ver="$(_vscode_extension_cached_version ''${extension_id}'')"
+      extension_id: eamodio.gitlens
+    observe_cmd: 'ver="$(_vscode_extension_cached_version ''${driver.extension_id}'')"
 
       printf ''%s'' "${ver:-absent}"
 
       '
     evidence:
-      version: _vscode_extension_cached_version '${extension_id}'
+      version: _vscode_extension_cached_version '${driver.extension_id}'
     actions:
-      install: vscode_extension_install '${extension_id}'
-      update: vscode_extension_update '${extension_id}'
-    extension_id: eamodio.gitlens
+      install: vscode_extension_install '${driver.extension_id}'
+      update: vscode_extension_update '${driver.extension_id}'
   vscode-ext-ms-vscode-remote.remote-containers:
     component: dev-tools
     profile: configured
@@ -729,17 +729,17 @@ targets:
     provided_by_tool: vscode-marketplace
     driver:
       kind: vscode-marketplace
-    observe_cmd: 'ver="$(_vscode_extension_cached_version ''${extension_id}'')"
+      extension_id: ms-vscode-remote.remote-containers
+    observe_cmd: 'ver="$(_vscode_extension_cached_version ''${driver.extension_id}'')"
 
       printf ''%s'' "${ver:-absent}"
 
       '
     evidence:
-      version: _vscode_extension_cached_version '${extension_id}'
+      version: _vscode_extension_cached_version '${driver.extension_id}'
     actions:
-      install: vscode_extension_install '${extension_id}'
-      update: vscode_extension_update '${extension_id}'
-    extension_id: ms-vscode-remote.remote-containers
+      install: vscode_extension_install '${driver.extension_id}'
+      update: vscode_extension_update '${driver.extension_id}'
   iterm2:
     component: dev-tools
     profile: configured
@@ -751,14 +751,14 @@ targets:
     provided_by_tool: brew-cask
     driver:
       kind: brew-cask
+      ref: iterm2
       greedy_auto_updates: true
-    observe_cmd: brew_cask_observe '${cask_ref}' '${driver.greedy_auto_updates}'
+    observe_cmd: brew_cask_observe '${driver.ref}' '${driver.greedy_auto_updates}'
     evidence:
-      version: _brew_cask_cached_version '${cask_ref}'
+      version: _brew_cask_cached_version '${driver.ref}'
     actions:
-      install: brew_cask_install '${cask_ref}'
-      update: brew_cask_upgrade '${cask_ref}' '${driver.greedy_auto_updates}'
-    cask_ref: iterm2
+      install: brew_cask_install '${driver.ref}'
+      update: brew_cask_upgrade '${driver.ref}' '${driver.greedy_auto_updates}'
   lm-studio:
     component: dev-tools
     profile: configured
@@ -770,14 +770,14 @@ targets:
     provided_by_tool: brew-cask
     driver:
       kind: brew-cask
+      ref: lm-studio
       greedy_auto_updates: true
-    observe_cmd: brew_cask_observe '${cask_ref}' '${driver.greedy_auto_updates}'
+    observe_cmd: brew_cask_observe '${driver.ref}' '${driver.greedy_auto_updates}'
     evidence:
-      version: _brew_cask_cached_version '${cask_ref}'
+      version: _brew_cask_cached_version '${driver.ref}'
     actions:
-      install: brew_cask_install '${cask_ref}'
-      update: brew_cask_upgrade '${cask_ref}' '${driver.greedy_auto_updates}'
-    cask_ref: lm-studio
+      install: brew_cask_install '${driver.ref}'
+      update: brew_cask_upgrade '${driver.ref}' '${driver.greedy_auto_updates}'
   npm-global-@openai/codex:
     component: dev-tools
     profile: configured
@@ -789,13 +789,13 @@ targets:
     provided_by_tool: npm
     driver:
       kind: npm-global
-    observe_cmd: npm_global_observe '${npm_package}'
+      package: '@openai/codex'
+    observe_cmd: npm_global_observe '${driver.package}'
     evidence:
-      version: npm_global_version '${npm_package}'
+      version: npm_global_version '${driver.package}'
     actions:
-      install: npm_global_install '${npm_package}'
-      update: npm_global_update '${npm_package}'
-    npm_package: '@openai/codex'
+      install: npm_global_install '${driver.package}'
+      update: npm_global_update '${driver.package}'
   npm-global-@anthropic-ai/claude-code:
     component: dev-tools
     profile: configured
@@ -807,13 +807,13 @@ targets:
     provided_by_tool: npm
     driver:
       kind: npm-global
-    observe_cmd: npm_global_observe '${npm_package}'
+      package: '@anthropic-ai/claude-code'
+    observe_cmd: npm_global_observe '${driver.package}'
     evidence:
-      version: npm_global_version '${npm_package}'
+      version: npm_global_version '${driver.package}'
     actions:
-      install: npm_global_install '${npm_package}'
-      update: npm_global_update '${npm_package}'
-    npm_package: '@anthropic-ai/claude-code'
+      install: npm_global_install '${driver.package}'
+      update: npm_global_update '${driver.package}'
   npm-global-bmad-method:
     component: dev-tools
     profile: configured
@@ -825,13 +825,13 @@ targets:
     provided_by_tool: npm
     driver:
       kind: npm-global
-    observe_cmd: npm_global_observe '${npm_package}'
+      package: bmad-method
+    observe_cmd: npm_global_observe '${driver.package}'
     evidence:
-      version: npm_global_version '${npm_package}'
+      version: npm_global_version '${driver.package}'
     actions:
-      install: npm_global_install '${npm_package}'
-      update: npm_global_update '${npm_package}'
-    npm_package: bmad-method
+      install: npm_global_install '${driver.package}'
+      update: npm_global_update '${driver.package}'
 cli_tools:
 - cli-jq
 - cli-wget

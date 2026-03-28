@@ -80,14 +80,14 @@ targets:
     provided_by_tool: ollama
     driver:
       kind: ollama-model
-    observe_cmd: ollama_model_present '${model_ref}' && printf '%s' '${model_ref}'
+      ref: llama3.2
+    observe_cmd: ollama_model_present '${driver.ref}' && printf '%s' '${driver.ref}'
       || printf absent
     evidence:
-      model: printf '%s' '${model_ref}'
+      model: printf '%s' '${driver.ref}'
     actions:
-      install: ollama_model_pull '${model_ref}'
-      update: ollama_model_pull '${model_ref}'
-    model_ref: llama3.2
+      install: ollama_model_pull '${driver.ref}'
+      update: ollama_model_pull '${driver.ref}'
   ollama-model-nomic-embed-text:
     component: ollama
     profile: configured
@@ -99,14 +99,14 @@ targets:
     provided_by_tool: ollama
     driver:
       kind: ollama-model
-    observe_cmd: ollama_model_present '${model_ref}' && printf '%s' '${model_ref}'
+      ref: nomic-embed-text
+    observe_cmd: ollama_model_present '${driver.ref}' && printf '%s' '${driver.ref}'
       || printf absent
     evidence:
-      model: printf '%s' '${model_ref}'
+      model: printf '%s' '${driver.ref}'
     actions:
-      install: ollama_model_pull '${model_ref}'
-      update: ollama_model_pull '${model_ref}'
-    model_ref: nomic-embed-text
+      install: ollama_model_pull '${driver.ref}'
+      update: ollama_model_pull '${driver.ref}'
   ollama-model-qwen3-latest:
     component: ollama
     profile: configured
@@ -118,14 +118,14 @@ targets:
     provided_by_tool: ollama
     driver:
       kind: ollama-model
-    observe_cmd: ollama_model_present '${model_ref}' && printf '%s' '${model_ref}'
+      ref: qwen3:latest
+    observe_cmd: ollama_model_present '${driver.ref}' && printf '%s' '${driver.ref}'
       || printf absent
     evidence:
-      model: printf '%s' '${model_ref}'
+      model: printf '%s' '${driver.ref}'
     actions:
-      install: ollama_model_pull '${model_ref}'
-      update: ollama_model_pull '${model_ref}'
-    model_ref: qwen3:latest
+      install: ollama_model_pull '${driver.ref}'
+      update: ollama_model_pull '${driver.ref}'
   ollama-model-llama3.1-8b:
     component: ollama
     profile: configured
@@ -137,14 +137,14 @@ targets:
     provided_by_tool: ollama
     driver:
       kind: ollama-model
-    observe_cmd: ollama_model_present '${model_ref}' && printf '%s' '${model_ref}'
+      ref: llama3.1:8b
+    observe_cmd: ollama_model_present '${driver.ref}' && printf '%s' '${driver.ref}'
       || printf absent
     evidence:
-      model: printf '%s' '${model_ref}'
+      model: printf '%s' '${driver.ref}'
     actions:
-      install: ollama_model_pull '${model_ref}'
-      update: ollama_model_pull '${model_ref}'
-    model_ref: llama3.1:8b
+      install: ollama_model_pull '${driver.ref}'
+      update: ollama_model_pull '${driver.ref}'
   ollama-model-mistral-7b:
     component: ollama
     profile: configured
@@ -156,14 +156,14 @@ targets:
     provided_by_tool: ollama
     driver:
       kind: ollama-model
-    observe_cmd: ollama_model_present '${model_ref}' && printf '%s' '${model_ref}'
+      ref: mistral:7b
+    observe_cmd: ollama_model_present '${driver.ref}' && printf '%s' '${driver.ref}'
       || printf absent
     evidence:
-      model: printf '%s' '${model_ref}'
+      model: printf '%s' '${driver.ref}'
     actions:
-      install: ollama_model_pull '${model_ref}'
-      update: ollama_model_pull '${model_ref}'
-    model_ref: mistral:7b
+      install: ollama_model_pull '${driver.ref}'
+      update: ollama_model_pull '${driver.ref}'
   ollama-model-qwen2.5-coder-32b:
     component: ollama
     profile: configured
@@ -175,14 +175,14 @@ targets:
     provided_by_tool: ollama
     driver:
       kind: ollama-model
-    observe_cmd: ollama_model_present '${model_ref}' && printf '%s' '${model_ref}'
+      ref: qwen2.5-coder:32b
+    observe_cmd: ollama_model_present '${driver.ref}' && printf '%s' '${driver.ref}'
       || printf absent
     evidence:
-      model: printf '%s' '${model_ref}'
+      model: printf '%s' '${driver.ref}'
     actions:
-      install: ollama_model_pull '${model_ref}'
-      update: ollama_model_pull '${model_ref}'
-    model_ref: qwen2.5-coder:32b
+      install: ollama_model_pull '${driver.ref}'
+      update: ollama_model_pull '${driver.ref}'
   ollama-model-llama3.1-70b:
     component: ollama
     profile: configured
@@ -194,14 +194,14 @@ targets:
     provided_by_tool: ollama
     driver:
       kind: ollama-model
-    observe_cmd: ollama_model_present '${model_ref}' && printf '%s' '${model_ref}'
+      ref: llama3.1:70b
+    observe_cmd: ollama_model_present '${driver.ref}' && printf '%s' '${driver.ref}'
       || printf absent
     evidence:
-      model: printf '%s' '${model_ref}'
+      model: printf '%s' '${driver.ref}'
     actions:
-      install: ollama_model_pull '${model_ref}'
-      update: ollama_model_pull '${model_ref}'
-    model_ref: llama3.1:70b
+      install: ollama_model_pull '${driver.ref}'
+      update: ollama_model_pull '${driver.ref}'
 small:
 - ollama-model-llama3.2
 - ollama-model-nomic-embed-text
