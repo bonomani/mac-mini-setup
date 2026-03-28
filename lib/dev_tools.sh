@@ -6,10 +6,14 @@
 run_dev_tools_from_yaml() {
   local cfg_dir="$1" yaml="$2"
 
-  local _NODE_VER
-  local _ARIAFLOW_TAP _ARIAFLOW_FORMULA _ARIAFLOW_WEB_FORMULA
-  _NODE_VER="$(          yaml_get "$cfg_dir" "$yaml" node_version          24)"
-  _ARIAFLOW_TAP="$(      yaml_get "$cfg_dir" "$yaml" ariaflow_tap          bonomani/ariaflow)"
+  local _NODE_VER="24"
+  local _ARIAFLOW_TAP="bonomani/ariaflow" _ARIAFLOW_FORMULA _ARIAFLOW_WEB_FORMULA
+  while IFS=$'\t' read -r -d '' key value; do
+    case "$key" in
+      node_version) [[ -n "$value" ]] && _NODE_VER="$value" ;;
+      ariaflow_tap) [[ -n "$value" ]] && _ARIAFLOW_TAP="$value" ;;
+    esac
+  done < <(yaml_get_many "$cfg_dir" "$yaml" node_version ariaflow_tap)
   _ARIAFLOW_FORMULA="${_ARIAFLOW_TAP}/ariaflow"
   _ARIAFLOW_WEB_FORMULA="${_ARIAFLOW_TAP}/ariaflow-web"
   # ---- CLI tools (brew) ----

@@ -6,16 +6,29 @@
 run_ai_apps_from_yaml() {
   local cfg_dir="$1" yaml="$2"
 
-  local compose_dir_rel compose_file_name stack_template_rel
-  compose_dir_rel="$(yaml_get "$cfg_dir" "$yaml" stack.compose_dir)"
-  [[ -n "$compose_dir_rel" ]] || compose_dir_rel="$(yaml_get "$cfg_dir" "$yaml" compose_dir .ai-stack)"
-  compose_file_name="$(yaml_get "$cfg_dir" "$yaml" stack.compose_file docker-compose.yml)"
-  stack_template_rel="$(yaml_get "$cfg_dir" "$yaml" stack.definition_template stack/docker-compose.yml)"
+  local compose_dir_rel="" compose_dir_legacy=".ai-stack" compose_file_name="docker-compose.yml"
+  local stack_template_rel="stack/docker-compose.yml" stack_marker="" compose_marker_legacy=""
+  while IFS=$'\t' read -r -d '' key value; do
+    case "$key" in
+      stack.compose_dir) [[ -n "$value" ]] && compose_dir_rel="$value" ;;
+      compose_dir) [[ -n "$value" ]] && compose_dir_legacy="$value" ;;
+      stack.compose_file) [[ -n "$value" ]] && compose_file_name="$value" ;;
+      stack.definition_template) [[ -n "$value" ]] && stack_template_rel="$value" ;;
+      stack.marker) [[ -n "$value" ]] && stack_marker="$value" ;;
+      compose_marker) compose_marker_legacy="$value" ;;
+    esac
+  done < <(yaml_get_many "$cfg_dir" "$yaml" \
+    stack.compose_dir \
+    compose_dir \
+    stack.compose_file \
+    stack.definition_template \
+    stack.marker \
+    compose_marker)
+  [[ -n "$compose_dir_rel" ]] || compose_dir_rel="$compose_dir_legacy"
 
   COMPOSE_DIR="$HOME/${compose_dir_rel}"
   COMPOSE_FILE="$COMPOSE_DIR/${compose_file_name}"
-  COMPOSE_MARKER="$(yaml_get "$cfg_dir" "$yaml" stack.marker)"
-  [[ -n "$COMPOSE_MARKER" ]] || COMPOSE_MARKER="$(yaml_get "$cfg_dir" "$yaml" compose_marker "")"
+  COMPOSE_MARKER="${stack_marker:-$compose_marker_legacy}"
 
   AI_SERVICES=()
   while IFS= read -r _svc; do [[ -n "$_svc" ]] && AI_SERVICES+=("$_svc"); done \
