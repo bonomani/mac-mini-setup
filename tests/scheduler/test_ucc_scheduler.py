@@ -2412,6 +2412,236 @@ class UccSchedulerTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, msg=result.stderr)
             self.assertEqual(result.stdout.strip().splitlines(), ["1", "1"])
 
+    def test_ai_app_compose_apply_runs_once_for_all_runtime_targets(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            manifest = tmp_path / "ai-apps.yaml"
+            manifest.write_text(
+                textwrap.dedent(
+                    """\
+                    component: ai-apps
+                    primary_profile: runtime
+                    libs: ai_apps
+                    runner: run_ai_apps_from_yaml
+                    stack:
+                      compose_dir: .ai-stack
+                      compose_file: docker-compose.yml
+                      definition_template: stack/docker-compose.yml
+                      marker: '# ai-stack test'
+                      services:
+                      - open-webui
+                      - flowise
+                    targets:
+                      ai-stack-compose-file:
+                        component: ai-apps
+                        profile: parametric
+                        type: config
+                        state_model: parametric
+                        display_name: compose file
+                        driver:
+                          kind: compose-file
+                        evidence:
+                          path: printf '%s' "$COMPOSE_FILE"
+                      open-webui-runtime:
+                        component: ai-apps
+                        profile: runtime
+                        type: runtime
+                        display_name: Open WebUI
+                        driver:
+                          kind: docker-compose
+                          service_name: open-webui
+                        runtime_manager: docker-compose
+                        probe_kind: http
+                        oracle:
+                          runtime: "true"
+                        actions:
+                          install: _ai_apply_compose_runtime
+                      flowise-runtime:
+                        component: ai-apps
+                        profile: runtime
+                        type: runtime
+                        display_name: Flowise
+                        driver:
+                          kind: docker-compose
+                          service_name: flowise
+                        runtime_manager: docker-compose
+                        probe_kind: http
+                        oracle:
+                          runtime: "true"
+                        actions:
+                          install: _ai_apply_compose_runtime
+                    """
+                ),
+                encoding="utf-8",
+            )
+            compose_counter = tmp_path / "compose-count.txt"
+            result = subprocess.run(
+                [
+                    "bash",
+                    "-lc",
+                    textwrap.dedent(
+                        f"""\
+                        set -euo pipefail
+                        printf '0' > "{compose_counter}"
+                        source "{ROOT / 'lib/utils.sh'}"
+                        source "{ROOT / 'lib/ucc_targets.sh'}"
+                        source "{ROOT / 'lib/ai_apps.sh'}"
+                        log_info() {{ :; }}
+                        log_warn() {{ :; }}
+                        ucc_run() {{ "$@"; }}
+                        ucc_asm_config_desired() {{ printf '%s' "$1"; }}
+                        ucc_target() {{ :; }}
+                        ucc_yaml_runtime_target() {{
+                          _ai_apply_compose_runtime
+                        }}
+                        docker() {{
+                          if [[ "$1" == info ]]; then
+                            return 0
+                          fi
+                          if [[ "$1" == inspect && "$2" == open-webui ]]; then
+                            return 1
+                          fi
+                          if [[ "$1" == inspect && "$2" == flowise ]]; then
+                            return 1
+                          fi
+                          if [[ "$1" == inspect && "$2" == --format && "$3" == '{{{{.Config.Image}}}}' ]]; then
+                            printf '%s\\n' "ghcr.io/example/$4:latest"
+                            return 0
+                          fi
+                          if [[ "$1" == image && "$2" == inspect ]]; then
+                            printf '%s\\n' '|<no value>|'
+                            return 0
+                          fi
+                          if [[ "$1" == compose && "$4" == up ]]; then
+                            local count
+                            count="$(cat "{compose_counter}")"
+                            printf '%s' "$((count + 1))" > "{compose_counter}"
+                            return 0
+                          fi
+                          return 0
+                        }}
+                        export HOME="{tmp_path / 'home'}"
+                        mkdir -p "$HOME"
+                        export UIC_PREF_AI_APPS_IMAGE_POLICY=reuse-local
+                        run_ai_apps_from_yaml "{ROOT}" "{manifest}"
+                        cat "{compose_counter}"
+                        """
+                    ),
+                ],
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertEqual(result.stdout.strip(), "1")
+
+    def test_ai_app_legacy_cleanup_skips_compose_managed_containers(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            manifest = tmp_path / "ai-apps.yaml"
+            manifest.write_text(
+                textwrap.dedent(
+                    """\
+                    component: ai-apps
+                    primary_profile: runtime
+                    libs: ai_apps
+                    runner: run_ai_apps_from_yaml
+                    stack:
+                      compose_dir: .ai-stack
+                      compose_file: docker-compose.yml
+                      definition_template: stack/docker-compose.yml
+                      marker: '# ai-stack test'
+                      services:
+                      - open-webui
+                    targets:
+                      ai-stack-compose-file:
+                        component: ai-apps
+                        profile: parametric
+                        type: config
+                        state_model: parametric
+                        display_name: compose file
+                        driver:
+                          kind: compose-file
+                        evidence:
+                          path: printf '%s' "$COMPOSE_FILE"
+                      open-webui-runtime:
+                        component: ai-apps
+                        profile: runtime
+                        type: runtime
+                        display_name: Open WebUI
+                        driver:
+                          kind: docker-compose
+                          service_name: open-webui
+                        runtime_manager: docker-compose
+                        probe_kind: http
+                        oracle:
+                          runtime: "true"
+                        actions:
+                          install: _ai_apply_compose_runtime
+                    """
+                ),
+                encoding="utf-8",
+            )
+            rm_counter = tmp_path / "rm-count.txt"
+            result = subprocess.run(
+                [
+                    "bash",
+                    "-lc",
+                    textwrap.dedent(
+                        f"""\
+                        set -euo pipefail
+                        printf '0' > "{rm_counter}"
+                        source "{ROOT / 'lib/utils.sh'}"
+                        source "{ROOT / 'lib/ucc_targets.sh'}"
+                        source "{ROOT / 'lib/ai_apps.sh'}"
+                        log_info() {{ :; }}
+                        log_warn() {{ :; }}
+                        ucc_run() {{ "$@"; }}
+                        ucc_asm_config_desired() {{ printf '%s' "$1"; }}
+                        ucc_target() {{ :; }}
+                        ucc_yaml_runtime_target() {{
+                          _ai_apply_compose_runtime
+                        }}
+                        docker() {{
+                          if [[ "$1" == info ]]; then
+                            return 0
+                          fi
+                          if [[ "$1" == inspect && "$2" == open-webui ]]; then
+                            return 0
+                          fi
+                          if [[ "$1" == inspect && "$2" == --format && "$3" == '{{{{ index .Config.Labels \"com.docker.compose.project\" }}}}' && "$4" == open-webui ]]; then
+                            printf '%s\\n' 'ai-stack'
+                            return 0
+                          fi
+                          if [[ "$1" == inspect && "$2" == --format && "$3" == '{{{{.Config.Image}}}}' && "$4" == open-webui ]]; then
+                            printf '%s\\n' 'ghcr.io/example/open-webui:latest'
+                            return 0
+                          fi
+                          if [[ "$1" == image && "$2" == inspect ]]; then
+                            printf '%s\\n' '|<no value>|'
+                            return 0
+                          fi
+                          if [[ "$1" == rm && "$2" == -f && "$3" == open-webui ]]; then
+                            local count
+                            count="$(cat "{rm_counter}")"
+                            printf '%s' "$((count + 1))" > "{rm_counter}"
+                            return 0
+                          fi
+                          return 0
+                        }}
+                        export HOME="{tmp_path / 'home'}"
+                        mkdir -p "$HOME"
+                        export UIC_PREF_AI_APPS_IMAGE_POLICY=reuse-local
+                        run_ai_apps_from_yaml "{ROOT}" "{manifest}"
+                        cat "{rm_counter}"
+                        """
+                    ),
+                ],
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertEqual(result.stdout.strip(), "0")
+
     def test_platform_specific_dependencies_follow_host_variant(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             ucc_dir = self._write_manifest(

@@ -28,6 +28,7 @@ run_ai_apps_from_yaml() {
   AI_SERVICES=()
   while IFS= read -r _svc; do [[ -n "$_svc" ]] && AI_SERVICES+=("$_svc"); done \
     < <(yaml_list "$cfg_dir" "$yaml" stack.services)
+  local _AI_COMPOSE_APPLY_DONE=0
   STACK_SERVICES="${#AI_SERVICES[@]}"
   STACK_SIGNATURE="$(printf '%s\n' "${AI_SERVICES[@]}" | LC_ALL=C sort | paste -sd, -)"
   STACK_DEFINITION_VALUE="marker=${COMPOSE_MARKER} services=${STACK_SIGNATURE}"
@@ -345,23 +346,32 @@ PY
     --install _write_compose_file --update _write_compose_file
 
   # ---- App runtimes ----
+  _ai_container_is_compose_managed() {
+    local name="$1" project=""
+    project="$(docker inspect --format '{{ index .Config.Labels "com.docker.compose.project" }}' "$name" 2>/dev/null || true)"
+    [[ -n "$project" && "$project" != "<no value>" ]]
+  }
+
   _remove_legacy_containers() {
     local name
     for name in "${AI_SERVICES[@]}"; do
-      if docker inspect "$name" &>/dev/null 2>&1; then
+      if docker inspect "$name" &>/dev/null 2>&1 && ! _ai_container_is_compose_managed "$name"; then
         log_info "Removing legacy container: $name"
-        docker stop "$name" >/dev/null 2>&1 || true
-        docker rm   "$name" >/dev/null 2>&1 || true
+        docker rm -f "$name" >/dev/null 2>&1 || true
       fi
     done
   }
   _ai_apply_compose_runtime() {
+    if [[ "$_AI_COMPOSE_APPLY_DONE" == "1" ]]; then
+      return 0
+    fi
     _remove_legacy_containers
     if [[ "$IMAGE_POLICY" == "always-pull" ]]; then
       ucc_run docker compose -f "$COMPOSE_FILE" pull
     fi
     ucc_run docker compose -f "$COMPOSE_FILE" up -d
     _ai_warm_metadata_cache
+    _AI_COMPOSE_APPLY_DONE=1
   }
 
   local svc target
