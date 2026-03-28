@@ -155,6 +155,24 @@ ollama_model_present() {
   fi
 }
 
+softwareupdate_first_label_matching() {
+  local pattern="$1"
+  softwareupdate --list 2>/dev/null | awk -v pat="$pattern" '
+    /^\* Label: / {
+      label = $0
+      sub(/^\* Label: /, "", label)
+      if (label ~ pat) {
+        print label
+        exit
+      }
+    }
+  ' || true
+}
+
+xcode_clt_update_label() {
+  softwareupdate_first_label_matching 'Command Line Tools for Xcode'
+}
+
 ollama_model_pull() {
   log_info "Pulling model: $1"
   ucc_run ollama pull "$1" || return $?

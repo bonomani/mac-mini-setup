@@ -671,6 +671,7 @@ class UccSchedulerTests(unittest.TestCase):
             tmp_path = Path(tmp)
             fake_bin = tmp_path / "bin"
             fake_bin.mkdir()
+            marker = tmp_path / "clt.updated"
             (fake_bin / "xcode-select").write_text(
                 "#!/bin/bash\n"
                 "if [[ \"$1\" == \"-p\" ]]; then\n"
@@ -686,21 +687,43 @@ class UccSchedulerTests(unittest.TestCase):
             )
             (fake_bin / "softwareupdate").write_text(
                 "#!/bin/bash\n"
-                "cat <<'EOF'\n"
+                f"marker=\"{marker}\"\n"
+                "if [[ \"$1\" == \"--list\" ]]; then\n"
+                "  if [[ ! -f \"$marker\" ]]; then\n"
+                "    cat <<'EOF'\n"
                 "Software Update found the following new or updated software:\n"
                 "* Label: Command Line Tools for Xcode-16.4\n"
                 "  Title: Command Line Tools for Xcode, Version: 16.4, Size: 942384KiB, Recommended: YES,\n"
-                "EOF\n",
+                "EOF\n"
+                "  fi\n"
+                "  exit 0\n"
+                "fi\n"
+                "if [[ \"$1\" == \"--install\" ]]; then\n"
+                "  [[ \"$2\" == \"Command Line Tools for Xcode-16.4\" ]] || exit 7\n"
+                "  touch \"$marker\"\n"
+                "  exit 0\n"
+                "fi\n"
+                "exit 1\n",
                 encoding="utf-8",
             )
             (fake_bin / "pkgutil").write_text(
                 "#!/bin/bash\n"
-                "printf 'package-id: com.apple.pkg.CLTools_Executables\\nversion: 26.3.0.0.1.1771626560\\n'\n",
+                f"if [[ -f \"{marker}\" ]]; then\n"
+                "  printf 'package-id: com.apple.pkg.CLTools_Executables\\nversion: 26.4\\n'\n"
+                "else\n"
+                "  printf 'package-id: com.apple.pkg.CLTools_Executables\\nversion: 26.3.0.0.1.1771626560\\n'\n"
+                "fi\n",
+                encoding="utf-8",
+            )
+            (fake_bin / "sudo").write_text(
+                "#!/bin/bash\n"
+                "exec \"$@\"\n",
                 encoding="utf-8",
             )
             os.chmod(fake_bin / "xcode-select", 0o755)
             os.chmod(fake_bin / "softwareupdate", 0o755)
             os.chmod(fake_bin / "pkgutil", 0o755)
+            os.chmod(fake_bin / "sudo", 0o755)
             result = subprocess.run(
                 [
                     "bash",
@@ -716,6 +739,7 @@ class UccSchedulerTests(unittest.TestCase):
                         export UCC_TARGET_STATUS_FILE="{tmp_path / 'status.txt'}"
                         export UCC_CORRELATION_ID="test-run"
                         source "{ROOT / 'lib/ucc.sh'}"
+                        source "{ROOT / 'lib/utils.sh'}"
                         ucc_yaml_simple_target "{ROOT}" "{ROOT / 'ucc/software/homebrew.yaml'}" "xcode-command-line-tools"
                         """
                     ),
@@ -724,8 +748,8 @@ class UccSchedulerTests(unittest.TestCase):
                 capture_output=True,
             )
             self.assertEqual(result.returncode, 0, msg=result.stderr)
-            self.assertIn("[warn", result.stdout)
-            self.assertIn("update remains externally managed", result.stdout)
+            self.assertTrue(marker.exists(), msg=result.stdout)
+            self.assertIn("[updated", result.stdout)
             self.assertNotIn("Triggering Xcode Command Line Tools install", result.stdout)
 
     def test_manifest_validation_rejects_non_string_display_name(self) -> None:

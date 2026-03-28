@@ -205,6 +205,49 @@ _display_component_name() {
   esac
 }
 
+_component_requires_sudo_ticket() {
+  case "$1" in
+    macos-defaults|macos-software-update) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+_selected_run_requires_sudo_ticket() {
+  local comp
+  [[ "$HOST_PLATFORM" == "macos" ]] || return 1
+  [[ "${UCC_DRY_RUN:-0}" != "1" ]] || return 1
+  for comp in "${_DISP_COMPS[@]}"; do
+    _component_requires_sudo_ticket "$comp" && return 0
+  done
+  return 1
+}
+
+_SUDO_KEEPALIVE_PID=""
+
+_stop_sudo_keepalive() {
+  if [[ -n "${_SUDO_KEEPALIVE_PID:-}" ]]; then
+    kill "${_SUDO_KEEPALIVE_PID}" 2>/dev/null || true
+    wait "${_SUDO_KEEPALIVE_PID}" 2>/dev/null || true
+    _SUDO_KEEPALIVE_PID=""
+  fi
+}
+
+_prime_sudo_ticket_if_needed() {
+  _selected_run_requires_sudo_ticket || return 0
+  log_info "Requesting sudo once for macOS system policy targets"
+  if ! sudo -v; then
+    log_warn "Unable to acquire sudo ticket; macOS admin-managed targets may prompt again or remain degraded"
+    return 0
+  fi
+  (
+    while true; do
+      sleep 60 || exit 0
+      sudo -n true >/dev/null 2>&1 || exit 0
+    done
+  ) &
+  _SUDO_KEEPALIVE_PID="$!"
+}
+
 _load_component_policies
 
 _uic_scope_active() {
@@ -485,6 +528,9 @@ for comp in "${TO_RUN[@]}"; do
   _DISP_ON_FAILS+=("$_on_fail")
   _DISP_CONFIGS+=("$_config")
 done
+
+trap _stop_sudo_keepalive EXIT
+_prime_sudo_ticket_if_needed
 
 _run_comp() {
   local comp="$1" _libs="$2" _runner="$3" _on_fail="$4" _config="$5"
