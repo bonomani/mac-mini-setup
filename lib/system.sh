@@ -4,11 +4,15 @@
 # Usage: run_system_from_yaml <cfg_dir> <yaml_path>
 run_system_from_yaml() {
   local cfg_dir="$1" yaml="$2"
-  local system_kind system_signature expected_count
+  local system_kind="host-composition" system_signature expected_count
   local SYSTEM_DEPENDENCIES=()
   local dep
 
-  system_kind="$(yaml_get "$cfg_dir" "$yaml" system.kind host-composition)"
+  while IFS=$'\t' read -r -d '' key value; do
+    case "$key" in
+      system.kind) [[ -n "$value" ]] && system_kind="$value" ;;
+    esac
+  done < <(yaml_get_many "$cfg_dir" "$yaml" system.kind)
   while IFS= read -r dep; do
     [[ -n "$dep" ]] && SYSTEM_DEPENDENCIES+=("$dep")
   done < <(yaml_list "$cfg_dir" "$yaml" system.depends_on)
