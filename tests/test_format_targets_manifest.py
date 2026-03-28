@@ -24,13 +24,16 @@ class FormatTargetsManifestTests(unittest.TestCase):
                       pkg:
                         observe_cmd: "printf present"
                         state_model: package
+                        actions:
+                          update: "true"
+                          install: "true"
+                        driver:
+                          ref: demo
+                          kind: brew-formula
                         component: fake
-                        update_cmd: "true"
                         display_name: Demo
                         type: package
-                        package_driver: brew-formula
                         provided_by_tool: brew
-                        install_cmd: "true"
                         profile: configured
                         evidence:
                           version: "printf 1.0.0"
@@ -59,11 +62,12 @@ class FormatTargetsManifestTests(unittest.TestCase):
             self.assertLess(rendered.index("type: package"), rendered.index("state_model: package"))
             self.assertLess(rendered.index("state_model: package"), rendered.index("display_name: Demo"))
             self.assertLess(rendered.index("display_name: Demo"), rendered.index("provided_by_tool: brew"))
-            self.assertLess(rendered.index("provided_by_tool: brew"), rendered.index("package_driver: brew-formula"))
-            self.assertLess(rendered.index("package_driver: brew-formula"), rendered.index("observe_cmd: printf present"))
+            self.assertLess(rendered.index("provided_by_tool: brew"), rendered.index("driver:"))
+            self.assertLess(rendered.index("driver:"), rendered.index("observe_cmd: printf present"))
+            self.assertLess(rendered.index("kind: brew-formula"), rendered.index("ref: demo"))
             self.assertLess(rendered.index("observe_cmd: printf present"), rendered.index("evidence:"))
-            self.assertLess(rendered.index("evidence:"), rendered.index("install_cmd: 'true'"))
-            self.assertLess(rendered.index("install_cmd: 'true'"), rendered.index("update_cmd: 'true'"))
+            self.assertLess(rendered.index("evidence:"), rendered.index("actions:"))
+            self.assertLess(rendered.index("install: 'true'"), rendered.index("update: 'true'"))
 
             check_after = subprocess.run(
                 ["python3", str(FORMATTER), "--check", str(manifest)],

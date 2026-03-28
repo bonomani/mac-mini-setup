@@ -49,6 +49,7 @@ targets:
     soft_depends_on:
     - gate:ollama-api
     provided_by_tool: ollama-installer
+    runtime_driver: custom-daemon
     runtime_manager: custom
     probe_kind: http
     oracle:

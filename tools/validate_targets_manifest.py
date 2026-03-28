@@ -28,6 +28,13 @@ KNOWN_PACKAGE_DRIVERS = {
     "pyenv-version",
     "ollama-model",
 }
+KNOWN_RUNTIME_DRIVERS = {
+    "brew-service",
+    "custom-daemon",
+    "desktop-app",
+    "docker-compose",
+    "launchd",
+}
 KNOWN_CONFIG_DRIVERS = {
     "brew-analytics",
     "compose-file",
@@ -57,7 +64,9 @@ CANONICAL_TARGET_KEY_ORDER = [
     "depends_on_by_platform",
     "soft_depends_on",
     "provided_by_tool",
+    "driver",
     "package_driver",
+    "runtime_driver",
     "runtime_manager",
     "probe_kind",
     "oracle",
@@ -70,6 +79,7 @@ CANONICAL_TARGET_KEY_ORDER = [
     "stopped_runtime",
     "stopped_health",
     "stopped_dependencies",
+    "actions",
     "install_cmd",
     "update_cmd",
 ]
@@ -94,7 +104,53 @@ def substitute_scalars(value: str, data: dict) -> str:
     }
     import re
 
-    return re.sub(r"\$\{(\w+)\}", lambda m: subst.get(m.group(1), m.group(0)), value)
+    return re.sub(r"\$\{([A-Za-z0-9_.]+)\}", lambda m: subst.get(m.group(1), m.group(0)), value)
+
+
+def collect_manifest_scalars(value, out: dict[str, str], prefix: str = "") -> None:
+    if isinstance(value, dict):
+        for key, raw in value.items():
+            if not isinstance(key, str) or not key:
+                continue
+            nested = f"{prefix}.{key}" if prefix else key
+            collect_manifest_scalars(raw, out, nested)
+        return
+    if prefix and isinstance(value, (str, int, float, bool)):
+        out[prefix] = stringify(value)
+
+
+def _driver_block(data):
+    driver = data.get("driver")
+    return driver if isinstance(driver, dict) else {}
+
+
+def _action_block(data):
+    actions = data.get("actions")
+    return actions if isinstance(actions, dict) else {}
+
+
+def _driver_kind(data):
+    driver = _driver_block(data)
+    if isinstance(driver.get("kind"), str) and driver.get("kind", "").strip():
+        return driver["kind"]
+    for field in ("package_driver", "runtime_driver", "config_driver"):
+        value = data.get(field)
+        if isinstance(value, str) and value.strip():
+            return value
+    return ""
+
+
+def _action_cmd(data, action):
+    actions = _action_block(data)
+    value = actions.get(action)
+    if isinstance(value, str) and value.strip():
+        return value
+    legacy = data.get(f"{action}_cmd")
+    if isinstance(legacy, str) and legacy.strip():
+        return legacy
+    if action == "update":
+        return _action_cmd(data, "install")
+    return ""
 
 
 def parse_gate_names(path: Path):
@@ -165,23 +221,23 @@ def parse_manifest(path: Path):
                 if name in merged["targets"]:
                     raise ValueError(f"{file}: duplicate target '{name}'")
                 target_data = dict(data)
-                target_data["__manifest_scalars__"] = {
-                    key: value
-                    for key, value in manifest.items()
-                    if key not in {"targets"}
-                    and isinstance(value, (str, int, float, bool))
-                }
+                scalars = {}
+                for key, value in manifest.items():
+                    if key == "targets":
+                        continue
+                    collect_manifest_scalars(value, scalars, key)
+                target_data["__manifest_scalars__"] = scalars
                 merged["targets"][name] = target_data
         return merged
     manifest = parse_manifest_file(path)
     for name, data in manifest["targets"].items():
         target_data = dict(data)
-        target_data["__manifest_scalars__"] = {
-            key: value
-            for key, value in manifest.items()
-            if key not in {"targets"}
-            and isinstance(value, (str, int, float, bool))
-        }
+        scalars = {}
+        for key, value in manifest.items():
+            if key == "targets":
+                continue
+            collect_manifest_scalars(value, scalars, key)
+        target_data["__manifest_scalars__"] = scalars
         manifest["targets"][name] = target_data
     return {"targets": manifest["targets"], "components": {}}
 
@@ -230,8 +286,8 @@ def _validate_generated_target_collection(
             errors.append(f"generated target '{item}' in section '{section_name}' requires provided_by_tool")
         if not isinstance(target.get("observe_cmd"), str) or not target.get("observe_cmd", "").strip():
             errors.append(f"generated target '{item}' in section '{section_name}' requires observe_cmd")
-        if not isinstance(target.get("install_cmd"), str) or not target.get("install_cmd", "").strip():
-            errors.append(f"generated target '{item}' in section '{section_name}' requires install_cmd")
+        if not _action_cmd(target, "install"):
+            errors.append(f"generated target '{item}' in section '{section_name}' requires actions.install")
         if required_dep and required_dep not in (target.get("depends_on") or []):
             errors.append(
                 f"generated target '{item}' in section '{section_name}' must depend on '{required_dep}'"
@@ -335,6 +391,7 @@ def validate(manifest, known_gates):
             "config_driver",
             "provided_by_tool",
             "package_driver",
+            "runtime_driver",
             "runtime_manager",
             "probe_kind",
             "install_cmd",
@@ -354,6 +411,28 @@ def validate(manifest, known_gates):
             if value is not None and (not isinstance(value, str) or not value.strip()):
                 errors.append(f"target '{name}' field '{field}' must be a non-empty string")
 
+        driver = data.get("driver")
+        if driver is not None:
+            if not isinstance(driver, dict) or not driver:
+                errors.append(f"target '{name}' driver must be a non-empty mapping")
+            else:
+                for key, value in driver.items():
+                    if not isinstance(key, str) or not key.strip():
+                        errors.append(f"target '{name}' driver contains an empty key")
+                    elif not isinstance(value, (str, int, float, bool)):
+                        errors.append(f"target '{name}' driver '{key}' must be a scalar")
+
+        actions = data.get("actions")
+        if actions is not None:
+            if not isinstance(actions, dict) or not actions:
+                errors.append(f"target '{name}' actions must be a non-empty mapping")
+            else:
+                for key, value in actions.items():
+                    if key not in {"install", "update"}:
+                        errors.append(f"target '{name}' actions contains unsupported key '{key}'")
+                    if not isinstance(value, str) or not value.strip():
+                        errors.append(f"target '{name}' actions '{key}' must be a non-empty string")
+
         state_model = data.get("state_model")
         oracle = data.get("oracle")
         if state_model is not None and state_model not in KNOWN_STATE_MODELS:
@@ -361,11 +440,11 @@ def validate(manifest, known_gates):
         if target_type == "package" and state_model != "package":
             errors.append(f"target '{name}' type 'package' requires state_model 'package'")
         if target_type == "package":
-            package_driver = data.get("package_driver")
+            package_driver = _driver_kind(data)
             if not isinstance(package_driver, str) or not package_driver.strip():
-                errors.append(f"target '{name}' type 'package' requires package_driver")
+                errors.append(f"target '{name}' type 'package' requires driver.kind")
             elif package_driver not in KNOWN_PACKAGE_DRIVERS:
-                errors.append(f"target '{name}' has unknown package_driver '{package_driver}'")
+                errors.append(f"target '{name}' has unknown package driver '{package_driver}'")
             if not isinstance(data.get("provided_by_tool"), str) or not data.get("provided_by_tool", "").strip():
                 errors.append(f"target '{name}' type 'package' requires provided_by_tool")
             has_observe_cmd = isinstance(data.get("observe_cmd"), str) and data.get("observe_cmd", "").strip()
@@ -373,32 +452,32 @@ def validate(manifest, known_gates):
                 errors.append(f"target '{name}' type 'package' requires observe_cmd")
             if not isinstance(data.get("evidence"), dict) or not data.get("evidence"):
                 errors.append(f"target '{name}' type 'package' requires evidence")
-            if not isinstance(data.get("install_cmd"), str) or not data.get("install_cmd", "").strip():
-                errors.append(f"target '{name}' type 'package' requires install_cmd")
-            if not isinstance(data.get("update_cmd"), str) or not data.get("update_cmd", "").strip():
-                errors.append(f"target '{name}' type 'package' requires update_cmd")
+            if not _action_cmd(data, "install"):
+                errors.append(f"target '{name}' type 'package' requires actions.install")
+            if not _action_cmd(data, "update"):
+                errors.append(f"target '{name}' type 'package' requires actions.update")
         if target_type == "config" and profile != "parametric" and state_model != "config":
             errors.append(f"target '{name}' type 'config' with profile '{profile}' requires state_model 'config'")
         if target_type == "config":
-            config_driver = data.get("config_driver")
+            config_driver = _driver_kind(data)
             if not isinstance(data.get("display_name"), str) or not data.get("display_name", "").strip():
                 errors.append(f"target '{name}' type 'config' requires display_name")
             if not isinstance(config_driver, str) or not config_driver.strip():
-                errors.append(f"target '{name}' type 'config' requires config_driver")
+                errors.append(f"target '{name}' type 'config' requires driver.kind")
             elif config_driver not in KNOWN_CONFIG_DRIVERS:
-                errors.append(f"target '{name}' has unknown config_driver '{config_driver}'")
+                errors.append(f"target '{name}' has unknown config driver '{config_driver}'")
             if not isinstance(data.get("evidence"), dict) or not data.get("evidence"):
                 errors.append(f"target '{name}' type 'config' requires evidence")
         if target_type == "precondition" and state_model != "config":
             errors.append(f"target '{name}' type 'precondition' requires state_model 'config'")
         if target_type == "precondition":
-            config_driver = data.get("config_driver")
+            config_driver = _driver_kind(data)
             if not isinstance(data.get("display_name"), str) or not data.get("display_name", "").strip():
                 errors.append(f"target '{name}' type 'precondition' requires display_name")
             if not isinstance(config_driver, str) or not config_driver.strip():
-                errors.append(f"target '{name}' type 'precondition' requires config_driver")
+                errors.append(f"target '{name}' type 'precondition' requires driver.kind")
             elif config_driver not in KNOWN_CONFIG_DRIVERS:
-                errors.append(f"target '{name}' has unknown config_driver '{config_driver}'")
+                errors.append(f"target '{name}' has unknown config driver '{config_driver}'")
             if not isinstance((oracle or {}).get("configured"), str) or not (oracle or {}).get("configured", "").strip():
                 errors.append(f"target '{name}' type 'precondition' requires oracle.configured")
             if not isinstance(data.get("evidence"), dict) or not data.get("evidence"):
@@ -464,6 +543,11 @@ def validate(manifest, known_gates):
                 errors.append(f"target '{name}' profile '{profile}' requires type 'runtime'")
             if not isinstance(data.get("display_name"), str) or not data.get("display_name", "").strip():
                 errors.append(f"target '{name}' profile '{profile}' requires display_name")
+            runtime_driver = _driver_kind(data)
+            if not isinstance(runtime_driver, str) or not runtime_driver.strip():
+                errors.append(f"target '{name}' profile '{profile}' requires driver.kind")
+            elif runtime_driver not in KNOWN_RUNTIME_DRIVERS:
+                errors.append(f"target '{name}' has unknown runtime driver '{runtime_driver}'")
             if not isinstance(data.get("runtime_manager"), str) or not data.get("runtime_manager", "").strip():
                 errors.append(f"target '{name}' profile '{profile}' requires runtime_manager")
             if not isinstance(data.get("probe_kind"), str) or not data.get("probe_kind", "").strip():
@@ -497,7 +581,7 @@ def validate(manifest, known_gates):
             if has_install_update and not has_desired_value and not has_desired_cmd:
                 errors.append(f"target '{name}' state_model 'parametric' with install/update commands requires desired_value or desired_cmd")
 
-        if data.get("install_cmd") is not None or data.get("update_cmd") is not None:
+        if _action_cmd(data, "install") or _action_cmd(data, "update") or data.get("install_cmd") is not None or data.get("update_cmd") is not None:
             has_observe_cmd = isinstance(data.get("observe_cmd"), str) and data.get("observe_cmd", "").strip()
             if profile == "runtime":
                 pass

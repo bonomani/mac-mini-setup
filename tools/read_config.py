@@ -52,21 +52,30 @@ def stringify(value) -> str:
     return str(value)
 
 
+def collect_scalars(value, out: dict[str, str], prefix: str = "") -> None:
+    if isinstance(value, dict):
+        for key, raw in value.items():
+            if not isinstance(key, str) or not key:
+                continue
+            nested = f"{prefix}.{key}" if prefix else key
+            collect_scalars(raw, out, nested)
+        return
+    if prefix and isinstance(value, (str, int, float, bool)):
+        out[prefix] = stringify(value)
+
+
 def substitute_scalars(value: str, data: dict) -> str:
-    subst = {
-        key: stringify(raw)
-        for key, raw in data.items()
-        if isinstance(raw, (str, int, float, bool))
-    }
-    return re.sub(r"\$\{(\w+)\}", lambda m: subst.get(m.group(1), m.group(0)), value)
+    subst = dict(data)
+    return re.sub(r"\$\{([A-Za-z0-9_.]+)\}", lambda m: subst.get(m.group(1), m.group(0)), value)
 
 
 def top_level_scalars(data: dict) -> dict:
-    return {
-        key: stringify(raw)
-        for key, raw in data.items()
-        if key != "targets" and isinstance(raw, (str, int, float, bool))
-    }
+    scalars: dict[str, str] = {}
+    for key, raw in data.items():
+        if key == "targets":
+            continue
+        collect_scalars(raw, scalars, key)
+    return scalars
 
 
 def target_scalars(data: dict, target_name: str) -> dict:
@@ -75,8 +84,7 @@ def target_scalars(data: dict, target_name: str) -> dict:
     target = targets.get(target_name) or {}
     if isinstance(target, dict):
         for key, raw in target.items():
-            if isinstance(raw, (str, int, float, bool)):
-                merged[key] = stringify(raw)
+            collect_scalars(raw, merged, key)
     return merged
 
 

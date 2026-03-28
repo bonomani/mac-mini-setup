@@ -5,57 +5,7 @@
 # Usage: run_docker_from_yaml <cfg_dir> <yaml_path>
 run_docker_from_yaml() {
   local cfg_dir="$1" yaml="$2"
-  local _DOCKER_CASK_ID _DOCKER_APP_PATH
-  _DOCKER_CASK_ID="$(yaml_get "$cfg_dir" "$yaml" docker_desktop_cask_id docker)"
-  _DOCKER_APP_PATH="$(yaml_get "$cfg_dir" "$yaml" docker_desktop_app_path /Applications/Docker.app)"
-
-  _docker_desktop_pkg_state() {
-    if [[ -d "$_DOCKER_APP_PATH" ]] && ! brew_cask_is_installed "$_DOCKER_CASK_ID"; then
-      printf 'installed'
-      return
-    fi
-    brew_cask_observe "$_DOCKER_CASK_ID"
-  }
-  _observe_docker_desktop() {
-    local observed
-    observed="$(_docker_desktop_pkg_state)"
-    if [[ "$observed" == "absent" ]] && [[ ! -d "$_DOCKER_APP_PATH" ]] && ! command -v docker >/dev/null 2>&1; then
-      ucc_asm_state --installation Absent --runtime NeverStarted \
-        --health Unavailable --admin Enabled --dependencies DepsUnknown
-      return
-    fi
-
-    if docker info &>/dev/null 2>&1; then
-      if [[ "$observed" == "outdated" ]]; then
-        ucc_asm_state --installation Installed --runtime Running \
-          --health Degraded --admin Enabled --dependencies DepsDegraded
-      else
-        ucc_asm_runtime_desired
-      fi
-    else
-      if [[ "$observed" == "outdated" ]]; then
-        ucc_asm_state --installation Installed --runtime Stopped \
-          --health Degraded --admin Enabled --dependencies DepsDegraded
-      else
-        ucc_asm_state --installation Configured --runtime Stopped \
-          --health Unavailable --admin Enabled --dependencies DepsDegraded
-      fi
-    fi
-  }
-  _install_docker_desktop() {
-    _ucc_run_yaml_action "$cfg_dir" "$yaml" "docker-desktop" install_cmd
-  }
-  _update_docker_desktop() {
-    _ucc_run_yaml_action "$cfg_dir" "$yaml" "docker-desktop" update_cmd
-  }
-
-  ucc_target_service \
-    --name    "docker-desktop" \
-    --observe _observe_docker_desktop \
-    --evidence "ucc_eval_evidence_from_yaml \"$cfg_dir\" \"$yaml\" docker-desktop" \
-    --desired "$(ucc_asm_runtime_desired)" \
-    --install _install_docker_desktop \
-    --update  _update_docker_desktop
+  ucc_yaml_runtime_target "$cfg_dir" "$yaml" "docker-desktop"
 }
 
 # Usage: run_docker_config_from_yaml <cfg_dir> <yaml_path>

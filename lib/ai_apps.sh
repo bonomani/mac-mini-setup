@@ -258,35 +258,6 @@ PY
     --install _write_compose_file --update _write_compose_file
 
   # ---- App runtimes ----
-  _observe_service_runtime() {
-    local svc="$1" target="$2" state runtime_cmd
-    [[ -f "$COMPOSE_FILE" ]] || {
-      ucc_asm_state --installation Absent --runtime Stopped \
-        --health Unavailable --admin Enabled --dependencies DepsFailed
-      return
-    }
-
-    state="$(docker inspect --format '{{.State.Status}}' "$svc" 2>/dev/null || true)"
-    if [[ -z "$state" ]]; then
-      ucc_asm_state --installation Configured --runtime Stopped \
-        --health Unavailable --admin Enabled --dependencies DepsReady
-      return
-    fi
-    if [[ "$state" != "running" ]]; then
-      ucc_asm_state --installation Configured --runtime Stopped \
-        --health Degraded --admin Enabled --dependencies DepsReady
-      return
-    fi
-
-    runtime_cmd="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "oracle.runtime")"
-    if [[ -n "$runtime_cmd" ]] && ! eval "$runtime_cmd" >/dev/null 2>&1; then
-      ucc_asm_state --installation Configured --runtime Running \
-        --health Degraded --admin Enabled --dependencies DepsReady
-      return
-    fi
-
-    ucc_asm_runtime_desired
-  }
   _remove_legacy_containers() {
     local name
     for name in "${AI_SERVICES[@]}"; do
@@ -297,34 +268,17 @@ PY
       fi
     done
   }
-  _start_stack() {
+  _ai_apply_compose_runtime() {
     _remove_legacy_containers
     if [[ "$IMAGE_POLICY" == "always-pull" ]]; then
       ucc_run docker compose -f "$COMPOSE_FILE" pull
     fi
     ucc_run docker compose -f "$COMPOSE_FILE" up -d
   }
-  _update_stack() {
-    if [[ "$IMAGE_POLICY" == "always-pull" ]]; then
-      ucc_run docker compose -f "$COMPOSE_FILE" pull
-    fi
-    ucc_run docker compose -f "$COMPOSE_FILE" up -d
-  }
 
-  local svc target fn
+  local svc target
   for svc in "${AI_SERVICES[@]}"; do
     target="$(_ai_target_for_service "$svc")"
-    fn="${svc//[^a-zA-Z0-9]/_}"
-    eval "_ai_obs_${fn}() { _observe_service_runtime '${svc}' '${target}'; }"
-    eval "_ai_evd_${fn}() { ucc_eval_evidence_from_yaml '${cfg_dir}' '${yaml}' '${target}'; }"
-    eval "_ai_ins_${fn}() { _start_stack; }"
-    eval "_ai_upd_${fn}() { _update_stack; }"
-
-    ucc_target_service --name "$target" \
-      --observe "_ai_obs_${fn}" \
-      --evidence "_ai_evd_${fn}" \
-      --desired "$(ucc_asm_runtime_desired)" \
-      --install "_ai_ins_${fn}" \
-      --update "_ai_upd_${fn}"
+    ucc_yaml_runtime_target "$cfg_dir" "$yaml" "$target"
   done
 }

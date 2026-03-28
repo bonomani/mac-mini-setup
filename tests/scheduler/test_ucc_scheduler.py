@@ -189,6 +189,7 @@ class UccSchedulerTests(unittest.TestCase):
                         display_name: Fake App
                         soft_depends_on:
                           - capability
+                        runtime_driver: custom-daemon
                         runtime_manager: custom
                         probe_kind: command
                         oracle:
@@ -275,6 +276,7 @@ class UccSchedulerTests(unittest.TestCase):
                         display_name: Fake Runtime
                         depends_on:
                           - fake-package
+                        runtime_driver: brew-service
                         runtime_manager: brew-service
                         probe_kind: http
                         oracle:
@@ -310,6 +312,7 @@ class UccSchedulerTests(unittest.TestCase):
                         profile: runtime
                         type: runtime
                         display_name: Fake Runtime
+                        runtime_driver: custom-daemon
                         runtime_manager: custom
                         probe_kind: command
                         oracle:
@@ -855,6 +858,7 @@ class UccSchedulerTests(unittest.TestCase):
                         oracle:
                           configured: '[[ -f "$HOME/app.installed" ]]'
                           runtime: '[[ -f "$HOME/app.ready" ]]'
+                        runtime_driver: custom-daemon
                         evidence:
                           version: 'printf 1.2.3'
                         stopped_health: Unavailable
@@ -910,6 +914,8 @@ class UccSchedulerTests(unittest.TestCase):
                         component: fake
                         profile: runtime
                         type: runtime
+                        driver:
+                          kind: docker-compose
                         endpoints:
                           - name: Fake API
                             url: http://${probe_host}:${probe_port}
@@ -948,6 +954,7 @@ class UccSchedulerTests(unittest.TestCase):
                         component: fake
                         profile: runtime
                         type: runtime
+                        runtime_driver: custom-daemon
                         oracle:
                           runtime: 'curl -fsS http://127.0.0.1:${probe_port} >/dev/null 2>&1'
                     """
@@ -976,10 +983,14 @@ class UccSchedulerTests(unittest.TestCase):
                         type: package
                         state_model: package
                         provided_by_tool: fake
-                        package_ref: demo
-                        observe_cmd: "printf '%s' '${package_ref}'"
+                        driver:
+                          kind: brew-formula
+                          ref: demo
+                        observe_cmd: "printf '%s' '${driver.ref}'"
                         evidence:
-                          version: "printf '%s' '${package_ref}'"
+                          version: "printf '%s' '${driver.ref}'"
+                        actions:
+                          install: "printf '%s' '${driver.ref}'"
                     """
                 ),
             ) / "software" / "fake.yaml"
@@ -987,11 +998,16 @@ class UccSchedulerTests(unittest.TestCase):
                 ["python3", str(ROOT / "tools" / "read_config.py"), "--target-get", str(manifest), "pkg.with.dot", "observe_cmd"],
                 text=True,
             ).strip()
+            install_cmd = subprocess.check_output(
+                ["python3", str(ROOT / "tools" / "read_config.py"), "--target-get", str(manifest), "pkg.with.dot", "actions.install"],
+                text=True,
+            ).strip()
             evidence = subprocess.check_output(
                 ["python3", str(ROOT / "tools" / "read_config.py"), "--evidence", str(manifest), "pkg.with.dot"],
                 text=True,
             ).strip()
             self.assertEqual(observe_cmd, "printf '%s' 'demo'")
+            self.assertEqual(install_cmd, "printf '%s' 'demo'")
             self.assertEqual(evidence, "version\tprintf '%s' 'demo'")
 
     def test_platform_specific_dependencies_follow_host_variant(self) -> None:
@@ -1099,6 +1115,7 @@ class UccSchedulerTests(unittest.TestCase):
                         display_name: Fake Service
                         depends_on:
                           - fake-package
+                        runtime_driver: brew-service
                         runtime_manager: brew-service
                         probe_kind: command
                         oracle:
@@ -1176,6 +1193,7 @@ class UccSchedulerTests(unittest.TestCase):
                         display_name: Fake Service
                         depends_on:
                           - fake-package
+                        runtime_driver: brew-service
                         runtime_manager: brew-service
                         probe_kind: command
                         oracle:
@@ -1246,6 +1264,7 @@ class UccSchedulerTests(unittest.TestCase):
                         type: runtime
                         depends_on:
                           - fake-package
+                        runtime_driver: brew-service
                         runtime_manager: brew-service
                         probe_kind: command
                         oracle:
@@ -1316,6 +1335,7 @@ class UccSchedulerTests(unittest.TestCase):
                         component: fake
                         profile: runtime
                         type: runtime
+                        runtime_driver: brew-service
                         runtime_manager: brew-service
                         probe_kind: command
                         oracle:
@@ -1378,6 +1398,7 @@ class UccSchedulerTests(unittest.TestCase):
                         component: fake
                         profile: runtime
                         type: runtime
+                        runtime_driver: brew-service
                         runtime_manager: brew-service
                         probe_kind: command
                         oracle:

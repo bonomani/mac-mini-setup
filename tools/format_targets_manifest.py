@@ -17,12 +17,31 @@ def iter_yaml_files(path: Path):
     for pattern in ("*.yaml", "*.yml"):
         yield from sorted(path.rglob(pattern))
 
+DRIVER_KEY_ORDER = ["kind", "ref", "package_ref", "service_name", "app_name", "app_path"]
+ACTIONS_KEY_ORDER = ["install", "update"]
+
+
+def reorder_named_mapping(data: dict, ordered_keys: list[str]) -> dict:
+    ordered = {}
+    for key in ordered_keys:
+        if key in data:
+            ordered[key] = data[key]
+    for key, value in data.items():
+        if key not in ordered:
+            ordered[key] = value
+    return ordered
+
 
 def reorder_target_mapping(target: dict) -> dict:
     ordered = {}
     for key in CANONICAL_TARGET_KEY_ORDER:
         if key in target:
-            ordered[key] = target[key]
+            value = target[key]
+            if key == "driver" and isinstance(value, dict):
+                value = reorder_named_mapping(value, DRIVER_KEY_ORDER)
+            elif key == "actions" and isinstance(value, dict):
+                value = reorder_named_mapping(value, ACTIONS_KEY_ORDER)
+            ordered[key] = value
     for key, value in target.items():
         if key not in ordered:
             ordered[key] = value

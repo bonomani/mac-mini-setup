@@ -219,6 +219,7 @@ targets:
     soft_depends_on:
     - networkquality-available
     provided_by_tool: brew
+    runtime_driver: brew-service
     runtime_manager: brew-service
     probe_kind: http
     oracle:
@@ -243,6 +244,7 @@ targets:
     depends_on:
     - ariaflow
     provided_by_tool: brew
+    runtime_driver: brew-service
     runtime_manager: brew-service
     probe_kind: http
     oracle:
@@ -265,13 +267,15 @@ targets:
     depends_on:
     - homebrew
     provided_by_tool: brew
-    package_driver: brew-formula
-    observe_cmd: brew_observe '${package_ref}'
+    driver:
+      kind: brew-formula
+      ref: jq
+    observe_cmd: brew_observe '${driver.ref}'
     evidence:
-      version: _brew_cached_version '${package_ref}'
-    install_cmd: brew_install '${package_ref}'
-    update_cmd: brew_upgrade '${package_ref}'
-    package_ref: jq
+      version: _brew_cached_version '${driver.ref}'
+    actions:
+      install: brew_install '${driver.ref}'
+      update: brew_upgrade '${driver.ref}'
   cli-wget:
     component: dev-tools
     profile: configured
@@ -281,13 +285,15 @@ targets:
     depends_on:
     - homebrew
     provided_by_tool: brew
-    package_driver: brew-formula
-    observe_cmd: brew_observe '${package_ref}'
+    driver:
+      kind: brew-formula
+      ref: wget
+    observe_cmd: brew_observe '${driver.ref}'
     evidence:
-      version: _brew_cached_version '${package_ref}'
-    install_cmd: brew_install '${package_ref}'
-    update_cmd: brew_upgrade '${package_ref}'
-    package_ref: wget
+      version: _brew_cached_version '${driver.ref}'
+    actions:
+      install: brew_install '${driver.ref}'
+      update: brew_upgrade '${driver.ref}'
   cli-curl:
     component: dev-tools
     profile: configured
@@ -297,13 +303,15 @@ targets:
     depends_on:
     - homebrew
     provided_by_tool: brew
-    package_driver: brew-formula
-    observe_cmd: brew_observe '${package_ref}'
+    driver:
+      kind: brew-formula
+      ref: curl
+    observe_cmd: brew_observe '${driver.ref}'
     evidence:
-      version: _brew_cached_version '${package_ref}'
-    install_cmd: brew_install '${package_ref}'
-    update_cmd: brew_upgrade '${package_ref}'
-    package_ref: curl
+      version: _brew_cached_version '${driver.ref}'
+    actions:
+      install: brew_install '${driver.ref}'
+      update: brew_upgrade '${driver.ref}'
   cli-htop:
     component: dev-tools
     profile: configured
@@ -313,13 +321,15 @@ targets:
     depends_on:
     - homebrew
     provided_by_tool: brew
-    package_driver: brew-formula
-    observe_cmd: brew_observe '${package_ref}'
+    driver:
+      kind: brew-formula
+      ref: htop
+    observe_cmd: brew_observe '${driver.ref}'
     evidence:
-      version: _brew_cached_version '${package_ref}'
-    install_cmd: brew_install '${package_ref}'
-    update_cmd: brew_upgrade '${package_ref}'
-    package_ref: htop
+      version: _brew_cached_version '${driver.ref}'
+    actions:
+      install: brew_install '${driver.ref}'
+      update: brew_upgrade '${driver.ref}'
   cli-tmux:
     component: dev-tools
     profile: configured
@@ -329,13 +339,15 @@ targets:
     depends_on:
     - homebrew
     provided_by_tool: brew
-    package_driver: brew-formula
-    observe_cmd: brew_observe '${package_ref}'
+    driver:
+      kind: brew-formula
+      ref: tmux
+    observe_cmd: brew_observe '${driver.ref}'
     evidence:
-      version: _brew_cached_version '${package_ref}'
-    install_cmd: brew_install '${package_ref}'
-    update_cmd: brew_upgrade '${package_ref}'
-    package_ref: tmux
+      version: _brew_cached_version '${driver.ref}'
+    actions:
+      install: brew_install '${driver.ref}'
+      update: brew_upgrade '${driver.ref}'
   cli-fzf:
     component: dev-tools
     profile: configured
@@ -345,13 +357,15 @@ targets:
     depends_on:
     - homebrew
     provided_by_tool: brew
-    package_driver: brew-formula
-    observe_cmd: brew_observe '${package_ref}'
+    driver:
+      kind: brew-formula
+      ref: fzf
+    observe_cmd: brew_observe '${driver.ref}'
     evidence:
-      version: _brew_cached_version '${package_ref}'
-    install_cmd: brew_install '${package_ref}'
-    update_cmd: brew_upgrade '${package_ref}'
-    package_ref: fzf
+      version: _brew_cached_version '${driver.ref}'
+    actions:
+      install: brew_install '${driver.ref}'
+      update: brew_upgrade '${driver.ref}'
   cli-ripgrep:
     component: dev-tools
     profile: configured
@@ -361,13 +375,15 @@ targets:
     depends_on:
     - homebrew
     provided_by_tool: brew
-    package_driver: brew-formula
-    observe_cmd: brew_observe '${package_ref}'
+    driver:
+      kind: brew-formula
+      ref: ripgrep
+    observe_cmd: brew_observe '${driver.ref}'
     evidence:
-      version: _brew_cached_version '${package_ref}'
-    install_cmd: brew_install '${package_ref}'
-    update_cmd: brew_upgrade '${package_ref}'
-    package_ref: ripgrep
+      version: _brew_cached_version '${driver.ref}'
+    actions:
+      install: brew_install '${driver.ref}'
+      update: brew_upgrade '${driver.ref}'
   cli-fd:
     component: dev-tools
     profile: configured
@@ -377,13 +393,15 @@ targets:
     depends_on:
     - homebrew
     provided_by_tool: brew
-    package_driver: brew-formula
-    observe_cmd: brew_observe '${package_ref}'
+    driver:
+      kind: brew-formula
+      ref: fd
+    observe_cmd: brew_observe '${driver.ref}'
     evidence:
-      version: _brew_cached_version '${package_ref}'
-    install_cmd: brew_install '${package_ref}'
-    update_cmd: brew_upgrade '${package_ref}'
-    package_ref: fd
+      version: _brew_cached_version '${driver.ref}'
+    actions:
+      install: brew_install '${driver.ref}'
+      update: brew_upgrade '${driver.ref}'
   cli-tree:
     component: dev-tools
     profile: configured
@@ -393,13 +411,15 @@ targets:
     depends_on:
     - homebrew
     provided_by_tool: brew
-    package_driver: brew-formula
-    observe_cmd: brew_observe '${package_ref}'
+    driver:
+      kind: brew-formula
+      ref: tree
+    observe_cmd: brew_observe '${driver.ref}'
     evidence:
-      version: _brew_cached_version '${package_ref}'
-    install_cmd: brew_install '${package_ref}'
-    update_cmd: brew_upgrade '${package_ref}'
-    package_ref: tree
+      version: _brew_cached_version '${driver.ref}'
+    actions:
+      install: brew_install '${driver.ref}'
+      update: brew_upgrade '${driver.ref}'
   cli-uv:
     component: dev-tools
     profile: configured
@@ -409,13 +429,15 @@ targets:
     depends_on:
     - homebrew
     provided_by_tool: brew
-    package_driver: brew-formula
-    observe_cmd: brew_observe '${package_ref}'
+    driver:
+      kind: brew-formula
+      ref: uv
+    observe_cmd: brew_observe '${driver.ref}'
     evidence:
-      version: _brew_cached_version '${package_ref}'
-    install_cmd: brew_install '${package_ref}'
-    update_cmd: brew_upgrade '${package_ref}'
-    package_ref: uv
+      version: _brew_cached_version '${driver.ref}'
+    actions:
+      install: brew_install '${driver.ref}'
+      update: brew_upgrade '${driver.ref}'
   cli-pnpm:
     component: dev-tools
     profile: configured
@@ -425,13 +447,15 @@ targets:
     depends_on:
     - homebrew
     provided_by_tool: brew
-    package_driver: brew-formula
-    observe_cmd: brew_observe '${package_ref}'
+    driver:
+      kind: brew-formula
+      ref: pnpm
+    observe_cmd: brew_observe '${driver.ref}'
     evidence:
-      version: _brew_cached_version '${package_ref}'
-    install_cmd: brew_install '${package_ref}'
-    update_cmd: brew_upgrade '${package_ref}'
-    package_ref: pnpm
+      version: _brew_cached_version '${driver.ref}'
+    actions:
+      install: brew_install '${driver.ref}'
+      update: brew_upgrade '${driver.ref}'
   cli-gcc:
     component: dev-tools
     profile: configured
@@ -441,13 +465,15 @@ targets:
     depends_on:
     - homebrew
     provided_by_tool: brew
-    package_driver: brew-formula
-    observe_cmd: brew_observe '${package_ref}'
+    driver:
+      kind: brew-formula
+      ref: gcc
+    observe_cmd: brew_observe '${driver.ref}'
     evidence:
-      version: _brew_cached_version '${package_ref}'
-    install_cmd: brew_install '${package_ref}'
-    update_cmd: brew_upgrade '${package_ref}'
-    package_ref: gcc
+      version: _brew_cached_version '${driver.ref}'
+    actions:
+      install: brew_install '${driver.ref}'
+      update: brew_upgrade '${driver.ref}'
   cli-gh:
     component: dev-tools
     profile: configured
@@ -457,13 +483,15 @@ targets:
     depends_on:
     - homebrew
     provided_by_tool: brew
-    package_driver: brew-formula
-    observe_cmd: brew_observe '${package_ref}'
+    driver:
+      kind: brew-formula
+      ref: gh
+    observe_cmd: brew_observe '${driver.ref}'
     evidence:
-      version: _brew_cached_version '${package_ref}'
-    install_cmd: brew_install '${package_ref}'
-    update_cmd: brew_upgrade '${package_ref}'
-    package_ref: gh
+      version: _brew_cached_version '${driver.ref}'
+    actions:
+      install: brew_install '${driver.ref}'
+      update: brew_upgrade '${driver.ref}'
   cli-llama.cpp:
     component: dev-tools
     profile: configured
@@ -473,13 +501,15 @@ targets:
     depends_on:
     - homebrew
     provided_by_tool: brew
-    package_driver: brew-formula
-    observe_cmd: brew_observe '${package_ref}'
+    driver:
+      kind: brew-formula
+      ref: llama.cpp
+    observe_cmd: brew_observe '${driver.ref}'
     evidence:
-      version: _brew_cached_version '${package_ref}'
-    install_cmd: brew_install '${package_ref}'
-    update_cmd: brew_upgrade '${package_ref}'
-    package_ref: llama.cpp
+      version: _brew_cached_version '${driver.ref}'
+    actions:
+      install: brew_install '${driver.ref}'
+      update: brew_upgrade '${driver.ref}'
   cli-opencode:
     component: dev-tools
     profile: configured
@@ -489,13 +519,15 @@ targets:
     depends_on:
     - homebrew
     provided_by_tool: brew
-    package_driver: brew-formula
-    observe_cmd: brew_observe '${package_ref}'
+    driver:
+      kind: brew-formula
+      ref: opencode
+    observe_cmd: brew_observe '${driver.ref}'
     evidence:
-      version: _brew_cached_version '${package_ref}'
-    install_cmd: brew_install '${package_ref}'
-    update_cmd: brew_upgrade '${package_ref}'
-    package_ref: opencode
+      version: _brew_cached_version '${driver.ref}'
+    actions:
+      install: brew_install '${driver.ref}'
+      update: brew_upgrade '${driver.ref}'
   cli-aria2:
     component: dev-tools
     profile: configured
@@ -505,13 +537,15 @@ targets:
     depends_on:
     - homebrew
     provided_by_tool: brew
-    package_driver: brew-formula
-    observe_cmd: brew_observe '${package_ref}'
+    driver:
+      kind: brew-formula
+      ref: aria2
+    observe_cmd: brew_observe '${driver.ref}'
     evidence:
-      version: _brew_cached_version '${package_ref}'
-    install_cmd: brew_install '${package_ref}'
-    update_cmd: brew_upgrade '${package_ref}'
-    package_ref: aria2
+      version: _brew_cached_version '${driver.ref}'
+    actions:
+      install: brew_install '${driver.ref}'
+      update: brew_upgrade '${driver.ref}'
   cli-cmake:
     component: dev-tools
     profile: configured
@@ -521,13 +555,15 @@ targets:
     depends_on:
     - homebrew
     provided_by_tool: brew
-    package_driver: brew-formula
-    observe_cmd: brew_observe '${package_ref}'
+    driver:
+      kind: brew-formula
+      ref: cmake
+    observe_cmd: brew_observe '${driver.ref}'
     evidence:
-      version: _brew_cached_version '${package_ref}'
-    install_cmd: brew_install '${package_ref}'
-    update_cmd: brew_upgrade '${package_ref}'
-    package_ref: cmake
+      version: _brew_cached_version '${driver.ref}'
+    actions:
+      install: brew_install '${driver.ref}'
+      update: brew_upgrade '${driver.ref}'
   vscode-ext-ms-python.python:
     component: dev-tools
     profile: configured
