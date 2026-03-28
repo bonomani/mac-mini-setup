@@ -19,6 +19,7 @@ state can describe the whole machine, not only individual components.
 - UCC engine: `./lib/ucc.sh`
 - UIC preflight: `./lib/uic.sh`
 - TIC verification: `./lib/tic.sh`
+- manifest formatter: `./tools/format_targets_manifest.py`
 
 ## Repository Inventory
 
@@ -71,6 +72,7 @@ state can describe the whole machine, not only individual components.
 | `lib/dev_tools.sh` | Bash library | Dev tools logic | VS Code, Node, npm, OMZ, ariaflow |
 | `lib/vscode_ext.sh` | Bash library | VS Code extension targets | Dynamic extension install targets |
 | `lib/macos_defaults.sh` | Bash library | macOS defaults logic | Parametric config targets and UI restarts |
+| `lib/macos_software_update.sh` | Bash library | macOS software update policy logic | Local automatic update policy targets |
 | `lib/unsloth_studio.sh` | Bash library | Unsloth Studio logic | Setup plus launchd service |
 | `lib/system.sh` | Bash library | System composition logic | Derives whole-machine state from governed subsystem targets |
 
@@ -81,6 +83,7 @@ state can describe the whole machine, not only individual components.
 | `tools/read_config.py` | Python | Config reader | YAML access helper built on `yaml.safe_load` |
 | `tools/validate_setup_state_artifact.py` | Python | ASM artifact validator | Delegates to external ASM validator |
 | `tools/validate_targets_manifest.py` | Python | UCC manifest validator | Checks targets, deps, components, dispatch, runtime endpoints |
+| `tools/format_targets_manifest.py` | Python | Manifest formatter | Enforces canonical target key ordering |
 
 ### Policy
 
@@ -89,7 +92,7 @@ state can describe the whole machine, not only individual components.
 | `policy/gates.yaml` | YAML | UIC gates | Hard/soft preflight gate declarations |
 | `policy/preferences.yaml` | YAML | UIC preferences | Safe defaults and operator overrides |
 | `policy/components.yaml` | YAML | Component policy | Per-component `enabled|disabled|remove` mode declarations |
-| `policy/profiles.yaml` | YAML | UCC profiles | Presence/configured/runtime/capability/parametric baselines |
+| `policy/profiles.yaml` | YAML | UCC profiles | Configured/runtime/capability/parametric baselines plus legacy presence alias |
 
 ### UCC Software Manifests
 
@@ -111,6 +114,7 @@ state can describe the whole machine, not only individual components.
 |---|---|---|---|
 | `ucc/system/git-config.yaml` | YAML manifest | Git config component | Global git settings |
 | `ucc/system/docker-config.yaml` | YAML manifest | Docker config component | Parametric resource settings |
+| `ucc/system/macos-software-update.yaml` | YAML manifest | macOS software update component | Local automatic update policy targets |
 | `ucc/system/macos-defaults.yaml` | YAML manifest | macOS defaults component | Power, Finder, Dock, extension settings |
 | `ucc/system/system.yaml` | YAML manifest | System composition component | Declares whole-machine composition over subsystem targets |
 
@@ -147,6 +151,7 @@ and `ucc/system/`, then dispatched through `install.sh`.
 | Dev Tools | `ucc/software/dev-tools.yaml` | VS Code, Node 24, npm globals, Oh My Zsh, CLI tools, ariaflow |
 | Git Config | `ucc/system/git-config.yaml` | Global git defaults |
 | Docker Config | `ucc/system/docker-config.yaml` | Docker memory/CPU/swap/disk resource settings |
+| macOS Software Update | `ucc/system/macos-software-update.yaml` | Local Software Update automatic-policy settings |
 | macOS Defaults | `ucc/system/macos-defaults.yaml` | Power, Finder, Dock, and visibility defaults |
 | AI Workstation | `ucc/system/system.yaml` | Whole-machine composition target over required governed subsystem targets |
 | Verify | `tic/software/verify.yaml`, `tic/system/verify.yaml` | Read-only post-convergence verification, including system-level evidence for `system-composition` |
@@ -163,6 +168,14 @@ chmod +x install.sh
 
 # Multiple components
 ./install.sh python ai-python-stack
+```
+
+If you want admin-gated targets such as `macos-defaults` or
+`macos-software-update` to converge in the same run without prompts, open a
+non-interactive sudo ticket first:
+
+```bash
+sudo -v && ./install.sh
 ```
 
 ## Component Policy

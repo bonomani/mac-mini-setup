@@ -12,9 +12,9 @@ bounded lifecycle and explicit admissible transitions.
 Scope:
 - AI workstation setup
 - macOS is the full-profile target; Linux and WSL2 use the portable subset
-- 13 governed components across two layers:
+- 14 governed components across two convergence layers plus verification:
 
-  Software layer (`ucc/software/`) — presence convergence:
+  Software layer (`ucc/software/`) — software convergence:
   - `homebrew`
   - `git`
   - `docker`
@@ -27,6 +27,7 @@ Scope:
   System layer (`ucc/system/`) — value convergence:
   - `git-config`
   - `docker-config`
+  - `macos-software-update`
   - `macos-defaults`
   - `system`
 
@@ -35,7 +36,12 @@ Scope:
 
 Modeling rule:
 - the host setup state is a composition of component states
-- software-layer components use the `presence` or `configured` ASM profile
+- this project uses the ASM software profile; package, config, runtime,
+  capability, and precondition targets are all projected onto that software-state
+  vocabulary
+- the manifests no longer use a separate `presence` target profile for packages;
+  package-like targets are represented as `profile: configured` with a
+  project-local `state_model: package` observation mapping
 - `ai-apps` uses both a parametric configuration target (`ai-stack-compose-file`)
   and per-app runtime targets (`open-webui-runtime`, `flowise-runtime`,
   `openhands-runtime`, `n8n-runtime`, `qdrant-runtime`) because the desired
@@ -45,7 +51,8 @@ Modeling rule:
 - the `system` component uses a parametric composition target
   (`system-composition`) that derives whole-machine state from the
   status of required governed subsystem targets in the current run
-- system-layer presence-only components (`git-config`) use the `configured` ASM profile
+- system-layer non-parametric configuration components such as `git-config`
+  use the `configured` ASM profile
 - each mutable component uses the ASM software-profile style axes:
   - `installation_state`
   - `runtime_state`
@@ -142,13 +149,51 @@ Meaning:
 - carries the actual observed or desired configuration value as a string
 - enables value-level convergence: the engine re-applies when the value
   drifts from the desired even though `installation_state=Configured`
-- absent on presence-only targets; present only when the `parametric`
+- absent on non-parametric targets; present only when the `parametric`
   profile is selected
 - examples: `mem=48GB cpu=10`, `0` (pmset sleep value), `1` (dock autohide)
 - stack-definition example:
   `marker=# ai-stack v2 services=flowise,n8n,open-webui,openhands,qdrant`
 - system-composition example:
   `kind=host-composition targets=ariaflow,ariaflow-web,docker-desktop,docker-resources,flowise-runtime,finder-show-hidden=1,git,git-global-config,homebrew,n8n-runtime,ollama,open-webui-runtime,openhands-runtime,pmset-ac-sleep=0,python,qdrant-runtime,unsloth-studio`
+
+### Package specialization (project-local mapping onto the ASM software profile)
+
+Packages are treated as software targets, not as a separate ASM profile.
+This project uses a local package-specific observation layer and projects it
+onto the ASM software profile.
+
+Scope examples:
+- Homebrew formulae
+- Homebrew casks
+- npm global packages
+- pip packages
+
+Interpretation:
+- `installation_state` is the primary governing axis
+- `runtime_state` is usually `NeverStarted` or `Stopped` for package-only targets
+- `health_state` is used to express package acceptability, especially update drift
+- `admin_state` and `dependency_state` retain their normal software-profile meaning
+
+Typical raw observations used by this project:
+- `absent`
+- `outdated`
+- installed version string
+
+Recommended project mapping:
+- `absent` ->
+  `installation_state=Absent`, `runtime_state=NeverStarted`,
+  `health_state=Unknown`
+- `outdated` ->
+  `installation_state=Installed`, `runtime_state=Stopped`,
+  `health_state=Degraded`
+- acceptable installed version ->
+  `installation_state=Configured`, `runtime_state=Stopped`,
+  `health_state=Healthy`
+
+This means package presence is treated as the lowest software state, not as a
+standalone manifest profile. A package target is therefore a specialization of
+the ASM software model, not a separate ASM package model.
 
 ## 3. Derived states
 
@@ -212,6 +257,17 @@ For the AI apps stack the effective interpretation is split:
   `Stopped -> Starting -> Running`
 - readiness evidence is strengthened by TIC HTTP endpoint probes over the
   composed services after convergence
+
+Package-like targets use the same software lifecycle, with a project-local
+observation mapping:
+- `absent` means the target is below the installation floor and routes to install
+- `outdated` means the target is present but not yet at the desired package state;
+  it is projected to `Installed + Degraded` and routes to update
+- an acceptable installed version is projected to `Configured + Healthy`
+
+When a target is observable but a transition is intentionally not applied
+because of policy or privilege constraints, that is not itself an ASM state
+transition. It is a UCC execution outcome over an unchanged observed ASM state.
 
 ## 6. Host-level composition
 

@@ -1,6 +1,6 @@
 # BGS Compliance Report
 
-Date: 2026-03-26
+Date: 2026-03-28
 Project: `mac-mini-setup`
 Claimed slice: `BGS-State-Modeled-Governed`
 Assessment basis: repo-local artifacts, executable validators, and local runtime evidence
@@ -15,7 +15,7 @@ This is a project-local compliance assessment, not an external audit or a claim 
 
 The assessed scope is the one declared in [`../BGS.md`](../BGS.md):
 
-- AI workstation setup across 13 governed components
+- AI workstation setup across 14 governed components
 - full macOS profile
 - portable Linux/WSL2 subset with unsupported components skipped by manifest scope and policy
 - governed preflight, convergence, and post-convergence verification
@@ -49,16 +49,18 @@ The following checks were run during this review:
 
 ```bash
 python3 tools/validate_setup_state_artifact.py docs/setup-state-artifact.yaml
-python3 tools/validate_targets_manifest.py
+python3 tools/validate_targets_manifest.py ucc
+python3 tools/format_targets_manifest.py --check ucc
 ```
 
 Observed results:
 
 - ASM artifact validator: `VALID docs/setup-state-artifact.yaml`
-- orchestration validator: `OK: 38 orchestration targets validated`
+- orchestration validator: `OK: 94 orchestration targets validated`
+- manifest formatter check: pass
 - runtime evidence present locally:
-  - `3` declaration artifacts under `~/.ai-stack/runs/`
-  - `3` result artifacts under `~/.ai-stack/runs/`
+  - `4` declaration artifacts under `~/.ai-stack/runs/`
+  - `4` result artifacts under `~/.ai-stack/runs/`
 
 ## Compliance Findings
 
@@ -95,7 +97,7 @@ The boundary classification in [`biss-classification.md`](./biss-classification.
 - UCC for convergence and reconciliation
 - GIC for post-convergence verification
 
-During this review, the component count wording was aligned to the declared scope of 13 governed components so that the BISS document now matches the BGS entry and ASM model.
+During this review, the component count wording was aligned to the declared scope of 14 governed components so that the BISS document now matches the BGS entry and ASM model, including the `macos-software-update` system component.
 
 Status: compliant
 
@@ -133,9 +135,11 @@ These do not invalidate the current slice claim, but they remain important:
 - runtime evidence is partly outside the repository under `~/.ai-stack/runs/`
 - some behavior remains policy-soft rather than hard-blocking, such as the sudo gate for `macos-defaults`
 - the project claims the `Basic` overlay only, not `RIG`
+- package targets use a project-local `state_model: package` mapping layered onto the ASM software profile
+- externally managed updates and non-interactive admin-required targets remain project-local execution conventions rather than upstream suite-standardized semantics
 
 ## Verdict
 
-As of 2026-03-26, `mac-mini-setup` is materially compliant with its declared `BGS-State-Modeled-Governed` slice on the basis of the reviewed artifacts and executed validators.
+As of 2026-03-28, `mac-mini-setup` is materially compliant with its declared `BGS-State-Modeled-Governed` slice on the basis of the reviewed artifacts and executed validators.
 
 The current claim should still be read with the limitations above: this is a `Basic`-overlay, project-local compliance posture with explicit delegated controls and a macOS-first full profile.

@@ -4,17 +4,18 @@
 decision_id: mac-mini-setup-bgs-001
 bgs_slice: BGS-State-Modeled-Governed
 declared_scope: >
-  AI workstation setup — full installation lifecycle across 13
+  AI workstation setup — full installation lifecycle across 14
   governed components in two layers. macOS is the primary/full profile;
   Linux and WSL2 run the portable subset with unsupported components
   skipped by manifest platform scope and component policy:
   software layer (ucc/software/): homebrew, git, docker, python, ollama,
   ai-python-stack, ai-apps, dev-tools;
-  system layer (ucc/system/): git-config, docker-config, macos-defaults, system;
+  system layer (ucc/system/): git-config, docker-config, macos-software-update,
+  macos-defaults, system;
   verification (tic/): verify.
   Covers install, idempotent re-run, and update modes.
 
-bgs_version_ref: bgs@7961fb4
+bgs_version_ref: bgs@6d9b3d8
 
 members_used:
   - BISS
@@ -36,8 +37,9 @@ member_version_refs:
 external_controls:
   IAM and authorization: delegated
   # macOS user permissions and brew/npm/Docker Hub auth are handled by
-  # the upstream toolchain. A sudo availability gate (UIC soft gate
-  # 'sudo-available') guards components that require elevated privileges.
+  # the upstream toolchain. Targets that require elevated privileges use a
+  # soft sudo gate plus target-local admin metadata and do not trigger an
+  # interactive prompt; operators may pre-acquire a sudo ticket with `sudo -v`.
   sandboxing or runtime isolation: implemented
   # AI app services run in Docker containers (ai-apps).
   # Unsloth Studio runs in an isolated Python venv via launchd.
@@ -61,6 +63,7 @@ evidence_refs:
   - ./setup-state-model.md       # ASM-aligned setup state model
   - ./setup-state-artifact.yaml  # concrete state artifact
   - ../tools/validate_setup_state_artifact.py  # executable ASM artifact validator
+  - ../tools/format_targets_manifest.py  # manifest formatter and canonical key ordering
   - ./evidence/ollama.declaration.json
   - ./evidence/ollama.result.json
   - ../install.sh                # orchestration entry point
@@ -73,7 +76,9 @@ evidence_refs:
   - ../tic/system/verify.yaml    # TIC system-layer test definitions
   - ../stack/docker-compose.yml  # stack definition template for ai-apps
   - ../lib/ai_apps.sh            # stack convergence logic and definition/runtime checks
+  - ../lib/macos_software_update.sh  # local macOS software update policy runner
   - ../lib/system.sh             # system-level composition target over governed subsystems
+  - ../ucc/system/macos-software-update.yaml  # software update policy declaration
   - ../ucc/system/system.yaml    # system composition declaration
   - ../lib/tic_runner.sh          # TIC runner (run_verify sources the above YAML files)
   - ../lib/summary.sh            # final summary rendering
@@ -97,8 +102,15 @@ limitations:
     parametric stack-definition target, stack-specific UIC gates, and
     TIC endpoint checks, but these semantics are not yet generalized in
     the upstream suite members.
-  - Sudo gate is soft (not hard); macos-defaults is skipped if sudo
-    is unavailable rather than aborting the full install.
+  - Sudo availability remains a soft gate; admin-sensitive targets stay
+    policy-inhibited when no non-interactive sudo ticket exists rather
+    than prompting or aborting the full install.
+  - The repo uses a project-local package specialization layered onto the
+    ASM software profile (`state_model: package`); this mapping is not yet
+    standardized in the upstream ASM framework.
+  - The repo also uses a project-local convention for externally managed
+    updates (`driver.externally_managed_updates`) when a target can be
+    observably outdated but the current run may defer update authority.
   - The claimed BGS slice is `BGS-State-Modeled-Governed`; `TIC` is used
     as additional verification evidence because the suite does not yet
     define a separate state-modeled-governed-verified slice.
