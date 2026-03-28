@@ -20,8 +20,8 @@ targets:
   xcode-command-line-tools:
     component: homebrew
     profile: configured
-    type: precondition
-    state_model: config
+    type: package
+    state_model: package
     display_name: Xcode Command Line Tools
     provided_by_tool: macos-installer
     driver:
