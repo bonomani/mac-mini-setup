@@ -698,7 +698,7 @@ ucc_brew_runtime_formula_target() {
   local tname="$1" pkg="$2" brew_ref="${3:-$2}" cfg_dir="${4:-}" yaml="${5:-}" service_name="${6:-$2}"
   local fn; fn="${tname//[^a-zA-Z0-9]/_}"
   eval "_ubrt_obs_${fn}() {
-    local runtime_cmd configured_cmd
+    local CFG_DIR='${cfg_dir}' YAML_PATH='${yaml}' TARGET_NAME='${tname}' runtime_cmd configured_cmd
     if [[ -n '${cfg_dir}' && -n '${yaml}' ]]; then
       runtime_cmd=\"\$(_ucc_yaml_target_get '${cfg_dir}' '${yaml}' '${tname}' 'oracle.runtime')\"
       configured_cmd=\"\$(_ucc_yaml_target_get '${cfg_dir}' '${yaml}' '${tname}' 'oracle.configured')\"
@@ -715,14 +715,14 @@ ucc_brew_runtime_formula_target() {
     [[ -n \"\$ver\" ]] && printf 'version=%s' \"\$ver\"
   }"
   eval "_ubrt_ins_${fn}() {
-    local runtime_cmd=''
+    local CFG_DIR='${cfg_dir}' YAML_PATH='${yaml}' TARGET_NAME='${tname}' runtime_cmd=''
     if [[ -n '${cfg_dir}' && -n '${yaml}' ]]; then
       runtime_cmd=\"\$(_ucc_yaml_target_get '${cfg_dir}' '${yaml}' '${tname}' 'oracle.runtime')\"
     fi
     _ucc_apply_brew_runtime_formula '${pkg}' '${brew_ref}' '${service_name}' \"\$runtime_cmd\" install
   }"
   eval "_ubrt_upd_${fn}() {
-    local runtime_cmd=''
+    local CFG_DIR='${cfg_dir}' YAML_PATH='${yaml}' TARGET_NAME='${tname}' runtime_cmd=''
     if [[ -n '${cfg_dir}' && -n '${yaml}' ]]; then
       runtime_cmd=\"\$(_ucc_yaml_target_get '${cfg_dir}' '${yaml}' '${tname}' 'oracle.runtime')\"
     fi

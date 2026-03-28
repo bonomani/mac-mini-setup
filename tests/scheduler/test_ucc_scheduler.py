@@ -3127,6 +3127,90 @@ class UccSchedulerTests(unittest.TestCase):
             self.assertIn("services start fake-ref", commands.read_text(encoding="utf-8"))
             self.assertIn("[installed] fake-service", result.stdout)
 
+    def test_brew_runtime_target_sets_yaml_context_for_probe_and_wait(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            marker = tmp_path / "runtime.ok"
+            commands = tmp_path / "commands.txt"
+            ucc_dir = self._write_manifest(
+                tmp_path,
+                textwrap.dedent(
+                    f"""\
+                    component: fake
+                    primary_profile: runtime
+                    libs: fake
+                    runner: run_fake
+                    targets:
+                      fake-package:
+                        component: fake
+                        profile: configured
+                        type: package
+                        state_model: package
+                        display_name: Fake Package
+                        provided_by_tool: fake
+                        driver:
+                          kind: brew-formula
+                        observe_cmd: "printf present"
+                        evidence:
+                          version: "printf 1.2.3"
+                        actions:
+                          install: "true"
+                          update: "true"
+                      fake-service:
+                        component: fake
+                        profile: runtime
+                        type: runtime
+                        display_name: Fake Service
+                        depends_on:
+                          - fake-package
+                        driver:
+                          kind: brew-service
+                        runtime_manager: brew-service
+                        probe_kind: command
+                        oracle:
+                          configured: '[[ "$CFG_DIR" == "{ROOT}" && "$YAML_PATH" == "{tmp_path / "ucc" / "software" / "fake.yaml"}" && "$TARGET_NAME" == "fake-service" ]]'
+                          runtime: '[[ "$CFG_DIR" == "{ROOT}" && "$YAML_PATH" == "{tmp_path / "ucc" / "software" / "fake.yaml"}" && "$TARGET_NAME" == "fake-service" && -f "{marker}" ]]'
+                        evidence:
+                          version: "printf 1.2.3"
+                    """
+                ),
+            )
+            manifest = ucc_dir / "software" / "fake.yaml"
+            result = subprocess.run(
+                [
+                    "bash",
+                    "-lc",
+                    textwrap.dedent(
+                        f"""\
+                        set -euo pipefail
+                        export UCC_DECLARATION_FILE="{tmp_path / 'decl.jsonl'}"
+                        export UCC_RESULT_FILE="{tmp_path / 'result.jsonl'}"
+                        export UCC_SUMMARY_FILE="{tmp_path / 'summary.txt'}"
+                        export UCC_PROFILE_SUMMARY_FILE="{tmp_path / 'profile.txt'}"
+                        export UCC_TARGET_STATUS_FILE="{tmp_path / 'status.txt'}"
+                        export UCC_CORRELATION_ID="test-run"
+                        export UCC_RUNTIME_WAIT_ATTEMPTS=5
+                        export UCC_RUNTIME_WAIT_INTERVAL=0.01
+                        source "{ROOT / 'lib/ucc.sh'}"
+
+                        brew_observe() {{ printf '1.2.3'; }}
+                        _ucc_brew_service_status() {{ [[ -f "{marker}" ]] && printf 'started' || printf 'stopped'; }}
+                        brew() {{
+                          printf '%s\\n' "$*" >> "{commands}"
+                          touch "{marker}"
+                        }}
+
+                        ucc_brew_runtime_formula_target "fake-service" "fake" "fake-ref" "{ROOT}" "{manifest}"
+                        """
+                    ),
+                ],
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertIn("services start fake-ref", commands.read_text(encoding="utf-8"))
+            self.assertIn("[installed] fake-service", result.stdout)
+
     def test_brew_runtime_formula_target_uses_yaml_probe_and_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
