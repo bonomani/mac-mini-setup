@@ -75,6 +75,16 @@ _ucc_eval_scalar_cmd() {
   printf '%s' "$trimmed"
 }
 
+_ucc_observed_prefers_update_action() {
+  local observed="$1"
+  [[ "$observed" == "outdated" || "$observed" == "needs-update" ]] && return 0
+  _ucc_is_json_obj "$observed" || return 1
+  [[ "$observed" == *'"installation_state":"Installed"'* ]] || return 1
+  [[ "$observed" == *'"runtime_state":"Stopped"'* ]] || return 1
+  [[ "$observed" == *'"health_state":"Degraded"'* ]] || return 1
+  return 0
+}
+
 # ── Convenience target helpers ────────────────────────────────────────────────
 
 _UCC_DISPLAY_NAME_CACHE_KEYS=()
@@ -878,9 +888,11 @@ _ucc_execute_target() {
   # Route outdated → update_fn (upgrade), absent → install_fn (fresh install)
   local action_fn="$install_fn"
   local action_label="installed"
-  if [[ "$observed" == "outdated" && -n "$update_fn" ]]; then
+  local action_context="install"
+  if _ucc_observed_prefers_update_action "$observed" && [[ -n "$update_fn" ]]; then
     action_fn="$update_fn"
-    action_label="upgraded"
+    action_label="updated"
+    action_context="update"
   fi
 
   if $action_fn; then
@@ -895,14 +907,14 @@ _ucc_execute_target() {
         "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$verified" "$axes"),\"observed_after\":$(_ucc_state_obj "$verified")}" \
         "{\"observation\":\"ok\",\"outcome\":\"changed\",\"completion\":\"complete\",\"proof\":{\"change\":\"verify_pass\"}}"
     else
-      _ucc_emit_target_line "$profile" "fail" "$display_name" "verify after install: \"$(_ucc_display_state "${verified:-?}" "$axes")\"  $(_ucc_compose_evidence "$name" "${verified:-$observed}" "$axes" "$evidence_fn")"
+      _ucc_emit_target_line "$profile" "fail" "$display_name" "verify after ${action_context}: \"$(_ucc_display_state "${verified:-?}" "$axes")\"  $(_ucc_compose_evidence "$name" "${verified:-$observed}" "$axes" "$evidence_fn")"
       _ucc_record_outcome "$profile" "$name" "FAILED" "failed" "failed" "$msg_id" "$started_at" \
-        "{}" "{\"observation\":\"failed\",\"message\":\"post-install verify did not reach desired state\"}"
+        "{}" "{\"observation\":\"failed\",\"message\":\"post-${action_context} verify did not reach desired state\"}"
     fi
   else
-    _ucc_emit_target_line "$profile" "fail" "$display_name" "install error was=\"$(_ucc_display_state "$observed" "$axes")\"  $(_ucc_compose_evidence "$name" "$observed" "$axes" "$evidence_fn")"
+    _ucc_emit_target_line "$profile" "fail" "$display_name" "${action_context} error was=\"$(_ucc_display_state "$observed" "$axes")\"  $(_ucc_compose_evidence "$name" "$observed" "$axes" "$evidence_fn")"
     _ucc_record_outcome "$profile" "$name" "FAILED" "failed" "failed" "$msg_id" "$started_at" \
-      "{}" "{\"observation\":\"failed\",\"message\":\"install function failed\"}"
+      "{}" "{\"observation\":\"failed\",\"message\":\"${action_context} function failed\"}"
   fi
 }
 
