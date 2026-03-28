@@ -59,14 +59,11 @@ CANONICAL_TARGET_KEY_ORDER = [
     "type",
     "state_model",
     "display_name",
-    "config_driver",
     "depends_on",
     "depends_on_by_platform",
     "soft_depends_on",
     "provided_by_tool",
     "driver",
-    "package_driver",
-    "runtime_driver",
     "runtime_manager",
     "probe_kind",
     "oracle",
@@ -80,8 +77,6 @@ CANONICAL_TARGET_KEY_ORDER = [
     "stopped_health",
     "stopped_dependencies",
     "actions",
-    "install_cmd",
-    "update_cmd",
 ]
 CANONICAL_TARGET_KEY_RANK = {key: idx for idx, key in enumerate(CANONICAL_TARGET_KEY_ORDER)}
 
@@ -133,10 +128,6 @@ def _driver_kind(data):
     driver = _driver_block(data)
     if isinstance(driver.get("kind"), str) and driver.get("kind", "").strip():
         return driver["kind"]
-    for field in ("package_driver", "runtime_driver", "config_driver"):
-        value = data.get(field)
-        if isinstance(value, str) and value.strip():
-            return value
     return ""
 
 
@@ -145,9 +136,6 @@ def _action_cmd(data, action):
     value = actions.get(action)
     if isinstance(value, str) and value.strip():
         return value
-    legacy = data.get(f"{action}_cmd")
-    if isinstance(legacy, str) and legacy.strip():
-        return legacy
     if action == "update":
         return _action_cmd(data, "install")
     return ""
@@ -388,14 +376,9 @@ def validate(manifest, known_gates):
 
         for field in (
             "display_name",
-            "config_driver",
             "provided_by_tool",
-            "package_driver",
-            "runtime_driver",
             "runtime_manager",
             "probe_kind",
-            "install_cmd",
-            "update_cmd",
             "observe_success",
             "observe_failure",
             "observe_cmd",
@@ -572,7 +555,7 @@ def validate(manifest, known_gates):
                 errors.append(f"target '{name}' state_model 'parametric' requires profile 'parametric'")
             if target_type != "config":
                 errors.append(f"target '{name}' state_model 'parametric' requires type 'config'")
-            has_install_update = data.get("install_cmd") is not None or data.get("update_cmd") is not None
+            has_install_update = bool(_action_cmd(data, "install") or _action_cmd(data, "update"))
             has_observe_cmd = isinstance(data.get("observe_cmd"), str) and data.get("observe_cmd", "").strip()
             has_desired_value = isinstance(data.get("desired_value"), str) and data.get("desired_value", "").strip()
             has_desired_cmd = isinstance(data.get("desired_cmd"), str) and data.get("desired_cmd", "").strip()
@@ -581,7 +564,7 @@ def validate(manifest, known_gates):
             if has_install_update and not has_desired_value and not has_desired_cmd:
                 errors.append(f"target '{name}' state_model 'parametric' with install/update commands requires desired_value or desired_cmd")
 
-        if _action_cmd(data, "install") or _action_cmd(data, "update") or data.get("install_cmd") is not None or data.get("update_cmd") is not None:
+        if _action_cmd(data, "install") or _action_cmd(data, "update"):
             has_observe_cmd = isinstance(data.get("observe_cmd"), str) and data.get("observe_cmd", "").strip()
             if profile == "runtime":
                 pass

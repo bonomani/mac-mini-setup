@@ -37,9 +37,10 @@ class UccSchedulerTests(unittest.TestCase):
                         type: config
                         state_model: config
                         display_name: Config C
-                        config_driver: shell-file-edit
                         depends_on:
                           - b
+                        driver:
+                          kind: shell-file-edit
                         evidence:
                           state: "printf configured"
                       a:
@@ -48,7 +49,8 @@ class UccSchedulerTests(unittest.TestCase):
                         type: config
                         state_model: config
                         display_name: Config A
-                        config_driver: shell-file-edit
+                        driver:
+                          kind: shell-file-edit
                         evidence:
                           state: "printf configured"
                       b:
@@ -57,9 +59,10 @@ class UccSchedulerTests(unittest.TestCase):
                         type: config
                         state_model: config
                         display_name: Config B
-                        config_driver: shell-file-edit
                         depends_on:
                           - a
+                        driver:
+                          kind: shell-file-edit
                         evidence:
                           state: "printf configured"
                     """
@@ -89,9 +92,10 @@ class UccSchedulerTests(unittest.TestCase):
                         type: config
                         state_model: config
                         display_name: Config C
-                        config_driver: shell-file-edit
                         depends_on:
                           - b
+                        driver:
+                          kind: shell-file-edit
                         evidence:
                           state: "printf configured"
                       a:
@@ -100,7 +104,8 @@ class UccSchedulerTests(unittest.TestCase):
                         type: config
                         state_model: config
                         display_name: Config A
-                        config_driver: shell-file-edit
+                        driver:
+                          kind: shell-file-edit
                         evidence:
                           state: "printf configured"
                       b:
@@ -109,9 +114,10 @@ class UccSchedulerTests(unittest.TestCase):
                         type: config
                         state_model: config
                         display_name: Config B
-                        config_driver: shell-file-edit
                         depends_on:
                           - a
+                        driver:
+                          kind: shell-file-edit
                         evidence:
                           state: "printf configured"
                     """
@@ -2226,7 +2232,8 @@ class UccSchedulerTests(unittest.TestCase):
                         type: config
                         state_model: config
                         display_name: Config A
-                        config_driver: shell-file-edit
+                        driver:
+                          kind: shell-file-edit
                         evidence:
                           state: "printf configured"
                       b:
@@ -2235,9 +2242,10 @@ class UccSchedulerTests(unittest.TestCase):
                         type: config
                         state_model: config
                         display_name: Config B
-                        config_driver: shell-file-edit
                         depends_on:
                           - a
+                        driver:
+                          kind: shell-file-edit
                         evidence:
                           state: "printf configured"
                     """
