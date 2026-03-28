@@ -1061,6 +1061,55 @@ class UccSchedulerTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, msg=result.stderr)
             self.assertEqual(result.stdout.strip(), "version=1.2.3")
 
+    def test_brew_observe_uses_version_cache_in_install_only_mode(self) -> None:
+        result = subprocess.run(
+            [
+                "bash",
+                "-lc",
+                textwrap.dedent(
+                    f"""\
+                    set -euo pipefail
+                    source "{ROOT / 'lib/utils.sh'}"
+                    source "{ROOT / 'lib/ucc_brew.sh'}"
+                    export UIC_PREF_PACKAGE_UPDATE_POLICY=install-only
+                    export _BREW_VERSIONS_CACHE=$'demo 1.2.3\\nother 9.9.9'
+                    export _BREW_CASK_VERSIONS_CACHE=$'demo-cask 4.5.6'
+                    printf '%s\\n' "$(brew_observe demo)"
+                    printf '%s\\n' "$(brew_cask_observe demo-cask)"
+                    """
+                ),
+            ],
+            text=True,
+            capture_output=True,
+        )
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+        self.assertEqual(result.stdout.strip().splitlines(), ["1.2.3", "4.5.6"])
+
+    def test_brew_refresh_caches_dispatches_by_update_policy(self) -> None:
+        result = subprocess.run(
+            [
+                "bash",
+                "-lc",
+                textwrap.dedent(
+                    """\
+                    set -euo pipefail
+                    source "lib/ucc_brew.sh"
+                    brew_cache_versions() { echo versions; }
+                    brew_cache_outdated() { echo outdated; }
+                    export UIC_PREF_PACKAGE_UPDATE_POLICY=install-only
+                    brew_refresh_caches
+                    export UIC_PREF_PACKAGE_UPDATE_POLICY=always-upgrade
+                    brew_refresh_caches
+                    """
+                ),
+            ],
+            text=True,
+            capture_output=True,
+            cwd=str(ROOT),
+        )
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+        self.assertEqual(result.stdout.strip().splitlines(), ["versions", "outdated"])
+
     def test_pip_cached_version_works_with_driver_ref_substitution(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)

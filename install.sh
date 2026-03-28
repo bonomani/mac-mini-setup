@@ -294,12 +294,13 @@ _UIC_RC=0
 uic_resolve || _UIC_RC=$?
 uic_export
 
-# Update brew index and cache outdated list before any component runs,
-# so the outdated cache reflects the latest formula versions.
-if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-always-upgrade}" == "always-upgrade" ]] \
-    && command -v brew &>/dev/null; then
-  brew update --force --quiet 2>/dev/null || true
-  brew_cache_outdated
+# Warm Brew caches before any component runs. Version caches are needed in all
+# modes; outdated caches are only useful when upgrades are enabled.
+if command -v brew &>/dev/null; then
+  if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-always-upgrade}" == "always-upgrade" ]]; then
+    brew update --force --quiet 2>/dev/null || true
+  fi
+  brew_refresh_caches
 fi
 
 # --- Preflight mode: write template and exit ----------------
@@ -539,12 +540,10 @@ _run_layer() {
 print_execution_plan
 
 _run_layer "Convergence / software" "software" _SOFTWARE_COMPS
-# Rebuild brew cache once after all software components — subshell upgrades
-# do not propagate back to the parent shell, so we refresh here in bulk
-# rather than after each component (which would be 4 brew calls × N components).
-if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-always-upgrade}" == "always-upgrade" ]] \
-    && command -v brew &>/dev/null; then
-  brew_cache_outdated 2>/dev/null || true
+# Rebuild Brew caches once after all software components — subshell upgrades
+# do not propagate back to the parent shell, so we refresh here in bulk.
+if command -v brew &>/dev/null; then
+  brew_refresh_caches 2>/dev/null || true
 fi
 _run_layer "Convergence / system"   "system"   _SYSTEM_COMPS
 _run_layer "Verification"           "tic"      _TIC_COMPS

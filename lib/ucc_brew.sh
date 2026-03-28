@@ -4,15 +4,27 @@
 
 # Populated once in install.sh; exported so component subshells
 # can read it without repeating the network call.
+brew_cache_versions() {
+  export _BREW_VERSIONS_CACHE
+  export _BREW_CASK_VERSIONS_CACHE
+  _BREW_VERSIONS_CACHE=$(brew list --versions 2>/dev/null || true)
+  _BREW_CASK_VERSIONS_CACHE=$(brew list --cask --versions 2>/dev/null || true)
+}
+
 brew_cache_outdated() {
   export _BREW_OUTDATED_CACHE
   export _BREW_CASK_OUTDATED_CACHE
-  export _BREW_VERSIONS_CACHE
-  export _BREW_CASK_VERSIONS_CACHE
+  brew_cache_versions
   _BREW_OUTDATED_CACHE=$(brew outdated --quiet 2>/dev/null || true)
   _BREW_CASK_OUTDATED_CACHE=$(brew outdated --cask --quiet 2>/dev/null || true)
-  _BREW_VERSIONS_CACHE=$(brew list --versions 2>/dev/null || true)
-  _BREW_CASK_VERSIONS_CACHE=$(brew list --cask --versions 2>/dev/null || true)
+}
+
+brew_refresh_caches() {
+  if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-always-upgrade}" == "always-upgrade" ]]; then
+    brew_cache_outdated
+  else
+    brew_cache_versions
+  fi
 }
 
 # Match short name ("ariaflow") or full tap name ("bonomani/ariaflow/ariaflow")

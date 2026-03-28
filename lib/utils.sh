@@ -114,23 +114,23 @@ npm_global_observe() {
 # Install a brew formula (package is absent)
 brew_install() {
   ucc_run brew install "$@" || return $?
-  brew_cache_outdated 2>/dev/null || true
+  brew_refresh_caches 2>/dev/null || true
 }
 
 # Upgrade a brew formula (package is present but outdated)
 brew_upgrade() {
   ucc_run brew upgrade "$@" || return $?
-  brew_cache_outdated 2>/dev/null || true
+  brew_refresh_caches 2>/dev/null || true
 }
 
 # Install a brew cask (cask is absent)
 brew_cask_install() {
   ucc_run brew install --cask "$@" || return $?
-  brew_cache_outdated 2>/dev/null || true
+  brew_refresh_caches 2>/dev/null || true
 }
 
 # Upgrade a brew cask (cask is present but outdated)
 brew_cask_upgrade() {
   ucc_run brew upgrade --cask "$@" || return $?
-  brew_cache_outdated 2>/dev/null || true
+  brew_refresh_caches 2>/dev/null || true
 }
