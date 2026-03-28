@@ -5,6 +5,13 @@
 # Usage: run_homebrew_from_yaml <cfg_dir> <yaml_path>
 run_homebrew_from_yaml() {
   local cfg_dir="$1" yaml="$2"
+  local shell_config=".zprofile"
+
+  while IFS=$'\t' read -r -d '' key value; do
+    case "$key" in
+      shell_config_file) [[ -n "$value" ]] && shell_config="$value" ;;
+    esac
+  done < <(yaml_get_many "$cfg_dir" "$yaml" shell_config_file)
 
   # ---- Step 0: Xcode Command Line Tools ----
   if [[ "${HOST_PLATFORM:-macos}" == "macos" ]]; then
@@ -20,8 +27,6 @@ run_homebrew_from_yaml() {
   ucc_yaml_simple_target "$cfg_dir" "$yaml" "homebrew"
 
   _homebrew_shellenv() {
-    local shell_config
-    shell_config="$(yaml_get "$cfg_dir" "$yaml" shell_config_file .zprofile)"
     [[ "${HOST_PLATFORM:-macos}" != "macos" && "$shell_config" == ".zprofile" ]] && shell_config=".profile"
     if [[ -x /opt/homebrew/bin/brew ]]; then
       if ! grep -q 'opt/homebrew/bin/brew shellenv' "$HOME/${shell_config}" 2>/dev/null; then

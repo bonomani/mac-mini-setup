@@ -41,21 +41,36 @@ _ucc_yaml_target_get_many() {
 
 _ucc_yaml_target_driver_get() {
   local cfg_dir="$1" yaml="$2" target="$3" key="$4" legacy_key="${5:-}" default="${6:-}" val=""
-  val="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.$key")"
-  if [[ -z "$val" && -n "$legacy_key" ]]; then
-    val="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "$legacy_key")"
-  fi
+  local driver_key="driver.$key"
+  while IFS=$'\t' read -r -d '' row_key row_value; do
+    case "$row_key" in
+      "$driver_key") val="$row_value" ;;
+      "$legacy_key") [[ -z "$val" ]] && val="$row_value" ;;
+    esac
+  done < <(_ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" "$driver_key" ${legacy_key:+"$legacy_key"})
   printf '%s' "${val:-$default}"
 }
 
 _ucc_yaml_target_action_get() {
   local cfg_dir="$1" yaml="$2" target="$3" action="$4" val=""
-  val="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "actions.$action")"
-  if [[ -z "$val" ]]; then
-    val="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "${action}_cmd")"
-  fi
+  local action_key="actions.$action" legacy_key="${action}_cmd"
+  local install_action="" install_legacy=""
+  while IFS=$'\t' read -r -d '' row_key row_value; do
+    case "$row_key" in
+      "$action_key") val="$row_value" ;;
+      "$legacy_key") [[ -z "$val" ]] && val="$row_value" ;;
+      "actions.install") install_action="$row_value" ;;
+      "install_cmd") install_legacy="$row_value" ;;
+    esac
+  done < <(
+    if [[ "$action" == "update" ]]; then
+      _ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" "$action_key" "$legacy_key" actions.install install_cmd
+    else
+      _ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" "$action_key" "$legacy_key"
+    fi
+  )
   if [[ -z "$val" && "$action" == "update" ]]; then
-    val="$(_ucc_yaml_target_action_get "$cfg_dir" "$yaml" "$target" "install")"
+    val="${install_action:-$install_legacy}"
   fi
   printf '%s' "$val"
 }
@@ -115,8 +130,10 @@ _ucc_observe_yaml_simple_target() {
       oracle.configured) configured_cmd="$value" ;;
       observe_cmd) observe_cmd="$value" ;;
       state_model) state_model="$value" ;;
+      observe_success) success_raw="$value" ;;
+      observe_failure) failure_raw="$value" ;;
     esac
-  done < <(_ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" type oracle.configured observe_cmd state_model)
+  done < <(_ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" type oracle.configured observe_cmd state_model observe_success observe_failure)
   [[ -n "$target_type" ]] || target_type="config"
   [[ -n "$state_model" ]] || state_model="$target_type"
 
@@ -137,12 +154,12 @@ _ucc_observe_yaml_simple_target() {
 
   case "$state_model" in
     package)
-      success_raw="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "observe_success" "present")"
-      failure_raw="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "observe_failure" "absent")"
+      [[ -n "$success_raw" ]] || success_raw="present"
+      [[ -n "$failure_raw" ]] || failure_raw="absent"
       ;;
     *)
-      success_raw="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "observe_success" "configured")"
-      failure_raw="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "observe_failure" "absent")"
+      [[ -n "$success_raw" ]] || success_raw="configured"
+      [[ -n "$failure_raw" ]] || failure_raw="absent"
       ;;
   esac
 
