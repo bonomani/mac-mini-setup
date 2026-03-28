@@ -204,6 +204,11 @@ brew_cask_install() {
 
 # Upgrade a brew cask (cask is present but outdated)
 brew_cask_upgrade() {
-  ucc_run brew upgrade --cask "$@" || return $?
+  local pkg="$1" greedy_auto_updates="${2:-false}"
+  if _brew_flag_true "$greedy_auto_updates"; then
+    ucc_run brew upgrade --cask --greedy-auto-updates "$pkg" || return $?
+  else
+    ucc_run brew upgrade --cask "$pkg" || return $?
+  fi
   brew_refresh_caches 2>/dev/null || true
 }

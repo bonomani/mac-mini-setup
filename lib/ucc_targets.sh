@@ -34,37 +34,34 @@ _ucc_yaml_target_get_many() {
 }
 
 _ucc_yaml_target_driver_get() {
-  local cfg_dir="$1" yaml="$2" target="$3" key="$4" legacy_key="${5:-}" default="${6:-}" val=""
+  local cfg_dir="$1" yaml="$2" target="$3" key="$4" default="${5:-}" val=""
   local driver_key="driver.$key"
   while IFS=$'\t' read -r -d '' row_key row_value; do
     case "$row_key" in
       "$driver_key") val="$row_value" ;;
-      "$legacy_key") [[ -z "$val" ]] && val="$row_value" ;;
     esac
-  done < <(_ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" "$driver_key" ${legacy_key:+"$legacy_key"})
+  done < <(_ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" "$driver_key")
   printf '%s' "${val:-$default}"
 }
 
 _ucc_yaml_target_action_get() {
   local cfg_dir="$1" yaml="$2" target="$3" action="$4" val=""
-  local action_key="actions.$action" legacy_key="${action}_cmd"
-  local install_action="" install_legacy=""
+  local action_key="actions.$action"
+  local install_action=""
   while IFS=$'\t' read -r -d '' row_key row_value; do
     case "$row_key" in
       "$action_key") val="$row_value" ;;
-      "$legacy_key") [[ -z "$val" ]] && val="$row_value" ;;
       "actions.install") install_action="$row_value" ;;
-      "install_cmd") install_legacy="$row_value" ;;
     esac
   done < <(
     if [[ "$action" == "update" ]]; then
-      _ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" "$action_key" "$legacy_key" actions.install install_cmd
+      _ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" "$action_key" actions.install
     else
-      _ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" "$action_key" "$legacy_key"
+      _ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" "$action_key"
     fi
   )
   if [[ -z "$val" && "$action" == "update" ]]; then
-    val="${install_action:-$install_legacy}"
+    val="${install_action}"
   fi
   printf '%s' "$val"
 }
@@ -178,10 +175,10 @@ _ucc_run_yaml_action() {
   local cfg_dir="$1" yaml="$2" target="$3" action_key="$4"
   local cmd
   case "$action_key" in
-    install_cmd|install)
+    install)
       cmd="$(_ucc_yaml_target_action_get "$cfg_dir" "$yaml" "$target" "install")"
       ;;
-    update_cmd|update)
+    update)
       cmd="$(_ucc_yaml_target_action_get "$cfg_dir" "$yaml" "$target" "update")"
       ;;
     *)
@@ -204,8 +201,8 @@ ucc_yaml_simple_target() {
   eval "_uyst_obs_${fn}() { _ucc_observe_yaml_simple_target '${cfg_dir}' '${yaml}' '${target}'; }"
   eval "_uyst_evd_${fn}() { ucc_eval_evidence_from_yaml '${cfg_dir}' '${yaml}' '${target}'; }"
   if [[ -n "$install_cmd" ]]; then
-    eval "_uyst_ins_${fn}() { _ucc_run_yaml_action '${cfg_dir}' '${yaml}' '${target}' install_cmd; }"
-    eval "_uyst_upd_${fn}() { _ucc_run_yaml_action '${cfg_dir}' '${yaml}' '${target}' update_cmd; }"
+    eval "_uyst_ins_${fn}() { _ucc_run_yaml_action '${cfg_dir}' '${yaml}' '${target}' install; }"
+    eval "_uyst_upd_${fn}() { _ucc_run_yaml_action '${cfg_dir}' '${yaml}' '${target}' update; }"
   fi
 
   local args=(--name "$target" --profile "$profile" --observe "_uyst_obs_${fn}" --evidence "_uyst_evd_${fn}")
@@ -348,8 +345,8 @@ ucc_yaml_parametric_target() {
   eval "_uypt_obs_${fn}() { _ucc_observe_yaml_parametric_target '${cfg_dir}' '${yaml}' '${target}'; }"
   eval "_uypt_evd_${fn}() { _ucc_evidence_yaml_parametric_target '${cfg_dir}' '${yaml}' '${target}'; }"
   if [[ -n "$install_cmd" ]]; then
-    eval "_uypt_ins_${fn}() { _ucc_run_yaml_action '${cfg_dir}' '${yaml}' '${target}' install_cmd; }"
-    eval "_uypt_upd_${fn}() { _ucc_run_yaml_action '${cfg_dir}' '${yaml}' '${target}' update_cmd; }"
+    eval "_uypt_ins_${fn}() { _ucc_run_yaml_action '${cfg_dir}' '${yaml}' '${target}' install; }"
+    eval "_uypt_upd_${fn}() { _ucc_run_yaml_action '${cfg_dir}' '${yaml}' '${target}' update; }"
   fi
 
   local args=(
@@ -367,7 +364,7 @@ ucc_yaml_parametric_target() {
 _ucc_observe_yaml_runtime_target() {
   local cfg_dir="$1" yaml="$2" target="$3"
   local runtime_driver
-  runtime_driver="$(_ucc_yaml_target_driver_get "$cfg_dir" "$yaml" "$target" "kind" "runtime_driver")"
+  runtime_driver="$(_ucc_yaml_target_driver_get "$cfg_dir" "$yaml" "$target" "kind")"
   case "$runtime_driver" in
     desktop-app)
       _ucc_observe_yaml_desktop_app_runtime_target "$cfg_dir" "$yaml" "$target"
@@ -426,11 +423,11 @@ _ucc_observe_yaml_desktop_app_runtime_target() {
     case "$key" in
       oracle.configured) configured_cmd="$value" ;;
       oracle.runtime) runtime_cmd="$value" ;;
-      driver.package_ref|package_ref) [[ -z "$package_ref" ]] && package_ref="$value" ;;
-      driver.app_path|app_path) [[ -z "$app_path" ]] && app_path="$value" ;;
+      driver.package_ref) package_ref="$value" ;;
+      driver.app_path) app_path="$value" ;;
     esac
   done < <(_ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" \
-    oracle.configured oracle.runtime driver.package_ref package_ref driver.app_path app_path)
+    oracle.configured oracle.runtime driver.package_ref driver.app_path)
 
   observed="installed"
   if [[ -n "$package_ref" ]] && command -v brew_cask_observe >/dev/null 2>&1; then
@@ -470,9 +467,9 @@ _ucc_observe_yaml_docker_compose_runtime_target() {
   while IFS=$'\t' read -r -d '' key value; do
     case "$key" in
       oracle.runtime) runtime_cmd="$value" ;;
-      driver.service_name|service_name) [[ -z "$service_name" ]] && service_name="$value" ;;
+      driver.service_name) service_name="$value" ;;
     esac
-  done < <(_ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" oracle.runtime driver.service_name service_name)
+  done < <(_ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" oracle.runtime driver.service_name)
 
   [[ -f "${COMPOSE_FILE:-}" ]] || {
     ucc_asm_state --installation Absent --runtime Stopped --health Unavailable --admin Enabled --dependencies DepsFailed
@@ -507,11 +504,11 @@ ucc_yaml_runtime_target() {
   eval "_uyrt_obs_${fn}() { _ucc_observe_yaml_runtime_target '${cfg_dir}' '${yaml}' '${target}'; }"
   eval "_uyrt_evd_${fn}() { ucc_eval_evidence_from_yaml '${cfg_dir}' '${yaml}' '${target}'; }"
   if [[ -z "$install_fn" && -n "$install_cmd" ]]; then
-    eval "_uyrt_ins_${fn}() { _ucc_run_yaml_action '${cfg_dir}' '${yaml}' '${target}' install_cmd; }"
+    eval "_uyrt_ins_${fn}() { _ucc_run_yaml_action '${cfg_dir}' '${yaml}' '${target}' install; }"
     install_fn="_uyrt_ins_${fn}"
   fi
   if [[ -z "$update_fn" && ( -n "$update_cmd" || -n "$install_cmd" ) ]]; then
-    eval "_uyrt_upd_${fn}() { _ucc_run_yaml_action '${cfg_dir}' '${yaml}' '${target}' update_cmd; }"
+    eval "_uyrt_upd_${fn}() { _ucc_run_yaml_action '${cfg_dir}' '${yaml}' '${target}' update; }"
     update_fn="_uyrt_upd_${fn}"
   fi
 

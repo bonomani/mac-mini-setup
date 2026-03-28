@@ -14,9 +14,11 @@ brew_cache_versions() {
 brew_cache_outdated() {
   export _BREW_OUTDATED_CACHE
   export _BREW_CASK_OUTDATED_CACHE
+  export _BREW_CASK_OUTDATED_GREEDY_AUTO_UPDATES_CACHE
   brew_cache_versions
   _BREW_OUTDATED_CACHE=$(brew outdated --quiet 2>/dev/null || true)
   _BREW_CASK_OUTDATED_CACHE=$(brew outdated --cask --quiet 2>/dev/null || true)
+  _BREW_CASK_OUTDATED_GREEDY_AUTO_UPDATES_CACHE=$(brew outdated --cask --greedy-auto-updates --quiet 2>/dev/null || true)
 }
 
 brew_refresh_caches() {
@@ -28,8 +30,22 @@ brew_refresh_caches() {
 }
 
 # Match short name ("ariaflow") or full tap name ("bonomani/ariaflow/ariaflow")
-_brew_is_outdated()      { echo "${_BREW_OUTDATED_CACHE:-}"      | grep -qE "(^|/)${1}$"; }
-_brew_cask_is_outdated() { echo "${_BREW_CASK_OUTDATED_CACHE:-}" | grep -qE "(^|/)${1}$"; }
+_brew_is_outdated() { echo "${_BREW_OUTDATED_CACHE:-}" | grep -qE "(^|/)${1}$"; }
+
+_brew_flag_true() {
+  case "${1:-false}" in
+    1|true|TRUE|yes|YES|on|ON) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+_brew_cask_is_outdated() {
+  local cache="${_BREW_CASK_OUTDATED_CACHE:-}"
+  if _brew_flag_true "${2:-false}"; then
+    cache="${_BREW_CASK_OUTDATED_GREEDY_AUTO_UPDATES_CACHE:-}"
+  fi
+  echo "$cache" | grep -qE "(^|/)${1}$"
+}
 
 # Generic observe helpers — return: absent | outdated | current
 # Respect UIC_PREF_PACKAGE_UPDATE_POLICY (install-only | always-upgrade).
@@ -51,11 +67,11 @@ brew_observe() {
 }
 
 brew_cask_observe() {
-  local pkg="$1" ver
+  local pkg="$1" greedy_auto_updates="${2:-false}" ver
   ver=$(_brew_cask_cached_version "$pkg")
   [[ -z "$ver" ]] && { echo "absent"; return; }
   if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-always-upgrade}" == "always-upgrade" ]]; then
-    _brew_cask_is_outdated "$pkg" && { echo "outdated"; return; }
+    _brew_cask_is_outdated "$pkg" "$greedy_auto_updates" && { echo "outdated"; return; }
   fi
   echo "$ver"
 }

@@ -23,6 +23,7 @@ targets:
       package_ref: ${docker_desktop_cask_id}
       app_name: ${docker_desktop_app_name}
       app_path: ${docker_desktop_app_path}
+      greedy_auto_updates: true
     runtime_manager: desktop-app
     probe_kind: command
     oracle:
@@ -33,12 +34,12 @@ targets:
         2>/dev/null || docker --version 2>/dev/null | awk '{print $3}' | tr -d ','
       pid: pgrep -f "${docker_desktop_app_path}" 2>/dev/null | head -1
     actions:
-      install: "observed=\"$(brew_cask_observe \"${docker_desktop_cask_id}\")\"\n\
-        if [[ \"$observed\" == \"absent\" && -d \"${docker_desktop_app_path}\" ]];\
-        \ then\n  observed=\"installed\"\nfi\nif [[ \"$observed\" == \"absent\" ]];\
-        \ then\n  brew_cask_install \"${docker_desktop_cask_id}\" || return 1\nelif\
-        \ [[ \"$observed\" == \"outdated\" ]]; then\n  brew_cask_upgrade \"${docker_desktop_cask_id}\"\
-        \ || return 1\nfi\nopen -a \"${docker_desktop_app_name}\"\nlog_info \"Waiting\
-        \ for Docker daemon...\"\nUCC_RUNTIME_WAIT_ATTEMPTS=\"${docker_runtime_wait_attempts}\"\
-        \ \\\nUCC_RUNTIME_WAIT_INTERVAL=\"${docker_runtime_wait_interval}\" \\\n \
-        \ _ucc_wait_for_runtime_probe \"docker info >/dev/null 2>&1\"\n"
+      install: "observed=\"$(brew_cask_observe \"${docker_desktop_cask_id}\" \"${driver.greedy_auto_updates}\"\
+        )\"\nif [[ \"$observed\" == \"absent\" && -d \"${docker_desktop_app_path}\"\
+        \ ]]; then\n  observed=\"installed\"\nfi\nif [[ \"$observed\" == \"absent\"\
+        \ ]]; then\n  brew_cask_install \"${docker_desktop_cask_id}\" || return 1\n\
+        elif [[ \"$observed\" == \"outdated\" ]]; then\n  brew_cask_upgrade \"${docker_desktop_cask_id}\"\
+        \ \"${driver.greedy_auto_updates}\" || return 1\nfi\nopen -a \"${docker_desktop_app_name}\"\
+        \nlog_info \"Waiting for Docker daemon...\"\nUCC_RUNTIME_WAIT_ATTEMPTS=\"\
+        ${docker_runtime_wait_attempts}\" \\\nUCC_RUNTIME_WAIT_INTERVAL=\"${docker_runtime_wait_interval}\"\
+        \ \\\n  _ucc_wait_for_runtime_probe \"docker info >/dev/null 2>&1\"\n"

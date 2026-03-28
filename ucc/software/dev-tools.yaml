@@ -30,16 +30,17 @@ targets:
     provided_by_tool: brew-cask
     driver:
       kind: brew-cask
+      greedy_auto_updates: true
     observe_cmd: "if [[ -d \"${vscode_app_path}\" ]] && ! brew_cask_is_installed \"\
       ${vscode_cask_id}\"; then\n  defaults read \"${vscode_app_path}/Contents/Info\"\
       \ CFBundleShortVersionString 2>/dev/null || printf 'present'\nelse\n  brew_cask_observe\
-      \ \"${vscode_cask_id}\"\nfi\n"
+      \ \"${vscode_cask_id}\" \"${driver.greedy_auto_updates}\"\nfi\n"
     evidence:
       version: defaults read "${vscode_app_path}/Contents/Info" CFBundleShortVersionString
         2>/dev/null || true
     actions:
       install: brew_cask_install '${vscode_cask_id}'
-      update: brew_cask_upgrade '${vscode_cask_id}'
+      update: brew_cask_upgrade '${vscode_cask_id}' '${driver.greedy_auto_updates}'
   vscode-code-cmd:
     component: dev-tools
     profile: configured
@@ -748,12 +749,13 @@ targets:
     provided_by_tool: brew-cask
     driver:
       kind: brew-cask
-    observe_cmd: brew_cask_observe '${cask_ref}'
+      greedy_auto_updates: true
+    observe_cmd: brew_cask_observe '${cask_ref}' '${driver.greedy_auto_updates}'
     evidence:
       version: _brew_cask_cached_version '${cask_ref}'
     actions:
       install: brew_cask_install '${cask_ref}'
-      update: brew_cask_upgrade '${cask_ref}'
+      update: brew_cask_upgrade '${cask_ref}' '${driver.greedy_auto_updates}'
     cask_ref: iterm2
   lm-studio:
     component: dev-tools
@@ -766,12 +768,13 @@ targets:
     provided_by_tool: brew-cask
     driver:
       kind: brew-cask
-    observe_cmd: brew_cask_observe '${cask_ref}'
+      greedy_auto_updates: true
+    observe_cmd: brew_cask_observe '${cask_ref}' '${driver.greedy_auto_updates}'
     evidence:
       version: _brew_cask_cached_version '${cask_ref}'
     actions:
       install: brew_cask_install '${cask_ref}'
-      update: brew_cask_upgrade '${cask_ref}'
+      update: brew_cask_upgrade '${cask_ref}' '${driver.greedy_auto_updates}'
     cask_ref: lm-studio
   npm-global-@openai/codex:
     component: dev-tools

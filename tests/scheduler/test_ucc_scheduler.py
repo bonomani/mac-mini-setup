@@ -189,7 +189,8 @@ class UccSchedulerTests(unittest.TestCase):
                         display_name: Fake App
                         soft_depends_on:
                           - capability
-                        runtime_driver: custom-daemon
+                        driver:
+                          kind: custom-daemon
                         runtime_manager: custom
                         probe_kind: command
                         oracle:
@@ -262,13 +263,16 @@ class UccSchedulerTests(unittest.TestCase):
                         profile: configured
                         type: package
                         state_model: package
+                        display_name: Fake Package
                         provided_by_tool: fake
-                        package_driver: brew-formula
+                        driver:
+                          kind: brew-formula
                         observe_cmd: "printf present"
                         evidence:
                           version: "printf 1.0.0"
-                        install_cmd: "true"
-                        update_cmd: "true"
+                        actions:
+                          install: "true"
+                          update: "true"
                       fake-runtime:
                         component: fake
                         profile: runtime
@@ -276,7 +280,8 @@ class UccSchedulerTests(unittest.TestCase):
                         display_name: Fake Runtime
                         depends_on:
                           - fake-package
-                        runtime_driver: brew-service
+                        driver:
+                          kind: brew-service
                         runtime_manager: brew-service
                         probe_kind: http
                         oracle:
@@ -312,7 +317,8 @@ class UccSchedulerTests(unittest.TestCase):
                         profile: runtime
                         type: runtime
                         display_name: Fake Runtime
-                        runtime_driver: custom-daemon
+                        driver:
+                          kind: custom-daemon
                         runtime_manager: custom
                         probe_kind: command
                         oracle:
@@ -345,12 +351,15 @@ class UccSchedulerTests(unittest.TestCase):
                         profile: configured
                         type: config
                         state_model: config
+                        driver:
+                          kind: shell-file-edit
                         oracle:
                           configured: '[[ -f "$HOME/simple.txt" ]]'
                         evidence:
                           path: 'printf "%s" "$HOME/simple.txt"'
-                        install_cmd: |
-                          touch "$HOME/simple.txt"
+                        actions:
+                          install: |
+                            touch "$HOME/simple.txt"
                     """
                 ),
             )
@@ -409,13 +418,17 @@ class UccSchedulerTests(unittest.TestCase):
                         profile: configured
                         type: package
                         state_model: package
+                        display_name: Demo package
                         provided_by_tool: fake
-                        package_ref: demo
-                        observe_cmd: '[[ -f "$HOME/demo.txt" ]] && printf "%s" "${package_ref}" || printf absent'
+                        driver:
+                          kind: fake
+                          ref: demo
+                        observe_cmd: '[[ -f "$HOME/demo.txt" ]] && printf "%s" "${driver.ref}" || printf absent'
                         evidence:
-                          version: 'printf "%s" "${package_ref}"'
-                        install_cmd: |
-                          touch "$HOME/demo.txt"
+                          version: 'printf "%s" "${driver.ref}"'
+                        actions:
+                          install: |
+                            touch "$HOME/demo.txt"
                     """
                 ),
             )
@@ -549,7 +562,8 @@ class UccSchedulerTests(unittest.TestCase):
                         state_model: package
                         display_name: Fake Package
                         provided_by_tool: fake
-                        package_driver: fake
+                        driver:
+                          kind: fake
                         observe_cmd: |
                           if [[ -f "{marker}" ]]; then
                             printf '1.2.3'
@@ -561,7 +575,8 @@ class UccSchedulerTests(unittest.TestCase):
                             if [[ -f "{marker}" ]]; then
                               printf '1.2.3'
                             fi
-                        install_cmd: 'touch "{marker}"'
+                        actions:
+                          install: 'touch "{marker}"'
                     """
                 ),
             )
@@ -769,12 +784,15 @@ class UccSchedulerTests(unittest.TestCase):
                         profile: parametric
                         type: config
                         state_model: parametric
+                        driver:
+                          kind: shell-file-edit
                         observe_cmd: '[[ -f "$HOME/setting.applied" ]] && printf on || printf off'
                         desired_value: 'on'
                         evidence:
                           mode: '[[ -f "$HOME/setting.applied" ]] && printf on || printf off'
-                        install_cmd: 'touch "$HOME/setting.applied"'
-                        update_cmd: 'touch "$HOME/setting.applied"'
+                        actions:
+                          install: 'touch "$HOME/setting.applied"'
+                          update: 'touch "$HOME/setting.applied"'
                     """
                 ),
             )
@@ -882,12 +900,15 @@ class UccSchedulerTests(unittest.TestCase):
                         profile: parametric
                         type: config
                         state_model: parametric
+                        driver:
+                          kind: shell-file-edit
                         observe_cmd: '[[ -f "$HOME/setting.applied" ]] && printf "mode=%s" "$TEST_SETTING_MODE" || printf "mode=off"'
                         desired_cmd: 'printf "mode=%s" "$TEST_SETTING_MODE"'
                         evidence:
                           mode: '[[ -f "$HOME/setting.applied" ]] && printf "%s" "$TEST_SETTING_MODE" || printf off'
-                        install_cmd: 'touch "$HOME/setting.applied"'
-                        update_cmd: 'touch "$HOME/setting.applied"'
+                        actions:
+                          install: 'touch "$HOME/setting.applied"'
+                          update: 'touch "$HOME/setting.applied"'
                     """
                 ),
             )
@@ -940,9 +961,12 @@ class UccSchedulerTests(unittest.TestCase):
                         profile: parametric
                         type: config
                         state_model: parametric
+                        driver:
+                          kind: shell-file-edit
                         observe_cmd: 'printf off'
                         desired_value: 'on'
-                        install_cmd: 'printf updated > "$HOME/update.txt"'
+                        actions:
+                          install: 'printf updated > "$HOME/update.txt"'
                     """
                 ),
             )
@@ -992,12 +1016,14 @@ class UccSchedulerTests(unittest.TestCase):
                         component: fake
                         profile: runtime
                         type: runtime
+                        display_name: App
+                        driver:
+                          kind: custom-daemon
                         runtime_manager: custom
                         probe_kind: command
                         oracle:
                           configured: '[[ -f "$HOME/app.installed" ]]'
                           runtime: '[[ -f "$HOME/app.ready" ]]'
-                        runtime_driver: custom-daemon
                         evidence:
                           version: 'printf 1.2.3'
                         stopped_health: Unavailable
@@ -1093,7 +1119,8 @@ class UccSchedulerTests(unittest.TestCase):
                         component: fake
                         profile: runtime
                         type: runtime
-                        runtime_driver: custom-daemon
+                        driver:
+                          kind: custom-daemon
                         oracle:
                           runtime: 'curl -fsS http://127.0.0.1:${probe_port} >/dev/null 2>&1'
                     """
@@ -1248,6 +1275,61 @@ class UccSchedulerTests(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, msg=result.stderr)
         self.assertEqual(result.stdout.strip().splitlines(), ["versions", "outdated"])
+
+    def test_brew_cask_observe_supports_greedy_auto_updates_cache(self) -> None:
+        result = subprocess.run(
+            [
+                "bash",
+                "-lc",
+                textwrap.dedent(
+                    f"""\
+                    set -euo pipefail
+                    source "{ROOT / 'lib/utils.sh'}"
+                    source "{ROOT / 'lib/ucc_brew.sh'}"
+                    export UIC_PREF_PACKAGE_UPDATE_POLICY=always-upgrade
+                    export _BREW_CASK_VERSIONS_CACHE=$'lm-studio 0.4.7'
+                    export _BREW_CASK_OUTDATED_CACHE=''
+                    export _BREW_CASK_OUTDATED_GREEDY_AUTO_UPDATES_CACHE='lm-studio'
+                    printf '%s\\n' "$(brew_cask_observe lm-studio)"
+                    printf '%s\\n' "$(brew_cask_observe lm-studio true)"
+                    """
+                ),
+            ],
+            text=True,
+            capture_output=True,
+        )
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+        self.assertEqual(result.stdout.strip().splitlines(), ["0.4.7", "outdated"])
+
+    def test_brew_cask_upgrade_uses_greedy_auto_updates_when_requested(self) -> None:
+        result = subprocess.run(
+            [
+                "bash",
+                "-lc",
+                textwrap.dedent(
+                    """\
+                    set -euo pipefail
+                    source "lib/utils.sh"
+                    source "lib/ucc_brew.sh"
+                    ucc_run() { printf '%s\n' "$*"; }
+                    brew_refresh_caches() { :; }
+                    brew_cask_upgrade lm-studio true
+                    brew_cask_upgrade iterm2 false
+                    """
+                ),
+            ],
+            text=True,
+            capture_output=True,
+            cwd=str(ROOT),
+        )
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+        self.assertEqual(
+            result.stdout.strip().splitlines(),
+            [
+                "brew upgrade --cask --greedy-auto-updates lm-studio",
+                "brew upgrade --cask iterm2",
+            ],
+        )
 
     def test_pip_cached_version_works_with_driver_ref_substitution(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -1575,7 +1657,8 @@ class UccSchedulerTests(unittest.TestCase):
                         type: config
                         state_model: parametric
                         display_name: compose file
-                        config_driver: compose-file
+                        driver:
+                          kind: compose-file
                         evidence:
                           path: printf '%s' "$COMPOSE_FILE"
                       open-webui-runtime:
@@ -1590,7 +1673,6 @@ class UccSchedulerTests(unittest.TestCase):
                         driver:
                           kind: docker-compose
                           service_name: open-webui
-                        runtime_driver: docker-compose
                         runtime_manager: docker-compose
                         probe_kind: http
                         oracle:
@@ -1704,7 +1786,8 @@ class UccSchedulerTests(unittest.TestCase):
                         type: precondition
                         state_model: config
                         display_name: Xcode
-                        config_driver: platform-check
+                        driver:
+                          kind: platform-check
                         oracle:
                           configured: "true"
                         evidence:
@@ -1714,16 +1797,19 @@ class UccSchedulerTests(unittest.TestCase):
                         profile: configured
                         type: package
                         state_model: package
+                        display_name: Pkg
                         depends_on_by_platform:
                           macos:
                             - xcode
                         provided_by_tool: fake
-                        package_driver: brew-formula
+                        driver:
+                          kind: brew-formula
                         observe_cmd: "printf present"
                         evidence:
                           version: "printf 1.0.0"
-                        install_cmd: "true"
-                        update_cmd: "true"
+                        actions:
+                          install: "true"
+                          update: "true"
                     """
                 ),
             )
@@ -1765,13 +1851,16 @@ class UccSchedulerTests(unittest.TestCase):
                         profile: configured
                         type: package
                         state_model: package
+                        display_name: Fake Package
                         provided_by_tool: fake
-                        package_driver: brew-formula
+                        driver:
+                          kind: brew-formula
                         observe_cmd: "printf present"
                         evidence:
                           version: "printf 1.2.3"
-                        install_cmd: "true"
-                        update_cmd: "true"
+                        actions:
+                          install: "true"
+                          update: "true"
                       fake-service:
                         component: fake
                         profile: runtime
@@ -1779,7 +1868,8 @@ class UccSchedulerTests(unittest.TestCase):
                         display_name: Fake Service
                         depends_on:
                           - fake-package
-                        runtime_driver: brew-service
+                        driver:
+                          kind: brew-service
                         runtime_manager: brew-service
                         probe_kind: command
                         oracle:
@@ -1843,13 +1933,16 @@ class UccSchedulerTests(unittest.TestCase):
                         profile: configured
                         type: package
                         state_model: package
+                        display_name: Fake Package
                         provided_by_tool: fake
-                        package_driver: brew-formula
+                        driver:
+                          kind: brew-formula
                         observe_cmd: "printf present"
                         evidence:
                           version: "printf 1.2.3"
-                        install_cmd: "true"
-                        update_cmd: "true"
+                        actions:
+                          install: "true"
+                          update: "true"
                       fake-service:
                         component: fake
                         profile: runtime
@@ -1857,7 +1950,8 @@ class UccSchedulerTests(unittest.TestCase):
                         display_name: Fake Service
                         depends_on:
                           - fake-package
-                        runtime_driver: brew-service
+                        driver:
+                          kind: brew-service
                         runtime_manager: brew-service
                         probe_kind: command
                         oracle:
@@ -1926,9 +2020,11 @@ class UccSchedulerTests(unittest.TestCase):
                         component: fake
                         profile: runtime
                         type: runtime
+                        display_name: Fake Service
                         depends_on:
                           - fake-package
-                        runtime_driver: brew-service
+                        driver:
+                          kind: brew-service
                         runtime_manager: brew-service
                         probe_kind: command
                         oracle:
@@ -1999,7 +2095,9 @@ class UccSchedulerTests(unittest.TestCase):
                         component: fake
                         profile: runtime
                         type: runtime
-                        runtime_driver: brew-service
+                        display_name: Fake App
+                        driver:
+                          kind: brew-service
                         runtime_manager: brew-service
                         probe_kind: command
                         oracle:
@@ -2062,7 +2160,9 @@ class UccSchedulerTests(unittest.TestCase):
                         component: fake
                         profile: runtime
                         type: runtime
-                        runtime_driver: brew-service
+                        display_name: Fake App
+                        driver:
+                          kind: brew-service
                         runtime_manager: brew-service
                         probe_kind: command
                         oracle:
