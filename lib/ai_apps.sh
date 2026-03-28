@@ -136,33 +136,17 @@ PY
     printf '%s' "$value"
   }
 
-  _ai_probe_image_label_version() {
-    local image="$1" version=""
+  _ai_probe_image_metadata() {
+    local image="$1" version="" label_schema_version="" digest="" short=""
     [[ -n "$image" ]] || return 0
-    version="$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.version" }}' "$image" 2>/dev/null || true)"
+    IFS='|' read -r version label_schema_version digest <<EOF
+$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.version" }}|{{ index .Config.Labels "org.label-schema.version" }}|{{index .RepoDigests 0}}' "$image" 2>/dev/null || true)
+EOF
     [[ "$version" == "<no value>" ]] && version=""
     if [[ -z "$version" ]]; then
-      version="$(docker image inspect --format '{{ index .Config.Labels "org.label-schema.version" }}' "$image" 2>/dev/null || true)"
-      [[ "$version" == "<no value>" ]] && version=""
+      version="$label_schema_version"
     fi
-    printf '%s' "$version"
-  }
-
-  _ai_service_image_label_version() {
-    local image="$1" version=""
-    [[ -n "$image" ]] || return 0
-    if _ai_cache_get _AI_IMAGE_VERSION_CACHE "$image"; then
-      _AI_IMAGE_VERSION_VALUE="$_AI_CACHE_VALUE"
-      return 0
-    fi
-    version="$(_ai_probe_image_label_version "$image")"
-    _AI_IMAGE_VERSION_VALUE="$version"
-  }
-
-  _ai_probe_image_digest() {
-    local image="$1" digest="" short=""
-    [[ -n "$image" ]] || return 0
-    digest="$(docker image inspect --format '{{index .RepoDigests 0}}' "$image" 2>/dev/null || true)"
+    [[ "$version" == "<no value>" ]] && version=""
     digest="${digest##*@}"
     if [[ "$digest" == sha256:* ]]; then
       short="${digest#sha256:}"
@@ -171,35 +155,48 @@ PY
     else
       digest=""
     fi
-    printf '%s' "$digest"
+    printf '%s\t%s\n' "$version" "$digest"
+  }
+
+  _ai_fill_image_metadata_cache() {
+    local image="$1" metadata="" version="" digest=""
+    [[ -n "$image" ]] || return 0
+    metadata="$(_ai_probe_image_metadata "$image")"
+    IFS=$'\t' read -r version digest <<EOF
+$metadata
+EOF
+    _ai_cache_put _AI_IMAGE_VERSION_CACHE "$image" "$version"
+    _ai_cache_put _AI_IMAGE_DIGEST_CACHE "$image" "$digest"
+  }
+
+  _ai_service_image_label_version() {
+    local image="$1"
+    [[ -n "$image" ]] || return 0
+    if ! _ai_cache_get _AI_IMAGE_VERSION_CACHE "$image"; then
+      _ai_fill_image_metadata_cache "$image"
+      _ai_cache_get _AI_IMAGE_VERSION_CACHE "$image" || true
+    fi
+    _AI_IMAGE_VERSION_VALUE="$_AI_CACHE_VALUE"
   }
 
   _ai_service_image_digest() {
-    local image="$1" digest=""
+    local image="$1"
     [[ -n "$image" ]] || return 0
-    if _ai_cache_get _AI_IMAGE_DIGEST_CACHE "$image"; then
-      _AI_IMAGE_DIGEST_VALUE="$_AI_CACHE_VALUE"
-      return 0
+    if ! _ai_cache_get _AI_IMAGE_DIGEST_CACHE "$image"; then
+      _ai_fill_image_metadata_cache "$image"
+      _ai_cache_get _AI_IMAGE_DIGEST_CACHE "$image" || true
     fi
-    digest="$(_ai_probe_image_digest "$image")"
-    _AI_IMAGE_DIGEST_VALUE="$digest"
+    _AI_IMAGE_DIGEST_VALUE="$_AI_CACHE_VALUE"
   }
 
   _ai_warm_metadata_cache() {
-    local svc="" image="" version="" digest=""
+    local svc="" image=""
     export _AI_SERVICE_IMAGE_CACHE="" _AI_IMAGE_VERSION_CACHE="" _AI_IMAGE_DIGEST_CACHE=""
     for svc in "${AI_SERVICES[@]}"; do
       image="$(_ai_probe_service_image "$svc")"
       _ai_cache_put _AI_SERVICE_IMAGE_CACHE "$svc" "$image"
       [[ -n "$image" ]] || continue
-      if ! _ai_cache_get _AI_IMAGE_VERSION_CACHE "$image"; then
-        version="$(_ai_probe_image_label_version "$image")"
-        _ai_cache_put _AI_IMAGE_VERSION_CACHE "$image" "$version"
-      fi
-      if ! _ai_cache_get _AI_IMAGE_DIGEST_CACHE "$image"; then
-        digest="$(_ai_probe_image_digest "$image")"
-        _ai_cache_put _AI_IMAGE_DIGEST_CACHE "$image" "$digest"
-      fi
+      _ai_cache_get _AI_IMAGE_VERSION_CACHE "$image" || _ai_fill_image_metadata_cache "$image"
     done
   }
 

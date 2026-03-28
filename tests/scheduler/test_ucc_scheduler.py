@@ -1533,7 +1533,7 @@ class UccSchedulerTests(unittest.TestCase):
                 capture_output=True,
             )
             self.assertEqual(result.returncode, 0, msg=result.stderr)
-            self.assertEqual(result.stdout.strip().splitlines(), ["1", "2"])
+            self.assertEqual(result.stdout.strip().splitlines(), ["1", "1"])
 
     def test_platform_specific_dependencies_follow_host_variant(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

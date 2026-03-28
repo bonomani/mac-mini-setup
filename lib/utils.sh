@@ -28,21 +28,15 @@ pip_cache_versions() {
 }
 
 vscode_extensions_cache_versions() {
-  export _VSCODE_EXTENSIONS_CACHE_JSON
-  _VSCODE_EXTENSIONS_CACHE_JSON="$(
-    code --list-extensions --show-versions 2>/dev/null | python3 -c "
-import json, sys
-mapping = {}
-for raw in sys.stdin:
-    line = raw.strip()
-    if not line:
-        continue
-    ext, sep, version = line.partition('@')
-    if not sep:
-        version = ''
-    mapping[ext.lower()] = version
-print(json.dumps(mapping))
-" 2>/dev/null || echo '{}'
+  export _VSCODE_EXTENSIONS_CACHE
+  _VSCODE_EXTENSIONS_CACHE="$(
+    code --list-extensions --show-versions 2>/dev/null | awk -F@ '
+      NF {
+        ext = tolower($1)
+        ver = (NF > 1 ? $2 : "")
+        printf "%s\t%s\n", ext, ver
+      }
+    ' || true
   )"
 }
 
@@ -56,15 +50,11 @@ vscode_extension_update() {
 }
 
 _vscode_extension_cached_version() {
-  if [[ -z "${_VSCODE_EXTENSIONS_CACHE_JSON+x}" ]]; then
+  if [[ -z "${_VSCODE_EXTENSIONS_CACHE+x}" ]]; then
     code --list-extensions --show-versions 2>/dev/null | awk -F@ 'tolower($1)==tolower("'"$1"'") {print $2; exit}'
     return
   fi
-  python3 -c "
-import sys, json
-data = json.load(sys.stdin)
-print(data.get(sys.argv[1].lower(), ''))
-" "$1" 2>/dev/null <<< "$_VSCODE_EXTENSIONS_CACHE_JSON"
+  awk -F'\t' -v q="$1" 'tolower($1)==tolower(q) {print $2; exit}' <<< "$_VSCODE_EXTENSIONS_CACHE"
 }
 
 ollama_model_cache_list() {
@@ -73,8 +63,15 @@ ollama_model_cache_list() {
 }
 
 npm_global_cache_versions() {
-  export _NPM_GLOBAL_VERSIONS_CACHE_JSON
-  _NPM_GLOBAL_VERSIONS_CACHE_JSON="$(npm ls -g --depth=0 --json 2>/dev/null || echo '{}')"
+  export _NPM_GLOBAL_VERSIONS_CACHE
+  _NPM_GLOBAL_VERSIONS_CACHE="$(
+    npm ls -g --depth=0 --json 2>/dev/null | python3 -c "
+import json, sys
+deps = (json.load(sys.stdin) or {}).get('dependencies', {})
+for name in sorted(deps):
+    print(f'{name}\t{deps[name].get(\"version\", \"\")}')
+" 2>/dev/null || true
+  )"
 }
 
 npm_global_install() {
@@ -166,7 +163,7 @@ ollama_model_pull() {
 
 # Return installed version of a global npm package, or empty string if absent.
 npm_global_version() {
-  if [[ -z "${_NPM_GLOBAL_VERSIONS_CACHE_JSON+x}" ]]; then
+  if [[ -z "${_NPM_GLOBAL_VERSIONS_CACHE+x}" ]]; then
     npm ls -g "$1" --depth=0 --json 2>/dev/null | python3 -c "
 import sys, json
 d = json.load(sys.stdin)
@@ -177,14 +174,7 @@ if k:
 " 2>/dev/null || true
     return
   fi
-  python3 -c "
-import sys, json
-d = json.load(sys.stdin)
-deps = d.get('dependencies', {})
-pkg = sys.argv[1]
-if pkg in deps:
-    print(deps[pkg].get('version', ''))
-" "$1" 2>/dev/null <<< "$_NPM_GLOBAL_VERSIONS_CACHE_JSON"
+  awk -F'\t' -v q="$1" '$1==q {print $2; exit}' <<< "$_NPM_GLOBAL_VERSIONS_CACHE"
 }
 
 # Observe a global npm package as an ASM package raw state.
