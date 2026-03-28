@@ -44,14 +44,17 @@ targets:
     runtime_manager: docker-compose
     probe_kind: http
     oracle:
-      runtime: curl -fsS --max-time 5 http://127.0.0.1:3000 >/dev/null 2>&1
+      runtime: _ucc_http_probe_endpoint "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME" "Open
+        WebUI"
     evidence:
       version: _ai_service_runtime_version '${driver.service_name}'
       digest: _ai_service_runtime_digest '${driver.service_name}'
       ref: _ai_service_runtime_ref '${driver.service_name}'
     endpoints:
     - name: Open WebUI
-      url: http://localhost:3000
+      scheme: http
+      host: localhost
+      port: 3000
     actions:
       install: _ai_apply_compose_runtime
   flowise-runtime:
@@ -69,14 +72,16 @@ targets:
     runtime_manager: docker-compose
     probe_kind: http
     oracle:
-      runtime: curl -fsS --max-time 5 http://127.0.0.1:3001 >/dev/null 2>&1
+      runtime: _ucc_http_probe_endpoint "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME" Flowise
     evidence:
       version: _ai_service_runtime_version '${driver.service_name}'
       digest: _ai_service_runtime_digest '${driver.service_name}'
       ref: _ai_service_runtime_ref '${driver.service_name}'
     endpoints:
     - name: Flowise
-      url: http://localhost:3001
+      scheme: http
+      host: localhost
+      port: 3001
     actions:
       install: _ai_apply_compose_runtime
   openhands-runtime:
@@ -94,14 +99,16 @@ targets:
     runtime_manager: docker-compose
     probe_kind: http
     oracle:
-      runtime: curl -fsS --max-time 5 http://127.0.0.1:3002 >/dev/null 2>&1
+      runtime: _ucc_http_probe_endpoint "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME" OpenHands
     evidence:
       version: _ai_service_runtime_version '${driver.service_name}'
       digest: _ai_service_runtime_digest '${driver.service_name}'
       ref: _ai_service_runtime_ref '${driver.service_name}'
     endpoints:
     - name: OpenHands
-      url: http://localhost:3002
+      scheme: http
+      host: localhost
+      port: 3002
     actions:
       install: _ai_apply_compose_runtime
   n8n-runtime:
@@ -119,14 +126,16 @@ targets:
     runtime_manager: docker-compose
     probe_kind: http
     oracle:
-      runtime: curl -fsS --max-time 5 http://127.0.0.1:5678 >/dev/null 2>&1
+      runtime: _ucc_http_probe_endpoint "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME" n8n
     evidence:
       version: _ai_service_runtime_version '${driver.service_name}'
       digest: _ai_service_runtime_digest '${driver.service_name}'
       ref: _ai_service_runtime_ref '${driver.service_name}'
     endpoints:
     - name: n8n
-      url: http://localhost:5678
+      scheme: http
+      host: localhost
+      port: 5678
     actions:
       install: _ai_apply_compose_runtime
   qdrant-runtime:
@@ -144,14 +153,16 @@ targets:
     runtime_manager: docker-compose
     probe_kind: http
     oracle:
-      runtime: curl -fsS --max-time 5 http://127.0.0.1:6333/collections >/dev/null
-        2>&1
+      runtime: _ucc_http_probe_endpoint "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME" Qdrant
     evidence:
       version: _ai_service_runtime_version '${driver.service_name}'
       digest: _ai_service_runtime_digest '${driver.service_name}'
       ref: _ai_service_runtime_ref '${driver.service_name}'
     endpoints:
     - name: Qdrant
-      url: http://localhost:6333
+      scheme: http
+      host: localhost
+      port: 6333
+      path: /collections
     actions:
       install: _ai_apply_compose_runtime

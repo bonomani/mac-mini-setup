@@ -19,6 +19,7 @@ def iter_yaml_files(path: Path):
 
 DRIVER_KEY_ORDER = ["kind", "ref", "package_ref", "service_name", "app_name", "app_path", "domain", "key"]
 ACTIONS_KEY_ORDER = ["install", "update"]
+ENDPOINT_KEY_ORDER = ["name", "scheme", "host", "port", "path", "url", "note"]
 
 
 def reorder_named_mapping(data: dict, ordered_keys: list[str]) -> dict:
@@ -35,13 +36,18 @@ def reorder_named_mapping(data: dict, ordered_keys: list[str]) -> dict:
 def reorder_target_mapping(target: dict) -> dict:
     ordered = {}
     for key in CANONICAL_TARGET_KEY_ORDER:
-        if key in target:
-            value = target[key]
-            if key == "driver" and isinstance(value, dict):
-                value = reorder_named_mapping(value, DRIVER_KEY_ORDER)
-            elif key == "actions" and isinstance(value, dict):
-                value = reorder_named_mapping(value, ACTIONS_KEY_ORDER)
-            ordered[key] = value
+            if key in target:
+                value = target[key]
+                if key == "driver" and isinstance(value, dict):
+                    value = reorder_named_mapping(value, DRIVER_KEY_ORDER)
+                elif key == "actions" and isinstance(value, dict):
+                    value = reorder_named_mapping(value, ACTIONS_KEY_ORDER)
+                elif key == "endpoints" and isinstance(value, list):
+                    value = [
+                        reorder_named_mapping(endpoint, ENDPOINT_KEY_ORDER) if isinstance(endpoint, dict) else endpoint
+                        for endpoint in value
+                    ]
+                ordered[key] = value
     for key, value in target.items():
         if key not in ordered:
             ordered[key] = value

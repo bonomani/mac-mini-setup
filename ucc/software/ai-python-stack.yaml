@@ -30,18 +30,21 @@ targets:
         grep -qF "${unsloth_plist_marker}" "$HOME/Library/LaunchAgents/${unsloth_label}.plist"
         2>/dev/null &&
 
-        curl -fsS --max-time 5 "http://127.0.0.1:${unsloth_port}" >/dev/null 2>&1
+        _ucc_http_probe_endpoint "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME" "Unsloth Studio"
 
         '
     evidence:
       version: pip show unsloth 2>/dev/null | awk '/^Version:/{print $2}'
       folder: printf '%s' "$HOME/${unsloth_studio_dir}"
       pid: pgrep -f 'unsloth.*studio' 2>/dev/null | head -1 || true
-      listener: printf 'tcp:127.0.0.1:${unsloth_port}'
+      listener: _ucc_endpoint_listener "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME" "Unsloth
+        Studio"
       plist: printf '%s/Library/LaunchAgents/${unsloth_label}.plist' "$HOME"
     endpoints:
     - name: Unsloth Studio
-      url: http://127.0.0.1:${unsloth_port}
+      scheme: http
+      host: 127.0.0.1
+      port: ${unsloth_port}
   pip-group-pytorch:
     component: ai-python-stack
     profile: configured

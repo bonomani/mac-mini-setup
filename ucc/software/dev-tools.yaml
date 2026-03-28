@@ -245,18 +245,24 @@ targets:
     probe_kind: http
     oracle:
       configured: ariaflow --version >/dev/null 2>&1
-      runtime: curl -fsS --max-time 5 "http://127.0.0.1:${ariaflow_port}/api/status"
-        >/dev/null 2>&1
+      runtime: _ucc_http_probe_endpoint "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME" "ariaflow
+        API"
     evidence:
       version: _brew_cached_version ariaflow
       pid: lsof -ti tcp:${ariaflow_port} 2>/dev/null | head -1
-      listener: printf 'tcp:127.0.0.1:${ariaflow_port}'
+      listener: _ucc_endpoint_listener "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME" "ariaflow
+        API"
     endpoints:
     - name: aria2 RPC
-      url: http://127.0.0.1:${aria2_port}
+      scheme: http
+      host: 127.0.0.1
+      port: ${aria2_port}
       note: managed by ariaflow
     - name: ariaflow API
-      url: http://127.0.0.1:${ariaflow_port}
+      scheme: http
+      host: 127.0.0.1
+      port: ${ariaflow_port}
+      path: /api/status
   ariaflow-web:
     component: dev-tools
     profile: runtime
@@ -271,15 +277,18 @@ targets:
     probe_kind: http
     oracle:
       configured: ariaflow-web --version >/dev/null 2>&1
-      runtime: curl -fsS --max-time 5 "http://127.0.0.1:${ariaflow_web_port}" >/dev/null
-        2>&1
+      runtime: _ucc_http_probe_endpoint "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME" "ariaflow
+        web UI"
     evidence:
       version: _brew_cached_version ariaflow-web
       pid: lsof -ti tcp:${ariaflow_web_port} 2>/dev/null | head -1
-      listener: printf 'tcp:127.0.0.1:${ariaflow_web_port}'
+      listener: _ucc_endpoint_listener "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME" "ariaflow
+        web UI"
     endpoints:
     - name: ariaflow web UI
-      url: http://127.0.0.1:${ariaflow_web_port}
+      scheme: http
+      host: 127.0.0.1
+      port: ${ariaflow_web_port}
   cli-jq:
     component: dev-tools
     profile: configured

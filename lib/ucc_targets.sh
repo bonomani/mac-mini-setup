@@ -11,6 +11,7 @@
 ucc_eval_evidence_from_yaml() {
   local cfg_dir="$1" yaml="$2" target="$3"
   local _first=1 _key _cmd _val
+  local CFG_DIR="$cfg_dir" YAML_PATH="$yaml" TARGET_NAME="$target"
   while IFS=$'\t' read -r -d '' _key _cmd; do
     [[ -z "$_key" || -z "$_cmd" ]] && continue
     _val=$(eval "$_cmd" 2>/dev/null || true)

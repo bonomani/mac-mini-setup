@@ -57,16 +57,20 @@ targets:
     probe_kind: http
     oracle:
       configured: ollama --version >/dev/null 2>&1
-      runtime: curl -fsS "http://${api_host}:${api_port}${api_tags_path}" >/dev/null
-        2>&1
+      runtime: _ucc_http_probe_endpoint "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME" "Ollama
+        API"
     evidence:
       version: ollama --version 2>/dev/null | awk '{print $NF}'
       path: command -v ollama 2>/dev/null
       pid: pgrep -f 'ollama (serve|app)' 2>/dev/null | head -1
-      listener: printf 'tcp:${api_host}:${api_port}'
+      listener: _ucc_endpoint_listener "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME" "Ollama
+        API"
     endpoints:
     - name: Ollama API
-      url: http://${api_host}:${api_port}
+      scheme: http
+      host: ${api_host}
+      port: ${api_port}
+      path: ${api_tags_path}
       note: ollama pull <model>
     stopped_health: Unavailable
   ollama-model-llama3.2:

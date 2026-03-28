@@ -307,6 +307,102 @@ class UccSchedulerTests(unittest.TestCase):
             ).strip()
             self.assertEqual(output, "fake-runtime\tFake API\thttp://127.0.0.1:9999\tprimary")
 
+    def test_runtime_endpoints_query_derives_url_from_structured_endpoint_fields(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            ucc_dir = self._write_manifest(
+                Path(tmp),
+                textwrap.dedent(
+                    """\
+                    component: fake
+                    primary_profile: runtime
+                    libs: fake
+                    runner: run_fake
+                    probe_host: 127.0.0.1
+                    probe_port: 9999
+                    probe_path: /health
+                    targets:
+                      fake-runtime:
+                        component: fake
+                        profile: runtime
+                        type: runtime
+                        display_name: Fake Runtime
+                        driver:
+                          kind: custom-daemon
+                        runtime_manager: custom
+                        probe_kind: http
+                        oracle:
+                          runtime: "true"
+                        evidence:
+                          version: "printf 1.0.0"
+                        endpoints:
+                          - name: Fake API
+                            scheme: http
+                            host: ${probe_host}
+                            port: ${probe_port}
+                            path: ${probe_path}
+                            note: primary
+                    """
+                ),
+            )
+            output = subprocess.check_output(
+                ["python3", str(QUERY), "--runtime-endpoints", str(ucc_dir)],
+                text=True,
+            ).strip()
+            self.assertEqual(output, "fake-runtime\tFake API\thttp://127.0.0.1:9999/health\tprimary")
+
+    def test_endpoint_listener_helper_derives_listener_from_structured_endpoint(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest = self._write_manifest(
+                Path(tmp),
+                textwrap.dedent(
+                    """\
+                    component: fake
+                    primary_profile: runtime
+                    libs: fake
+                    runner: run_fake
+                    probe_host: 127.0.0.1
+                    probe_port: 9999
+                    targets:
+                      fake-runtime:
+                        component: fake
+                        profile: runtime
+                        type: runtime
+                        display_name: Fake Runtime
+                        driver:
+                          kind: custom-daemon
+                        runtime_manager: custom
+                        probe_kind: http
+                        oracle:
+                          runtime: "true"
+                        evidence:
+                          listener: _ucc_endpoint_listener "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME" "Fake API"
+                        endpoints:
+                          - name: Fake API
+                            scheme: http
+                            host: ${probe_host}
+                            port: ${probe_port}
+                    """
+                ),
+            ) / "software" / "fake.yaml"
+            result = subprocess.run(
+                [
+                    "bash",
+                    "-lc",
+                    textwrap.dedent(
+                        f"""\
+                        set -euo pipefail
+                        source "{ROOT / 'lib/ucc.sh'}"
+                        source "{ROOT / 'lib/utils.sh'}"
+                        ucc_eval_evidence_from_yaml "{ROOT}" "{manifest}" fake-runtime
+                        """
+                    ),
+                ],
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertEqual(result.stdout.strip(), "listener=tcp:127.0.0.1:9999")
+
     def test_display_name_query_reads_target_metadata(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             ucc_dir = self._write_manifest(

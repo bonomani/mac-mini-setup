@@ -156,6 +156,70 @@ yaml_list() { python3 "$1/tools/read_config.py" --list "$2" "$3" 2>/dev/null; }
 # Output tab-delimited records from a YAML list-of-dicts section.
 yaml_records() { local d="$1" y="$2" s="$3"; shift 3; python3 "$d/tools/read_config.py" --records "$y" "$s" "$@" 2>/dev/null; }
 
+_ucc_endpoint_default_port() {
+  case "${1:-}" in
+    http) printf '80' ;;
+    https) printf '443' ;;
+    *) return 1 ;;
+  esac
+}
+
+_ucc_endpoint_fields() {
+  local cfg_dir="$1" yaml="$2" target="$3" endpoint_name="${4:-}"
+  local row="" row_name=""
+  while IFS= read -r row; do
+    row_name="$(printf '%s\n' "$row" | awk -F'\t' '{print $1}')"
+    [[ -n "$row_name" ]] || continue
+    if [[ -z "$endpoint_name" || "$row_name" == "$endpoint_name" ]]; then
+      printf '%s' "$row"
+      return 0
+    fi
+  done < <(yaml_records "$cfg_dir" "$yaml" "targets.${target}.endpoints" name url scheme host port path note)
+  return 1
+}
+
+_ucc_endpoint_url() {
+  local cfg_dir="$1" yaml="$2" target="$3" endpoint_name="${4:-}"
+  local row="" url="" scheme="" host="" port="" path=""
+  row="$(_ucc_endpoint_fields "$cfg_dir" "$yaml" "$target" "$endpoint_name")" || return 1
+  url="$(printf '%s\n' "$row" | awk -F'\t' '{print $2}')"
+  scheme="$(printf '%s\n' "$row" | awk -F'\t' '{print $3}')"
+  host="$(printf '%s\n' "$row" | awk -F'\t' '{print $4}')"
+  port="$(printf '%s\n' "$row" | awk -F'\t' '{print $5}')"
+  path="$(printf '%s\n' "$row" | awk -F'\t' '{print $6}')"
+  [[ -n "$url" ]] || {
+    [[ -n "$scheme" && -n "$host" ]] || return 1
+    [[ -n "$port" ]] || port="$(_ucc_endpoint_default_port "$scheme" 2>/dev/null || true)"
+    url="${scheme}://${host}"
+    [[ -n "$port" ]] && url="${url}:${port}"
+    if [[ -n "$path" ]]; then
+      [[ "$path" == /* ]] || path="/$path"
+      url="${url}${path}"
+    fi
+  }
+  printf '%s' "$url"
+}
+
+_ucc_endpoint_listener() {
+  local cfg_dir="$1" yaml="$2" target="$3" endpoint_name="${4:-}"
+  local row="" scheme="" host="" port=""
+  row="$(_ucc_endpoint_fields "$cfg_dir" "$yaml" "$target" "$endpoint_name")" || return 1
+  scheme="$(printf '%s\n' "$row" | awk -F'\t' '{print $3}')"
+  host="$(printf '%s\n' "$row" | awk -F'\t' '{print $4}')"
+  port="$(printf '%s\n' "$row" | awk -F'\t' '{print $5}')"
+  [[ -n "$host" ]] || return 1
+  [[ -n "$port" ]] || port="$(_ucc_endpoint_default_port "$scheme" 2>/dev/null || true)"
+  [[ -n "$port" ]] || return 1
+  printf 'tcp:%s:%s' "$host" "$port"
+}
+
+_ucc_http_probe_endpoint() {
+  local cfg_dir="$1" yaml="$2" target="$3" endpoint_name="${4:-}"
+  local url=""
+  url="$(_ucc_endpoint_url "$cfg_dir" "$yaml" "$target" "$endpoint_name")" || return 1
+  curl -fsS --max-time 5 "$url" >/dev/null 2>&1
+}
+
 # _ucc_ver_path_evidence <ver> <path> [label=path]
 # Emit "version=V  label=P" evidence string (omits missing parts).
 _ucc_ver_path_evidence() {

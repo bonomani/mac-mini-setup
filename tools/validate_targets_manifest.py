@@ -144,6 +144,30 @@ def _action_cmd(data, action):
     return ""
 
 
+def _endpoint_url(endpoint, subst_data):
+    url = endpoint.get("url", "")
+    if isinstance(url, str) and url.strip():
+        return substitute_scalars(url, data=subst_data)
+    scheme = endpoint.get("scheme", "")
+    host = endpoint.get("host", "")
+    port = endpoint.get("port", "")
+    path = endpoint.get("path", "")
+    if not scheme or not host:
+        return ""
+    scheme = substitute_scalars(stringify(scheme), data=subst_data)
+    host = substitute_scalars(stringify(host), data=subst_data)
+    port = substitute_scalars(stringify(port), data=subst_data) if port not in ("", None) else ""
+    path = substitute_scalars(stringify(path), data=subst_data) if path not in ("", None) else ""
+    url = f"{scheme}://{host}"
+    if port:
+        url += f":{port}"
+    if path:
+        if not path.startswith("/"):
+            path = "/" + path
+        url += path
+    return url
+
+
 def parse_gate_names(path: Path):
     gate_names = set()
     if not path.exists():
@@ -520,8 +544,23 @@ def validate(manifest, known_gates):
                         continue
                     if not isinstance(endpoint.get("name"), str) or not endpoint.get("name", "").strip():
                         errors.append(f"target '{name}' endpoint {index} missing name")
-                    if not isinstance(endpoint.get("url"), str) or not endpoint.get("url", "").strip():
-                        errors.append(f"target '{name}' endpoint {index} missing url")
+                    url = endpoint.get("url")
+                    scheme = endpoint.get("scheme")
+                    host = endpoint.get("host")
+                    if url is None:
+                        if not (isinstance(scheme, (str, int, float, bool)) and stringify(scheme).strip()):
+                            errors.append(f"target '{name}' endpoint {index} requires url or scheme")
+                        if not (isinstance(host, (str, int, float, bool)) and stringify(host).strip()):
+                            errors.append(f"target '{name}' endpoint {index} requires url or host")
+                    elif not isinstance(url, str) or not url.strip():
+                        errors.append(f"target '{name}' endpoint {index} url must be a non-empty string")
+                    for field in ("scheme", "host", "path"):
+                        value = endpoint.get(field)
+                        if value is not None and (not isinstance(value, str) or not value.strip()):
+                            errors.append(f"target '{name}' endpoint {index} field '{field}' must be a non-empty string")
+                    port = endpoint.get("port")
+                    if port is not None and not isinstance(port, (str, int)):
+                        errors.append(f"target '{name}' endpoint {index} field 'port' must be a string or int")
                     note = endpoint.get("note")
                     if note is not None and not isinstance(note, str):
                         errors.append(f"target '{name}' endpoint {index} note must be a string")
@@ -840,12 +879,10 @@ def main():
             for endpoint in endpoints:
                 if not isinstance(endpoint, dict):
                     continue
-                url = endpoint.get("url", "")
+                subst_data = data.get("__manifest_scalars__") or {}
+                url = _endpoint_url(endpoint, subst_data)
                 if not url:
                     continue
-                subst_data = data.get("__manifest_scalars__") or {}
-                if isinstance(url, str):
-                    url = substitute_scalars(url, data=subst_data)
                 note = endpoint.get("note", "")
                 if isinstance(note, str):
                     note = substitute_scalars(note, data=subst_data)
