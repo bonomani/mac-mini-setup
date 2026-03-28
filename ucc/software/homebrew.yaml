@@ -28,6 +28,11 @@ targets:
       kind: macos-clt
     oracle:
       configured: xcode-select -p >/dev/null 2>&1
+    observe_cmd: "if ! xcode-select -p >/dev/null 2>&1; then\n  printf 'absent'\n\
+      elif softwareupdate --list 2>/dev/null | grep -qi 'Command Line Tools for Xcode';\
+      \ then\n  printf 'outdated'\nelse\n  ver=\"$(pkgutil --pkg-info=com.apple.pkg.CLTools_Executables\
+      \ 2>/dev/null | awk '/^version:/ {print $2}')\"\n  printf '%s' \"${ver:-present}\"\
+      \nfi\n"
     evidence:
       version: pkgutil --pkg-info=com.apple.pkg.CLTools_Executables 2>/dev/null |
         awk '/^version:/ {print $2}'
@@ -39,6 +44,15 @@ targets:
 
         log_warn "Xcode CLT installation triggered. Wait for it to complete, then
         re-run this script."
+
+        return 1
+
+        '
+      update: 'log_warn "Xcode Command Line Tools updates are managed by macOS Software
+        Update."
+
+        log_warn "Install the available CLT update in System Settings -> Software
+        Update, then re-run this script."
 
         return 1
 

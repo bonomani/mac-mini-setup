@@ -616,6 +616,56 @@ class UccSchedulerTests(unittest.TestCase):
             self.assertIn("[installed] pkg", result.stdout)
             self.assertIn("version=1.2.3", result.stdout)
 
+    def test_xcode_command_line_tools_reports_outdated_when_softwareupdate_lists_update(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            fake_bin = tmp_path / "bin"
+            fake_bin.mkdir()
+            (fake_bin / "xcode-select").write_text(
+                "#!/bin/bash\n"
+                "if [[ \"$1\" == \"-p\" ]]; then\n"
+                "  printf '/Library/Developer/CommandLineTools\\n'\n"
+                "  exit 0\n"
+                "fi\n"
+                "exit 1\n",
+                encoding="utf-8",
+            )
+            (fake_bin / "softwareupdate").write_text(
+                "#!/bin/bash\n"
+                "cat <<'EOF'\n"
+                "Software Update Tool\n"
+                "\n"
+                "Finding available software\n"
+                "Software Update found the following new or updated software:\n"
+                "* Label: Command Line Tools for Xcode-16.4\n"
+                "  Title: Command Line Tools for Xcode, Version: 16.4, Size: 942384KiB, Recommended: YES,\n"
+                "EOF\n",
+                encoding="utf-8",
+            )
+            os.chmod(fake_bin / "xcode-select", 0o755)
+            os.chmod(fake_bin / "softwareupdate", 0o755)
+            result = subprocess.run(
+                [
+                    "bash",
+                    "-lc",
+                    textwrap.dedent(
+                        f"""\
+                        set -euo pipefail
+                        export PATH="{fake_bin}:$PATH"
+                        source "{ROOT / 'lib/utils.sh'}"
+                        source "{ROOT / 'lib/ucc_asm.sh'}"
+                        source "{ROOT / 'lib/ucc_targets.sh'}"
+                        _ucc_observe_yaml_simple_target "{ROOT}" "{ROOT / 'ucc/software/homebrew.yaml'}" "xcode-command-line-tools"
+                        """
+                    ),
+                ],
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertIn('"installation_state":"Installed"', result.stdout)
+            self.assertIn('"health_state":"Degraded"', result.stdout)
+
     def test_manifest_validation_rejects_non_string_display_name(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             ucc_dir = self._write_manifest(
