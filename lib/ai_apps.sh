@@ -161,7 +161,11 @@ PY
       printf '%s' "$digest"
       return
     fi
-    if [[ -z "$version" || ( -n "$version" && _ai_is_mutable_ref "$version" ) ]]; then
+    if [[ -z "$version" ]]; then
+      printf '%s' "$digest"
+      return
+    fi
+    if _ai_is_mutable_ref "$version"; then
       printf '%s' "$digest"
     fi
   }
