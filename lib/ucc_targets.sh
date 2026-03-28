@@ -85,10 +85,15 @@ _ucc_observed_prefers_update_action() {
   local observed="$1"
   [[ "$observed" == "outdated" || "$observed" == "needs-update" ]] && return 0
   _ucc_is_json_obj "$observed" || return 1
-  [[ "$observed" == *'"installation_state":"Installed"'* ]] || return 1
   [[ "$observed" == *'"runtime_state":"Stopped"'* ]] || return 1
   [[ "$observed" == *'"health_state":"Degraded"'* ]] || return 1
-  return 0
+  if [[ "$observed" == *'"installation_state":"Installed"'* ]]; then
+    return 0
+  fi
+  if [[ "$observed" == *'"installation_state":"Configured"'* && "$observed" == *'"config_value":'* ]]; then
+    return 0
+  fi
+  return 1
 }
 
 # ── Convenience target helpers ────────────────────────────────────────────────
@@ -283,7 +288,7 @@ _ucc_yaml_parametric_observed_state() {
       --config-value "$current"
   else
     ucc_asm_state \
-      --installation Installed \
+      --installation Configured \
       --runtime Stopped \
       --health Degraded \
       --admin Enabled \

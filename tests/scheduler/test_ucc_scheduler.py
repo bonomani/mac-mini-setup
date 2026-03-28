@@ -1161,6 +1161,28 @@ class UccSchedulerTests(unittest.TestCase):
             self.assertIn("mode=on", result.stdout)
             self.assertTrue((home_dir / "setting.applied").exists())
 
+    def test_parametric_mismatch_observes_configured_but_degraded(self) -> None:
+        result = subprocess.run(
+            [
+                "bash",
+                "-lc",
+                textwrap.dedent(
+                    f"""\
+                    set -euo pipefail
+                    source "{ROOT / 'lib/ucc.sh'}"
+                    source "{ROOT / 'lib/ucc_targets.sh'}"
+                    _ucc_yaml_parametric_observed_state off on DepsReady
+                    """
+                ),
+            ],
+            text=True,
+            capture_output=True,
+        )
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+        self.assertIn('"installation_state":"Configured"', result.stdout)
+        self.assertIn('"health_state":"Degraded"', result.stdout)
+        self.assertIn('"config_value":"off"', result.stdout)
+
     def test_validator_requires_state_model_for_package_targets(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             ucc_dir = self._write_manifest(
