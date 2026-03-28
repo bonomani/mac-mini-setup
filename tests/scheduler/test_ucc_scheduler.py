@@ -1010,6 +1010,107 @@ class UccSchedulerTests(unittest.TestCase):
             self.assertEqual(install_cmd, "printf '%s' 'demo'")
             self.assertEqual(evidence, "version\tprintf '%s' 'demo'")
 
+    def test_brew_cached_version_works_with_driver_ref_substitution(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            manifest = self._write_manifest(
+                tmp_path,
+                textwrap.dedent(
+                    """\
+                    component: fake
+                    primary_profile: configured
+                    libs: fake
+                    runner: run_fake
+                    targets:
+                      pkg:
+                        component: fake
+                        profile: configured
+                        type: package
+                        state_model: package
+                        display_name: Demo package
+                        provided_by_tool: brew
+                        driver:
+                          kind: brew-formula
+                          ref: demo
+                        observe_cmd: "printf present"
+                        evidence:
+                          version: "_brew_cached_version '${driver.ref}'"
+                        actions:
+                          install: "true"
+                    """
+                ),
+            ) / "software" / "fake.yaml"
+            result = subprocess.run(
+                [
+                    "bash",
+                    "-lc",
+                    textwrap.dedent(
+                        f"""\
+                        set -euo pipefail
+                        source "{ROOT / 'lib/utils.sh'}"
+                        source "{ROOT / 'lib/ucc_brew.sh'}"
+                        source "{ROOT / 'lib/ucc_targets.sh'}"
+                        export _BREW_VERSIONS_CACHE=$'demo 1.2.3\\nother 9.9.9'
+                        ucc_eval_evidence_from_yaml "{ROOT}" "{manifest}" pkg
+                        """
+                    ),
+                ],
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertEqual(result.stdout.strip(), "version=1.2.3")
+
+    def test_pip_cached_version_works_with_driver_ref_substitution(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            manifest = self._write_manifest(
+                tmp_path,
+                textwrap.dedent(
+                    """\
+                    component: fake
+                    primary_profile: configured
+                    libs: fake
+                    runner: run_fake
+                    targets:
+                      pkg:
+                        component: fake
+                        profile: configured
+                        type: package
+                        state_model: package
+                        display_name: Demo package
+                        provided_by_tool: pip
+                        driver:
+                          kind: pip
+                          ref: demo-pkg
+                        observe_cmd: "printf present"
+                        evidence:
+                          version: "_pip_cached_version '${driver.ref}'"
+                        actions:
+                          install: "true"
+                    """
+                ),
+            ) / "software" / "fake.yaml"
+            result = subprocess.run(
+                [
+                    "bash",
+                    "-lc",
+                    textwrap.dedent(
+                        f"""\
+                        set -euo pipefail
+                        source "{ROOT / 'lib/utils.sh'}"
+                        source "{ROOT / 'lib/ucc_targets.sh'}"
+                        export _PIP_VERSIONS_CACHE='[{{"name":"demo-pkg","version":"4.5.6"}},{{"name":"other","version":"0.1.0"}}]'
+                        ucc_eval_evidence_from_yaml "{ROOT}" "{manifest}" pkg
+                        """
+                    ),
+                ],
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertEqual(result.stdout.strip(), "version=4.5.6")
+
     def test_platform_specific_dependencies_follow_host_variant(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             ucc_dir = self._write_manifest(
