@@ -61,6 +61,13 @@
 # ============================================================
 set -euo pipefail
 
+if [[ "${EUID:-$(id -u)}" -eq 0 ]]; then
+  echo "ERROR: run this script as your normal user, not via sudo." >&2
+  echo "       If admin rights are needed, acquire a sudo ticket first:" >&2
+  echo "       sudo -v && ./install.sh" >&2
+  exit 1
+fi
+
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 _detect_host_platform() {
@@ -205,62 +212,6 @@ _display_component_name() {
   esac
 }
 
-_component_requires_sudo_ticket() {
-  case "$1" in
-    macos-defaults|macos-software-update) return 0 ;;
-    *) return 1 ;;
-  esac
-}
-
-_DISP_COMPS=()
-_selected_run_requires_sudo_ticket() {
-  local comp
-  [[ "$HOST_PLATFORM" == "macos" ]] || return 1
-  [[ "${UCC_DRY_RUN:-0}" != "1" ]] || return 1
-  [[ "${UIC_PREFLIGHT:-0}" != "1" ]] || return 1
-  if [[ ${#_DISP_COMPS[@]} -gt 0 ]]; then
-    for comp in "${_DISP_COMPS[@]}"; do
-      [[ "$(_component_mode "$comp")" == "enabled" ]] || continue
-      _component_requires_sudo_ticket "$comp" && return 0
-    done
-    return 1
-  fi
-  for comp in "${TO_RUN[@]}"; do
-    [[ "$(_component_mode "$comp")" == "enabled" ]] || continue
-    _component_requires_sudo_ticket "$comp" && return 0
-  done
-  return 1
-}
-
-_SUDO_KEEPALIVE_PID=""
-_SUDO_TICKET_PRIMED=0
-
-_stop_sudo_keepalive() {
-  if [[ -n "${_SUDO_KEEPALIVE_PID:-}" ]]; then
-    kill "${_SUDO_KEEPALIVE_PID}" 2>/dev/null || true
-    wait "${_SUDO_KEEPALIVE_PID}" 2>/dev/null || true
-    _SUDO_KEEPALIVE_PID=""
-  fi
-}
-
-_prime_sudo_ticket_if_needed() {
-  [[ "${_SUDO_TICKET_PRIMED:-0}" == "1" ]] && return 0
-  _selected_run_requires_sudo_ticket || return 0
-  log_info "Requesting sudo once for macOS system policy targets"
-  if ! sudo -v; then
-    log_warn "Unable to acquire sudo ticket; macOS admin-managed targets may prompt again or remain degraded"
-    return 0
-  fi
-  (
-    while true; do
-      sleep 60 || exit 0
-      sudo -n true >/dev/null 2>&1 || exit 0
-    done
-  ) &
-  _SUDO_KEEPALIVE_PID="$!"
-  _SUDO_TICKET_PRIMED=1
-}
-
 _load_component_policies
 
 _uic_scope_active() {
@@ -334,8 +285,6 @@ done
 
 # Validate mode
 [[ "$UCC_MODE" =~ ^(install|update)$ ]] || log_error "Invalid --mode: $UCC_MODE (must be install or update)"
-trap _stop_sudo_keepalive EXIT
-_prime_sudo_ticket_if_needed
 
 # ============================================================
 #  UIC — Gates and Preferences
