@@ -574,11 +574,27 @@ ucc_yaml_runtime_target() {
   eval "_uyrt_obs_${fn}() { _ucc_observe_yaml_runtime_target '${cfg_dir}' '${yaml}' '${target}'; }"
   eval "_uyrt_evd_${fn}() { ucc_eval_evidence_from_yaml '${cfg_dir}' '${yaml}' '${target}'; }"
   if [[ -z "$install_fn" && -n "$install_cmd" ]]; then
-    eval "_uyrt_ins_${fn}() { _ucc_run_yaml_action '${cfg_dir}' '${yaml}' '${target}' install; }"
+    eval "_uyrt_ins_${fn}() {
+      local rc=0 runtime_cmd=''
+      _ucc_run_yaml_action '${cfg_dir}' '${yaml}' '${target}' install || rc=\$?
+      if [[ \$rc -eq 0 ]]; then
+        runtime_cmd=\"\$(_ucc_yaml_target_get '${cfg_dir}' '${yaml}' '${target}' 'oracle.runtime')\"
+        [[ -n \"\$runtime_cmd\" ]] && _ucc_wait_for_runtime_probe \"\$runtime_cmd\" || true
+      fi
+      return \$rc
+    }"
     install_fn="_uyrt_ins_${fn}"
   fi
   if [[ -z "$update_fn" && ( -n "$update_cmd" || -n "$install_cmd" ) ]]; then
-    eval "_uyrt_upd_${fn}() { _ucc_run_yaml_action '${cfg_dir}' '${yaml}' '${target}' update; }"
+    eval "_uyrt_upd_${fn}() {
+      local rc=0 runtime_cmd=''
+      _ucc_run_yaml_action '${cfg_dir}' '${yaml}' '${target}' update || rc=\$?
+      if [[ \$rc -eq 0 ]]; then
+        runtime_cmd=\"\$(_ucc_yaml_target_get '${cfg_dir}' '${yaml}' '${target}' 'oracle.runtime')\"
+        [[ -n \"\$runtime_cmd\" ]] && _ucc_wait_for_runtime_probe \"\$runtime_cmd\" || true
+      fi
+      return \$rc
+    }"
     update_fn="_uyrt_upd_${fn}"
   fi
 

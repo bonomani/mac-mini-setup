@@ -350,8 +350,8 @@ PY
     for name in "${AI_SERVICES[@]}"; do
       if docker inspect "$name" &>/dev/null 2>&1; then
         log_info "Removing legacy container: $name"
-        docker stop "$name" 2>/dev/null || true
-        docker rm   "$name" 2>/dev/null || true
+        docker stop "$name" >/dev/null 2>&1 || true
+        docker rm   "$name" >/dev/null 2>&1 || true
       fi
     done
   }

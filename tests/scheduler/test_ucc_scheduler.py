@@ -1518,6 +1518,69 @@ class UccSchedulerTests(unittest.TestCase):
             self.assertIn("[installed] app", result.stdout)
             self.assertIn("version=1.2.3", result.stdout)
 
+    def test_yaml_runtime_target_waits_for_probe_after_install(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            ucc_dir = self._write_manifest(
+                tmp_path,
+                textwrap.dedent(
+                    """\
+                    component: fake
+                    primary_profile: runtime
+                    libs: fake
+                    runner: run_fake
+                    targets:
+                      app:
+                        component: fake
+                        profile: runtime
+                        type: runtime
+                        display_name: App
+                        driver:
+                          kind: custom-daemon
+                        runtime_manager: custom
+                        probe_kind: command
+                        oracle:
+                          configured: '[[ -f "$HOME/app.installed" ]]'
+                          runtime: '[[ -f "$HOME/app.ready" ]]'
+                        evidence:
+                          version: 'printf 1.2.3'
+                        actions:
+                          install: 'touch "$HOME/app.installed"; ( sleep 0.05; touch "$HOME/app.ready" ) &'
+                    """
+                ),
+            )
+            manifest = ucc_dir / "software" / "fake.yaml"
+            home_dir = tmp_path / "home"
+            home_dir.mkdir()
+            result = subprocess.run(
+                [
+                    "bash",
+                    "-lc",
+                    textwrap.dedent(
+                        f"""\
+                        set -euo pipefail
+                        export HOME="{home_dir}"
+                        export UCC_DECLARATION_FILE="{tmp_path / 'decl.jsonl'}"
+                        export UCC_RESULT_FILE="{tmp_path / 'result.jsonl'}"
+                        export UCC_SUMMARY_FILE="{tmp_path / 'summary.txt'}"
+                        export UCC_PROFILE_SUMMARY_FILE="{tmp_path / 'profile.txt'}"
+                        export UCC_TARGET_STATUS_FILE="{tmp_path / 'status.txt'}"
+                        export UCC_CORRELATION_ID="test-run"
+                        export UCC_RUNTIME_WAIT_ATTEMPTS=20
+                        export UCC_RUNTIME_WAIT_INTERVAL=0.01
+                        source "{ROOT / 'lib/ucc.sh'}"
+
+                        ucc_yaml_runtime_target "{ROOT}" "{manifest}" app
+                        """
+                    ),
+                ],
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertIn("[installed] app", result.stdout)
+            self.assertTrue((home_dir / "app.ready").exists())
+
     def test_desktop_app_runtime_observe_respects_greedy_auto_updates(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
