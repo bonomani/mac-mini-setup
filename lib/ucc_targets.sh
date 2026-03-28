@@ -21,12 +21,6 @@ ucc_eval_evidence_from_yaml() {
   done < <(python3 "$cfg_dir/tools/read_config.py" --evidence "$yaml" "$target" 2>/dev/null)
 }
 
-_ucc_yaml_get() {
-  local cfg_dir="$1" yaml="$2" key="$3" default="${4:-}" val=""
-  val="$(python3 "$cfg_dir/tools/read_config.py" --get "$yaml" "$key" 2>/dev/null || true)"
-  printf '%s' "${val:-$default}"
-}
-
 _ucc_yaml_target_get() {
   local cfg_dir="$1" yaml="$2" target="$3" key="$4" default="${5:-}" val=""
   val="$(python3 "$cfg_dir/tools/read_config.py" --target-get "$yaml" "$target" "$key" 2>/dev/null || true)"
@@ -532,20 +526,6 @@ ucc_yaml_runtime_target() {
   ucc_target_service "${args[@]}"
 }
 
-# ucc_brew_target <target-name> <brew-pkg>
-# Standard brew formula: install=brew install, update=brew upgrade
-ucc_brew_target() {
-  local tname="$1" pkg="$2"
-  local fn; fn="${pkg//[^a-zA-Z0-9]/_}"
-  eval "_ubt_obs_${fn}() { local raw; raw=\$(brew_observe '${pkg}'); ucc_asm_package_state \"\$raw\"; }"
-  eval "_ubt_evd_${fn}() { local ver; ver=\$(_brew_cached_version '${pkg}'); [[ -n \"\$ver\" ]] && printf 'version=%s' \"\$ver\"; }"
-  eval "_ubt_ins_${fn}() { brew_install  '${pkg}'; }"
-  eval "_ubt_upd_${fn}() { brew_upgrade  '${pkg}'; }"
-  ucc_target --profile presence --name "$tname" --observe "_ubt_obs_${fn}" \
-             --evidence "_ubt_evd_${fn}" \
-             --install "_ubt_ins_${fn}" --update "_ubt_upd_${fn}"
-}
-
 _ucc_brew_service_status() {
   local service_name="$1"
   brew services list 2>/dev/null | awk -v svc="$service_name" '$1==svc {print $2; found=1} END {if (!found) print ""}'
@@ -671,22 +651,6 @@ ucc_brew_runtime_formula_target() {
     --desired "$(ucc_asm_runtime_desired)" \
     --install "_ubrt_ins_${fn}" \
     --update "_ubrt_upd_${fn}"
-}
-
-# ucc_pyenv_version_target <target-name> <version>
-# pyenv-managed language version: observe=pyenv versions, install=pyenv install+global
-ucc_pyenv_version_target() {
-  local tname="$1" ver="$2"
-  local fn; fn="${tname//[^a-zA-Z0-9]/_}"
-  eval "_upvt_obs_${fn}() { ucc_asm_package_state \"\$(pyenv versions 2>/dev/null | grep -q '${ver}' && echo '${ver}' || echo 'absent')\"; }"
-  eval "_upvt_evd_${fn}() { local v p; v=\$(python3 --version 2>/dev/null | awk '{print \$2}'); p=\$(pyenv which python3 2>/dev/null || command -v python3 2>/dev/null || true); [[ -n \"\$v\" ]] && printf 'version=%s' \"\$v\"; [[ -n \"\$p\" ]] && printf '  path=%s' \"\$p\"; }"
-  eval "_upvt_ins_${fn}() { pyenv install '${ver}'; pyenv global '${ver}'; }"
-  eval "_upvt_upd_${fn}() { pyenv install --skip-existing '${ver}'; pyenv global '${ver}'; }"
-  ucc_target_nonruntime --name "$tname" \
-    --observe  "_upvt_obs_${fn}" \
-    --evidence "_upvt_evd_${fn}" \
-    --install  "_upvt_ins_${fn}" \
-    --update   "_upvt_upd_${fn}"
 }
 
 # ── _ucc_record_outcome — shared emit+count+record for all outcome paths ───────

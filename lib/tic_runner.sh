@@ -154,8 +154,12 @@ run_tic_tests_from_yaml() {
 run_verify() {
   local cfg_dir="$1"
 
-  local _NODE_VER
-  _NODE_VER="$(yaml_get "$cfg_dir" "$cfg_dir/ucc/software/dev-tools.yaml" node_version 24)"
+  local _NODE_VER="24"
+  while IFS=$'\t' read -r -d '' key value; do
+    case "$key" in
+      node_version) [[ -n "$value" ]] && _NODE_VER="$value" ;;
+    esac
+  done < <(yaml_get_many "$cfg_dir" "$cfg_dir/ucc/software/dev-tools.yaml" node_version)
   _tic_load_component_policies "$cfg_dir"
 
   # Ensure pyenv and node are in PATH so oracle commands resolve correctly
