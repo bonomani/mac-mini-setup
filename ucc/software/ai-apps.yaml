@@ -8,7 +8,6 @@ platforms:
 - linux
 - wsl2
 stack:
-  kind: docker-compose
   compose_dir: .ai-stack
   compose_file: docker-compose.yml
   definition_template: stack/docker-compose.yml
