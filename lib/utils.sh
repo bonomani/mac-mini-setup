@@ -180,7 +180,14 @@ xcode_clt_update() {
     log_warn "No Command Line Tools for Xcode update label found in softwareupdate --list."
     return 1
   fi
-  ucc_run sudo softwareupdate --install "$label"
+  if ucc_run softwareupdate --install "$label"; then
+    return 0
+  fi
+  if sudo -n true >/dev/null 2>&1; then
+    ucc_run sudo softwareupdate --install "$label"
+    return $?
+  fi
+  return 1
 }
 
 ollama_model_pull() {

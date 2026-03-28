@@ -755,6 +755,74 @@ class UccSchedulerTests(unittest.TestCase):
             self.assertIn("[updated", result.stdout)
             self.assertNotIn("Triggering Xcode Command Line Tools install", result.stdout)
 
+    def test_xcode_command_line_tools_warns_when_update_is_externally_managed_without_sudo(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            fake_bin = tmp_path / "bin"
+            fake_bin.mkdir()
+            (fake_bin / "xcode-select").write_text(
+                "#!/bin/bash\n"
+                "if [[ \"$1\" == \"-p\" ]]; then\n"
+                "  printf '/Library/Developer/CommandLineTools\\n'\n"
+                "  exit 0\n"
+                "fi\n"
+                "exit 1\n",
+                encoding="utf-8",
+            )
+            (fake_bin / "softwareupdate").write_text(
+                "#!/bin/bash\n"
+                "if [[ \"$1\" == \"--list\" ]]; then\n"
+                "  cat <<'EOF'\n"
+                "Software Update found the following new or updated software:\n"
+                "* Label: Command Line Tools for Xcode-16.4\n"
+                "  Title: Command Line Tools for Xcode, Version: 16.4, Size: 942384KiB, Recommended: YES,\n"
+                "EOF\n"
+                "  exit 0\n"
+                "fi\n"
+                "if [[ \"$1\" == \"--install\" ]]; then\n"
+                "  exit 1\n"
+                "fi\n"
+                "exit 1\n",
+                encoding="utf-8",
+            )
+            (fake_bin / "pkgutil").write_text(
+                "#!/bin/bash\n"
+                "printf 'package-id: com.apple.pkg.CLTools_Executables\\nversion: 26.3.0.0.1.1771626560\\n'\n",
+                encoding="utf-8",
+            )
+            (fake_bin / "sudo").write_text("#!/bin/bash\nexit 1\n", encoding="utf-8")
+            os.chmod(fake_bin / "xcode-select", 0o755)
+            os.chmod(fake_bin / "softwareupdate", 0o755)
+            os.chmod(fake_bin / "pkgutil", 0o755)
+            os.chmod(fake_bin / "sudo", 0o755)
+            result = subprocess.run(
+                [
+                    "bash",
+                    "-lc",
+                    textwrap.dedent(
+                        f"""\
+                        set -euo pipefail
+                        export PATH="{fake_bin}:$PATH"
+                        export UCC_DECLARATION_FILE="{tmp_path / 'decl.jsonl'}"
+                        export UCC_RESULT_FILE="{tmp_path / 'result.jsonl'}"
+                        export UCC_SUMMARY_FILE="{tmp_path / 'summary.txt'}"
+                        export UCC_PROFILE_SUMMARY_FILE="{tmp_path / 'profile.txt'}"
+                        export UCC_TARGET_STATUS_FILE="{tmp_path / 'status.txt'}"
+                        export UCC_CORRELATION_ID="test-run"
+                        source "{ROOT / 'lib/ucc.sh'}"
+                        source "{ROOT / 'lib/utils.sh'}"
+                        ucc_yaml_simple_target "{ROOT}" "{ROOT / 'ucc/software/homebrew.yaml'}" "xcode-command-line-tools"
+                        """
+                    ),
+                ],
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertIn("[warn", result.stdout)
+            self.assertIn("update remains externally managed", result.stdout)
+            self.assertNotIn("[policy", result.stdout)
+
     def test_parametric_target_skips_mutation_when_dependency_gate_failed(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)

@@ -11,7 +11,7 @@ omz_installer_url: https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tool
 vscode_cask_id: visual-studio-code
 vscode_app_path: /Applications/Visual Studio Code.app
 vscode_cli_path: /Applications/Visual Studio Code.app/Contents/Resources/app/bin/code
-vscode_cli_link_path: /usr/local/bin/code
+vscode_cli_link_relpath: bin/code
 vscode_settings_relpath: Library/Application Support/Code/User/settings.json
 vscode_settings_patch: ucc/software/vscode-settings.json
 ariaflow_tap: bonomani/ariaflow
@@ -49,7 +49,6 @@ targets:
     display_name: VS Code CLI
     depends_on:
     - vscode
-    admin_required: true
     driver:
       kind: symlink-command
     oracle:
@@ -57,9 +56,9 @@ targets:
     evidence:
       path: command -v code 2>/dev/null || true
     actions:
-      install: "if [[ -x \"${vscode_cli_path}\" ]]; then\n  sudo mkdir -p \"$(dirname\
-        \ \"${vscode_cli_link_path}\")\"\n  sudo ln -sf \"${vscode_cli_path}\" \"\
-        ${vscode_cli_link_path}\"\n  export PATH=\"$(dirname \"${vscode_cli_link_path}\"\
+      install: "if [[ -x \"${vscode_cli_path}\" ]]; then\n  mkdir -p \"$(dirname \"\
+        $HOME/${vscode_cli_link_relpath}\")\"\n  ln -sf \"${vscode_cli_path}\" \"\
+        $HOME/${vscode_cli_link_relpath}\"\n  export PATH=\"$(dirname \"$HOME/${vscode_cli_link_relpath}\"\
         ):$PATH\"\n  log_warn \"Symlink created. If 'code' is still missing in new\
         \ shells, run: Cmd+Shift+P \u2192 'Shell Command: Install code command in\
         \ PATH'\"\nelse\n  log_warn \"VS Code binary not found. Open VS Code manually\
