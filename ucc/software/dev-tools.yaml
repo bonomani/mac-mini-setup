@@ -221,6 +221,8 @@ targets:
     profile: capability
     type: capability
     display_name: networkQuality
+    driver:
+      kind: capability
     runtime_manager: capability
     probe_kind: command
     oracle:

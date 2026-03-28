@@ -318,6 +318,8 @@ targets:
     display_name: Metal MPS
     depends_on:
     - pip-group-pytorch
+    driver:
+      kind: capability
     runtime_manager: capability
     probe_kind: command
     oracle:
