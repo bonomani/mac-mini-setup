@@ -6,6 +6,7 @@
 # Usage: load_vscode_extensions_from_yaml <cfg_dir> <yaml_path>
 load_vscode_extensions_from_yaml() {
   local cfg_dir="$1" yaml="$2" target=""
+  vscode_extensions_cache_versions
   while IFS= read -r target; do
     [[ -n "$target" ]] || continue
     ucc_yaml_simple_target "$cfg_dir" "$yaml" "$target"

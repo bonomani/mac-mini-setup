@@ -80,8 +80,8 @@ targets:
       || printf absent
     evidence:
       model: printf '%s' '${model_ref}'
-    install_cmd: 'log_info ''Pulling model: ${model_ref}''; ucc_run ollama pull ''${model_ref}'''
-    update_cmd: 'log_info ''Pulling model: ${model_ref}''; ucc_run ollama pull ''${model_ref}'''
+    install_cmd: ollama_model_pull '${model_ref}'
+    update_cmd: ollama_model_pull '${model_ref}'
     model_ref: llama3.2
   ollama-model-nomic-embed-text:
     component: ollama
@@ -97,8 +97,8 @@ targets:
       || printf absent
     evidence:
       model: printf '%s' '${model_ref}'
-    install_cmd: 'log_info ''Pulling model: ${model_ref}''; ucc_run ollama pull ''${model_ref}'''
-    update_cmd: 'log_info ''Pulling model: ${model_ref}''; ucc_run ollama pull ''${model_ref}'''
+    install_cmd: ollama_model_pull '${model_ref}'
+    update_cmd: ollama_model_pull '${model_ref}'
     model_ref: nomic-embed-text
   ollama-model-qwen3-latest:
     component: ollama
@@ -114,8 +114,8 @@ targets:
       || printf absent
     evidence:
       model: printf '%s' '${model_ref}'
-    install_cmd: 'log_info ''Pulling model: ${model_ref}''; ucc_run ollama pull ''${model_ref}'''
-    update_cmd: 'log_info ''Pulling model: ${model_ref}''; ucc_run ollama pull ''${model_ref}'''
+    install_cmd: ollama_model_pull '${model_ref}'
+    update_cmd: ollama_model_pull '${model_ref}'
     model_ref: qwen3:latest
   ollama-model-llama3.1-8b:
     component: ollama
@@ -131,8 +131,8 @@ targets:
       || printf absent
     evidence:
       model: printf '%s' '${model_ref}'
-    install_cmd: 'log_info ''Pulling model: ${model_ref}''; ucc_run ollama pull ''${model_ref}'''
-    update_cmd: 'log_info ''Pulling model: ${model_ref}''; ucc_run ollama pull ''${model_ref}'''
+    install_cmd: ollama_model_pull '${model_ref}'
+    update_cmd: ollama_model_pull '${model_ref}'
     model_ref: llama3.1:8b
   ollama-model-mistral-7b:
     component: ollama
@@ -148,8 +148,8 @@ targets:
       || printf absent
     evidence:
       model: printf '%s' '${model_ref}'
-    install_cmd: 'log_info ''Pulling model: ${model_ref}''; ucc_run ollama pull ''${model_ref}'''
-    update_cmd: 'log_info ''Pulling model: ${model_ref}''; ucc_run ollama pull ''${model_ref}'''
+    install_cmd: ollama_model_pull '${model_ref}'
+    update_cmd: ollama_model_pull '${model_ref}'
     model_ref: mistral:7b
   ollama-model-qwen2.5-coder-32b:
     component: ollama
@@ -165,8 +165,8 @@ targets:
       || printf absent
     evidence:
       model: printf '%s' '${model_ref}'
-    install_cmd: 'log_info ''Pulling model: ${model_ref}''; ucc_run ollama pull ''${model_ref}'''
-    update_cmd: 'log_info ''Pulling model: ${model_ref}''; ucc_run ollama pull ''${model_ref}'''
+    install_cmd: ollama_model_pull '${model_ref}'
+    update_cmd: ollama_model_pull '${model_ref}'
     model_ref: qwen2.5-coder:32b
   ollama-model-llama3.1-70b:
     component: ollama
@@ -182,8 +182,8 @@ targets:
       || printf absent
     evidence:
       model: printf '%s' '${model_ref}'
-    install_cmd: 'log_info ''Pulling model: ${model_ref}''; ucc_run ollama pull ''${model_ref}'''
-    update_cmd: 'log_info ''Pulling model: ${model_ref}''; ucc_run ollama pull ''${model_ref}'''
+    install_cmd: ollama_model_pull '${model_ref}'
+    update_cmd: ollama_model_pull '${model_ref}'
     model_ref: llama3.1:70b
 small:
 - ollama-model-llama3.2

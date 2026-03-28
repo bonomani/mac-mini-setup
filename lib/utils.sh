@@ -27,6 +27,66 @@ pip_cache_versions() {
   _PIP_VERSIONS_CACHE=$(pip list --format=json 2>/dev/null || echo '[]')
 }
 
+vscode_extensions_cache_versions() {
+  export _VSCODE_EXTENSIONS_CACHE_JSON
+  _VSCODE_EXTENSIONS_CACHE_JSON="$(
+    code --list-extensions --show-versions 2>/dev/null | python3 -c "
+import json, sys
+mapping = {}
+for raw in sys.stdin:
+    line = raw.strip()
+    if not line:
+        continue
+    ext, sep, version = line.partition('@')
+    if not sep:
+        version = ''
+    mapping[ext.lower()] = version
+print(json.dumps(mapping))
+" 2>/dev/null || echo '{}'
+  )"
+}
+
+vscode_extension_install() {
+  ucc_run code --install-extension "$1" --force || return $?
+  vscode_extensions_cache_versions 2>/dev/null || true
+}
+
+vscode_extension_update() {
+  vscode_extension_install "$1"
+}
+
+_vscode_extension_cached_version() {
+  if [[ -z "${_VSCODE_EXTENSIONS_CACHE_JSON+x}" ]]; then
+    code --list-extensions --show-versions 2>/dev/null | awk -F@ 'tolower($1)==tolower("'"$1"'") {print $2; exit}'
+    return
+  fi
+  python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+print(data.get(sys.argv[1].lower(), ''))
+" "$1" 2>/dev/null <<< "$_VSCODE_EXTENSIONS_CACHE_JSON"
+}
+
+ollama_model_cache_list() {
+  export _OLLAMA_MODELS_CACHE
+  _OLLAMA_MODELS_CACHE="$(ollama list 2>/dev/null | awk 'NR>1 {print $1}' || true)"
+}
+
+npm_global_cache_versions() {
+  export _NPM_GLOBAL_VERSIONS_CACHE_JSON
+  _NPM_GLOBAL_VERSIONS_CACHE_JSON="$(npm ls -g --depth=0 --json 2>/dev/null || echo '{}')"
+}
+
+npm_global_install() {
+  ucc_run npm install -g "$1" || return $?
+  npm_global_cache_versions 2>/dev/null || true
+}
+
+npm_global_update() {
+  ucc_run npm update -g "$1" || return $?
+  npm_global_cache_versions 2>/dev/null || true
+}
+
 # Return installed version of a pip package, or empty string if absent
 _pip_cached_version() {
   [[ -z "${_PIP_VERSIONS_CACHE+x}" ]] && { pip show "$1" 2>/dev/null | awk '/^Version:/{print $2}'; return; }
@@ -90,11 +150,24 @@ _ucc_ver_path_evidence() {
 }
 
 # Check if an ollama model is present
-ollama_model_present() { ollama list 2>/dev/null | grep -q "^$1"; }
+ollama_model_present() {
+  if [[ -n "${_OLLAMA_MODELS_CACHE+x}" ]]; then
+    grep -Fxq "$1" <<< "$_OLLAMA_MODELS_CACHE"
+  else
+    ollama list 2>/dev/null | awk 'NR>1 {print $1}' | grep -Fxq "$1"
+  fi
+}
+
+ollama_model_pull() {
+  log_info "Pulling model: $1"
+  ucc_run ollama pull "$1" || return $?
+  ollama_model_cache_list 2>/dev/null || true
+}
 
 # Return installed version of a global npm package, or empty string if absent.
 npm_global_version() {
-  npm ls -g "$1" --depth=0 --json 2>/dev/null | python3 -c "
+  if [[ -z "${_NPM_GLOBAL_VERSIONS_CACHE_JSON+x}" ]]; then
+    npm ls -g "$1" --depth=0 --json 2>/dev/null | python3 -c "
 import sys, json
 d = json.load(sys.stdin)
 deps = d.get('dependencies', {})
@@ -102,6 +175,16 @@ k = next(iter(deps), '')
 if k:
     print(deps[k].get('version', ''))
 " 2>/dev/null || true
+    return
+  fi
+  python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+deps = d.get('dependencies', {})
+pkg = sys.argv[1]
+if pkg in deps:
+    print(deps[pkg].get('version', ''))
+" "$1" 2>/dev/null <<< "$_NPM_GLOBAL_VERSIONS_CACHE_JSON"
 }
 
 # Observe a global npm package as an ASM package raw state.

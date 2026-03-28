@@ -574,17 +574,15 @@ targets:
     - vscode-code-cmd
     provided_by_tool: vscode-marketplace
     package_driver: vscode-marketplace
-    observe_cmd: 'ver="$(code --list-extensions --show-versions 2>/dev/null | awk
-      -F@ ''tolower($1)==tolower("${extension_id}") {print $2; exit}'')"
+    observe_cmd: 'ver="$(_vscode_extension_cached_version ''${extension_id}'')"
 
       printf ''%s'' "${ver:-absent}"
 
       '
     evidence:
-      version: code --list-extensions --show-versions 2>/dev/null | awk -F@ 'tolower($1)==tolower("${extension_id}")
-        {print $2; exit}'
-    install_cmd: ucc_run code --install-extension '${extension_id}' --force
-    update_cmd: ucc_run code --install-extension '${extension_id}' --force
+      version: _vscode_extension_cached_version '${extension_id}'
+    install_cmd: vscode_extension_install '${extension_id}'
+    update_cmd: vscode_extension_update '${extension_id}'
     extension_id: ms-python.python
   vscode-ext-ms-python.vscode-pylance:
     component: dev-tools
@@ -596,17 +594,15 @@ targets:
     - vscode-code-cmd
     provided_by_tool: vscode-marketplace
     package_driver: vscode-marketplace
-    observe_cmd: 'ver="$(code --list-extensions --show-versions 2>/dev/null | awk
-      -F@ ''tolower($1)==tolower("${extension_id}") {print $2; exit}'')"
+    observe_cmd: 'ver="$(_vscode_extension_cached_version ''${extension_id}'')"
 
       printf ''%s'' "${ver:-absent}"
 
       '
     evidence:
-      version: code --list-extensions --show-versions 2>/dev/null | awk -F@ 'tolower($1)==tolower("${extension_id}")
-        {print $2; exit}'
-    install_cmd: ucc_run code --install-extension '${extension_id}' --force
-    update_cmd: ucc_run code --install-extension '${extension_id}' --force
+      version: _vscode_extension_cached_version '${extension_id}'
+    install_cmd: vscode_extension_install '${extension_id}'
+    update_cmd: vscode_extension_update '${extension_id}'
     extension_id: ms-python.vscode-pylance
   vscode-ext-ms-toolsai.jupyter:
     component: dev-tools
@@ -618,17 +614,15 @@ targets:
     - vscode-code-cmd
     provided_by_tool: vscode-marketplace
     package_driver: vscode-marketplace
-    observe_cmd: 'ver="$(code --list-extensions --show-versions 2>/dev/null | awk
-      -F@ ''tolower($1)==tolower("${extension_id}") {print $2; exit}'')"
+    observe_cmd: 'ver="$(_vscode_extension_cached_version ''${extension_id}'')"
 
       printf ''%s'' "${ver:-absent}"
 
       '
     evidence:
-      version: code --list-extensions --show-versions 2>/dev/null | awk -F@ 'tolower($1)==tolower("${extension_id}")
-        {print $2; exit}'
-    install_cmd: ucc_run code --install-extension '${extension_id}' --force
-    update_cmd: ucc_run code --install-extension '${extension_id}' --force
+      version: _vscode_extension_cached_version '${extension_id}'
+    install_cmd: vscode_extension_install '${extension_id}'
+    update_cmd: vscode_extension_update '${extension_id}'
     extension_id: ms-toolsai.jupyter
   vscode-ext-ms-vscode.cpptools:
     component: dev-tools
@@ -640,17 +634,15 @@ targets:
     - vscode-code-cmd
     provided_by_tool: vscode-marketplace
     package_driver: vscode-marketplace
-    observe_cmd: 'ver="$(code --list-extensions --show-versions 2>/dev/null | awk
-      -F@ ''tolower($1)==tolower("${extension_id}") {print $2; exit}'')"
+    observe_cmd: 'ver="$(_vscode_extension_cached_version ''${extension_id}'')"
 
       printf ''%s'' "${ver:-absent}"
 
       '
     evidence:
-      version: code --list-extensions --show-versions 2>/dev/null | awk -F@ 'tolower($1)==tolower("${extension_id}")
-        {print $2; exit}'
-    install_cmd: ucc_run code --install-extension '${extension_id}' --force
-    update_cmd: ucc_run code --install-extension '${extension_id}' --force
+      version: _vscode_extension_cached_version '${extension_id}'
+    install_cmd: vscode_extension_install '${extension_id}'
+    update_cmd: vscode_extension_update '${extension_id}'
     extension_id: ms-vscode.cpptools
   vscode-ext-continue.continue:
     component: dev-tools
@@ -662,17 +654,15 @@ targets:
     - vscode-code-cmd
     provided_by_tool: vscode-marketplace
     package_driver: vscode-marketplace
-    observe_cmd: 'ver="$(code --list-extensions --show-versions 2>/dev/null | awk
-      -F@ ''tolower($1)==tolower("${extension_id}") {print $2; exit}'')"
+    observe_cmd: 'ver="$(_vscode_extension_cached_version ''${extension_id}'')"
 
       printf ''%s'' "${ver:-absent}"
 
       '
     evidence:
-      version: code --list-extensions --show-versions 2>/dev/null | awk -F@ 'tolower($1)==tolower("${extension_id}")
-        {print $2; exit}'
-    install_cmd: ucc_run code --install-extension '${extension_id}' --force
-    update_cmd: ucc_run code --install-extension '${extension_id}' --force
+      version: _vscode_extension_cached_version '${extension_id}'
+    install_cmd: vscode_extension_install '${extension_id}'
+    update_cmd: vscode_extension_update '${extension_id}'
     extension_id: continue.continue
   vscode-ext-eamodio.gitlens:
     component: dev-tools
@@ -684,17 +674,15 @@ targets:
     - vscode-code-cmd
     provided_by_tool: vscode-marketplace
     package_driver: vscode-marketplace
-    observe_cmd: 'ver="$(code --list-extensions --show-versions 2>/dev/null | awk
-      -F@ ''tolower($1)==tolower("${extension_id}") {print $2; exit}'')"
+    observe_cmd: 'ver="$(_vscode_extension_cached_version ''${extension_id}'')"
 
       printf ''%s'' "${ver:-absent}"
 
       '
     evidence:
-      version: code --list-extensions --show-versions 2>/dev/null | awk -F@ 'tolower($1)==tolower("${extension_id}")
-        {print $2; exit}'
-    install_cmd: ucc_run code --install-extension '${extension_id}' --force
-    update_cmd: ucc_run code --install-extension '${extension_id}' --force
+      version: _vscode_extension_cached_version '${extension_id}'
+    install_cmd: vscode_extension_install '${extension_id}'
+    update_cmd: vscode_extension_update '${extension_id}'
     extension_id: eamodio.gitlens
   vscode-ext-ms-vscode-remote.remote-containers:
     component: dev-tools
@@ -706,17 +694,15 @@ targets:
     - vscode-code-cmd
     provided_by_tool: vscode-marketplace
     package_driver: vscode-marketplace
-    observe_cmd: 'ver="$(code --list-extensions --show-versions 2>/dev/null | awk
-      -F@ ''tolower($1)==tolower("${extension_id}") {print $2; exit}'')"
+    observe_cmd: 'ver="$(_vscode_extension_cached_version ''${extension_id}'')"
 
       printf ''%s'' "${ver:-absent}"
 
       '
     evidence:
-      version: code --list-extensions --show-versions 2>/dev/null | awk -F@ 'tolower($1)==tolower("${extension_id}")
-        {print $2; exit}'
-    install_cmd: ucc_run code --install-extension '${extension_id}' --force
-    update_cmd: ucc_run code --install-extension '${extension_id}' --force
+      version: _vscode_extension_cached_version '${extension_id}'
+    install_cmd: vscode_extension_install '${extension_id}'
+    update_cmd: vscode_extension_update '${extension_id}'
     extension_id: ms-vscode-remote.remote-containers
   iterm2:
     component: dev-tools
@@ -763,8 +749,8 @@ targets:
     observe_cmd: npm_global_observe '${npm_package}'
     evidence:
       version: npm_global_version '${npm_package}'
-    install_cmd: ucc_run npm install -g '${npm_package}'
-    update_cmd: ucc_run npm update -g '${npm_package}'
+    install_cmd: npm_global_install '${npm_package}'
+    update_cmd: npm_global_update '${npm_package}'
     npm_package: '@openai/codex'
   npm-global-@anthropic-ai/claude-code:
     component: dev-tools
@@ -779,8 +765,8 @@ targets:
     observe_cmd: npm_global_observe '${npm_package}'
     evidence:
       version: npm_global_version '${npm_package}'
-    install_cmd: ucc_run npm install -g '${npm_package}'
-    update_cmd: ucc_run npm update -g '${npm_package}'
+    install_cmd: npm_global_install '${npm_package}'
+    update_cmd: npm_global_update '${npm_package}'
     npm_package: '@anthropic-ai/claude-code'
   npm-global-bmad-method:
     component: dev-tools
@@ -795,8 +781,8 @@ targets:
     observe_cmd: npm_global_observe '${npm_package}'
     evidence:
       version: npm_global_version '${npm_package}'
-    install_cmd: ucc_run npm install -g '${npm_package}'
-    update_cmd: ucc_run npm update -g '${npm_package}'
+    install_cmd: npm_global_install '${npm_package}'
+    update_cmd: npm_global_update '${npm_package}'
     npm_package: bmad-method
 cli_tools:
 - cli-jq

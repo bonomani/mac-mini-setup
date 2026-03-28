@@ -45,6 +45,7 @@ run_dev_tools_from_yaml() {
   ucc_yaml_simple_target "$cfg_dir" "$yaml" "node-lts"
 
   # ---- npm global packages ----
+  npm_global_cache_versions
   while IFS= read -r _target; do
     [[ -n "$_target" ]] && ucc_yaml_simple_target "$cfg_dir" "$yaml" "$_target"
   done < <(yaml_list "$cfg_dir" "$yaml" npm_packages)

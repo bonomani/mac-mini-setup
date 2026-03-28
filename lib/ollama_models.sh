@@ -26,6 +26,7 @@ load_ollama_models_from_yaml() {
       ;;
   esac
 
+  ollama_model_cache_list
   for group in "${groups[@]}"; do
     while IFS= read -r target; do
       [[ -n "$target" ]] || continue

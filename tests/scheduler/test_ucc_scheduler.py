@@ -1160,6 +1160,381 @@ class UccSchedulerTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, msg=result.stderr)
             self.assertEqual(result.stdout.strip(), "version=4.5.6")
 
+    def test_vscode_extension_cache_avoids_repeated_code_calls(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            counter = Path(tmp) / "count.txt"
+            result = subprocess.run(
+                [
+                    "bash",
+                    "-lc",
+                    textwrap.dedent(
+                        f"""\
+                        set -euo pipefail
+                        printf '0' > "{counter}"
+                        source "{ROOT / 'lib/utils.sh'}"
+                        code() {{
+                          local count
+                          count="$(cat "{counter}")"
+                          printf '%s' "$((count + 1))" > "{counter}"
+                          cat <<'EOF'
+                        ms-python.python@2026.4.0
+                        eamodio.gitlens@17.11.1
+                        EOF
+                        }}
+                        vscode_extensions_cache_versions
+                        printf '%s\\n' "$(_vscode_extension_cached_version ms-python.python)"
+                        printf '%s\\n' "$(_vscode_extension_cached_version ms-python.python)"
+                        cat "{counter}"
+                        """
+                    ),
+                ],
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertEqual(result.stdout.strip().splitlines(), ["2026.4.0", "2026.4.0", "1"])
+
+    def test_npm_global_cache_avoids_repeated_npm_calls(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            counter = Path(tmp) / "count.txt"
+            result = subprocess.run(
+                [
+                    "bash",
+                    "-lc",
+                    textwrap.dedent(
+                        f"""\
+                        set -euo pipefail
+                        printf '0' > "{counter}"
+                        source "{ROOT / 'lib/utils.sh'}"
+                        npm() {{
+                          local count
+                          count="$(cat "{counter}")"
+                          printf '%s' "$((count + 1))" > "{counter}"
+                          cat <<'EOF'
+                        {{"dependencies":{{"@openai/codex":{{"version":"0.116.0"}},"bmad-method":{{"version":"6.2.0"}}}}}}
+                        EOF
+                        }}
+                        npm_global_cache_versions
+                        printf '%s\\n' "$(npm_global_version '@openai/codex')"
+                        printf '%s\\n' "$(npm_global_version '@openai/codex')"
+                        cat "{counter}"
+                        """
+                    ),
+                ],
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertEqual(result.stdout.strip().splitlines(), ["0.116.0", "0.116.0", "1"])
+
+    def test_ollama_model_cache_avoids_repeated_ollama_list_calls(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            counter = Path(tmp) / "count.txt"
+            result = subprocess.run(
+                [
+                    "bash",
+                    "-lc",
+                    textwrap.dedent(
+                        f"""\
+                        set -euo pipefail
+                        printf '0' > "{counter}"
+                        source "{ROOT / 'lib/utils.sh'}"
+                        ollama() {{
+                          local count
+                          count="$(cat "{counter}")"
+                          printf '%s' "$((count + 1))" > "{counter}"
+                          cat <<'EOF'
+                        NAME              ID      SIZE      MODIFIED
+                        llama3.2          abc123  2.0 GB    now
+                        nomic-embed-text  def456  274 MB    now
+                        EOF
+                        }}
+                        ollama_model_cache_list
+                        if ollama_model_present llama3.2; then printf 'yes\\n'; else printf 'no\\n'; fi
+                        if ollama_model_present llama3.2; then printf 'yes\\n'; else printf 'no\\n'; fi
+                        cat "{counter}"
+                        """
+                    ),
+                ],
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertEqual(result.stdout.strip().splitlines(), ["yes", "yes", "1"])
+
+    def test_vscode_extension_install_refreshes_cache_after_mutation(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            counter = tmp_path / "count.txt"
+            marker = tmp_path / "ext.installed"
+            result = subprocess.run(
+                [
+                    "bash",
+                    "-lc",
+                    textwrap.dedent(
+                        f"""\
+                        set -euo pipefail
+                        printf '0' > "{counter}"
+                        source "{ROOT / 'lib/utils.sh'}"
+                        ucc_run() {{ "$@"; }}
+                        code() {{
+                          if [[ "$1" == --list-extensions ]]; then
+                            local count
+                            count="$(cat "{counter}")"
+                            printf '%s' "$((count + 1))" > "{counter}"
+                            if [[ -f "{marker}" ]]; then
+                              printf '%s\\n' 'ms-python.python@2026.4.0'
+                            fi
+                            return 0
+                          fi
+                          if [[ "$1" == --install-extension ]]; then
+                            touch "{marker}"
+                            return 0
+                          fi
+                          return 1
+                        }}
+                        vscode_extensions_cache_versions
+                        value="$(_vscode_extension_cached_version ms-python.python)"
+                        printf '%s\\n' "${{value:-missing}}"
+                        vscode_extension_install ms-python.python
+                        value="$(_vscode_extension_cached_version ms-python.python)"
+                        printf '%s\\n' "${{value:-missing}}"
+                        cat "{counter}"
+                        """
+                    ),
+                ],
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertEqual(result.stdout.strip().splitlines(), ["missing", "2026.4.0", "2"])
+
+    def test_npm_global_install_refreshes_cache_after_mutation(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            counter = tmp_path / "count.txt"
+            marker = tmp_path / "pkg.installed"
+            result = subprocess.run(
+                [
+                    "bash",
+                    "-lc",
+                    textwrap.dedent(
+                        f"""\
+                        set -euo pipefail
+                        printf '0' > "{counter}"
+                        source "{ROOT / 'lib/utils.sh'}"
+                        ucc_run() {{ "$@"; }}
+                        npm() {{
+                          if [[ "$1" == ls ]]; then
+                            local count
+                            count="$(cat "{counter}")"
+                            printf '%s' "$((count + 1))" > "{counter}"
+                            if [[ -f "{marker}" ]]; then
+                              cat <<'EOF'
+                        {{"dependencies":{{"@openai/codex":{{"version":"0.116.0"}}}}}}
+                        EOF
+                            else
+                              cat <<'EOF'
+                        {{"dependencies":{{}}}}
+                        EOF
+                            fi
+                            return 0
+                          fi
+                          if [[ "$1" == install && "$2" == -g ]]; then
+                            touch "{marker}"
+                            return 0
+                          fi
+                          return 1
+                        }}
+                        npm_global_cache_versions
+                        value="$(npm_global_version '@openai/codex')"
+                        printf '%s\\n' "${{value:-missing}}"
+                        npm_global_install '@openai/codex'
+                        value="$(npm_global_version '@openai/codex')"
+                        printf '%s\\n' "${{value:-missing}}"
+                        cat "{counter}"
+                        """
+                    ),
+                ],
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertEqual(result.stdout.strip().splitlines(), ["missing", "0.116.0", "2"])
+
+    def test_ollama_model_pull_refreshes_cache_after_mutation(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            counter = tmp_path / "count.txt"
+            marker = tmp_path / "model.pulled"
+            result = subprocess.run(
+                [
+                    "bash",
+                    "-lc",
+                    textwrap.dedent(
+                        f"""\
+                        set -euo pipefail
+                        printf '0' > "{counter}"
+                        source "{ROOT / 'lib/utils.sh'}"
+                        ucc_run() {{ "$@"; }}
+                        log_info() {{ :; }}
+                        ollama() {{
+                          if [[ "$1" == list ]]; then
+                            local count
+                            count="$(cat "{counter}")"
+                            printf '%s' "$((count + 1))" > "{counter}"
+                            cat <<'EOF'
+                        NAME              ID      SIZE      MODIFIED
+                        EOF
+                            if [[ -f "{marker}" ]]; then
+                              printf '%s\\n' 'llama3.2          abc123  2.0 GB    now'
+                            fi
+                            return 0
+                          fi
+                          if [[ "$1" == pull ]]; then
+                            touch "{marker}"
+                            return 0
+                          fi
+                          return 1
+                        }}
+                        ollama_model_cache_list
+                        if ollama_model_present llama3.2; then printf 'yes\\n'; else printf 'no\\n'; fi
+                        ollama_model_pull llama3.2
+                        if ollama_model_present llama3.2; then printf 'yes\\n'; else printf 'no\\n'; fi
+                        cat "{counter}"
+                        """
+                    ),
+                ],
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertEqual(result.stdout.strip().splitlines(), ["no", "yes", "2"])
+
+    def test_ai_app_runtime_metadata_cache_avoids_repeated_docker_calls(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            manifest = tmp_path / "ai-apps.yaml"
+            manifest.write_text(
+                textwrap.dedent(
+                    """\
+                    component: ai-apps
+                    primary_profile: runtime
+                    libs: ai_apps
+                    runner: run_ai_apps_from_yaml
+                    stack:
+                      compose_dir: .ai-stack
+                      compose_file: docker-compose.yml
+                      definition_template: stack/docker-compose.yml
+                      marker: '# ai-stack test'
+                      services:
+                      - open-webui
+                    targets:
+                      ai-stack-compose-file:
+                        component: ai-apps
+                        profile: parametric
+                        type: config
+                        state_model: parametric
+                        display_name: compose file
+                        config_driver: compose-file
+                        evidence:
+                          path: printf '%s' "$COMPOSE_FILE"
+                      open-webui-runtime:
+                        component: ai-apps
+                        profile: runtime
+                        type: runtime
+                        display_name: Open WebUI
+                        depends_on:
+                        - docker-desktop
+                        - ai-stack-compose-file
+                        provided_by_tool: docker-compose
+                        driver:
+                          kind: docker-compose
+                          service_name: open-webui
+                        runtime_driver: docker-compose
+                        runtime_manager: docker-compose
+                        probe_kind: http
+                        oracle:
+                          runtime: "true"
+                        evidence:
+                          version: _ai_service_runtime_version '${driver.service_name}'
+                          digest: _ai_service_runtime_digest '${driver.service_name}'
+                          ref: _ai_service_runtime_ref '${driver.service_name}'
+                        actions:
+                          install: _ai_apply_compose_runtime
+                    """
+                ),
+                encoding="utf-8",
+            )
+            service_counter = tmp_path / "service-count.txt"
+            image_counter = tmp_path / "image-count.txt"
+            result = subprocess.run(
+                [
+                    "bash",
+                    "-lc",
+                    textwrap.dedent(
+                        f"""\
+                        set -euo pipefail
+                        printf '0' > "{service_counter}"
+                        printf '0' > "{image_counter}"
+                        source "{ROOT / 'lib/utils.sh'}"
+                        source "{ROOT / 'lib/ucc_targets.sh'}"
+                        source "{ROOT / 'lib/ai_apps.sh'}"
+                        log_info() {{ :; }}
+                        log_warn() {{ :; }}
+                        ucc_asm_config_desired() {{ printf '%s' "$1"; }}
+                        ucc_target() {{ :; }}
+                        ucc_yaml_runtime_target() {{
+                          local cfg_dir="$1" yaml="$2" target="$3"
+                          ucc_eval_evidence_from_yaml "$cfg_dir" "$yaml" "$target" >/dev/null
+                        }}
+                        docker() {{
+                          if [[ "$1" == info ]]; then
+                            return 0
+                          fi
+                          if [[ "$1" == inspect && "$2" == --format && "$3" == '{{{{.Config.Image}}}}' && "$4" == open-webui ]]; then
+                            local count
+                            count="$(cat "{service_counter}")"
+                            printf '%s' "$((count + 1))" > "{service_counter}"
+                            printf '%s\\n' 'ghcr.io/open-webui/open-webui:main'
+                            return 0
+                          fi
+                          if [[ "$1" == image && "$2" == inspect ]]; then
+                            local count
+                            count="$(cat "{image_counter}")"
+                            printf '%s' "$((count + 1))" > "{image_counter}"
+                            if [[ "$3" == --format && "$4" == '{{{{ index .Config.Labels \"org.opencontainers.image.version\" }}}}' ]]; then
+                              printf '%s\\n' 'main'
+                              return 0
+                            fi
+                            if [[ "$3" == --format && "$4" == '{{{{index .RepoDigests 0}}}}' ]]; then
+                              printf '%s\\n' 'ghcr.io/open-webui/open-webui@sha256:1234567890abcdef1234567890abcdef'
+                              return 0
+                            fi
+                            if [[ "$3" == --format && "$4" == '{{{{ index .Config.Labels \"org.label-schema.version\" }}}}' ]]; then
+                              printf '%s\\n' '<no value>'
+                              return 0
+                            fi
+                          fi
+                          printf 'unexpected docker call: %s\\n' "$*" >&2
+                          return 1
+                        }}
+                        export HOME="{tmp_path / 'home'}"
+                        mkdir -p "$HOME"
+                        export UIC_PREF_AI_APPS_IMAGE_POLICY=reuse-local
+                        export UCC_DRY_RUN=1
+                        run_ai_apps_from_yaml "{ROOT}" "{manifest}"
+                        printf '%s\\n' "$(cat "{service_counter}")"
+                        printf '%s\\n' "$(cat "{image_counter}")"
+                        """
+                    ),
+                ],
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertEqual(result.stdout.strip().splitlines(), ["1", "2"])
+
     def test_platform_specific_dependencies_follow_host_variant(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             ucc_dir = self._write_manifest(

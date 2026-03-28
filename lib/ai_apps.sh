@@ -30,6 +30,26 @@ run_ai_apps_from_yaml() {
   IMAGE_POLICY="${UIC_PREF_AI_APPS_IMAGE_POLICY:-reuse-local}"
   _AI_APPS_CFG_DIR="$cfg_dir"
   _AI_APPS_TEMPLATE_FILE="$cfg_dir/${stack_template_rel}"
+  export _AI_SERVICE_IMAGE_CACHE="" _AI_IMAGE_VERSION_CACHE="" _AI_IMAGE_DIGEST_CACHE=""
+  local _AI_CACHE_VALUE="" _AI_SERVICE_IMAGE_VALUE="" _AI_IMAGE_VERSION_VALUE="" _AI_IMAGE_DIGEST_VALUE=""
+
+  _ai_cache_get() {
+    local var_name="$1" key="$2" cache_key="" value=""
+    _AI_CACHE_VALUE=""
+    while IFS=$'\t' read -r cache_key value; do
+      [[ -n "$cache_key" ]] || continue
+      if [[ "$cache_key" == "$key" ]]; then
+        _AI_CACHE_VALUE="$value"
+        return 0
+      fi
+    done <<< "${!var_name}"
+    return 1
+  }
+
+  _ai_cache_put() {
+    local var_name="$1" key="$2" value="$3"
+    printf -v "$var_name" '%s%s\t%s\n' "${!var_name}" "$key" "$value"
+  }
 
   _ai_target_for_service() {
     printf '%s-runtime' "$1"
@@ -55,7 +75,7 @@ run_ai_apps_from_yaml() {
     printf '%s' "$svc"
   }
 
-  _ai_service_image() {
+  _ai_probe_service_image() {
     local svc="$1" image=""
     image="$(docker inspect --format '{{.Config.Image}}' "$svc" 2>/dev/null || true)"
     if [[ -z "$image" ]]; then
@@ -79,6 +99,16 @@ PY
 )"
     fi
     printf '%s' "$image"
+  }
+
+  _ai_service_image() {
+    local svc="$1" image=""
+    if _ai_cache_get _AI_SERVICE_IMAGE_CACHE "$svc"; then
+      _AI_SERVICE_IMAGE_VALUE="$_AI_CACHE_VALUE"
+      return 0
+    fi
+    image="$(_ai_probe_service_image "$svc")"
+    _AI_SERVICE_IMAGE_VALUE="$image"
   }
 
   _ai_service_image_tag() {
@@ -106,7 +136,7 @@ PY
     printf '%s' "$value"
   }
 
-  _ai_service_image_label_version() {
+  _ai_probe_image_label_version() {
     local image="$1" version=""
     [[ -n "$image" ]] || return 0
     version="$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.version" }}' "$image" 2>/dev/null || true)"
@@ -118,22 +148,68 @@ PY
     printf '%s' "$version"
   }
 
-  _ai_service_image_digest() {
+  _ai_service_image_label_version() {
+    local image="$1" version=""
+    [[ -n "$image" ]] || return 0
+    if _ai_cache_get _AI_IMAGE_VERSION_CACHE "$image"; then
+      _AI_IMAGE_VERSION_VALUE="$_AI_CACHE_VALUE"
+      return 0
+    fi
+    version="$(_ai_probe_image_label_version "$image")"
+    _AI_IMAGE_VERSION_VALUE="$version"
+  }
+
+  _ai_probe_image_digest() {
     local image="$1" digest="" short=""
     [[ -n "$image" ]] || return 0
     digest="$(docker image inspect --format '{{index .RepoDigests 0}}' "$image" 2>/dev/null || true)"
     digest="${digest##*@}"
-    [[ "$digest" == sha256:* ]] || return 0
-    short="${digest#sha256:}"
-    short="${short:0:12}"
-    printf 'sha256:%s' "$short"
+    if [[ "$digest" == sha256:* ]]; then
+      short="${digest#sha256:}"
+      short="${short:0:12}"
+      digest="sha256:${short}"
+    else
+      digest=""
+    fi
+    printf '%s' "$digest"
+  }
+
+  _ai_service_image_digest() {
+    local image="$1" digest=""
+    [[ -n "$image" ]] || return 0
+    if _ai_cache_get _AI_IMAGE_DIGEST_CACHE "$image"; then
+      _AI_IMAGE_DIGEST_VALUE="$_AI_CACHE_VALUE"
+      return 0
+    fi
+    digest="$(_ai_probe_image_digest "$image")"
+    _AI_IMAGE_DIGEST_VALUE="$digest"
+  }
+
+  _ai_warm_metadata_cache() {
+    local svc="" image="" version="" digest=""
+    export _AI_SERVICE_IMAGE_CACHE="" _AI_IMAGE_VERSION_CACHE="" _AI_IMAGE_DIGEST_CACHE=""
+    for svc in "${AI_SERVICES[@]}"; do
+      image="$(_ai_probe_service_image "$svc")"
+      _ai_cache_put _AI_SERVICE_IMAGE_CACHE "$svc" "$image"
+      [[ -n "$image" ]] || continue
+      if ! _ai_cache_get _AI_IMAGE_VERSION_CACHE "$image"; then
+        version="$(_ai_probe_image_label_version "$image")"
+        _ai_cache_put _AI_IMAGE_VERSION_CACHE "$image" "$version"
+      fi
+      if ! _ai_cache_get _AI_IMAGE_DIGEST_CACHE "$image"; then
+        digest="$(_ai_probe_image_digest "$image")"
+        _ai_cache_put _AI_IMAGE_DIGEST_CACHE "$image" "$digest"
+      fi
+    done
   }
 
   _ai_service_runtime_version() {
     local svc="$1" image tag version
-    image="$(_ai_service_image "$svc")"
+    _ai_service_image "$svc"
+    image="$_AI_SERVICE_IMAGE_VALUE"
     tag="$(_ai_service_image_tag "$image")"
-    version="$(_ai_service_image_label_version "$image")"
+    _ai_service_image_label_version "$image"
+    version="$_AI_IMAGE_VERSION_VALUE"
     [[ -n "$version" ]] && version="$(_ai_normalize_version "$version")"
     [[ -n "$tag" ]] && tag="$(_ai_normalize_version "$tag")"
 
@@ -149,10 +225,13 @@ PY
 
   _ai_service_runtime_digest() {
     local svc="$1" image tag version digest
-    image="$(_ai_service_image "$svc")"
+    _ai_service_image "$svc"
+    image="$_AI_SERVICE_IMAGE_VALUE"
     tag="$(_ai_service_image_tag "$image")"
-    version="$(_ai_service_image_label_version "$image")"
-    digest="$(_ai_service_image_digest "$image")"
+    _ai_service_image_label_version "$image"
+    version="$_AI_IMAGE_VERSION_VALUE"
+    _ai_service_image_digest "$image"
+    digest="$_AI_IMAGE_DIGEST_VALUE"
     [[ -n "$version" ]] && version="$(_ai_normalize_version "$version")"
     [[ -n "$tag" ]] && tag="$(_ai_normalize_version "$tag")"
 
@@ -172,9 +251,11 @@ PY
 
   _ai_service_runtime_ref() {
     local svc="$1" image tag version
-    image="$(_ai_service_image "$svc")"
+    _ai_service_image "$svc"
+    image="$_AI_SERVICE_IMAGE_VALUE"
     tag="$(_ai_service_image_tag "$image")"
-    version="$(_ai_service_image_label_version "$image")"
+    _ai_service_image_label_version "$image"
+    version="$_AI_IMAGE_VERSION_VALUE"
     [[ -n "$version" ]] && version="$(_ai_normalize_version "$version")"
     [[ -n "$tag" ]] && tag="$(_ai_normalize_version "$tag")"
 
@@ -223,6 +304,7 @@ PY
     log_warn "Docker not running — skipping AI stack"
     return 1
   }
+  _ai_warm_metadata_cache
 
   # ---- Compose file ----
   _observe_compose_file() {
@@ -278,6 +360,7 @@ PY
       ucc_run docker compose -f "$COMPOSE_FILE" pull
     fi
     ucc_run docker compose -f "$COMPOSE_FILE" up -d
+    _ai_warm_metadata_cache
   }
 
   local svc target
