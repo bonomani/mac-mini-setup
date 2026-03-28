@@ -198,6 +198,7 @@ _component_supported_for() {
 
 _display_component_name() {
   case "$1" in
+    macos-software-update) printf 'macOS software update' ;;
     system) printf 'AI workstation' ;;
     verify) printf 'Verification' ;;
     *)      printf '%s' "$1" ;;

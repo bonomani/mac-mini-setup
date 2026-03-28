@@ -19,6 +19,8 @@ components:
     mode: enabled
   - name: docker-config
     mode: enabled
+  - name: macos-software-update
+    mode: enabled
   - name: macos-defaults
     mode: enabled
   - name: system

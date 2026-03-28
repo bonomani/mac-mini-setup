@@ -2395,3 +2395,55 @@ class UccSchedulerTests(unittest.TestCase):
             )
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("declared dependency unresolved", result.stdout)
+
+    def test_softwareupdate_config_drivers_validate(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            ucc_dir = self._write_manifest(
+                Path(tmp),
+                textwrap.dedent(
+                    """\
+                    component: fake
+                    primary_profile: parametric
+                    libs: fake
+                    runner: run_fake
+                    softwareupdate_domain: /Library/Preferences/com.apple.SoftwareUpdate
+                    targets:
+                      softwareupdate-schedule=on:
+                        component: fake
+                        profile: parametric
+                        type: config
+                        state_model: parametric
+                        display_name: Software Update schedule
+                        driver:
+                          kind: softwareupdate-schedule
+                        observe_cmd: "printf on"
+                        desired_value: "on"
+                        evidence:
+                          schedule: "printf on"
+                        actions:
+                          install: "printf on"
+                      softwareupdate-auto-check=1:
+                        component: fake
+                        profile: parametric
+                        type: config
+                        state_model: parametric
+                        display_name: Automatic update checks
+                        driver:
+                          kind: softwareupdate-defaults
+                          domain: ${softwareupdate_domain}
+                          key: AutomaticCheckEnabled
+                        observe_cmd: "printf 1"
+                        desired_value: "1"
+                        evidence:
+                          AutomaticCheckEnabled: "printf 1"
+                        actions:
+                          install: "printf 1"
+                    """
+                ),
+            )
+            result = subprocess.run(
+                ["python3", str(QUERY), str(ucc_dir)],
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)

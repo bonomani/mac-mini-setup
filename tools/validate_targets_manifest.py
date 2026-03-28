@@ -50,6 +50,8 @@ KNOWN_CONFIG_DRIVERS = {
     "script-install",
     "shell-bootstrap",
     "shell-file-edit",
+    "softwareupdate-defaults",
+    "softwareupdate-schedule",
     "symlink-command",
     "user-defaults",
 }

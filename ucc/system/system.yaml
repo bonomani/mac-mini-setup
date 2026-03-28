@@ -22,6 +22,12 @@ system:
   - ariaflow-web
   - unsloth-studio
   - git-global-config
+  - softwareupdate-schedule=on
+  - softwareupdate-auto-check=1
+  - softwareupdate-auto-download=1
+  - softwareupdate-auto-install-macos=1
+  - softwareupdate-config-data=1
+  - softwareupdate-critical-updates=1
   - pmset-ac-sleep=0
   - finder-show-hidden=1
 targets:
@@ -46,6 +52,12 @@ targets:
     - ariaflow-web
     - unsloth-studio
     - git-global-config
+    - softwareupdate-schedule=on
+    - softwareupdate-auto-check=1
+    - softwareupdate-auto-download=1
+    - softwareupdate-auto-install-macos=1
+    - softwareupdate-config-data=1
+    - softwareupdate-critical-updates=1
     - pmset-ac-sleep=0
     - finder-show-hidden=1
     driver:

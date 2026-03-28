@@ -17,7 +17,7 @@ def iter_yaml_files(path: Path):
     for pattern in ("*.yaml", "*.yml"):
         yield from sorted(path.rglob(pattern))
 
-DRIVER_KEY_ORDER = ["kind", "ref", "package_ref", "service_name", "app_name", "app_path"]
+DRIVER_KEY_ORDER = ["kind", "ref", "package_ref", "service_name", "app_name", "app_path", "domain", "key"]
 ACTIONS_KEY_ORDER = ["install", "update"]
 
 
