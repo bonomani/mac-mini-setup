@@ -202,11 +202,12 @@ _ucc_run_yaml_action() {
 
 ucc_yaml_simple_target() {
   local cfg_dir="$1" yaml="$2" target="$3"
-  local fn profile install_cmd update_cmd
+  local fn profile install_cmd update_cmd externally_managed_updates
   fn="${target//[^a-zA-Z0-9]/_}"
   profile="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "profile" "configured")"
   install_cmd="$(_ucc_yaml_target_action_get "$cfg_dir" "$yaml" "$target" "install")"
   update_cmd="$(_ucc_yaml_target_action_get "$cfg_dir" "$yaml" "$target" "update")"
+  externally_managed_updates="$(_ucc_yaml_target_driver_get "$cfg_dir" "$yaml" "$target" "externally_managed_updates")"
 
   eval "_uyst_obs_${fn}() { _ucc_observe_yaml_simple_target '${cfg_dir}' '${yaml}' '${target}'; }"
   eval "_uyst_evd_${fn}() { ucc_eval_evidence_from_yaml '${cfg_dir}' '${yaml}' '${target}'; }"
@@ -218,6 +219,8 @@ ucc_yaml_simple_target() {
   local args=(--name "$target" --profile "$profile" --observe "_uyst_obs_${fn}" --evidence "_uyst_evd_${fn}")
   [[ -n "$install_cmd" ]] && args+=(--install "_uyst_ins_${fn}")
   [[ -n "$install_cmd" ]] && args+=(--update "_uyst_upd_${fn}")
+  [[ "$externally_managed_updates" == "true" || "$externally_managed_updates" == "1" || "$externally_managed_updates" == "yes" ]] && \
+    args+=(--warn-on-update-failure)
   ucc_target "${args[@]}"
 }
 
@@ -759,6 +762,7 @@ _ucc_execute_target() {
   fi
 
   local name="" observe_fn="" desired="" install_fn="" update_fn="" axes="" profile="" evidence_fn=""
+  local warn_on_update_failure=0
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -771,6 +775,7 @@ _ucc_execute_target() {
       --evidence) evidence_fn="$2"; shift 2 ;;
       --kind)    profile="$2";    shift 2 ;;
       --profile) profile="$2";    shift 2 ;;
+      --warn-on-update-failure) warn_on_update_failure=1; shift ;;
       *) shift ;;
     esac
   done
@@ -848,11 +853,19 @@ _ucc_execute_target() {
           _ucc_record_outcome "$profile" "$name" "CHANGED" "ok" "changed" "$msg_id" "$started_at" \
             "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$verified" "$axes"),\"observed_after\":$(_ucc_state_obj "$verified")}" \
             "{\"observation\":\"ok\",\"outcome\":\"changed\",\"completion\":\"complete\",\"proof\":{\"change\":\"update_applied\"}}"
+        elif [[ "$warn_on_update_failure" == "1" ]]; then
+          _ucc_emit_target_line "$profile" "warn" "$display_name" "update remains externally managed  $(_ucc_compose_evidence "$name" "${verified:-$observed}" "$axes" "$evidence_fn")"
+          _ucc_record_outcome "$profile" "$name" "" "warn" "unchanged" "$msg_id" "$started_at" \
+            "{}" "{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"policy\",\"message\":\"update must be applied externally\"}"
         else
           _ucc_emit_target_line "$profile" "fail" "$display_name" "verify after update: \"$(_ucc_display_state "${verified:-?}" "$axes")\"  $(_ucc_compose_evidence "$name" "${verified:-$observed}" "$axes" "$evidence_fn")"
           _ucc_record_outcome "$profile" "$name" "FAILED" "failed" "failed" "$msg_id" "$started_at" \
             "{}" "{\"observation\":\"failed\",\"message\":\"post-update verify did not reach desired state\"}"
         fi
+      elif [[ "$warn_on_update_failure" == "1" ]]; then
+        _ucc_emit_target_line "$profile" "warn" "$display_name" "update remains externally managed  $(_ucc_compose_evidence "$name" "$observed" "$axes" "$evidence_fn")"
+        _ucc_record_outcome "$profile" "$name" "" "warn" "unchanged" "$msg_id" "$started_at" \
+          "{}" "{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"policy\",\"message\":\"update must be applied externally\"}"
       else
         _ucc_emit_target_line "$profile" "fail" "$display_name" "update error state=\"$(_ucc_display_state "$observed" "$axes")\""
         _ucc_record_outcome "$profile" "$name" "FAILED" "failed" "failed" "$msg_id" "$started_at" \
@@ -906,11 +919,19 @@ _ucc_execute_target() {
       _ucc_record_outcome "$profile" "$name" "CHANGED" "ok" "changed" "$msg_id" "$started_at" \
         "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$verified" "$axes"),\"observed_after\":$(_ucc_state_obj "$verified")}" \
         "{\"observation\":\"ok\",\"outcome\":\"changed\",\"completion\":\"complete\",\"proof\":{\"change\":\"verify_pass\"}}"
+    elif [[ "$warn_on_update_failure" == "1" && "$action_context" == "update" ]]; then
+      _ucc_emit_target_line "$profile" "warn" "$display_name" "update remains externally managed  $(_ucc_compose_evidence "$name" "${verified:-$observed}" "$axes" "$evidence_fn")"
+      _ucc_record_outcome "$profile" "$name" "" "warn" "unchanged" "$msg_id" "$started_at" \
+        "{}" "{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"policy\",\"message\":\"update must be applied externally\"}"
     else
       _ucc_emit_target_line "$profile" "fail" "$display_name" "verify after ${action_context}: \"$(_ucc_display_state "${verified:-?}" "$axes")\"  $(_ucc_compose_evidence "$name" "${verified:-$observed}" "$axes" "$evidence_fn")"
       _ucc_record_outcome "$profile" "$name" "FAILED" "failed" "failed" "$msg_id" "$started_at" \
         "{}" "{\"observation\":\"failed\",\"message\":\"post-${action_context} verify did not reach desired state\"}"
     fi
+  elif [[ "$warn_on_update_failure" == "1" && "$action_context" == "update" ]]; then
+    _ucc_emit_target_line "$profile" "warn" "$display_name" "update remains externally managed  $(_ucc_compose_evidence "$name" "$observed" "$axes" "$evidence_fn")"
+    _ucc_record_outcome "$profile" "$name" "" "warn" "unchanged" "$msg_id" "$started_at" \
+      "{}" "{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"policy\",\"message\":\"update must be applied externally\"}"
   else
     _ucc_emit_target_line "$profile" "fail" "$display_name" "${action_context} error was=\"$(_ucc_display_state "$observed" "$axes")\"  $(_ucc_compose_evidence "$name" "$observed" "$axes" "$evidence_fn")"
     _ucc_record_outcome "$profile" "$name" "FAILED" "failed" "failed" "$msg_id" "$started_at" \

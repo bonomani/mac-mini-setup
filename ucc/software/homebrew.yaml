@@ -26,6 +26,7 @@ targets:
     provided_by_tool: macos-installer
     driver:
       kind: macos-clt
+      externally_managed_updates: true
     oracle:
       configured: xcode-select -p >/dev/null 2>&1
     observe_cmd: "if ! xcode-select -p >/dev/null 2>&1; then\n  printf 'absent'\n\

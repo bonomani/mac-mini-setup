@@ -724,7 +724,8 @@ class UccSchedulerTests(unittest.TestCase):
                 capture_output=True,
             )
             self.assertEqual(result.returncode, 0, msg=result.stderr)
-            self.assertIn("update error was=", result.stdout)
+            self.assertIn("[warn", result.stdout)
+            self.assertIn("update remains externally managed", result.stdout)
             self.assertNotIn("Triggering Xcode Command Line Tools install", result.stdout)
 
     def test_manifest_validation_rejects_non_string_display_name(self) -> None:
