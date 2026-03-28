@@ -71,8 +71,6 @@ targets:
     type: config
     state_model: parametric
     display_name: App Nap
-    soft_depends_on:
-    - gate:sudo-available
     driver:
       kind: user-defaults
     oracle:
@@ -86,15 +84,12 @@ targets:
         || echo 0
     actions:
       install: ucc_run defaults write NSGlobalDomain NSAppSleepDisabled -bool YES
-    dependency_gate: sudo-available
   finder-show-hidden=1:
     component: macos-defaults
     profile: parametric
     type: config
     state_model: parametric
     display_name: Finder hidden files
-    soft_depends_on:
-    - gate:sudo-available
     driver:
       kind: user-defaults
     oracle:
@@ -108,15 +103,12 @@ targets:
         || echo 0
     actions:
       install: ucc_run defaults write com.apple.finder AppleShowAllFiles -bool true
-    dependency_gate: sudo-available
   show-all-extensions=1:
     component: macos-defaults
     profile: parametric
     type: config
     state_model: parametric
     display_name: Filename extensions
-    soft_depends_on:
-    - gate:sudo-available
     driver:
       kind: user-defaults
     oracle:
@@ -131,15 +123,12 @@ targets:
     actions:
       install: ucc_run defaults write NSGlobalDomain AppleShowAllExtensions -bool
         true
-    dependency_gate: sudo-available
   dock-autohide=1:
     component: macos-defaults
     profile: parametric
     type: config
     state_model: parametric
     display_name: Dock auto-hide
-    soft_depends_on:
-    - gate:sudo-available
     driver:
       kind: user-defaults
     oracle:
@@ -150,7 +139,6 @@ targets:
       autohide: defaults read com.apple.dock autohide 2>/dev/null || echo 0
     actions:
       install: ucc_run defaults write com.apple.dock autohide -bool true
-    dependency_gate: sudo-available
 restart_processes:
 - Finder
 - Dock

@@ -43,6 +43,11 @@ profile_bump() {
 
 # ── Section printers ──────────────────────────────────────────────────────────
 
+print_layer_contracts() {
+  printf '  %-19s | %s\n' "UIC Gates" "readiness/integrity/authorization pre-convergence"
+  printf '  %-19s | %s\n' "TIC Verification" "post-convergence verification evidence"
+}
+
 print_profile_contracts() {
   local profile expected
   for profile in "${_UCC_PROFILE_IDS[@]}"; do

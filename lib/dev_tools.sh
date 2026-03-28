@@ -60,9 +60,6 @@ run_dev_tools_from_yaml() {
   ucc_yaml_simple_target "$cfg_dir" "$yaml" "home-bin-in-path"
   ucc_yaml_simple_target "$cfg_dir" "$yaml" "ai-healthcheck"
 
-  # ---- macOS capability: networkQuality CLI ----
-  ucc_yaml_capability_target "$cfg_dir" "$yaml" "networkquality-available"
-
   ucc_brew_runtime_formula_target "ariaflow" "ariaflow" "$_ARIAFLOW_FORMULA" "$cfg_dir" "$yaml"
   ucc_brew_runtime_formula_target "ariaflow-web" "ariaflow-web" "$_ARIAFLOW_WEB_FORMULA" "$cfg_dir" "$yaml"
 }

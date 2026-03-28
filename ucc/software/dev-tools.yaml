@@ -216,19 +216,6 @@ targets:
         install -m 755 "$CFG_DIR/scripts/ai-healthcheck" "$HOME/bin/ai-healthcheck"
 
         '
-  networkquality-available:
-    component: dev-tools
-    profile: capability
-    type: capability
-    display_name: networkQuality
-    driver:
-      kind: capability
-    runtime_manager: capability
-    probe_kind: command
-    oracle:
-      runtime: command -v networkQuality >/dev/null 2>&1
-    evidence:
-      path: command -v networkQuality 2>/dev/null
   ariaflow:
     component: dev-tools
     profile: runtime
@@ -237,7 +224,7 @@ targets:
     depends_on:
     - homebrew
     soft_depends_on:
-    - networkquality-available
+    - gate:networkquality-available
     provided_by_tool: brew
     driver:
       kind: brew-service

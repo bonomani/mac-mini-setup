@@ -92,7 +92,7 @@ state can describe the whole machine, not only individual components.
 | `policy/gates.yaml` | YAML | UIC gates | Hard/soft preflight gate declarations |
 | `policy/preferences.yaml` | YAML | UIC preferences | Safe defaults and operator overrides |
 | `policy/components.yaml` | YAML | Component policy | Per-component `enabled|disabled|remove` mode declarations |
-| `policy/profiles.yaml` | YAML | UCC profiles | Configured/runtime/capability/parametric baselines plus legacy presence alias |
+| `policy/profiles.yaml` | YAML | UCC profiles | Configured/runtime/capability/parametric baselines for convergence targets |
 
 ### UCC Software Manifests
 

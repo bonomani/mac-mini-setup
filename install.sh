@@ -140,6 +140,7 @@ _gate_ollama_api()      {
   [[ -z "$path" ]] && path="/api/tags"
   curl -fsS "http://${host}:${port}${path}" >/dev/null 2>&1
 }
+_gate_networkquality()  { command -v networkQuality >/dev/null 2>&1; }
 _gate_sudo()            { sudo -n true 2>/dev/null; }
 
 _load_components() {
@@ -338,6 +339,7 @@ _hdr_flags="mode=$UCC_MODE"; [[ "$UCC_DRY_RUN" == "1" ]] && _hdr_flags="$_hdr_fl
 echo "  AI Workstation Setup | platform=${HOST_PLATFORM} | $_hdr_flags | $(date '+%Y-%m-%d %H:%M')"
 echo "  $_arch_label  ·  $_ram_label"
 echo "  Global State     | $(uic_global_state_label) ($(uic_global_state_detail))"
+print_layer_contracts
 print_profile_contracts
 log_debug "correlation_id=$UCC_CORRELATION_ID"
 echo "========================================================"

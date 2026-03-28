@@ -83,6 +83,48 @@ class TicRunnerAndSummaryTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, msg=result.stderr)
             self.assertIn("Capability", result.stdout)
 
+    def test_summary_profile_contracts_no_longer_include_presence(self) -> None:
+        result = subprocess.run(
+            [
+                "bash",
+                "-lc",
+                textwrap.dedent(
+                    f"""\
+                    set -euo pipefail
+                    source "{ROOT / 'lib/ucc.sh'}"
+                    source "{ROOT / 'lib/summary.sh'}"
+                    print_profile_contracts
+                    """
+                ),
+            ],
+            text=True,
+            capture_output=True,
+        )
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+        self.assertNotIn("Profile Presence", result.stdout)
+        self.assertIn("Profile Configured", result.stdout)
+
+    def test_summary_prints_uic_and_tic_contract_lines(self) -> None:
+        result = subprocess.run(
+            [
+                "bash",
+                "-lc",
+                textwrap.dedent(
+                    f"""\
+                    set -euo pipefail
+                    source "{ROOT / 'lib/ucc.sh'}"
+                    source "{ROOT / 'lib/summary.sh'}"
+                    print_layer_contracts
+                    """
+                ),
+            ],
+            text=True,
+            capture_output=True,
+        )
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+        self.assertIn("UIC Gates", result.stdout)
+        self.assertIn("TIC Verification", result.stdout)
+
     def test_tic_runner_supports_conditional_skip_when(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)

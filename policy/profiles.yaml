@@ -1,14 +1,4 @@
 profiles:
-  - id: presence
-    label: Presence
-    aliases: package
-    axes: installation_state
-    expected_text: installation=Configured
-    installation: Configured
-    runtime: Stopped
-    health: Healthy
-    admin: Enabled
-    dependencies: DepsReady
   - id: configured
     label: Configured
     aliases: config|precondition|nonruntime

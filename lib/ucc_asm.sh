@@ -362,7 +362,6 @@ ucc_profile_expected_text() {
   [[ -n "$idx" ]] && printf '%s' "${_UCC_PROFILE_EXPECTED_TEXT[$idx]}" || printf ''
 }
 
-UCC_ASM_PRESENCE_AXES="$(_ucc_profile_axes presence)"
 UCC_ASM_CONFIGURED_AXES="$(_ucc_profile_axes configured)"
 UCC_ASM_RUNTIME_AXES="$(_ucc_profile_axes runtime)"
 

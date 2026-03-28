@@ -53,6 +53,8 @@ Modeling rule:
   status of required governed subsystem targets in the current run
 - system-layer non-parametric configuration components such as `git-config`
   use the `configured` ASM profile
+- UCC uses `profile` only for convergence targets; TIC verification
+  suites use a suite `role` instead of a UCC profile
 - each mutable component uses the ASM software-profile style axes:
   - `installation_state`
   - `runtime_state`

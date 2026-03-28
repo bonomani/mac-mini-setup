@@ -41,6 +41,12 @@ gates:
     class: readiness
     target_state: ollama runtime_state=Running dependency_state=DepsReady
     blocking: soft
+  - name: networkquality-available
+    condition: _gate_networkquality
+    scope: component:dev-tools
+    class: readiness
+    target_state: ariaflow dependency_state=DepsReady
+    blocking: soft
   - name: sudo-available
     condition: _gate_sudo
     scope: component:macos-defaults
