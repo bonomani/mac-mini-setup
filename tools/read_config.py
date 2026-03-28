@@ -14,16 +14,16 @@ Usage:
       "section.key" or "section.nested.key".
 
   read_config.py --get-many <file> <key1> [key2 ...]
-      Outputs tab-delimited key/value rows for top-level scalar lookups.
+      Outputs NUL-delimited tab-separated key/value rows for top-level scalar lookups.
 
   read_config.py --target-get <file> <target> <key>
       Outputs a scalar value from a named target mapping.
 
   read_config.py --target-get-many <file> <target> <key1> [key2 ...]
-      Outputs tab-delimited key/value rows for scalar lookups in one target.
+      Outputs NUL-delimited tab-separated key/value rows for scalar lookups in one target.
 
   read_config.py --evidence <file> <target>
-      Outputs tab-delimited evidence key/command pairs for a target.
+      Outputs NUL-delimited tab-separated evidence key/command pairs for a target.
 """
 from __future__ import annotations
 
@@ -194,6 +194,13 @@ def read_target_scalars(path: Path, target_name: str, keys: list[str]) -> list[s
     return rows
 
 
+def print_nul_rows(rows: list[str]) -> None:
+    stream = sys.stdout.buffer
+    for row in rows:
+        stream.write(row.encode("utf-8"))
+        stream.write(b"\0")
+
+
 def read_evidence(path: Path, target_name: str) -> list[str]:
     data = load_yaml(path)
     targets = data.get("targets") or {}
@@ -230,8 +237,7 @@ def main() -> int:
         if not path.exists():
             return 0
         try:
-            for row in read_evidence(path, args[2]):
-                print(row)
+            print_nul_rows(read_evidence(path, args[2]))
         except Exception as exc:
             print(f"ERROR: {exc}", file=sys.stderr)
             return 1
@@ -262,8 +268,7 @@ def main() -> int:
             print(f"ERROR: {path} not found", file=sys.stderr)
             return 1
         try:
-            for row in read_scalars(path, args[2:]):
-                print(row)
+            print_nul_rows(read_scalars(path, args[2:]))
         except Exception as exc:
             print(f"ERROR: {exc}", file=sys.stderr)
             return 1
@@ -293,8 +298,7 @@ def main() -> int:
             print(f"ERROR: {path} not found", file=sys.stderr)
             return 1
         try:
-            for row in read_target_scalars(path, args[2], args[3:]):
-                print(row)
+            print_nul_rows(read_target_scalars(path, args[2], args[3:]))
         except Exception as exc:
             print(f"ERROR: {exc}", file=sys.stderr)
             return 1

@@ -10,16 +10,41 @@ run_ollama_from_yaml() {
   local _OLLAMA_INSTALLER_URL _OLLAMA_BREW_SERVICE_NAME
   local _OLLAMA_API_HOST _OLLAMA_API_PORT _OLLAMA_API_TAGS_PATH _OLLAMA_LOG
   local _OLLAMA_STOP_PATTERN _OLLAMA_START_CMD _OLLAMA_API_URL _OLLAMA_HOST_SUPPORTED_CMD
-  _OLLAMA_INSTALLER_URL="$(yaml_get "$cfg_dir" "$yaml" installer_url        "https://ollama.com/install.sh")"
-  _OLLAMA_BREW_SERVICE_NAME="$(yaml_get "$cfg_dir" "$yaml" brew_service_name ollama)"
-  _OLLAMA_API_HOST="$(     yaml_get "$cfg_dir" "$yaml" api_host             "127.0.0.1")"
-  _OLLAMA_API_PORT="$(     yaml_get "$cfg_dir" "$yaml" api_port             "11434")"
-  _OLLAMA_API_TAGS_PATH="$(yaml_get "$cfg_dir" "$yaml" api_tags_path        "/api/tags")"
-  _OLLAMA_LOG="$(          yaml_get "$cfg_dir" "$yaml" log_file             "/tmp/ollama.log")"
-  _OLLAMA_STOP_PATTERN="$( yaml_get "$cfg_dir" "$yaml" fallback_stop_pattern "ollama (serve|app)")"
-  _OLLAMA_START_CMD="$(    yaml_get "$cfg_dir" "$yaml" fallback_start_cmd    "ollama serve")"
+  _OLLAMA_INSTALLER_URL="https://ollama.com/install.sh"
+  _OLLAMA_BREW_SERVICE_NAME="ollama"
+  _OLLAMA_API_HOST="127.0.0.1"
+  _OLLAMA_API_PORT="11434"
+  _OLLAMA_API_TAGS_PATH="/api/tags"
+  _OLLAMA_LOG="/tmp/ollama.log"
+  _OLLAMA_STOP_PATTERN="ollama (serve|app)"
+  _OLLAMA_START_CMD="ollama serve"
+  while IFS=$'\t' read -r -d '' key value; do
+    [[ -n "$value" ]] || continue
+    case "$key" in
+      installer_url) _OLLAMA_INSTALLER_URL="$value" ;;
+      brew_service_name) _OLLAMA_BREW_SERVICE_NAME="$value" ;;
+      api_host) _OLLAMA_API_HOST="$value" ;;
+      api_port) _OLLAMA_API_PORT="$value" ;;
+      api_tags_path) _OLLAMA_API_TAGS_PATH="$value" ;;
+      log_file) _OLLAMA_LOG="$value" ;;
+      fallback_stop_pattern) _OLLAMA_STOP_PATTERN="$value" ;;
+      fallback_start_cmd) _OLLAMA_START_CMD="$value" ;;
+    esac
+  done < <(yaml_get_many "$cfg_dir" "$yaml" \
+    installer_url \
+    brew_service_name \
+    api_host \
+    api_port \
+    api_tags_path \
+    log_file \
+    fallback_stop_pattern \
+    fallback_start_cmd)
   _OLLAMA_API_URL="http://${_OLLAMA_API_HOST}:${_OLLAMA_API_PORT}${_OLLAMA_API_TAGS_PATH}"
-  _OLLAMA_HOST_SUPPORTED_CMD="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "ollama-host-supported" "oracle.configured")"
+  while IFS=$'\t' read -r -d '' key value; do
+    case "$key" in
+      oracle.configured) _OLLAMA_HOST_SUPPORTED_CMD="$value" ;;
+    esac
+  done < <(yaml_target_get_many "$cfg_dir" "$yaml" "ollama-host-supported" "oracle.configured")
 
   ucc_yaml_simple_target "$cfg_dir" "$yaml" "ollama-host-supported"
 

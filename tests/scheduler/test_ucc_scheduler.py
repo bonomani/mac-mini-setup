@@ -483,7 +483,7 @@ class UccSchedulerTests(unittest.TestCase):
                     "endpoint_url",
                 ],
                 text=True,
-            ).strip().splitlines()
+            ).strip("\0").split("\0")
             self.assertEqual(rows, ["api_host\t127.0.0.1", "endpoint_url\thttp://127.0.0.1:9999"])
 
     def test_read_config_target_get_many_substitutes_target_scalars(self) -> None:
@@ -526,8 +526,74 @@ class UccSchedulerTests(unittest.TestCase):
                     "actions.install",
                 ],
                 text=True,
-            ).strip().splitlines()
+            ).strip("\0").split("\0")
             self.assertEqual(rows, ["observe_cmd\tprintf '%s' 'demo'", "actions.install\tprintf '%s/%s' 'demo' 'demo'"])
+
+    def test_yaml_simple_target_handles_multiline_observe_cmd_after_batched_lookup(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            marker = tmp_path / "installed.txt"
+            ucc_dir = self._write_manifest(
+                tmp_path,
+                textwrap.dedent(
+                    f"""\
+                    component: fake
+                    primary_profile: configured
+                    libs: fake
+                    runner: run_fake
+                    targets:
+                      pkg:
+                        component: fake
+                        profile: configured
+                        type: package
+                        state_model: package
+                        display_name: Fake Package
+                        provided_by_tool: fake
+                        package_driver: fake
+                        observe_cmd: |
+                          if [[ -f "{marker}" ]]; then
+                            printf '1.2.3'
+                          else
+                            printf 'absent'
+                          fi
+                        evidence:
+                          version: |
+                            if [[ -f "{marker}" ]]; then
+                              printf '1.2.3'
+                            fi
+                        install_cmd: 'touch "{marker}"'
+                    """
+                ),
+            )
+            manifest = ucc_dir / "software" / "fake.yaml"
+            result = subprocess.run(
+                [
+                    "bash",
+                    "-lc",
+                    textwrap.dedent(
+                        f"""\
+                        set -euo pipefail
+                        export UCC_DECLARATION_FILE="{tmp_path / 'decl.jsonl'}"
+                        export UCC_RESULT_FILE="{tmp_path / 'result.jsonl'}"
+                        export UCC_SUMMARY_FILE="{tmp_path / 'summary.txt'}"
+                        export UCC_PROFILE_SUMMARY_FILE="{tmp_path / 'profile.txt'}"
+                        export UCC_TARGET_STATUS_FILE="{tmp_path / 'status.txt'}"
+                        export UCC_CORRELATION_ID="test-run"
+                        export UCC_TARGETS_MANIFEST="{ucc_dir}"
+                        export UCC_TARGETS_QUERY_SCRIPT="{QUERY}"
+                        source "{ROOT / 'lib/ucc.sh'}"
+
+                        ucc_yaml_simple_target "{ROOT}" "{manifest}" pkg
+                        ucc_yaml_simple_target "{ROOT}" "{manifest}" pkg
+                        """
+                    ),
+                ],
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertIn("[installed] pkg", result.stdout)
+            self.assertIn("version=1.2.3", result.stdout)
 
     def test_manifest_validation_rejects_non_string_display_name(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -1078,7 +1144,7 @@ class UccSchedulerTests(unittest.TestCase):
             evidence = subprocess.check_output(
                 ["python3", str(ROOT / "tools" / "read_config.py"), "--evidence", str(manifest), "pkg.with.dot"],
                 text=True,
-            ).strip()
+            ).strip("\0")
             self.assertEqual(observe_cmd, "printf '%s' 'demo'")
             self.assertEqual(install_cmd, "printf '%s' 'demo'")
             self.assertEqual(evidence, "version\tprintf '%s' 'demo'")

@@ -7,7 +7,7 @@ register_unsloth_studio_targets() {
   local cfg_dir="$1" yaml="$2"
 
   local label plist_marker port host studio_dir log_file plist bin
-  while IFS=$'\t' read -r key value; do
+  while IFS=$'\t' read -r -d '' key value; do
     case "$key" in
       unsloth_label) label="$value" ;;
       unsloth_plist_marker) plist_marker="$value" ;;

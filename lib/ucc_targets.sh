@@ -11,7 +11,7 @@
 ucc_eval_evidence_from_yaml() {
   local cfg_dir="$1" yaml="$2" target="$3"
   local _first=1 _key _cmd _val
-  while IFS=$'\t' read -r _key _cmd; do
+  while IFS=$'\t' read -r -d '' _key _cmd; do
     [[ -z "$_key" || -z "$_cmd" ]] && continue
     _val=$(eval "$_cmd" 2>/dev/null || true)
     [[ -z "$_val" ]] && continue
@@ -109,7 +109,7 @@ _ucc_observe_yaml_simple_target() {
   local cfg_dir="$1" yaml="$2" target="$3"
   local target_type configured_cmd observe_cmd state_model success_raw failure_raw raw_state
 
-  while IFS=$'\t' read -r key value; do
+  while IFS=$'\t' read -r -d '' key value; do
     case "$key" in
       type) target_type="$value" ;;
       oracle.configured) configured_cmd="$value" ;;
@@ -273,7 +273,7 @@ _ucc_yaml_parametric_desired_state() {
 _ucc_observe_yaml_parametric_target() {
   local cfg_dir="$1" yaml="$2" target="$3"
   local observe_cmd desired gate current dep_state
-  while IFS=$'\t' read -r key value; do
+  while IFS=$'\t' read -r -d '' key value; do
     case "$key" in
       observe_cmd) observe_cmd="$value" ;;
       dependency_gate) gate="$value" ;;
@@ -290,7 +290,7 @@ _ucc_observe_yaml_parametric_target() {
 _ucc_evidence_yaml_parametric_target() {
   local cfg_dir="$1" yaml="$2" target="$3"
   local observe_cmd current evidence
-  while IFS=$'\t' read -r key value; do
+  while IFS=$'\t' read -r -d '' key value; do
     case "$key" in
       observe_cmd) observe_cmd="$value" ;;
     esac
@@ -309,7 +309,7 @@ _ucc_evidence_yaml_parametric_target() {
 _ucc_yaml_parametric_desired_value() {
   local cfg_dir="$1" yaml="$2" target="$3"
   local desired_cmd desired_value
-  while IFS=$'\t' read -r key value; do
+  while IFS=$'\t' read -r -d '' key value; do
     case "$key" in
       desired_cmd) desired_cmd="$value" ;;
       desired_value) desired_value="$value" ;;
@@ -373,7 +373,7 @@ _ucc_observe_yaml_runtime_target() {
 _ucc_observe_yaml_runtime_oracle_target() {
   local cfg_dir="$1" yaml="$2" target="$3"
   local configured_cmd runtime_cmd stopped_installation stopped_runtime stopped_health stopped_dependencies
-  while IFS=$'\t' read -r key value; do
+  while IFS=$'\t' read -r -d '' key value; do
     case "$key" in
       oracle.configured) configured_cmd="$value" ;;
       oracle.runtime) runtime_cmd="$value" ;;
@@ -411,7 +411,7 @@ _ucc_observe_yaml_runtime_oracle_target() {
 _ucc_observe_yaml_desktop_app_runtime_target() {
   local cfg_dir="$1" yaml="$2" target="$3"
   local configured_cmd runtime_cmd package_ref app_path observed
-  while IFS=$'\t' read -r key value; do
+  while IFS=$'\t' read -r -d '' key value; do
     case "$key" in
       oracle.configured) configured_cmd="$value" ;;
       oracle.runtime) runtime_cmd="$value" ;;
@@ -456,7 +456,7 @@ _ucc_observe_yaml_desktop_app_runtime_target() {
 _ucc_observe_yaml_docker_compose_runtime_target() {
   local cfg_dir="$1" yaml="$2" target="$3"
   local runtime_cmd service_name state
-  while IFS=$'\t' read -r key value; do
+  while IFS=$'\t' read -r -d '' key value; do
     case "$key" in
       oracle.runtime) runtime_cmd="$value" ;;
       driver.service_name|service_name) [[ -z "$service_name" ]] && service_name="$value" ;;
