@@ -212,17 +212,28 @@ _component_requires_sudo_ticket() {
   esac
 }
 
+_DISP_COMPS=()
 _selected_run_requires_sudo_ticket() {
   local comp
   [[ "$HOST_PLATFORM" == "macos" ]] || return 1
   [[ "${UCC_DRY_RUN:-0}" != "1" ]] || return 1
-  for comp in "${_DISP_COMPS[@]}"; do
+  [[ "${UIC_PREFLIGHT:-0}" != "1" ]] || return 1
+  if [[ ${#_DISP_COMPS[@]} -gt 0 ]]; then
+    for comp in "${_DISP_COMPS[@]}"; do
+      [[ "$(_component_mode "$comp")" == "enabled" ]] || continue
+      _component_requires_sudo_ticket "$comp" && return 0
+    done
+    return 1
+  fi
+  for comp in "${TO_RUN[@]}"; do
+    [[ "$(_component_mode "$comp")" == "enabled" ]] || continue
     _component_requires_sudo_ticket "$comp" && return 0
   done
   return 1
 }
 
 _SUDO_KEEPALIVE_PID=""
+_SUDO_TICKET_PRIMED=0
 
 _stop_sudo_keepalive() {
   if [[ -n "${_SUDO_KEEPALIVE_PID:-}" ]]; then
@@ -233,6 +244,7 @@ _stop_sudo_keepalive() {
 }
 
 _prime_sudo_ticket_if_needed() {
+  [[ "${_SUDO_TICKET_PRIMED:-0}" == "1" ]] && return 0
   _selected_run_requires_sudo_ticket || return 0
   log_info "Requesting sudo once for macOS system policy targets"
   if ! sudo -v; then
@@ -246,6 +258,7 @@ _prime_sudo_ticket_if_needed() {
     done
   ) &
   _SUDO_KEEPALIVE_PID="$!"
+  _SUDO_TICKET_PRIMED=1
 }
 
 _load_component_policies
@@ -321,6 +334,8 @@ done
 
 # Validate mode
 [[ "$UCC_MODE" =~ ^(install|update)$ ]] || log_error "Invalid --mode: $UCC_MODE (must be install or update)"
+trap _stop_sudo_keepalive EXIT
+_prime_sudo_ticket_if_needed
 
 # ============================================================
 #  UIC — Gates and Preferences
@@ -468,7 +483,6 @@ _print_component_header() {
 }
 
 # Pre-collect dispatch info for all components (one query per component)
-_DISP_COMPS=()
 _DISP_LIBS=()
 _DISP_RUNNERS=()
 _DISP_ON_FAILS=()
@@ -528,9 +542,6 @@ for comp in "${TO_RUN[@]}"; do
   _DISP_ON_FAILS+=("$_on_fail")
   _DISP_CONFIGS+=("$_config")
 done
-
-trap _stop_sudo_keepalive EXIT
-_prime_sudo_ticket_if_needed
 
 _run_comp() {
   local comp="$1" _libs="$2" _runner="$3" _on_fail="$4" _config="$5"
