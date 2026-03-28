@@ -19,7 +19,8 @@ targets:
     depends_on:
     - python
     - pip-latest
-    runtime_driver: launchd
+    driver:
+      kind: launchd
     runtime_manager: launchd
     probe_kind: http
     oracle:
@@ -50,14 +51,16 @@ targets:
     depends_on:
     - pip-latest
     provided_by_tool: pip
-    package_driver: pip
+    driver:
+      kind: pip
     observe_cmd: "ver=\"$(_pip_cached_version \"${probe_pkg}\")\"\nif [[ -z \"$ver\"\
       \ ]]; then\n  printf 'absent'\nelse\n  printf '%s' \"$ver\"\nfi\n"
     evidence:
       version: _pip_cached_version '${probe_pkg}'
       pkg: printf '%s' '${probe_pkg}'
-    install_cmd: ucc_run pip install -q ${install_packages} && pip_cache_versions
-    update_cmd: ucc_run pip install -q --upgrade ${install_packages} && pip_cache_versions
+    actions:
+      install: ucc_run pip install -q ${install_packages} && pip_cache_versions
+      update: ucc_run pip install -q --upgrade ${install_packages} && pip_cache_versions
     probe_pkg: torch
     install_packages: torch torchvision torchaudio
     min_version: ''
@@ -70,14 +73,16 @@ targets:
     depends_on:
     - pip-latest
     provided_by_tool: pip
-    package_driver: pip
+    driver:
+      kind: pip
     observe_cmd: "ver=\"$(_pip_cached_version \"${probe_pkg}\")\"\nif [[ -z \"$ver\"\
       \ ]]; then\n  printf 'absent'\nelse\n  printf '%s' \"$ver\"\nfi\n"
     evidence:
       version: _pip_cached_version '${probe_pkg}'
       pkg: printf '%s' '${probe_pkg}'
-    install_cmd: ucc_run pip install -q ${install_packages} && pip_cache_versions
-    update_cmd: ucc_run pip install -q --upgrade ${install_packages} && pip_cache_versions
+    actions:
+      install: ucc_run pip install -q ${install_packages} && pip_cache_versions
+      update: ucc_run pip install -q --upgrade ${install_packages} && pip_cache_versions
     probe_pkg: transformers
     install_packages: transformers diffusers accelerate datasets tokenizers sentencepiece
       huggingface-hub peft trl
@@ -91,7 +96,8 @@ targets:
     depends_on:
     - pip-latest
     provided_by_tool: pip
-    package_driver: pip
+    driver:
+      kind: pip
     observe_cmd: "ver=\"$(_pip_cached_version \"${probe_pkg}\")\"\nif [[ -z \"$ver\"\
       \ ]]; then\n  printf 'absent'\nelif python3 -c \"from packaging.version import\
       \ Version; import sys; raise SystemExit(0 if Version('${min_version}') <= Version(sys.argv[1])\
@@ -100,8 +106,9 @@ targets:
     evidence:
       version: _pip_cached_version '${probe_pkg}'
       pkg: printf '%s' '${probe_pkg}'
-    install_cmd: ucc_run pip install -q ${install_packages} && pip_cache_versions
-    update_cmd: ucc_run pip install -q --upgrade ${install_packages} && pip_cache_versions
+    actions:
+      install: ucc_run pip install -q ${install_packages} && pip_cache_versions
+      update: ucc_run pip install -q --upgrade ${install_packages} && pip_cache_versions
     probe_pkg: langchain-core
     install_packages: langchain-core>=1.0.0 langchain langchain-community langchain-ollama
       langgraph
@@ -115,14 +122,16 @@ targets:
     depends_on:
     - pip-latest
     provided_by_tool: pip
-    package_driver: pip
+    driver:
+      kind: pip
     observe_cmd: "ver=\"$(_pip_cached_version \"${probe_pkg}\")\"\nif [[ -z \"$ver\"\
       \ ]]; then\n  printf 'absent'\nelse\n  printf '%s' \"$ver\"\nfi\n"
     evidence:
       version: _pip_cached_version '${probe_pkg}'
       pkg: printf '%s' '${probe_pkg}'
-    install_cmd: ucc_run pip install -q ${install_packages} && pip_cache_versions
-    update_cmd: ucc_run pip install -q --upgrade ${install_packages} && pip_cache_versions
+    actions:
+      install: ucc_run pip install -q ${install_packages} && pip_cache_versions
+      update: ucc_run pip install -q --upgrade ${install_packages} && pip_cache_versions
     probe_pkg: llama-index
     install_packages: llama-index llama-index-llms-ollama llama-index-embeddings-ollama
     min_version: ''
@@ -135,14 +144,16 @@ targets:
     depends_on:
     - pip-latest
     provided_by_tool: pip
-    package_driver: pip
+    driver:
+      kind: pip
     observe_cmd: "ver=\"$(_pip_cached_version \"${probe_pkg}\")\"\nif [[ -z \"$ver\"\
       \ ]]; then\n  printf 'absent'\nelse\n  printf '%s' \"$ver\"\nfi\n"
     evidence:
       version: _pip_cached_version '${probe_pkg}'
       pkg: printf '%s' '${probe_pkg}'
-    install_cmd: ucc_run pip install -q ${install_packages} && pip_cache_versions
-    update_cmd: ucc_run pip install -q --upgrade ${install_packages} && pip_cache_versions
+    actions:
+      install: ucc_run pip install -q ${install_packages} && pip_cache_versions
+      update: ucc_run pip install -q --upgrade ${install_packages} && pip_cache_versions
     probe_pkg: openai
     install_packages: openai anthropic
     min_version: ''
@@ -155,14 +166,16 @@ targets:
     depends_on:
     - pip-latest
     provided_by_tool: pip
-    package_driver: pip
+    driver:
+      kind: pip
     observe_cmd: "ver=\"$(_pip_cached_version \"${probe_pkg}\")\"\nif [[ -z \"$ver\"\
       \ ]]; then\n  printf 'absent'\nelse\n  printf '%s' \"$ver\"\nfi\n"
     evidence:
       version: _pip_cached_version '${probe_pkg}'
       pkg: printf '%s' '${probe_pkg}'
-    install_cmd: ucc_run pip install -q ${install_packages} && pip_cache_versions
-    update_cmd: ucc_run pip install -q --upgrade ${install_packages} && pip_cache_versions
+    actions:
+      install: ucc_run pip install -q ${install_packages} && pip_cache_versions
+      update: ucc_run pip install -q --upgrade ${install_packages} && pip_cache_versions
     probe_pkg: chromadb
     install_packages: chromadb faiss-cpu qdrant-client
     min_version: ''
@@ -175,14 +188,16 @@ targets:
     depends_on:
     - pip-latest
     provided_by_tool: pip
-    package_driver: pip
+    driver:
+      kind: pip
     observe_cmd: "ver=\"$(_pip_cached_version \"${probe_pkg}\")\"\nif [[ -z \"$ver\"\
       \ ]]; then\n  printf 'absent'\nelse\n  printf '%s' \"$ver\"\nfi\n"
     evidence:
       version: _pip_cached_version '${probe_pkg}'
       pkg: printf '%s' '${probe_pkg}'
-    install_cmd: ucc_run pip install -q ${install_packages} && pip_cache_versions
-    update_cmd: ucc_run pip install -q --upgrade ${install_packages} && pip_cache_versions
+    actions:
+      install: ucc_run pip install -q ${install_packages} && pip_cache_versions
+      update: ucc_run pip install -q --upgrade ${install_packages} && pip_cache_versions
     probe_pkg: jupyterlab
     install_packages: jupyterlab ipywidgets nbformat
     min_version: ''
@@ -195,14 +210,16 @@ targets:
     depends_on:
     - pip-latest
     provided_by_tool: pip
-    package_driver: pip
+    driver:
+      kind: pip
     observe_cmd: "ver=\"$(_pip_cached_version \"${probe_pkg}\")\"\nif [[ -z \"$ver\"\
       \ ]]; then\n  printf 'absent'\nelse\n  printf '%s' \"$ver\"\nfi\n"
     evidence:
       version: _pip_cached_version '${probe_pkg}'
       pkg: printf '%s' '${probe_pkg}'
-    install_cmd: ucc_run pip install -q ${install_packages} && pip_cache_versions
-    update_cmd: ucc_run pip install -q --upgrade ${install_packages} && pip_cache_versions
+    actions:
+      install: ucc_run pip install -q ${install_packages} && pip_cache_versions
+      update: ucc_run pip install -q --upgrade ${install_packages} && pip_cache_versions
     probe_pkg: fastapi
     install_packages: fastapi uvicorn gradio
     min_version: ''
@@ -215,14 +232,16 @@ targets:
     depends_on:
     - pip-latest
     provided_by_tool: pip
-    package_driver: pip
+    driver:
+      kind: pip
     observe_cmd: "ver=\"$(_pip_cached_version \"${probe_pkg}\")\"\nif [[ -z \"$ver\"\
       \ ]]; then\n  printf 'absent'\nelse\n  printf '%s' \"$ver\"\nfi\n"
     evidence:
       version: _pip_cached_version '${probe_pkg}'
       pkg: printf '%s' '${probe_pkg}'
-    install_cmd: ucc_run pip install -q ${install_packages} && pip_cache_versions
-    update_cmd: ucc_run pip install -q --upgrade ${install_packages} && pip_cache_versions
+    actions:
+      install: ucc_run pip install -q ${install_packages} && pip_cache_versions
+      update: ucc_run pip install -q --upgrade ${install_packages} && pip_cache_versions
     probe_pkg: numpy
     install_packages: numpy pandas scipy scikit-learn matplotlib seaborn
     min_version: ''
@@ -235,14 +254,16 @@ targets:
     depends_on:
     - pip-latest
     provided_by_tool: pip
-    package_driver: pip
+    driver:
+      kind: pip
     observe_cmd: "ver=\"$(_pip_cached_version \"${probe_pkg}\")\"\nif [[ -z \"$ver\"\
       \ ]]; then\n  printf 'absent'\nelse\n  printf '%s' \"$ver\"\nfi\n"
     evidence:
       version: _pip_cached_version '${probe_pkg}'
       pkg: printf '%s' '${probe_pkg}'
-    install_cmd: ucc_run pip install -q ${install_packages} && pip_cache_versions
-    update_cmd: ucc_run pip install -q --upgrade ${install_packages} && pip_cache_versions
+    actions:
+      install: ucc_run pip install -q ${install_packages} && pip_cache_versions
+      update: ucc_run pip install -q --upgrade ${install_packages} && pip_cache_versions
     probe_pkg: python-dotenv
     install_packages: python-dotenv rich tqdm
     min_version: ''
@@ -255,14 +276,16 @@ targets:
     depends_on:
     - pip-latest
     provided_by_tool: pip
-    package_driver: pip
+    driver:
+      kind: pip
     observe_cmd: "ver=\"$(_pip_cached_version \"${probe_pkg}\")\"\nif [[ -z \"$ver\"\
       \ ]]; then\n  printf 'absent'\nelse\n  printf '%s' \"$ver\"\nfi\n"
     evidence:
       version: _pip_cached_version '${probe_pkg}'
       pkg: printf '%s' '${probe_pkg}'
-    install_cmd: ucc_run pip install -q ${install_packages} && pip_cache_versions
-    update_cmd: ucc_run pip install -q --upgrade ${install_packages} && pip_cache_versions
+    actions:
+      install: ucc_run pip install -q ${install_packages} && pip_cache_versions
+      update: ucc_run pip install -q --upgrade ${install_packages} && pip_cache_versions
     probe_pkg: ruff
     install_packages: ruff
     min_version: ''
@@ -275,14 +298,16 @@ targets:
     depends_on:
     - pip-latest
     provided_by_tool: pip
-    package_driver: pip
+    driver:
+      kind: pip
     observe_cmd: "ver=\"$(_pip_cached_version \"${probe_pkg}\")\"\nif [[ -z \"$ver\"\
       \ ]]; then\n  printf 'absent'\nelse\n  printf '%s' \"$ver\"\nfi\n"
     evidence:
       version: _pip_cached_version '${probe_pkg}'
       pkg: printf '%s' '${probe_pkg}'
-    install_cmd: ucc_run pip install -q ${install_packages} && pip_cache_versions
-    update_cmd: ucc_run pip install -q --upgrade ${install_packages} && pip_cache_versions
+    actions:
+      install: ucc_run pip install -q ${install_packages} && pip_cache_versions
+      update: ucc_run pip install -q --upgrade ${install_packages} && pip_cache_versions
     probe_pkg: optimum
     install_packages: optimum
     min_version: ''

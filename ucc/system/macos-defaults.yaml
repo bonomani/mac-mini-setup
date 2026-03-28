@@ -11,16 +11,18 @@ targets:
     type: config
     state_model: parametric
     display_name: AC sleep
-    config_driver: pmset
     soft_depends_on:
     - gate:sudo-available
+    driver:
+      kind: pmset
     oracle:
       configured: pmset -g | grep -E '^ +sleep ' | awk '{print $2}' | grep -q '^0$'
     observe_cmd: pmset -g | awk '/^[[:space:]]+sleep / {print $2}'
     desired_value: '0'
     evidence:
       sleep: pmset -g | awk '/^[[:space:]]+sleep / {print $2}'
-    install_cmd: ucc_run sudo pmset -c sleep 0
+    actions:
+      install: ucc_run sudo pmset -c sleep 0
     dependency_gate: sudo-available
   pmset-disksleep=0:
     component: macos-defaults
@@ -28,16 +30,18 @@ targets:
     type: config
     state_model: parametric
     display_name: Disk sleep
-    config_driver: pmset
     soft_depends_on:
     - gate:sudo-available
+    driver:
+      kind: pmset
     oracle:
       configured: pmset -g | awk '/disksleep/ {print $2}' | grep -q '^0$'
     observe_cmd: pmset -g | awk '/disksleep/ {print $2}'
     desired_value: '0'
     evidence:
       disksleep: pmset -g | awk '/disksleep/ {print $2}'
-    install_cmd: ucc_run sudo pmset -c disksleep 0
+    actions:
+      install: ucc_run sudo pmset -c disksleep 0
     dependency_gate: sudo-available
   pmset-standby=0:
     component: macos-defaults
@@ -45,16 +49,18 @@ targets:
     type: config
     state_model: parametric
     display_name: Standby
-    config_driver: pmset
     soft_depends_on:
     - gate:sudo-available
+    driver:
+      kind: pmset
     oracle:
       configured: pmset -g | awk '/^[[:space:]]+standby / {print $2}' | grep -q '^0$'
     observe_cmd: pmset -g | awk '/^[[:space:]]+standby / {print $2}'
     desired_value: '0'
     evidence:
       standby: pmset -g | awk '/^[[:space:]]+standby / {print $2}'
-    install_cmd: ucc_run sudo pmset -c standby 0
+    actions:
+      install: ucc_run sudo pmset -c standby 0
     dependency_gate: sudo-available
   app-nap=disabled:
     component: macos-defaults
@@ -62,9 +68,10 @@ targets:
     type: config
     state_model: parametric
     display_name: App Nap
-    config_driver: user-defaults
     soft_depends_on:
     - gate:sudo-available
+    driver:
+      kind: user-defaults
     oracle:
       configured: defaults read NSGlobalDomain NSAppSleepDisabled 2>/dev/null | grep
         -q '^1$'
@@ -74,7 +81,8 @@ targets:
     evidence:
       NSAppSleepDisabled: defaults read NSGlobalDomain NSAppSleepDisabled 2>/dev/null
         || echo 0
-    install_cmd: ucc_run defaults write NSGlobalDomain NSAppSleepDisabled -bool YES
+    actions:
+      install: ucc_run defaults write NSGlobalDomain NSAppSleepDisabled -bool YES
     dependency_gate: sudo-available
   finder-show-hidden=1:
     component: macos-defaults
@@ -82,9 +90,10 @@ targets:
     type: config
     state_model: parametric
     display_name: Finder hidden files
-    config_driver: user-defaults
     soft_depends_on:
     - gate:sudo-available
+    driver:
+      kind: user-defaults
     oracle:
       configured: defaults read com.apple.finder AppleShowAllFiles 2>/dev/null | grep
         -qi '^1$\|^true$'
@@ -94,7 +103,8 @@ targets:
     evidence:
       AppleShowAllFiles: defaults read com.apple.finder AppleShowAllFiles 2>/dev/null
         || echo 0
-    install_cmd: ucc_run defaults write com.apple.finder AppleShowAllFiles -bool true
+    actions:
+      install: ucc_run defaults write com.apple.finder AppleShowAllFiles -bool true
     dependency_gate: sudo-available
   show-all-extensions=1:
     component: macos-defaults
@@ -102,9 +112,10 @@ targets:
     type: config
     state_model: parametric
     display_name: Filename extensions
-    config_driver: user-defaults
     soft_depends_on:
     - gate:sudo-available
+    driver:
+      kind: user-defaults
     oracle:
       configured: defaults read NSGlobalDomain AppleShowAllExtensions 2>/dev/null
         | grep -qi '^1$\|^true$'
@@ -114,8 +125,9 @@ targets:
     evidence:
       AppleShowAllExtensions: defaults read NSGlobalDomain AppleShowAllExtensions
         2>/dev/null || echo 0
-    install_cmd: ucc_run defaults write NSGlobalDomain AppleShowAllExtensions -bool
-      true
+    actions:
+      install: ucc_run defaults write NSGlobalDomain AppleShowAllExtensions -bool
+        true
     dependency_gate: sudo-available
   dock-autohide=1:
     component: macos-defaults
@@ -123,16 +135,18 @@ targets:
     type: config
     state_model: parametric
     display_name: Dock auto-hide
-    config_driver: user-defaults
     soft_depends_on:
     - gate:sudo-available
+    driver:
+      kind: user-defaults
     oracle:
       configured: defaults read com.apple.dock autohide 2>/dev/null | grep -qi '^1$\|^true$'
     observe_cmd: defaults read com.apple.dock autohide 2>/dev/null || echo 0
     desired_value: '1'
     evidence:
       autohide: defaults read com.apple.dock autohide 2>/dev/null || echo 0
-    install_cmd: ucc_run defaults write com.apple.dock autohide -bool true
+    actions:
+      install: ucc_run defaults write com.apple.dock autohide -bool true
     dependency_gate: sudo-available
 restart_processes:
 - Finder

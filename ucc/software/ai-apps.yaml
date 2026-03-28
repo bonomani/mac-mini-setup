@@ -26,7 +26,8 @@ targets:
     type: config
     state_model: parametric
     display_name: compose file
-    config_driver: compose-file
+    driver:
+      kind: compose-file
     evidence:
       path: printf '%s' "$COMPOSE_FILE"
   open-webui-runtime:

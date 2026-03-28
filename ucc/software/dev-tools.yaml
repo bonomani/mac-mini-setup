@@ -28,7 +28,8 @@ targets:
     depends_on:
     - homebrew
     provided_by_tool: brew-cask
-    package_driver: brew-cask
+    driver:
+      kind: brew-cask
     observe_cmd: "if [[ -d \"${vscode_app_path}\" ]] && ! brew_cask_is_installed \"\
       ${vscode_cask_id}\"; then\n  defaults read \"${vscode_app_path}/Contents/Info\"\
       \ CFBundleShortVersionString 2>/dev/null || printf 'present'\nelse\n  brew_cask_observe\
@@ -36,36 +37,41 @@ targets:
     evidence:
       version: defaults read "${vscode_app_path}/Contents/Info" CFBundleShortVersionString
         2>/dev/null || true
-    install_cmd: brew_cask_install '${vscode_cask_id}'
-    update_cmd: brew_cask_upgrade '${vscode_cask_id}'
+    actions:
+      install: brew_cask_install '${vscode_cask_id}'
+      update: brew_cask_upgrade '${vscode_cask_id}'
   vscode-code-cmd:
     component: dev-tools
     profile: configured
     type: config
     state_model: config
     display_name: VS Code CLI
-    config_driver: symlink-command
     depends_on:
     - vscode
+    driver:
+      kind: symlink-command
     oracle:
       configured: code --version >/dev/null 2>&1
     evidence:
       path: command -v code 2>/dev/null || true
-    install_cmd: "if [[ -x \"${vscode_cli_path}\" ]]; then\n  sudo mkdir -p \"$(dirname\
-      \ \"${vscode_cli_link_path}\")\"\n  sudo ln -sf \"${vscode_cli_path}\" \"${vscode_cli_link_path}\"\
-      \n  export PATH=\"$(dirname \"${vscode_cli_link_path}\"):$PATH\"\n  log_warn\
-      \ \"Symlink created. If 'code' is still missing in new shells, run: Cmd+Shift+P\
-      \ \u2192 'Shell Command: Install code command in PATH'\"\nelse\n  log_warn \"\
-      VS Code binary not found. Open VS Code manually first.\"\n  return 1\nfi\n"
+    actions:
+      install: "if [[ -x \"${vscode_cli_path}\" ]]; then\n  sudo mkdir -p \"$(dirname\
+        \ \"${vscode_cli_link_path}\")\"\n  sudo ln -sf \"${vscode_cli_path}\" \"\
+        ${vscode_cli_link_path}\"\n  export PATH=\"$(dirname \"${vscode_cli_link_path}\"\
+        ):$PATH\"\n  log_warn \"Symlink created. If 'code' is still missing in new\
+        \ shells, run: Cmd+Shift+P \u2192 'Shell Command: Install code command in\
+        \ PATH'\"\nelse\n  log_warn \"VS Code binary not found. Open VS Code manually\
+        \ first.\"\n  return 1\nfi\n"
   vscode-settings:
     component: dev-tools
     profile: configured
     type: config
     state_model: config
     display_name: VS Code settings
-    config_driver: json-merge
     depends_on:
     - vscode
+    driver:
+      kind: json-merge
     oracle:
       configured: "python3 - \"$HOME/${vscode_settings_relpath}\" \"$CFG_DIR/${vscode_settings_patch}\"\
         \ <<'PY'\nimport json\nimport sys\nfrom pathlib import Path\n\nsettings_path\
@@ -77,28 +83,29 @@ targets:
         \ SystemExit(1)\n\nraise SystemExit(0)\nPY\n"
     evidence:
       path: printf '%s' "$HOME/${vscode_settings_relpath}"
-    install_cmd: "mkdir -p \"$(dirname \"$HOME/${vscode_settings_relpath}\")\"\ntmp=\"\
-      $(mktemp)\"\npython3 - \"$HOME/${vscode_settings_relpath}\" \"$CFG_DIR/${vscode_settings_patch}\"\
-      \ \"$tmp\" <<'PY'\nimport json\nimport sys\nfrom pathlib import Path\n\nsettings_path\
-      \ = Path(sys.argv[1])\npatch_path = Path(sys.argv[2])\ntmp_path = Path(sys.argv[3])\n\
-      \npatch = json.loads(patch_path.read_text())\nif not isinstance(patch, dict):\n\
-      \    raise SystemExit(1)\n\nif settings_path.exists():\n    try:\n        settings\
-      \ = json.loads(settings_path.read_text())\n    except Exception:\n        settings\
-      \ = {}\nelse:\n    settings = {}\n\nif not isinstance(settings, dict):\n   \
-      \ settings = {}\n\nsettings.update(patch)\ntmp_path.write_text(json.dumps(settings,\
-      \ indent=2, sort_keys=True) + \"\\n\")\nPY\nmv \"$tmp\" \"$HOME/${vscode_settings_relpath}\"\
-      \n"
-    update_cmd: "mkdir -p \"$(dirname \"$HOME/${vscode_settings_relpath}\")\"\ntmp=\"\
-      $(mktemp)\"\npython3 - \"$HOME/${vscode_settings_relpath}\" \"$CFG_DIR/${vscode_settings_patch}\"\
-      \ \"$tmp\" <<'PY'\nimport json\nimport sys\nfrom pathlib import Path\n\nsettings_path\
-      \ = Path(sys.argv[1])\npatch_path = Path(sys.argv[2])\ntmp_path = Path(sys.argv[3])\n\
-      \npatch = json.loads(patch_path.read_text())\nif not isinstance(patch, dict):\n\
-      \    raise SystemExit(1)\n\nif settings_path.exists():\n    try:\n        settings\
-      \ = json.loads(settings_path.read_text())\n    except Exception:\n        settings\
-      \ = {}\nelse:\n    settings = {}\n\nif not isinstance(settings, dict):\n   \
-      \ settings = {}\n\nsettings.update(patch)\ntmp_path.write_text(json.dumps(settings,\
-      \ indent=2, sort_keys=True) + \"\\n\")\nPY\nmv \"$tmp\" \"$HOME/${vscode_settings_relpath}\"\
-      \n"
+    actions:
+      install: "mkdir -p \"$(dirname \"$HOME/${vscode_settings_relpath}\")\"\ntmp=\"\
+        $(mktemp)\"\npython3 - \"$HOME/${vscode_settings_relpath}\" \"$CFG_DIR/${vscode_settings_patch}\"\
+        \ \"$tmp\" <<'PY'\nimport json\nimport sys\nfrom pathlib import Path\n\nsettings_path\
+        \ = Path(sys.argv[1])\npatch_path = Path(sys.argv[2])\ntmp_path = Path(sys.argv[3])\n\
+        \npatch = json.loads(patch_path.read_text())\nif not isinstance(patch, dict):\n\
+        \    raise SystemExit(1)\n\nif settings_path.exists():\n    try:\n       \
+        \ settings = json.loads(settings_path.read_text())\n    except Exception:\n\
+        \        settings = {}\nelse:\n    settings = {}\n\nif not isinstance(settings,\
+        \ dict):\n    settings = {}\n\nsettings.update(patch)\ntmp_path.write_text(json.dumps(settings,\
+        \ indent=2, sort_keys=True) + \"\\n\")\nPY\nmv \"$tmp\" \"$HOME/${vscode_settings_relpath}\"\
+        \n"
+      update: "mkdir -p \"$(dirname \"$HOME/${vscode_settings_relpath}\")\"\ntmp=\"\
+        $(mktemp)\"\npython3 - \"$HOME/${vscode_settings_relpath}\" \"$CFG_DIR/${vscode_settings_patch}\"\
+        \ \"$tmp\" <<'PY'\nimport json\nimport sys\nfrom pathlib import Path\n\nsettings_path\
+        \ = Path(sys.argv[1])\npatch_path = Path(sys.argv[2])\ntmp_path = Path(sys.argv[3])\n\
+        \npatch = json.loads(patch_path.read_text())\nif not isinstance(patch, dict):\n\
+        \    raise SystemExit(1)\n\nif settings_path.exists():\n    try:\n       \
+        \ settings = json.loads(settings_path.read_text())\n    except Exception:\n\
+        \        settings = {}\nelse:\n    settings = {}\n\nif not isinstance(settings,\
+        \ dict):\n    settings = {}\n\nsettings.update(patch)\ntmp_path.write_text(json.dumps(settings,\
+        \ indent=2, sort_keys=True) + \"\\n\")\nPY\nmv \"$tmp\" \"$HOME/${vscode_settings_relpath}\"\
+        \n"
   node-lts:
     component: dev-tools
     profile: configured
@@ -108,7 +115,8 @@ targets:
     depends_on:
     - homebrew
     provided_by_tool: brew
-    package_driver: brew-formula
+    driver:
+      kind: brew-formula
     observe_cmd: "ver=\"$(node --version 2>/dev/null)\"\nif [[ \"$ver\" != v${node_version}.*\
       \ ]]; then\n  printf 'absent'\nelif [[ \"${UIC_PREF_PACKAGE_UPDATE_POLICY:-always-upgrade}\"\
       \ == \"always-upgrade\" ]] && _brew_is_outdated \"node@${node_version}\"; then\n\
@@ -116,88 +124,97 @@ targets:
     evidence:
       version: node --version 2>/dev/null | sed 's/^v//'
       path: command -v node 2>/dev/null || true
-    install_cmd: 'brew unlink "node@${node_previous_version}" 2>/dev/null || true
+    actions:
+      install: 'brew unlink "node@${node_previous_version}" 2>/dev/null || true
 
-      ucc_run brew install "node@${node_version}" && ucc_run brew link --overwrite
-      --force "node@${node_version}"
+        ucc_run brew install "node@${node_version}" && ucc_run brew link --overwrite
+        --force "node@${node_version}"
 
-      '
-    update_cmd: 'ucc_run brew upgrade "node@${node_version}" && ucc_run brew link
-      --overwrite --force "node@${node_version}"
+        '
+      update: 'ucc_run brew upgrade "node@${node_version}" && ucc_run brew link --overwrite
+        --force "node@${node_version}"
 
-      '
+        '
   oh-my-zsh:
     component: dev-tools
     profile: configured
     type: config
     state_model: config
     display_name: Oh My Zsh
-    config_driver: shell-bootstrap
+    driver:
+      kind: shell-bootstrap
     oracle:
       configured: '[[ -d "$HOME/.oh-my-zsh" ]]'
     evidence:
       folder: printf '%s' "$HOME/.oh-my-zsh"
-    install_cmd: 'sh -c "$(curl -fsSL "${omz_installer_url}")" "" --unattended
+    actions:
+      install: 'sh -c "$(curl -fsSL "${omz_installer_url}")" "" --unattended
 
-      '
-    update_cmd: '[[ -f "$HOME/.oh-my-zsh/tools/upgrade.sh" ]] && bash "$HOME/.oh-my-zsh/tools/upgrade.sh"
-      || true
+        '
+      update: '[[ -f "$HOME/.oh-my-zsh/tools/upgrade.sh" ]] && bash "$HOME/.oh-my-zsh/tools/upgrade.sh"
+        || true
 
-      '
+        '
   omz-theme-agnoster:
     component: dev-tools
     profile: configured
     type: config
     state_model: config
     display_name: Agnoster theme
-    config_driver: shell-file-edit
     depends_on:
     - oh-my-zsh
+    driver:
+      kind: shell-file-edit
     oracle:
       configured: grep -q "^ZSH_THEME=\"${omz_theme}\"" "$HOME/.zshrc" 2>/dev/null
     evidence:
       theme: printf '%s' '${omz_theme}'
       file: printf '%s' "$HOME/.zshrc"
-    install_cmd: "if grep -q '^ZSH_THEME=' \"$HOME/.zshrc\" 2>/dev/null; then\n  sed\
-      \ -i '' \"s/^ZSH_THEME=.*/ZSH_THEME=\\\"${omz_theme}\\\"/\" \"$HOME/.zshrc\"\
-      \nelse\n  printf '\\nZSH_THEME=\"%s\"\\n' \"${omz_theme}\" >> \"$HOME/.zshrc\"\
-      \nfi\n"
+    actions:
+      install: "if grep -q '^ZSH_THEME=' \"$HOME/.zshrc\" 2>/dev/null; then\n  sed\
+        \ -i '' \"s/^ZSH_THEME=.*/ZSH_THEME=\\\"${omz_theme}\\\"/\" \"$HOME/.zshrc\"\
+        \nelse\n  printf '\\nZSH_THEME=\"%s\"\\n' \"${omz_theme}\" >> \"$HOME/.zshrc\"\
+        \nfi\n"
   home-bin-in-path:
     component: dev-tools
     profile: configured
     type: config
     state_model: config
     display_name: ~/bin in PATH
-    config_driver: path-export
+    driver:
+      kind: path-export
     oracle:
       configured: grep -q 'export PATH="$HOME/bin:$PATH"' "$HOME/.zprofile" 2>/dev/null
     evidence:
       path: printf '%s' "$HOME/bin"
-    install_cmd: 'mkdir -p "$HOME/bin"
+    actions:
+      install: 'mkdir -p "$HOME/bin"
 
-      printf ''\nexport PATH="$HOME/bin:$PATH"\n'' >> "$HOME/.zprofile"
+        printf ''\nexport PATH="$HOME/bin:$PATH"\n'' >> "$HOME/.zprofile"
 
-      export PATH="$HOME/bin:$PATH"
+        export PATH="$HOME/bin:$PATH"
 
-      '
+        '
   ai-healthcheck:
     component: dev-tools
     profile: configured
     type: config
     state_model: config
     display_name: ai-healthcheck
-    config_driver: script-install
     depends_on:
     - home-bin-in-path
+    driver:
+      kind: script-install
     oracle:
       configured: '[[ -x "$HOME/bin/ai-healthcheck" ]]'
     evidence:
       path: printf '%s' "$HOME/bin/ai-healthcheck"
-    install_cmd: 'mkdir -p "$HOME/bin"
+    actions:
+      install: 'mkdir -p "$HOME/bin"
 
-      install -m 755 "$CFG_DIR/scripts/ai-healthcheck" "$HOME/bin/ai-healthcheck"
+        install -m 755 "$CFG_DIR/scripts/ai-healthcheck" "$HOME/bin/ai-healthcheck"
 
-      '
+        '
   networkquality-available:
     component: dev-tools
     profile: capability
@@ -219,7 +236,8 @@ targets:
     soft_depends_on:
     - networkquality-available
     provided_by_tool: brew
-    runtime_driver: brew-service
+    driver:
+      kind: brew-service
     runtime_manager: brew-service
     probe_kind: http
     oracle:
@@ -244,7 +262,8 @@ targets:
     depends_on:
     - ariaflow
     provided_by_tool: brew
-    runtime_driver: brew-service
+    driver:
+      kind: brew-service
     runtime_manager: brew-service
     probe_kind: http
     oracle:
@@ -573,7 +592,8 @@ targets:
     depends_on:
     - vscode-code-cmd
     provided_by_tool: vscode-marketplace
-    package_driver: vscode-marketplace
+    driver:
+      kind: vscode-marketplace
     observe_cmd: 'ver="$(_vscode_extension_cached_version ''${extension_id}'')"
 
       printf ''%s'' "${ver:-absent}"
@@ -581,8 +601,9 @@ targets:
       '
     evidence:
       version: _vscode_extension_cached_version '${extension_id}'
-    install_cmd: vscode_extension_install '${extension_id}'
-    update_cmd: vscode_extension_update '${extension_id}'
+    actions:
+      install: vscode_extension_install '${extension_id}'
+      update: vscode_extension_update '${extension_id}'
     extension_id: ms-python.python
   vscode-ext-ms-python.vscode-pylance:
     component: dev-tools
@@ -593,7 +614,8 @@ targets:
     depends_on:
     - vscode-code-cmd
     provided_by_tool: vscode-marketplace
-    package_driver: vscode-marketplace
+    driver:
+      kind: vscode-marketplace
     observe_cmd: 'ver="$(_vscode_extension_cached_version ''${extension_id}'')"
 
       printf ''%s'' "${ver:-absent}"
@@ -601,8 +623,9 @@ targets:
       '
     evidence:
       version: _vscode_extension_cached_version '${extension_id}'
-    install_cmd: vscode_extension_install '${extension_id}'
-    update_cmd: vscode_extension_update '${extension_id}'
+    actions:
+      install: vscode_extension_install '${extension_id}'
+      update: vscode_extension_update '${extension_id}'
     extension_id: ms-python.vscode-pylance
   vscode-ext-ms-toolsai.jupyter:
     component: dev-tools
@@ -613,7 +636,8 @@ targets:
     depends_on:
     - vscode-code-cmd
     provided_by_tool: vscode-marketplace
-    package_driver: vscode-marketplace
+    driver:
+      kind: vscode-marketplace
     observe_cmd: 'ver="$(_vscode_extension_cached_version ''${extension_id}'')"
 
       printf ''%s'' "${ver:-absent}"
@@ -621,8 +645,9 @@ targets:
       '
     evidence:
       version: _vscode_extension_cached_version '${extension_id}'
-    install_cmd: vscode_extension_install '${extension_id}'
-    update_cmd: vscode_extension_update '${extension_id}'
+    actions:
+      install: vscode_extension_install '${extension_id}'
+      update: vscode_extension_update '${extension_id}'
     extension_id: ms-toolsai.jupyter
   vscode-ext-ms-vscode.cpptools:
     component: dev-tools
@@ -633,7 +658,8 @@ targets:
     depends_on:
     - vscode-code-cmd
     provided_by_tool: vscode-marketplace
-    package_driver: vscode-marketplace
+    driver:
+      kind: vscode-marketplace
     observe_cmd: 'ver="$(_vscode_extension_cached_version ''${extension_id}'')"
 
       printf ''%s'' "${ver:-absent}"
@@ -641,8 +667,9 @@ targets:
       '
     evidence:
       version: _vscode_extension_cached_version '${extension_id}'
-    install_cmd: vscode_extension_install '${extension_id}'
-    update_cmd: vscode_extension_update '${extension_id}'
+    actions:
+      install: vscode_extension_install '${extension_id}'
+      update: vscode_extension_update '${extension_id}'
     extension_id: ms-vscode.cpptools
   vscode-ext-continue.continue:
     component: dev-tools
@@ -653,7 +680,8 @@ targets:
     depends_on:
     - vscode-code-cmd
     provided_by_tool: vscode-marketplace
-    package_driver: vscode-marketplace
+    driver:
+      kind: vscode-marketplace
     observe_cmd: 'ver="$(_vscode_extension_cached_version ''${extension_id}'')"
 
       printf ''%s'' "${ver:-absent}"
@@ -661,8 +689,9 @@ targets:
       '
     evidence:
       version: _vscode_extension_cached_version '${extension_id}'
-    install_cmd: vscode_extension_install '${extension_id}'
-    update_cmd: vscode_extension_update '${extension_id}'
+    actions:
+      install: vscode_extension_install '${extension_id}'
+      update: vscode_extension_update '${extension_id}'
     extension_id: continue.continue
   vscode-ext-eamodio.gitlens:
     component: dev-tools
@@ -673,7 +702,8 @@ targets:
     depends_on:
     - vscode-code-cmd
     provided_by_tool: vscode-marketplace
-    package_driver: vscode-marketplace
+    driver:
+      kind: vscode-marketplace
     observe_cmd: 'ver="$(_vscode_extension_cached_version ''${extension_id}'')"
 
       printf ''%s'' "${ver:-absent}"
@@ -681,8 +711,9 @@ targets:
       '
     evidence:
       version: _vscode_extension_cached_version '${extension_id}'
-    install_cmd: vscode_extension_install '${extension_id}'
-    update_cmd: vscode_extension_update '${extension_id}'
+    actions:
+      install: vscode_extension_install '${extension_id}'
+      update: vscode_extension_update '${extension_id}'
     extension_id: eamodio.gitlens
   vscode-ext-ms-vscode-remote.remote-containers:
     component: dev-tools
@@ -693,7 +724,8 @@ targets:
     depends_on:
     - vscode-code-cmd
     provided_by_tool: vscode-marketplace
-    package_driver: vscode-marketplace
+    driver:
+      kind: vscode-marketplace
     observe_cmd: 'ver="$(_vscode_extension_cached_version ''${extension_id}'')"
 
       printf ''%s'' "${ver:-absent}"
@@ -701,8 +733,9 @@ targets:
       '
     evidence:
       version: _vscode_extension_cached_version '${extension_id}'
-    install_cmd: vscode_extension_install '${extension_id}'
-    update_cmd: vscode_extension_update '${extension_id}'
+    actions:
+      install: vscode_extension_install '${extension_id}'
+      update: vscode_extension_update '${extension_id}'
     extension_id: ms-vscode-remote.remote-containers
   iterm2:
     component: dev-tools
@@ -713,12 +746,14 @@ targets:
     depends_on:
     - homebrew
     provided_by_tool: brew-cask
-    package_driver: brew-cask
+    driver:
+      kind: brew-cask
     observe_cmd: brew_cask_observe '${cask_ref}'
     evidence:
       version: _brew_cask_cached_version '${cask_ref}'
-    install_cmd: brew_cask_install '${cask_ref}'
-    update_cmd: brew_cask_upgrade '${cask_ref}'
+    actions:
+      install: brew_cask_install '${cask_ref}'
+      update: brew_cask_upgrade '${cask_ref}'
     cask_ref: iterm2
   lm-studio:
     component: dev-tools
@@ -729,12 +764,14 @@ targets:
     depends_on:
     - homebrew
     provided_by_tool: brew-cask
-    package_driver: brew-cask
+    driver:
+      kind: brew-cask
     observe_cmd: brew_cask_observe '${cask_ref}'
     evidence:
       version: _brew_cask_cached_version '${cask_ref}'
-    install_cmd: brew_cask_install '${cask_ref}'
-    update_cmd: brew_cask_upgrade '${cask_ref}'
+    actions:
+      install: brew_cask_install '${cask_ref}'
+      update: brew_cask_upgrade '${cask_ref}'
     cask_ref: lm-studio
   npm-global-@openai/codex:
     component: dev-tools
@@ -745,12 +782,14 @@ targets:
     depends_on:
     - node-lts
     provided_by_tool: npm
-    package_driver: npm-global
+    driver:
+      kind: npm-global
     observe_cmd: npm_global_observe '${npm_package}'
     evidence:
       version: npm_global_version '${npm_package}'
-    install_cmd: npm_global_install '${npm_package}'
-    update_cmd: npm_global_update '${npm_package}'
+    actions:
+      install: npm_global_install '${npm_package}'
+      update: npm_global_update '${npm_package}'
     npm_package: '@openai/codex'
   npm-global-@anthropic-ai/claude-code:
     component: dev-tools
@@ -761,12 +800,14 @@ targets:
     depends_on:
     - node-lts
     provided_by_tool: npm
-    package_driver: npm-global
+    driver:
+      kind: npm-global
     observe_cmd: npm_global_observe '${npm_package}'
     evidence:
       version: npm_global_version '${npm_package}'
-    install_cmd: npm_global_install '${npm_package}'
-    update_cmd: npm_global_update '${npm_package}'
+    actions:
+      install: npm_global_install '${npm_package}'
+      update: npm_global_update '${npm_package}'
     npm_package: '@anthropic-ai/claude-code'
   npm-global-bmad-method:
     component: dev-tools
@@ -777,12 +818,14 @@ targets:
     depends_on:
     - node-lts
     provided_by_tool: npm
-    package_driver: npm-global
+    driver:
+      kind: npm-global
     observe_cmd: npm_global_observe '${npm_package}'
     evidence:
       version: npm_global_version '${npm_package}'
-    install_cmd: npm_global_install '${npm_package}'
-    update_cmd: npm_global_update '${npm_package}'
+    actions:
+      install: npm_global_install '${npm_package}'
+      update: npm_global_update '${npm_package}'
     npm_package: bmad-method
 cli_tools:
 - cli-jq

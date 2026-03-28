@@ -13,22 +13,25 @@ targets:
     type: config
     state_model: config
     display_name: Git global config
-    config_driver: git-global-config
     depends_on:
     - git
+    driver:
+      kind: git-global-config
     oracle:
       configured: git config --global user.name >/dev/null 2>&1
     evidence:
       user: git config --global user.name 2>/dev/null || true
       email: git config --global user.email 2>/dev/null || true
-    install_cmd: "if [[ ! -t 0 ]]; then\n  log_warn \"git-global-config: non-interactive\
-      \ shell \u2014 skipping. Set manually:\"\n  log_warn \"  git config --global\
-      \ user.name  'Your Name'\"\n  log_warn \"  git config --global user.email 'you@example.com'\"\
-      \n  return 1\nfi\nread -rp \"Git username: \" GIT_USER\nread -rp \"Git email:\
-      \    \" GIT_EMAIL\ngit config --global user.name \"$GIT_USER\"\ngit config --global\
-      \ user.email \"$GIT_EMAIL\"\nwhile IFS=$'\\t' read -r cfg_key cfg_val; do\n\
-      \  [[ -n \"$cfg_key\" ]] && git config --global \"$cfg_key\" \"$cfg_val\"\n\
-      done < <(yaml_records \"$CFG_DIR\" \"$YAML_PATH\" global_config key value)\n"
+    actions:
+      install: "if [[ ! -t 0 ]]; then\n  log_warn \"git-global-config: non-interactive\
+        \ shell \u2014 skipping. Set manually:\"\n  log_warn \"  git config --global\
+        \ user.name  'Your Name'\"\n  log_warn \"  git config --global user.email\
+        \ 'you@example.com'\"\n  return 1\nfi\nread -rp \"Git username: \" GIT_USER\n\
+        read -rp \"Git email:    \" GIT_EMAIL\ngit config --global user.name \"$GIT_USER\"\
+        \ngit config --global user.email \"$GIT_EMAIL\"\nwhile IFS=$'\\t' read -r\
+        \ cfg_key cfg_val; do\n  [[ -n \"$cfg_key\" ]] && git config --global \"$cfg_key\"\
+        \ \"$cfg_val\"\ndone < <(yaml_records \"$CFG_DIR\" \"$YAML_PATH\" global_config\
+        \ key value)\n"
 global_config:
 - key: init.defaultBranch
   value: main

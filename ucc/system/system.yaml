@@ -31,7 +31,6 @@ targets:
     type: config
     state_model: parametric
     display_name: System composition
-    config_driver: host-composition
     depends_on:
     - homebrew
     - git
@@ -49,5 +48,7 @@ targets:
     - git-global-config
     - pmset-ac-sleep=0
     - finder-show-hidden=1
+    driver:
+      kind: host-composition
     evidence:
       kind: printf '%s' '${system_kind}'

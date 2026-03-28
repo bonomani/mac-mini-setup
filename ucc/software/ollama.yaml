@@ -23,7 +23,8 @@ targets:
     type: precondition
     state_model: config
     display_name: Ollama host support
-    config_driver: platform-check
+    driver:
+      kind: platform-check
     oracle:
       configured: "if [[ \"${HOST_PLATFORM:-unknown}\" == \"macos\" ]]; then\n  [[\
         \ \"$(sw_vers -productVersion 2>/dev/null | awk -F. '{print $1}')\" -ge ${macos_min_version}\
@@ -34,11 +35,12 @@ targets:
       version: if [[ "${HOST_PLATFORM:-unknown}" == macos ]]; then sw_vers -productVersion
         2>/dev/null || printf unknown; else uname -r 2>/dev/null || printf unknown;
         fi
-    install_cmd: "if [[ \"${HOST_PLATFORM:-unknown}\" == \"macos\" ]]; then\n  log_warn\
-      \ \"Ollama requires macOS ${macos_min_version}+ \u2014 current: macOS $(sw_vers\
-      \ -productVersion 2>/dev/null || echo unknown)\"\nelse\n  log_warn \"Ollama\
-      \ is not supported on host platform: ${HOST_PLATFORM:-unknown}\"\nfi\nreturn\
-      \ 1\n"
+    actions:
+      install: "if [[ \"${HOST_PLATFORM:-unknown}\" == \"macos\" ]]; then\n  log_warn\
+        \ \"Ollama requires macOS ${macos_min_version}+ \u2014 current: macOS $(sw_vers\
+        \ -productVersion 2>/dev/null || echo unknown)\"\nelse\n  log_warn \"Ollama\
+        \ is not supported on host platform: ${HOST_PLATFORM:-unknown}\"\nfi\nreturn\
+        \ 1\n"
   ollama:
     component: ollama
     profile: runtime
@@ -49,7 +51,8 @@ targets:
     soft_depends_on:
     - gate:ollama-api
     provided_by_tool: ollama-installer
-    runtime_driver: custom-daemon
+    driver:
+      kind: custom-daemon
     runtime_manager: custom
     probe_kind: http
     oracle:
@@ -75,13 +78,15 @@ targets:
     depends_on:
     - ollama
     provided_by_tool: ollama
-    package_driver: ollama-model
+    driver:
+      kind: ollama-model
     observe_cmd: ollama_model_present '${model_ref}' && printf '%s' '${model_ref}'
       || printf absent
     evidence:
       model: printf '%s' '${model_ref}'
-    install_cmd: ollama_model_pull '${model_ref}'
-    update_cmd: ollama_model_pull '${model_ref}'
+    actions:
+      install: ollama_model_pull '${model_ref}'
+      update: ollama_model_pull '${model_ref}'
     model_ref: llama3.2
   ollama-model-nomic-embed-text:
     component: ollama
@@ -92,13 +97,15 @@ targets:
     depends_on:
     - ollama
     provided_by_tool: ollama
-    package_driver: ollama-model
+    driver:
+      kind: ollama-model
     observe_cmd: ollama_model_present '${model_ref}' && printf '%s' '${model_ref}'
       || printf absent
     evidence:
       model: printf '%s' '${model_ref}'
-    install_cmd: ollama_model_pull '${model_ref}'
-    update_cmd: ollama_model_pull '${model_ref}'
+    actions:
+      install: ollama_model_pull '${model_ref}'
+      update: ollama_model_pull '${model_ref}'
     model_ref: nomic-embed-text
   ollama-model-qwen3-latest:
     component: ollama
@@ -109,13 +116,15 @@ targets:
     depends_on:
     - ollama
     provided_by_tool: ollama
-    package_driver: ollama-model
+    driver:
+      kind: ollama-model
     observe_cmd: ollama_model_present '${model_ref}' && printf '%s' '${model_ref}'
       || printf absent
     evidence:
       model: printf '%s' '${model_ref}'
-    install_cmd: ollama_model_pull '${model_ref}'
-    update_cmd: ollama_model_pull '${model_ref}'
+    actions:
+      install: ollama_model_pull '${model_ref}'
+      update: ollama_model_pull '${model_ref}'
     model_ref: qwen3:latest
   ollama-model-llama3.1-8b:
     component: ollama
@@ -126,13 +135,15 @@ targets:
     depends_on:
     - ollama
     provided_by_tool: ollama
-    package_driver: ollama-model
+    driver:
+      kind: ollama-model
     observe_cmd: ollama_model_present '${model_ref}' && printf '%s' '${model_ref}'
       || printf absent
     evidence:
       model: printf '%s' '${model_ref}'
-    install_cmd: ollama_model_pull '${model_ref}'
-    update_cmd: ollama_model_pull '${model_ref}'
+    actions:
+      install: ollama_model_pull '${model_ref}'
+      update: ollama_model_pull '${model_ref}'
     model_ref: llama3.1:8b
   ollama-model-mistral-7b:
     component: ollama
@@ -143,13 +154,15 @@ targets:
     depends_on:
     - ollama
     provided_by_tool: ollama
-    package_driver: ollama-model
+    driver:
+      kind: ollama-model
     observe_cmd: ollama_model_present '${model_ref}' && printf '%s' '${model_ref}'
       || printf absent
     evidence:
       model: printf '%s' '${model_ref}'
-    install_cmd: ollama_model_pull '${model_ref}'
-    update_cmd: ollama_model_pull '${model_ref}'
+    actions:
+      install: ollama_model_pull '${model_ref}'
+      update: ollama_model_pull '${model_ref}'
     model_ref: mistral:7b
   ollama-model-qwen2.5-coder-32b:
     component: ollama
@@ -160,13 +173,15 @@ targets:
     depends_on:
     - ollama
     provided_by_tool: ollama
-    package_driver: ollama-model
+    driver:
+      kind: ollama-model
     observe_cmd: ollama_model_present '${model_ref}' && printf '%s' '${model_ref}'
       || printf absent
     evidence:
       model: printf '%s' '${model_ref}'
-    install_cmd: ollama_model_pull '${model_ref}'
-    update_cmd: ollama_model_pull '${model_ref}'
+    actions:
+      install: ollama_model_pull '${model_ref}'
+      update: ollama_model_pull '${model_ref}'
     model_ref: qwen2.5-coder:32b
   ollama-model-llama3.1-70b:
     component: ollama
@@ -177,13 +192,15 @@ targets:
     depends_on:
     - ollama
     provided_by_tool: ollama
-    package_driver: ollama-model
+    driver:
+      kind: ollama-model
     observe_cmd: ollama_model_present '${model_ref}' && printf '%s' '${model_ref}'
       || printf absent
     evidence:
       model: printf '%s' '${model_ref}'
-    install_cmd: ollama_model_pull '${model_ref}'
-    update_cmd: ollama_model_pull '${model_ref}'
+    actions:
+      install: ollama_model_pull '${model_ref}'
+      update: ollama_model_pull '${model_ref}'
     model_ref: llama3.1:70b
 small:
 - ollama-model-llama3.2

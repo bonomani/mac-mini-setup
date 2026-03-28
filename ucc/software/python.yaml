@@ -17,30 +17,32 @@ targets:
     depends_on:
     - homebrew
     provided_by_tool: brew
-    package_driver: brew-formula
+    driver:
+      kind: brew-formula
     observe_cmd: brew_observe pyenv
     evidence:
       version: pyenv --version 2>/dev/null | awk '{print $2}'
       root: pyenv root 2>/dev/null || true
-    install_cmd: 'pkgs="$(python3 "$CFG_DIR/tools/read_config.py" --list "$YAML_PATH"
-      pyenv_packages 2>/dev/null | xargs)"
+    actions:
+      install: 'pkgs="$(python3 "$CFG_DIR/tools/read_config.py" --list "$YAML_PATH"
+        pyenv_packages 2>/dev/null | xargs)"
 
-      [[ -n "$pkgs" ]] || pkgs="pyenv pyenv-virtualenv"
+        [[ -n "$pkgs" ]] || pkgs="pyenv pyenv-virtualenv"
 
-      brew_install $pkgs
+        brew_install $pkgs
 
-      grep -q ''pyenv init'' "$HOME/.zshrc" 2>/dev/null || cat "$CFG_DIR/scripts/pyenv-zshrc-snippet"
-      >> "$HOME/.zshrc"
+        grep -q ''pyenv init'' "$HOME/.zshrc" 2>/dev/null || cat "$CFG_DIR/scripts/pyenv-zshrc-snippet"
+        >> "$HOME/.zshrc"
 
-      '
-    update_cmd: 'pkgs="$(python3 "$CFG_DIR/tools/read_config.py" --list "$YAML_PATH"
-      pyenv_packages 2>/dev/null | xargs)"
+        '
+      update: 'pkgs="$(python3 "$CFG_DIR/tools/read_config.py" --list "$YAML_PATH"
+        pyenv_packages 2>/dev/null | xargs)"
 
-      [[ -n "$pkgs" ]] || pkgs="pyenv pyenv-virtualenv"
+        [[ -n "$pkgs" ]] || pkgs="pyenv pyenv-virtualenv"
 
-      brew_upgrade $pkgs
+        brew_upgrade $pkgs
 
-      '
+        '
   xz:
     component: python
     profile: configured
@@ -50,12 +52,14 @@ targets:
     depends_on:
     - homebrew
     provided_by_tool: brew
-    package_driver: brew-formula
+    driver:
+      kind: brew-formula
     observe_cmd: brew_observe xz
     evidence:
       version: _brew_cached_version xz
-    install_cmd: brew_install xz
-    update_cmd: brew_upgrade xz
+    actions:
+      install: brew_install xz
+      update: brew_upgrade xz
   python:
     component: python
     profile: configured
@@ -66,7 +70,8 @@ targets:
     - pyenv
     - xz
     provided_by_tool: pyenv
-    package_driver: pyenv-version
+    driver:
+      kind: pyenv-version
     observe_cmd: 'version="${UIC_PREF_PYTHON_VERSION:-${python_version}}"
 
       pyenv versions 2>/dev/null | grep -q "$version" && printf ''%s'' "$version"
@@ -76,42 +81,45 @@ targets:
     evidence:
       version: python3 --version 2>/dev/null | awk '{print $2}'
       path: pyenv which python3 2>/dev/null || command -v python3 2>/dev/null || true
-    install_cmd: 'version="${UIC_PREF_PYTHON_VERSION:-${python_version}}"
+    actions:
+      install: 'version="${UIC_PREF_PYTHON_VERSION:-${python_version}}"
 
-      pyenv install "$version"
+        pyenv install "$version"
 
-      pyenv global "$version"
+        pyenv global "$version"
 
-      '
-    update_cmd: 'version="${UIC_PREF_PYTHON_VERSION:-${python_version}}"
+        '
+      update: 'version="${UIC_PREF_PYTHON_VERSION:-${python_version}}"
 
-      pyenv install --skip-existing "$version"
+        pyenv install --skip-existing "$version"
 
-      pyenv global "$version"
+        pyenv global "$version"
 
-      '
+        '
   pip-latest:
     component: python
     profile: configured
     type: config
     state_model: config
     display_name: pip
-    config_driver: pip-bootstrap
     depends_on:
     - python
+    driver:
+      kind: pip-bootstrap
     oracle:
       configured: pip --version >/dev/null 2>&1
     evidence:
       version: pip --version 2>/dev/null | awk '{print $2}'
       path: command -v pip 2>/dev/null || true
-    install_cmd: 'local pkgs
+    actions:
+      install: 'local pkgs
 
-      pkgs="$(python3 "$CFG_DIR/tools/read_config.py" --list "$YAML_PATH" pip_bootstrap
-      2>/dev/null | xargs)"
+        pkgs="$(python3 "$CFG_DIR/tools/read_config.py" --list "$YAML_PATH" pip_bootstrap
+        2>/dev/null | xargs)"
 
-      [[ -n "$pkgs" ]] && pip install --upgrade $pkgs
+        [[ -n "$pkgs" ]] && pip install --upgrade $pkgs
 
-      '
+        '
 pyenv_packages:
 - pyenv
 - pyenv-virtualenv

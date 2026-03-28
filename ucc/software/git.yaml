@@ -16,9 +16,11 @@ targets:
     depends_on:
     - homebrew
     provided_by_tool: brew
-    package_driver: brew-formula
+    driver:
+      kind: brew-formula
     observe_cmd: brew_observe git
     evidence:
       version: _brew_cached_version git
-    install_cmd: brew_install git
-    update_cmd: brew_upgrade git
+    actions:
+      install: brew_install git
+      update: brew_upgrade git

@@ -116,7 +116,7 @@ brew_cask_is_installed() {
 }
 
 # yaml_get_many <cfg_dir> <yaml_path> <key1> [key2 ...]
-# Output tab-delimited key/value rows for multiple scalar lookups.
+# Output NUL-delimited tab-separated key/value rows for multiple scalar lookups.
 yaml_get_many() {
   local d="$1" y="$2"
   shift 2
@@ -124,7 +124,7 @@ yaml_get_many() {
 }
 
 # yaml_target_get_many <cfg_dir> <yaml_path> <target> <key1> [key2 ...]
-# Output tab-delimited key/value rows for multiple target scalar lookups.
+# Output NUL-delimited tab-separated key/value rows for multiple target scalar lookups.
 yaml_target_get_many() {
   local d="$1" y="$2" t="$3"
   shift 3

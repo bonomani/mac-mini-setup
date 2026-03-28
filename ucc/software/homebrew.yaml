@@ -23,24 +23,26 @@ targets:
     type: precondition
     state_model: config
     display_name: Xcode Command Line Tools
-    config_driver: macos-clt
     provided_by_tool: macos-installer
+    driver:
+      kind: macos-clt
     oracle:
       configured: xcode-select -p >/dev/null 2>&1
     evidence:
       version: pkgutil --pkg-info=com.apple.pkg.CLTools_Executables 2>/dev/null |
         awk '/^version:/ {print $2}'
       path: xcode-select -p 2>/dev/null || true
-    install_cmd: 'log_info "Triggering Xcode Command Line Tools install..."
+    actions:
+      install: 'log_info "Triggering Xcode Command Line Tools install..."
 
-      xcode-select --install 2>/dev/null || true
+        xcode-select --install 2>/dev/null || true
 
-      log_warn "Xcode CLT installation triggered. Wait for it to complete, then re-run
-      this script."
+        log_warn "Xcode CLT installation triggered. Wait for it to complete, then
+        re-run this script."
 
-      return 1
+        return 1
 
-      '
+        '
   homebrew:
     component: homebrew
     profile: configured
@@ -51,54 +53,59 @@ targets:
       macos:
       - xcode-command-line-tools
     provided_by_tool: brew-installer
-    package_driver: brew-bootstrap
+    driver:
+      kind: brew-bootstrap
     observe_cmd: "if is_installed brew; then\n  brew --version 2>/dev/null | awk 'NR==1\
       \ {print $2}'\nelse\n  printf 'absent'\nfi\n"
     evidence:
       version: brew --version 2>/dev/null | awk 'NR==1 {print $2}'
       path: command -v brew 2>/dev/null || true
-    install_cmd: "_hb_shell_config=\"${shell_config_file}\"\n[[ \"${HOST_PLATFORM:-macos}\"\
-      \ != \"macos\" && \"$_hb_shell_config\" == \".zprofile\" ]] && _hb_shell_config=\"\
-      .profile\"\n/bin/bash -c \"$(curl -fsSL \"${installer_url}\")\"\nif [[ -x /opt/homebrew/bin/brew\
-      \ ]]; then\n  grep -q 'opt/homebrew/bin/brew shellenv' \"$HOME/${_hb_shell_config}\"\
-      \ 2>/dev/null || echo 'eval \"$(/opt/homebrew/bin/brew shellenv)\"' >> \"$HOME/${_hb_shell_config}\"\
-      \n  eval \"$(/opt/homebrew/bin/brew shellenv)\"\nelif [[ -x /usr/local/bin/brew\
-      \ ]]; then\n  grep -q 'usr/local/bin/brew shellenv' \"$HOME/${_hb_shell_config}\"\
-      \ 2>/dev/null || echo 'eval \"$(/usr/local/bin/brew shellenv)\"' >> \"$HOME/${_hb_shell_config}\"\
-      \n  eval \"$(/usr/local/bin/brew shellenv)\"\nelif [[ -x /home/linuxbrew/.linuxbrew/bin/brew\
-      \ ]]; then\n  grep -q 'linuxbrew/.linuxbrew/bin/brew shellenv' \"$HOME/${_hb_shell_config}\"\
-      \ 2>/dev/null || echo 'eval \"$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)\"\
-      ' >> \"$HOME/${_hb_shell_config}\"\n  eval \"$(/home/linuxbrew/.linuxbrew/bin/brew\
-      \ shellenv)\"\nfi\n"
-    update_cmd: "_hb_shell_config=\"${shell_config_file}\"\n[[ \"${HOST_PLATFORM:-macos}\"\
-      \ != \"macos\" && \"$_hb_shell_config\" == \".zprofile\" ]] && _hb_shell_config=\"\
-      .profile\"\nif [[ -x /opt/homebrew/bin/brew ]]; then\n  grep -q 'opt/homebrew/bin/brew\
-      \ shellenv' \"$HOME/${_hb_shell_config}\" 2>/dev/null || echo 'eval \"$(/opt/homebrew/bin/brew\
-      \ shellenv)\"' >> \"$HOME/${_hb_shell_config}\"\n  eval \"$(/opt/homebrew/bin/brew\
-      \ shellenv)\"\nelif [[ -x /usr/local/bin/brew ]]; then\n  grep -q 'usr/local/bin/brew\
-      \ shellenv' \"$HOME/${_hb_shell_config}\" 2>/dev/null || echo 'eval \"$(/usr/local/bin/brew\
-      \ shellenv)\"' >> \"$HOME/${_hb_shell_config}\"\n  eval \"$(/usr/local/bin/brew\
-      \ shellenv)\"\nelif [[ -x /home/linuxbrew/.linuxbrew/bin/brew ]]; then\n  grep\
-      \ -q 'linuxbrew/.linuxbrew/bin/brew shellenv' \"$HOME/${_hb_shell_config}\"\
-      \ 2>/dev/null || echo 'eval \"$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)\"\
-      ' >> \"$HOME/${_hb_shell_config}\"\n  eval \"$(/home/linuxbrew/.linuxbrew/bin/brew\
-      \ shellenv)\"\nfi\nbrew update && brew upgrade\n"
+    actions:
+      install: "_hb_shell_config=\"${shell_config_file}\"\n[[ \"${HOST_PLATFORM:-macos}\"\
+        \ != \"macos\" && \"$_hb_shell_config\" == \".zprofile\" ]] && _hb_shell_config=\"\
+        .profile\"\n/bin/bash -c \"$(curl -fsSL \"${installer_url}\")\"\nif [[ -x\
+        \ /opt/homebrew/bin/brew ]]; then\n  grep -q 'opt/homebrew/bin/brew shellenv'\
+        \ \"$HOME/${_hb_shell_config}\" 2>/dev/null || echo 'eval \"$(/opt/homebrew/bin/brew\
+        \ shellenv)\"' >> \"$HOME/${_hb_shell_config}\"\n  eval \"$(/opt/homebrew/bin/brew\
+        \ shellenv)\"\nelif [[ -x /usr/local/bin/brew ]]; then\n  grep -q 'usr/local/bin/brew\
+        \ shellenv' \"$HOME/${_hb_shell_config}\" 2>/dev/null || echo 'eval \"$(/usr/local/bin/brew\
+        \ shellenv)\"' >> \"$HOME/${_hb_shell_config}\"\n  eval \"$(/usr/local/bin/brew\
+        \ shellenv)\"\nelif [[ -x /home/linuxbrew/.linuxbrew/bin/brew ]]; then\n \
+        \ grep -q 'linuxbrew/.linuxbrew/bin/brew shellenv' \"$HOME/${_hb_shell_config}\"\
+        \ 2>/dev/null || echo 'eval \"$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)\"\
+        ' >> \"$HOME/${_hb_shell_config}\"\n  eval \"$(/home/linuxbrew/.linuxbrew/bin/brew\
+        \ shellenv)\"\nfi\n"
+      update: "_hb_shell_config=\"${shell_config_file}\"\n[[ \"${HOST_PLATFORM:-macos}\"\
+        \ != \"macos\" && \"$_hb_shell_config\" == \".zprofile\" ]] && _hb_shell_config=\"\
+        .profile\"\nif [[ -x /opt/homebrew/bin/brew ]]; then\n  grep -q 'opt/homebrew/bin/brew\
+        \ shellenv' \"$HOME/${_hb_shell_config}\" 2>/dev/null || echo 'eval \"$(/opt/homebrew/bin/brew\
+        \ shellenv)\"' >> \"$HOME/${_hb_shell_config}\"\n  eval \"$(/opt/homebrew/bin/brew\
+        \ shellenv)\"\nelif [[ -x /usr/local/bin/brew ]]; then\n  grep -q 'usr/local/bin/brew\
+        \ shellenv' \"$HOME/${_hb_shell_config}\" 2>/dev/null || echo 'eval \"$(/usr/local/bin/brew\
+        \ shellenv)\"' >> \"$HOME/${_hb_shell_config}\"\n  eval \"$(/usr/local/bin/brew\
+        \ shellenv)\"\nelif [[ -x /home/linuxbrew/.linuxbrew/bin/brew ]]; then\n \
+        \ grep -q 'linuxbrew/.linuxbrew/bin/brew shellenv' \"$HOME/${_hb_shell_config}\"\
+        \ 2>/dev/null || echo 'eval \"$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)\"\
+        ' >> \"$HOME/${_hb_shell_config}\"\n  eval \"$(/home/linuxbrew/.linuxbrew/bin/brew\
+        \ shellenv)\"\nfi\nbrew update && brew upgrade\n"
   brew-analytics=off:
     component: homebrew
     profile: parametric
     type: config
     state_model: parametric
     display_name: Homebrew analytics
-    config_driver: brew-analytics
     depends_on:
     - homebrew
+    driver:
+      kind: brew-analytics
     observe_cmd: brew analytics state 2>/dev/null | grep -qi disabled && echo off
       || echo on
     desired_value: ${analytics_desired}
     evidence:
       analytics: brew analytics state 2>/dev/null | grep -qi disabled && printf off
         || printf on
-    install_cmd: ucc_run brew analytics off
+    actions:
+      install: ucc_run brew analytics off
 installer_url: https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh
 analytics_desired: 'off'
 shell_config_file: .zprofile
