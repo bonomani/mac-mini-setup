@@ -173,6 +173,16 @@ xcode_clt_update_label() {
   softwareupdate_first_label_matching 'Command Line Tools for Xcode'
 }
 
+xcode_clt_update() {
+  local label
+  label="$(xcode_clt_update_label)"
+  if [[ -z "$label" ]]; then
+    log_warn "No Command Line Tools for Xcode update label found in softwareupdate --list."
+    return 1
+  fi
+  ucc_run sudo softwareupdate --install "$label"
+}
+
 ollama_model_pull() {
   log_info "Pulling model: $1"
   ucc_run ollama pull "$1" || return $?

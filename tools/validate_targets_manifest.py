@@ -65,6 +65,7 @@ CANONICAL_TARGET_KEY_ORDER = [
     "depends_on_by_platform",
     "soft_depends_on",
     "provided_by_tool",
+    "admin_required",
     "driver",
     "runtime_manager",
     "probe_kind",
@@ -396,6 +397,10 @@ def validate(manifest, known_gates):
             if value is not None and (not isinstance(value, str) or not value.strip()):
                 errors.append(f"target '{name}' field '{field}' must be a non-empty string")
 
+        admin_required = data.get("admin_required")
+        if admin_required is not None and not isinstance(admin_required, bool):
+            errors.append(f"target '{name}' field 'admin_required' must be a boolean")
+
         driver = data.get("driver")
         if driver is not None:
             if not isinstance(driver, dict) or not driver:
@@ -578,6 +583,15 @@ def validate(manifest, known_gates):
                 not isinstance((oracle or {}).get("configured"), str) or not (oracle or {}).get("configured", "").strip()
             ):
                 errors.append(f"target '{name}' with install/update commands requires observe_cmd or oracle.configured")
+
+        if admin_required is True:
+            if not _action_cmd(data, "install") and not _action_cmd(data, "update"):
+                errors.append(f"target '{name}' field 'admin_required' requires actions.install or actions.update")
+
+        for action_name in ("install", "update"):
+            action_cmd = _action_cmd(data, action_name)
+            if action_cmd and "sudo " in action_cmd and admin_required is not True:
+                errors.append(f"target '{name}' action '{action_name}' uses sudo and requires admin_required: true")
 
         depends_on = data.get("depends_on", []) or []
         if not isinstance(depends_on, list):

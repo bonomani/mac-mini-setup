@@ -14,6 +14,7 @@ targets:
     display_name: Software Update schedule
     soft_depends_on:
     - gate:sudo-available
+    admin_required: true
     driver:
       kind: softwareupdate-schedule
     observe_cmd: if softwareupdate --schedule 2>/dev/null | grep -qiE 'Automatic check
@@ -33,6 +34,7 @@ targets:
     display_name: Automatic update checks
     soft_depends_on:
     - gate:sudo-available
+    admin_required: true
     driver:
       kind: softwareupdate-defaults
       domain: ${softwareupdate_domain}
@@ -55,6 +57,7 @@ targets:
     display_name: Automatic update downloads
     soft_depends_on:
     - gate:sudo-available
+    admin_required: true
     driver:
       kind: softwareupdate-defaults
       domain: ${softwareupdate_domain}
@@ -77,6 +80,7 @@ targets:
     display_name: Automatic macOS updates
     soft_depends_on:
     - gate:sudo-available
+    admin_required: true
     driver:
       kind: softwareupdate-defaults
       domain: ${softwareupdate_domain}
@@ -99,6 +103,7 @@ targets:
     display_name: Configuration data updates
     soft_depends_on:
     - gate:sudo-available
+    admin_required: true
     driver:
       kind: softwareupdate-defaults
       domain: ${softwareupdate_domain}
@@ -121,6 +126,7 @@ targets:
     display_name: Security updates
     soft_depends_on:
     - gate:sudo-available
+    admin_required: true
     driver:
       kind: softwareupdate-defaults
       domain: ${softwareupdate_domain}

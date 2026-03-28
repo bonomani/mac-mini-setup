@@ -49,6 +49,7 @@ targets:
     display_name: VS Code CLI
     depends_on:
     - vscode
+    admin_required: true
     driver:
       kind: symlink-command
     oracle:

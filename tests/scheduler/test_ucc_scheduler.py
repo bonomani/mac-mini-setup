@@ -717,6 +717,9 @@ class UccSchedulerTests(unittest.TestCase):
             )
             (fake_bin / "sudo").write_text(
                 "#!/bin/bash\n"
+                "if [[ \"$1\" == \"-n\" ]]; then\n"
+                "  shift\n"
+                "fi\n"
                 "exec \"$@\"\n",
                 encoding="utf-8",
             )
@@ -751,6 +754,126 @@ class UccSchedulerTests(unittest.TestCase):
             self.assertTrue(marker.exists(), msg=result.stdout)
             self.assertIn("[updated", result.stdout)
             self.assertNotIn("Triggering Xcode Command Line Tools install", result.stdout)
+
+    def test_parametric_target_skips_mutation_when_dependency_gate_failed(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            side_effect = tmp_path / "side-effect"
+            ucc_dir = self._write_manifest(
+                tmp_path,
+                textwrap.dedent(
+                    f"""\
+                    component: fake
+                    primary_profile: parametric
+                    libs: fake
+                    runner: run_fake
+                    targets:
+                      gated:
+                        component: fake
+                        profile: parametric
+                        type: config
+                        state_model: parametric
+                        display_name: Gated config
+                        driver:
+                          kind: user-defaults
+                        observe_cmd: "printf 0"
+                        desired_value: "1"
+                        evidence:
+                          value: "printf 0"
+                        actions:
+                          install: "touch '{side_effect}'"
+                        dependency_gate: sudo-available
+                    """
+                ),
+            )
+            manifest = ucc_dir / "software" / "fake.yaml"
+            result = subprocess.run(
+                [
+                    "bash",
+                    "-lc",
+                    textwrap.dedent(
+                        f"""\
+                        set -euo pipefail
+                        export UIC_GATE_FAILED_SUDO_AVAILABLE=1
+                        export UCC_DECLARATION_FILE="{tmp_path / 'decl.jsonl'}"
+                        export UCC_RESULT_FILE="{tmp_path / 'result.jsonl'}"
+                        export UCC_SUMMARY_FILE="{tmp_path / 'summary.txt'}"
+                        export UCC_PROFILE_SUMMARY_FILE="{tmp_path / 'profile.txt'}"
+                        export UCC_TARGET_STATUS_FILE="{tmp_path / 'status.txt'}"
+                        export UCC_CORRELATION_ID="test-run"
+                        source "{ROOT / 'lib/ucc.sh'}"
+                        ucc_yaml_parametric_target "{ROOT}" "{manifest}" "gated"
+                        """
+                    ),
+                ],
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertFalse(side_effect.exists())
+            self.assertIn("[policy", result.stdout)
+
+    def test_simple_target_admin_required_blocks_without_sudo_ticket(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            side_effect = tmp_path / "side-effect"
+            fake_bin = tmp_path / "bin"
+            fake_bin.mkdir()
+            (fake_bin / "sudo").write_text("#!/bin/bash\nexit 1\n", encoding="utf-8")
+            os.chmod(fake_bin / "sudo", 0o755)
+            ucc_dir = self._write_manifest(
+                tmp_path,
+                textwrap.dedent(
+                    f"""\
+                    component: fake
+                    primary_profile: configured
+                    libs: fake
+                    runner: run_fake
+                    targets:
+                      gated:
+                        component: fake
+                        profile: configured
+                        type: config
+                        state_model: config
+                        display_name: Gated config
+                        admin_required: true
+                        driver:
+                          kind: shell-file-edit
+                        oracle:
+                          configured: "false"
+                        evidence:
+                          state: "printf absent"
+                        actions:
+                          install: "touch '{side_effect}'"
+                    """
+                ),
+            )
+            manifest = ucc_dir / "software" / "fake.yaml"
+            result = subprocess.run(
+                [
+                    "bash",
+                    "-lc",
+                    textwrap.dedent(
+                        f"""\
+                        set -euo pipefail
+                        export PATH="{fake_bin}:$PATH"
+                        export UCC_DECLARATION_FILE="{tmp_path / 'decl.jsonl'}"
+                        export UCC_RESULT_FILE="{tmp_path / 'result.jsonl'}"
+                        export UCC_SUMMARY_FILE="{tmp_path / 'summary.txt'}"
+                        export UCC_PROFILE_SUMMARY_FILE="{tmp_path / 'profile.txt'}"
+                        export UCC_TARGET_STATUS_FILE="{tmp_path / 'status.txt'}"
+                        export UCC_CORRELATION_ID="test-run"
+                        source "{ROOT / 'lib/ucc.sh'}"
+                        ucc_yaml_simple_target "{ROOT}" "{manifest}" "gated"
+                        """
+                    ),
+                ],
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertFalse(side_effect.exists())
+            self.assertIn("[policy", result.stdout)
 
     def test_manifest_validation_rejects_non_string_display_name(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

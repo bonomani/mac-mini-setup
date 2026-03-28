@@ -13,6 +13,7 @@ targets:
     display_name: AC sleep
     soft_depends_on:
     - gate:sudo-available
+    admin_required: true
     driver:
       kind: pmset
     oracle:
@@ -32,6 +33,7 @@ targets:
     display_name: Disk sleep
     soft_depends_on:
     - gate:sudo-available
+    admin_required: true
     driver:
       kind: pmset
     oracle:
@@ -51,6 +53,7 @@ targets:
     display_name: Standby
     soft_depends_on:
     - gate:sudo-available
+    admin_required: true
     driver:
       kind: pmset
     oracle:

@@ -66,6 +66,12 @@ _ucc_yaml_target_action_get() {
   printf '%s' "$val"
 }
 
+_ucc_yaml_target_admin_required() {
+  local cfg_dir="$1" yaml="$2" target="$3" val=""
+  val="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "admin_required")"
+  [[ "$val" == "true" || "$val" == "1" || "$val" == "yes" ]]
+}
+
 _ucc_eval_scalar_cmd() {
   local cmd="$1" output trimmed
   output="$(eval "$cmd" 2>/dev/null || true)"
@@ -196,6 +202,12 @@ _ucc_run_yaml_action() {
       ;;
   esac
   [[ -n "$cmd" ]] || return 1
+  if _ucc_yaml_target_admin_required "$cfg_dir" "$yaml" "$target"; then
+    if ! sudo -n true >/dev/null 2>&1; then
+      log_warn "Target '$target' requires admin privileges; acquire a sudo ticket first with: sudo -v"
+      return 125
+    fi
+  fi
   local CFG_DIR="$cfg_dir" YAML_PATH="$yaml" TARGET_NAME="$target"
   eval "$cmd"
 }
@@ -357,7 +369,7 @@ ucc_yaml_parametric_target() {
 
   eval "_uypt_obs_${fn}() { _ucc_observe_yaml_parametric_target '${cfg_dir}' '${yaml}' '${target}'; }"
   eval "_uypt_evd_${fn}() { _ucc_evidence_yaml_parametric_target '${cfg_dir}' '${yaml}' '${target}'; }"
-  if [[ -n "$install_cmd" ]]; then
+  if [[ -n "$install_cmd" && "$dep_state" == "DepsReady" ]]; then
     eval "_uypt_ins_${fn}() { _ucc_run_yaml_action '${cfg_dir}' '${yaml}' '${target}' install; }"
     eval "_uypt_upd_${fn}() { _ucc_run_yaml_action '${cfg_dir}' '${yaml}' '${target}' update; }"
   fi
@@ -369,8 +381,8 @@ ucc_yaml_parametric_target() {
     --evidence "_uypt_evd_${fn}"
     --desired "$(_ucc_yaml_parametric_desired_state "$desired" "$dep_state")"
   )
-  [[ -n "$install_cmd" ]] && args+=(--install "_uypt_ins_${fn}")
-  [[ -n "$install_cmd" ]] && args+=(--update "_uypt_upd_${fn}")
+  [[ -n "$install_cmd" && "$dep_state" == "DepsReady" ]] && args+=(--install "_uypt_ins_${fn}")
+  [[ -n "$install_cmd" && "$dep_state" == "DepsReady" ]] && args+=(--update "_uypt_upd_${fn}")
   ucc_target "${args[@]}"
 }
 
@@ -837,14 +849,16 @@ _ucc_execute_target() {
 
     if [[ "$UCC_MODE" == "update" && -n "$update_fn" ]]; then
       # Update mode: run upgrade even when state already matches
-      if [[ "$UCC_DRY_RUN" == "1" ]]; then
+    if [[ "$UCC_DRY_RUN" == "1" ]]; then
         _ucc_emit_target_line "$profile" "dry-run" "$display_name" "state=\"$(_ucc_display_state "$observed" "$axes")\" (update skipped)"
         _ucc_record_outcome "$profile" "$name" "" "unchanged" "unchanged" "$msg_id" "$started_at" \
           "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":{}}" \
           "{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"dry_run\",\"message\":\"update transition not applied due to dry-run mode\"}"
         return 0
-      fi
-      if $update_fn; then
+    fi
+      local update_rc=0
+      $update_fn || update_rc=$?
+      if [[ $update_rc -eq 0 ]]; then
         local verified ver_exit
         verified=$($observe_fn 2>/dev/null)
         ver_exit=$?
@@ -862,6 +876,11 @@ _ucc_execute_target() {
           _ucc_record_outcome "$profile" "$name" "FAILED" "failed" "failed" "$msg_id" "$started_at" \
             "{}" "{\"observation\":\"failed\",\"message\":\"post-update verify did not reach desired state\"}"
         fi
+      elif [[ $update_rc -eq 125 ]]; then
+        _ucc_emit_target_line "$profile" "policy" "$display_name" "\"$(_ucc_display_state "$observed" "$axes")\" -> \"$(_ucc_display_state "$desired" "$axes")\" (admin required)"
+        _ucc_record_outcome "$profile" "$name" "" "unchanged" "unchanged" "$msg_id" "$started_at" \
+          "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$desired" "$axes")}" \
+          "{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"policy\",\"message\":\"transition requires admin privileges\"}"
       elif [[ "$warn_on_update_failure" == "1" ]]; then
         _ucc_emit_target_line "$profile" "warn" "$display_name" "update remains externally managed  $(_ucc_compose_evidence "$name" "$observed" "$axes" "$evidence_fn")"
         _ucc_record_outcome "$profile" "$name" "" "warn" "unchanged" "$msg_id" "$started_at" \
@@ -908,7 +927,9 @@ _ucc_execute_target() {
     action_context="update"
   fi
 
-  if $action_fn; then
+  local action_rc=0
+  $action_fn || action_rc=$?
+  if [[ $action_rc -eq 0 ]]; then
     # Step 5 – Verify: re-observe after transition
     local verified ver_exit
     verified=$($observe_fn 2>/dev/null)
@@ -928,6 +949,11 @@ _ucc_execute_target() {
       _ucc_record_outcome "$profile" "$name" "FAILED" "failed" "failed" "$msg_id" "$started_at" \
         "{}" "{\"observation\":\"failed\",\"message\":\"post-${action_context} verify did not reach desired state\"}"
     fi
+  elif [[ $action_rc -eq 125 ]]; then
+    _ucc_emit_target_line "$profile" "policy" "$display_name" "\"$(_ucc_display_state "$observed" "$axes")\" -> \"$(_ucc_display_state "$desired" "$axes")\" (admin required)"
+    _ucc_record_outcome "$profile" "$name" "" "unchanged" "unchanged" "$msg_id" "$started_at" \
+      "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$desired" "$axes")}" \
+      "{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"policy\",\"message\":\"transition requires admin privileges\"}"
   elif [[ "$warn_on_update_failure" == "1" && "$action_context" == "update" ]]; then
     _ucc_emit_target_line "$profile" "warn" "$display_name" "update remains externally managed  $(_ucc_compose_evidence "$name" "$observed" "$axes" "$evidence_fn")"
     _ucc_record_outcome "$profile" "$name" "" "warn" "unchanged" "$msg_id" "$started_at" \
