@@ -32,14 +32,26 @@ targets:
     evidence:
       version: defaults read "${docker_desktop_app_path}/Contents/Info" CFBundleShortVersionString
         2>/dev/null || docker --version 2>/dev/null | awk '{print $3}' | tr -d ','
+      install_source: src="$(desktop_app_install_source "${docker_desktop_cask_id}"
+        "${docker_desktop_app_path}")"; [[ "$src" != "absent" && "$src" != "brew-cask"
+        ]] && printf '%s' "$src"
       pid: pgrep -f "${docker_desktop_app_path}" 2>/dev/null | head -1
     actions:
-      install: "observed=\"$(brew_cask_observe \"${docker_desktop_cask_id}\" \"${driver.greedy_auto_updates}\"\
-        )\"\nif [[ \"$observed\" == \"absent\" && -d \"${docker_desktop_app_path}\"\
-        \ ]]; then\n  observed=\"installed\"\nfi\nif [[ \"$observed\" == \"absent\"\
-        \ ]]; then\n  brew_cask_install \"${docker_desktop_cask_id}\" || return 1\n\
-        elif [[ \"$observed\" == \"outdated\" ]]; then\n  brew_cask_upgrade \"${docker_desktop_cask_id}\"\
-        \ \"${driver.greedy_auto_updates}\" || return 1\nfi\nopen -a \"${docker_desktop_app_name}\"\
-        \nlog_info \"Waiting for Docker daemon...\"\nUCC_RUNTIME_WAIT_ATTEMPTS=\"\
-        ${docker_runtime_wait_attempts}\" \\\nUCC_RUNTIME_WAIT_INTERVAL=\"${docker_runtime_wait_interval}\"\
-        \ \\\n  _ucc_wait_for_runtime_probe \"docker info >/dev/null 2>&1\"\n"
+      install: "policy=\"${UIC_PREF_PREFERRED_DRIVER_POLICY:-warn}\"\ninstall_source=\"\
+        $(desktop_app_install_source \"${docker_desktop_cask_id}\" \"${docker_desktop_app_path}\"\
+        )\"\nif [[ \"$install_source\" == \"app-bundle\" ]]; then\n  case \"$policy\"\
+        \ in\n    ignore) ;;\n    warn)\n      log_warn \"Docker Desktop is installed\
+        \ outside preferred driver brew-cask; set preferred-driver-policy=migrate\
+        \ to adopt it.\"\n      return 124\n      ;;\n    migrate)\n      brew_cask_migrate_install\
+        \ \"${docker_desktop_cask_id}\" || return 1\n      ;;\n    *)\n      log_warn\
+        \ \"Unknown preferred-driver-policy '$policy'; treating as warn.\"\n     \
+        \ return 124\n      ;;\n  esac\nfi\nobserved=\"$(brew_cask_observe \"${docker_desktop_cask_id}\"\
+        \ \"${driver.greedy_auto_updates}\")\"\nif [[ \"$observed\" == \"absent\"\
+        \ && -d \"${docker_desktop_app_path}\" ]]; then\n  observed=\"installed\"\n\
+        fi\nif [[ \"$observed\" == \"absent\" ]]; then\n  brew_cask_install \"${docker_desktop_cask_id}\"\
+        \ || return 1\nelif [[ \"$observed\" == \"outdated\" ]]; then\n  brew_cask_upgrade\
+        \ \"${docker_desktop_cask_id}\" \"${driver.greedy_auto_updates}\" || return\
+        \ 1\nfi\nopen -a \"${docker_desktop_app_name}\"\nlog_info \"Waiting for Docker\
+        \ daemon...\"\nUCC_RUNTIME_WAIT_ATTEMPTS=\"${docker_runtime_wait_attempts}\"\
+        \ \\\nUCC_RUNTIME_WAIT_INTERVAL=\"${docker_runtime_wait_interval}\" \\\n \
+        \ _ucc_wait_for_runtime_probe \"docker info >/dev/null 2>&1\"\n"

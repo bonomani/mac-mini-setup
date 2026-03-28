@@ -132,6 +132,31 @@ _ucc_emit_target_line() {
   _ucc_emit_profile_line "$profile" "$line"
 }
 
+_ucc_policy_detail() {
+  local name="$1" observed="$2" desired="$3" axes="$4" evidence_fn="$5" reason="$6"
+  local evidence=""
+  evidence="$(_ucc_compose_evidence "$name" "$observed" "$axes" "$evidence_fn")"
+  if [[ -n "$evidence" ]]; then
+    printf '%s (%s)' "$evidence" "$reason"
+    return 0
+  fi
+  printf '"%s" -> "%s" (%s)' \
+    "$(_ucc_display_state "$observed" "$axes")" \
+    "$(_ucc_display_state "$desired" "$axes")" \
+    "$reason"
+}
+
+_ucc_policy_warn_detail() {
+  local name="$1" observed="$2" axes="$3" evidence_fn="$4" reason="$5"
+  local evidence=""
+  evidence="$(_ucc_compose_evidence "$name" "$observed" "$axes" "$evidence_fn")"
+  if [[ -n "$evidence" ]]; then
+    printf '%s  %s' "$reason" "$evidence"
+    return 0
+  fi
+  printf '%s' "$reason"
+}
+
 _ucc_observe_yaml_simple_target() {
   local cfg_dir="$1" yaml="$2" target="$3"
   local target_type configured_cmd observe_cmd state_model success_raw failure_raw raw_state
@@ -448,22 +473,36 @@ _ucc_observe_yaml_runtime_oracle_target() {
 
 _ucc_observe_yaml_desktop_app_runtime_target() {
   local cfg_dir="$1" yaml="$2" target="$3"
-  local configured_cmd runtime_cmd package_ref app_path observed
+  local configured_cmd runtime_cmd package_ref app_path greedy_auto_updates observed install_source policy
   while IFS=$'\t' read -r -d '' key value; do
     case "$key" in
       oracle.configured) configured_cmd="$value" ;;
       oracle.runtime) runtime_cmd="$value" ;;
       driver.package_ref) package_ref="$value" ;;
       driver.app_path) app_path="$value" ;;
+      driver.greedy_auto_updates) greedy_auto_updates="$value" ;;
     esac
   done < <(_ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" \
-    oracle.configured oracle.runtime driver.package_ref driver.app_path)
+    oracle.configured oracle.runtime driver.package_ref driver.app_path driver.greedy_auto_updates)
 
   observed="installed"
-  if [[ -n "$package_ref" ]] && command -v brew_cask_observe >/dev/null 2>&1; then
-    observed="$(brew_cask_observe "$package_ref" 2>/dev/null || true)"
-    if [[ "$observed" == "absent" && -n "$app_path" && -d "$app_path" ]]; then
+  policy="${UIC_PREF_PREFERRED_DRIVER_POLICY:-warn}"
+  if [[ -n "$package_ref" ]] && command -v desktop_app_install_source >/dev/null 2>&1; then
+    install_source="$(desktop_app_install_source "$package_ref" "$app_path" 2>/dev/null || true)"
+  elif [[ -n "$app_path" && -d "$app_path" ]]; then
+    install_source="app-bundle"
+  else
+    install_source="absent"
+  fi
+
+  if [[ "$install_source" == "brew-cask" ]] && command -v brew_cask_observe >/dev/null 2>&1; then
+    observed="$(brew_cask_observe "$package_ref" "$greedy_auto_updates" 2>/dev/null || true)"
+  elif [[ "$install_source" == "app-bundle" ]]; then
+    if [[ "$policy" == "ignore" ]]; then
       observed="installed"
+    else
+      printf 'needs-update'
+      return
     fi
   elif [[ -n "$configured_cmd" ]] && ! eval "$configured_cmd" >/dev/null 2>&1; then
     observed="absent"
@@ -881,8 +920,14 @@ _ucc_execute_target() {
           _ucc_record_outcome "$profile" "$name" "FAILED" "failed" "failed" "$msg_id" "$started_at" \
             "{}" "{\"observation\":\"failed\",\"message\":\"post-update verify did not reach desired state\"}"
         fi
+      elif [[ $update_rc -eq 124 ]]; then
+        _ucc_emit_target_line "$profile" "warn" "$display_name" \
+          "$(_ucc_policy_warn_detail "$name" "$observed" "$axes" "$evidence_fn" "transition blocked by policy")"
+        _ucc_record_outcome "$profile" "$name" "" "warn" "unchanged" "$msg_id" "$started_at" \
+          "{}" "{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"policy\",\"message\":\"transition blocked by policy\"}"
       elif [[ $update_rc -eq 125 ]]; then
-        _ucc_emit_target_line "$profile" "policy" "$display_name" "\"$(_ucc_display_state "$observed" "$axes")\" -> \"$(_ucc_display_state "$desired" "$axes")\" (admin required)"
+        _ucc_emit_target_line "$profile" "policy" "$display_name" \
+          "$(_ucc_policy_detail "$name" "$observed" "$desired" "$axes" "$evidence_fn" "admin required")"
         _ucc_record_outcome "$profile" "$name" "" "unchanged" "unchanged" "$msg_id" "$started_at" \
           "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$desired" "$axes")}" \
           "{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"policy\",\"message\":\"transition requires admin privileges\"}"
@@ -915,7 +960,8 @@ _ucc_execute_target() {
   fi
 
   if [[ -z "$install_fn" ]]; then
-    _ucc_emit_target_line "$profile" "policy" "$display_name" "\"$(_ucc_display_state "$observed" "$axes")\" -> \"$(_ucc_display_state "$desired" "$axes")\""
+    _ucc_emit_target_line "$profile" "policy" "$display_name" \
+      "$(_ucc_policy_detail "$name" "$observed" "$desired" "$axes" "$evidence_fn" "policy blocked")"
     _ucc_record_outcome "$profile" "$name" "" "unchanged" "unchanged" "$msg_id" "$started_at" \
       "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$desired" "$axes")}" \
       "{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"policy\",\"message\":\"transition not applied - no install function declared\"}"
@@ -954,8 +1000,15 @@ _ucc_execute_target() {
       _ucc_record_outcome "$profile" "$name" "FAILED" "failed" "failed" "$msg_id" "$started_at" \
         "{}" "{\"observation\":\"failed\",\"message\":\"post-${action_context} verify did not reach desired state\"}"
     fi
+  elif [[ $action_rc -eq 124 ]]; then
+    _ucc_emit_target_line "$profile" "warn" "$display_name" \
+      "$(_ucc_policy_warn_detail "$name" "$observed" "$axes" "$evidence_fn" "transition blocked by policy")"
+    _ucc_record_outcome "$profile" "$name" "" "warn" "unchanged" "$msg_id" "$started_at" \
+      "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$desired" "$axes")}" \
+      "{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"policy\",\"message\":\"transition blocked by policy\"}"
   elif [[ $action_rc -eq 125 ]]; then
-    _ucc_emit_target_line "$profile" "policy" "$display_name" "\"$(_ucc_display_state "$observed" "$axes")\" -> \"$(_ucc_display_state "$desired" "$axes")\" (admin required)"
+    _ucc_emit_target_line "$profile" "policy" "$display_name" \
+      "$(_ucc_policy_detail "$name" "$observed" "$desired" "$axes" "$evidence_fn" "admin required")"
     _ucc_record_outcome "$profile" "$name" "" "unchanged" "unchanged" "$msg_id" "$started_at" \
       "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$desired" "$axes")}" \
       "{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"policy\",\"message\":\"transition requires admin privileges\"}"

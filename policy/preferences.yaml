@@ -54,3 +54,8 @@ preferences:
     options: install-only|always-upgrade
     scope: global
     rationale: 'always-upgrade: upgrade outdated packages on each run; install-only: skip already-installed packages (use to speed up runs when upgrades are not needed)'
+  - name: preferred-driver-policy
+    default: warn
+    options: ignore|warn|migrate
+    scope: global
+    rationale: 'ignore accepts software found outside the preferred install driver; warn reports drift without changing it; migrate allows supported targets to converge to the preferred driver'

@@ -842,6 +842,8 @@ class UccSchedulerTests(unittest.TestCase):
                         type: config
                         state_model: parametric
                         display_name: Gated config
+                        soft_depends_on:
+                        - gate:sudo-available
                         driver:
                           kind: user-defaults
                         observe_cmd: "printf 0"
@@ -880,6 +882,9 @@ class UccSchedulerTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, msg=result.stderr)
             self.assertFalse(side_effect.exists())
             self.assertIn("[policy", result.stdout)
+            self.assertIn("value=0", result.stdout)
+            self.assertIn("(policy blocked)", result.stdout)
+            self.assertNotIn("installation_state=Configured", result.stdout)
 
     def test_simple_target_admin_required_blocks_without_sudo_ticket(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -1416,6 +1421,143 @@ class UccSchedulerTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, msg=result.stderr)
             self.assertIn("[installed] app", result.stdout)
             self.assertIn("version=1.2.3", result.stdout)
+
+    def test_desktop_app_runtime_observe_respects_greedy_auto_updates(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            app_dir = tmp_path / "Demo.app"
+            app_dir.mkdir()
+            ready = tmp_path / "ready"
+            manifest = self._write_manifest(
+                tmp_path,
+                textwrap.dedent(
+                    f"""\
+                    component: fake
+                    primary_profile: runtime
+                    libs: fake
+                    runner: run_fake
+                    targets:
+                      app:
+                        component: fake
+                        profile: runtime
+                        type: runtime
+                        display_name: App
+                        provided_by_tool: brew-cask
+                        driver:
+                          kind: desktop-app
+                          package_ref: demo
+                          app_path: {app_dir}
+                          greedy_auto_updates: true
+                        runtime_manager: desktop-app
+                        probe_kind: command
+                        oracle:
+                          configured: '[[ -d "{app_dir}" ]]'
+                          runtime: '[[ -f "{ready}" ]]'
+                        evidence:
+                          version: 'printf 1.2.3'
+                        actions:
+                          install: 'touch "{ready}"'
+                    """
+                ),
+            ) / "software" / "fake.yaml"
+            result = subprocess.run(
+                [
+                    "bash",
+                    "-lc",
+                    textwrap.dedent(
+                        f"""\
+                        set -euo pipefail
+                        export UCC_DECLARATION_FILE="{tmp_path / 'decl.jsonl'}"
+                        export UCC_RESULT_FILE="{tmp_path / 'result.jsonl'}"
+                        export UCC_SUMMARY_FILE="{tmp_path / 'summary.txt'}"
+                        export UCC_PROFILE_SUMMARY_FILE="{tmp_path / 'profile.txt'}"
+                        export UCC_TARGET_STATUS_FILE="{tmp_path / 'status.txt'}"
+                        export UCC_CORRELATION_ID="test-run"
+                        source "{ROOT / 'lib/ucc.sh'}"
+                        source "{ROOT / 'lib/utils.sh'}"
+                        brew_cask_is_installed() {{ return 0; }}
+                        brew_cask_observe() {{
+                          if [[ -f "{ready}" ]]; then
+                            printf 1.2.3
+                          elif [[ "$2" == "true" ]]; then
+                            printf outdated
+                          else
+                            printf 1.2.3
+                          fi
+                        }}
+                        ucc_yaml_runtime_target "{ROOT}" "{manifest}" app
+                        """
+                    ),
+                ],
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertIn("[updated ] app", result.stdout)
+
+    def test_desktop_app_runtime_warns_when_present_outside_preferred_driver(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            app_dir = tmp_path / "Demo.app"
+            app_dir.mkdir()
+            manifest = self._write_manifest(
+                tmp_path,
+                textwrap.dedent(
+                    f"""\
+                    component: fake
+                    primary_profile: runtime
+                    libs: fake
+                    runner: run_fake
+                    targets:
+                      app:
+                        component: fake
+                        profile: runtime
+                        type: runtime
+                        display_name: App
+                        provided_by_tool: brew-cask
+                        driver:
+                          kind: desktop-app
+                          package_ref: demo
+                          app_path: {app_dir}
+                        runtime_manager: desktop-app
+                        probe_kind: command
+                        oracle:
+                          configured: '[[ -d "{app_dir}" ]]'
+                          runtime: 'true'
+                        evidence:
+                          install_source: 'src="$(desktop_app_install_source demo "{app_dir}")"; [[ "$src" != "brew-cask" ]] && printf "%s" "$src"'
+                        actions:
+                          install: 'if [[ "$(desktop_app_install_source demo "{app_dir}")" == "app-bundle" ]]; then return 124; fi'
+                    """
+                ),
+            ) / "software" / "fake.yaml"
+            result = subprocess.run(
+                [
+                    "bash",
+                    "-lc",
+                    textwrap.dedent(
+                        f"""\
+                        set -euo pipefail
+                        export UIC_PREF_PREFERRED_DRIVER_POLICY=warn
+                        export UCC_DECLARATION_FILE="{tmp_path / 'decl.jsonl'}"
+                        export UCC_RESULT_FILE="{tmp_path / 'result.jsonl'}"
+                        export UCC_SUMMARY_FILE="{tmp_path / 'summary.txt'}"
+                        export UCC_PROFILE_SUMMARY_FILE="{tmp_path / 'profile.txt'}"
+                        export UCC_TARGET_STATUS_FILE="{tmp_path / 'status.txt'}"
+                        export UCC_CORRELATION_ID="test-run"
+                        source "{ROOT / 'lib/ucc.sh'}"
+                        source "{ROOT / 'lib/utils.sh'}"
+                        brew_cask_is_installed() {{ return 1; }}
+                        ucc_yaml_runtime_target "{ROOT}" "{manifest}" app
+                        """
+                    ),
+                ],
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertIn("[warn", result.stdout)
+            self.assertIn("install_source=app-bundle", result.stdout)
 
     def test_read_config_records_substitutes_top_level_scalars(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

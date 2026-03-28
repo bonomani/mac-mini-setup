@@ -115,6 +115,23 @@ brew_cask_is_installed() {
   fi
 }
 
+desktop_app_install_source() {
+  local pkg="$1" app_path="$2"
+  if [[ -n "$pkg" ]] && brew_cask_is_installed "$pkg"; then
+    printf 'brew-cask'
+  elif [[ -n "$app_path" && -d "$app_path" ]]; then
+    printf 'app-bundle'
+  else
+    printf 'absent'
+  fi
+}
+
+brew_cask_migrate_install() {
+  local pkg="$1"
+  ucc_run brew install --cask --force "$pkg" || return $?
+  brew_refresh_caches 2>/dev/null || true
+}
+
 # yaml_get_many <cfg_dir> <yaml_path> <key1> [key2 ...]
 # Output NUL-delimited tab-separated key/value rows for multiple scalar lookups.
 yaml_get_many() {
