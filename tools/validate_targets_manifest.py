@@ -874,7 +874,8 @@ def main():
         return 0
 
     if all_dispatch_mode:
-        for comp_name, meta in manifest["components"].items():
+        for comp_name in component_order(manifest, ordered):
+            meta = manifest["components"].get(comp_name, {})
             print("{}\t{}\t{}\t{}\t{}".format(
                 comp_name,
                 meta.get("libs", ""),
