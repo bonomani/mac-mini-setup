@@ -11,6 +11,9 @@
 ucc_eval_evidence_from_yaml() {
   local cfg_dir="$1" yaml="$2" target="$3"
   local _first=1 _key _cmd _val
+  local fn="${target//[^a-zA-Z0-9]/_}"
+  local _cached_var="_UCC_OBS_CACHED_${fn}"
+  local _ev_var="_UCC_OBS_EVIDENCE_${fn}"
   while IFS=$'\t' read -r -d '' _key _cmd; do
     [[ -z "$_key" || -z "$_cmd" ]] && continue
     _val=$(_ucc_eval_yaml_expr "$cfg_dir" "$yaml" "$target" "$_cmd" 2>/dev/null || true)
@@ -18,7 +21,13 @@ ucc_eval_evidence_from_yaml() {
     [[ $_first -eq 0 ]] && printf '  '
     printf '%s=%s' "$_key" "$_val"
     _first=0
-  done < <(python3 "$cfg_dir/tools/read_config.py" --evidence "$yaml" "$target" 2>/dev/null)
+  done < <(
+    if [[ -n "${!_cached_var:-}" ]]; then
+      [[ -n "${!_ev_var:-}" ]] && printf '%s' "${!_ev_var}" | base64 -d
+    else
+      python3 "$cfg_dir/tools/read_config.py" --evidence "$yaml" "$target" 2>/dev/null
+    fi
+  )
 }
 
 _ucc_yaml_target_get() {
@@ -180,17 +189,29 @@ _ucc_policy_warn_detail() {
 _ucc_observe_yaml_simple_target() {
   local cfg_dir="$1" yaml="$2" target="$3"
   local target_type configured_cmd observe_cmd state_model success_raw failure_raw raw_state
+  local fn="${target//[^a-zA-Z0-9]/_}"
+  local _cached_var="_UCC_OBS_CACHED_${fn}"
 
-  while IFS=$'\t' read -r -d '' key value; do
-    case "$key" in
-      type) target_type="$value" ;;
-      oracle.configured) configured_cmd="$value" ;;
-      observe_cmd) observe_cmd="$value" ;;
-      state_model) state_model="$value" ;;
-      observe_success) success_raw="$value" ;;
-      observe_failure) failure_raw="$value" ;;
-    esac
-  done < <(_ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" type oracle.configured observe_cmd state_model observe_success observe_failure)
+  if [[ -n "${!_cached_var:-}" ]]; then
+    local _v
+    _v="_UCC_OBS_TYPE_${fn}";    target_type="${!_v}"
+    _v="_UCC_OBS_ORACLE_${fn}";  configured_cmd="${!_v}"
+    _v="_UCC_OBS_CMD_${fn}";     observe_cmd="${!_v}"
+    _v="_UCC_OBS_MODEL_${fn}";   state_model="${!_v}"
+    _v="_UCC_OBS_SUCCESS_${fn}"; success_raw="${!_v}"
+    _v="_UCC_OBS_FAILURE_${fn}"; failure_raw="${!_v}"
+  else
+    while IFS=$'\t' read -r -d '' key value; do
+      case "$key" in
+        type)              target_type="$value" ;;
+        oracle.configured) configured_cmd="$value" ;;
+        observe_cmd)       observe_cmd="$value" ;;
+        state_model)       state_model="$value" ;;
+        observe_success)   success_raw="$value" ;;
+        observe_failure)   failure_raw="$value" ;;
+      esac
+    done < <(_ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" type oracle.configured observe_cmd state_model observe_success observe_failure)
+  fi
   [[ -n "$target_type" ]] || target_type="config"
   [[ -n "$state_model" ]] || state_model="$target_type"
 
@@ -262,6 +283,7 @@ _ucc_run_yaml_action() {
 ucc_yaml_simple_target() {
   local cfg_dir="$1" yaml="$2" target="$3"
   local fn profile install_cmd update_cmd externally_managed_updates
+  local obs_type="" obs_oracle="" obs_cmd="" obs_model="" obs_success="" obs_failure=""
   fn="${target//[^a-zA-Z0-9]/_}"
   profile="configured"
   install_cmd=""
@@ -273,10 +295,26 @@ ucc_yaml_simple_target() {
       actions.install)                   install_cmd="$value" ;;
       actions.update)                    update_cmd="$value" ;;
       driver.externally_managed_updates) externally_managed_updates="$value" ;;
+      type)                              obs_type="$value" ;;
+      oracle.configured)                 obs_oracle="$value" ;;
+      observe_cmd)                       obs_cmd="$value" ;;
+      state_model)                       obs_model="$value" ;;
+      observe_success)                   obs_success="$value" ;;
+      observe_failure)                   obs_failure="$value" ;;
     esac
   done < <(_ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" \
-      profile actions.install actions.update driver.externally_managed_updates)
+      profile actions.install actions.update driver.externally_managed_updates \
+      type oracle.configured observe_cmd state_model observe_success observe_failure)
   [[ -z "$update_cmd" ]] && update_cmd="$install_cmd"
+
+  export "_UCC_OBS_CACHED_${fn}=1"
+  export "_UCC_OBS_TYPE_${fn}=${obs_type}"
+  export "_UCC_OBS_ORACLE_${fn}=${obs_oracle}"
+  export "_UCC_OBS_CMD_${fn}=${obs_cmd}"
+  export "_UCC_OBS_MODEL_${fn}=${obs_model}"
+  export "_UCC_OBS_SUCCESS_${fn}=${obs_success}"
+  export "_UCC_OBS_FAILURE_${fn}=${obs_failure}"
+  export "_UCC_OBS_EVIDENCE_${fn}=$(python3 "$cfg_dir/tools/read_config.py" --evidence "$yaml" "$target" 2>/dev/null | base64)"
 
   eval "_uyst_obs_${fn}() { _ucc_observe_yaml_simple_target '${cfg_dir}' '${yaml}' '${target}'; }"
   eval "_uyst_evd_${fn}() { ucc_eval_evidence_from_yaml '${cfg_dir}' '${yaml}' '${target}'; }"
