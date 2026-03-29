@@ -263,10 +263,20 @@ ucc_yaml_simple_target() {
   local cfg_dir="$1" yaml="$2" target="$3"
   local fn profile install_cmd update_cmd externally_managed_updates
   fn="${target//[^a-zA-Z0-9]/_}"
-  profile="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "profile" "configured")"
-  install_cmd="$(_ucc_yaml_target_action_get "$cfg_dir" "$yaml" "$target" "install")"
-  update_cmd="$(_ucc_yaml_target_action_get "$cfg_dir" "$yaml" "$target" "update")"
-  externally_managed_updates="$(_ucc_yaml_target_driver_get "$cfg_dir" "$yaml" "$target" "externally_managed_updates")"
+  profile="configured"
+  install_cmd=""
+  update_cmd=""
+  externally_managed_updates=""
+  while IFS=$'\t' read -r -d '' key value; do
+    case "$key" in
+      profile)                           [[ -n "$value" ]] && profile="$value" ;;
+      actions.install)                   install_cmd="$value" ;;
+      actions.update)                    update_cmd="$value" ;;
+      driver.externally_managed_updates) externally_managed_updates="$value" ;;
+    esac
+  done < <(_ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" \
+      profile actions.install actions.update driver.externally_managed_updates)
+  [[ -z "$update_cmd" ]] && update_cmd="$install_cmd"
 
   eval "_uyst_obs_${fn}() { _ucc_observe_yaml_simple_target '${cfg_dir}' '${yaml}' '${target}'; }"
   eval "_uyst_evd_${fn}() { ucc_eval_evidence_from_yaml '${cfg_dir}' '${yaml}' '${target}'; }"
