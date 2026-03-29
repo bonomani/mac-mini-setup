@@ -112,24 +112,25 @@ source "$DIR/lib/utils.sh"
 source "$DIR/lib/summary.sh"
 
 # ============================================================
+#  Early manifest cache (needed by gates and component list)
+# ============================================================
+_MANIFEST_DIR="$DIR/ucc"
+_QUERY_SCRIPT="$DIR/tools/validate_targets_manifest.py"
+_all_dispatch=$(python3 "$_QUERY_SCRIPT" --all-dispatch "$_MANIFEST_DIR" 2>/dev/null || true)
+_GATE_DOCKER_SETTINGS_REL=$(python3 "$DIR/tools/read_config.py" --get "$DIR/ucc/system/docker-config.yaml" settings_relpath 2>/dev/null || true)
+_GATE_AI_APPS_TEMPLATE_REL=$(python3 "$DIR/tools/read_config.py" --get "$DIR/ucc/software/ai-apps.yaml" stack.definition_template 2>/dev/null || true)
+[[ -z "$_GATE_DOCKER_SETTINGS_REL" ]] && _GATE_DOCKER_SETTINGS_REL="Library/Group Containers/group.com.docker/settings.json"
+[[ -z "$_GATE_AI_APPS_TEMPLATE_REL" ]] && _GATE_AI_APPS_TEMPLATE_REL="stack/docker-compose.yml"
+
+# ============================================================
 #  UIC gate condition functions (read-only, no side effects)
 # ============================================================
 _gate_supported_platform(){ [[ "$HOST_PLATFORM_VARIANT" == "macos" || "$HOST_PLATFORM_VARIANT" == "linux" || "$HOST_PLATFORM_VARIANT" == "wsl2" ]]; }
 _gate_arm64()           { [[ "$(uname -m)" == "arm64" ]]; }
 _gate_docker_daemon()   { docker info &>/dev/null 2>&1; }
 _gate_docker_compose()  { docker compose version &>/dev/null 2>&1; }
-_gate_docker_settings() {
-  local rel
-  rel="$(python3 "$DIR/tools/read_config.py" --get "$DIR/ucc/system/docker-config.yaml" settings_relpath 2>/dev/null || true)"
-  [[ -z "$rel" ]] && rel="Library/Group Containers/group.com.docker/settings.json"
-  [[ -f "$HOME/$rel" ]]
-}
-_gate_ai_apps_template(){
-  local rel
-  rel="$(python3 "$DIR/tools/read_config.py" --get "$DIR/ucc/software/ai-apps.yaml" stack.definition_template 2>/dev/null || true)"
-  [[ -z "$rel" ]] && rel="stack/docker-compose.yml"
-  [[ -f "$DIR/$rel" ]]
-}
+_gate_docker_settings() { [[ -f "$HOME/$_GATE_DOCKER_SETTINGS_REL" ]]; }
+_gate_ai_apps_template(){ [[ -f "$DIR/$_GATE_AI_APPS_TEMPLATE_REL" ]]; }
 _gate_ollama_api()      {
   local host port path
   while IFS=$'\t' read -r -d '' key value; do
@@ -149,13 +150,15 @@ _gate_networkquality()  { command -v networkQuality >/dev/null 2>&1; }
 _gate_sudo()            { sudo -n true 2>/dev/null; }
 
 _load_components() {
-  local manifest_dir="$DIR/ucc"
-  local query_script="$DIR/tools/validate_targets_manifest.py"
   local components=()
-  if [[ -d "$manifest_dir" && -x "$(command -v python3)" && -f "$query_script" ]]; then
+  if [[ -n "$_all_dispatch" ]]; then
     while IFS= read -r component; do
       [[ -n "$component" ]] && components+=("$component")
-    done < <(python3 "$query_script" --components "$manifest_dir" 2>/dev/null || true)
+    done < <(printf '%s\n' "$_all_dispatch" | awk -F'\t' '{print $1}')
+  elif [[ -d "$_MANIFEST_DIR" && -x "$(command -v python3)" && -f "$_QUERY_SCRIPT" ]]; then
+    while IFS= read -r component; do
+      [[ -n "$component" ]] && components+=("$component")
+    done < <(python3 "$_QUERY_SCRIPT" --components "$_MANIFEST_DIR" 2>/dev/null || true)
   fi
   components+=("verify")
   printf '%s\n' "${components[@]}"
@@ -296,10 +299,7 @@ done
 #  Evaluated before any UCC convergence begins (UIC §6)
 # ============================================================
 
-# --- Pre-load manifest caches (used by _uic_scope_active and component dispatch) ---
-_MANIFEST_DIR="$DIR/ucc"
-_QUERY_SCRIPT="$DIR/tools/validate_targets_manifest.py"
-_all_dispatch=$(python3 "$_QUERY_SCRIPT" --all-dispatch "$_MANIFEST_DIR" 2>/dev/null || true)
+# --- Pre-load remaining manifest caches (deps, soft-deps, ordered) ---
 export _UCC_ALL_DEPS_CACHE
 export _UCC_ALL_SOFT_DEPS_CACHE
 export _UCC_ALL_ORDERED_CACHE
