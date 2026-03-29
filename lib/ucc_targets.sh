@@ -1246,7 +1246,9 @@ ucc_flush_registered_targets() {
   local declared=() undeclared=()
   [[ ${#_UCC_REGISTERED_NAMES[@]} -gt 0 ]] || return 0
 
-  if [[ -n "${UCC_TARGETS_MANIFEST:-}" && -n "${UCC_TARGETS_QUERY_SCRIPT:-}" ]]; then
+  if [[ -n "${_UCC_ALL_ORDERED_CACHE:-}" ]]; then
+    ordered="$(printf '%s\n' "$_UCC_ALL_ORDERED_CACHE" | awk -F'\t' -v c="$component" '$1==c{print $2; exit}' | tr ',' '\n')"
+  elif [[ -n "${UCC_TARGETS_MANIFEST:-}" && -n "${UCC_TARGETS_QUERY_SCRIPT:-}" ]]; then
     ordered="$(python3 "$UCC_TARGETS_QUERY_SCRIPT" --ordered-targets "$component" "$UCC_TARGETS_MANIFEST" 2>/dev/null || true)"
   fi
 

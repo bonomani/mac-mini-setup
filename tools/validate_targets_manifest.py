@@ -771,6 +771,7 @@ def main():
     all_dispatch_mode = False
     all_deps_mode = False
     all_soft_deps_mode = False
+    all_ordered_targets_mode = False
     oracles_mode = False
     runtime_endpoints_mode = False
     ordered_targets_mode = False
@@ -799,6 +800,9 @@ def main():
         args = args[1:]
     elif len(args) >= 1 and args[0] == "--all-soft-deps":
         all_soft_deps_mode = True
+        args = args[1:]
+    elif len(args) >= 1 and args[0] == "--all-ordered-targets":
+        all_ordered_targets_mode = True
         args = args[1:]
     elif len(args) >= 2 and args[0] == "--ordered-targets":
         target_name = args[1]
@@ -878,6 +882,18 @@ def main():
                 meta.get("on_fail", ""),
                 meta.get("file", ""),
             ))
+        return 0
+
+    if all_ordered_targets_mode:
+        from collections import defaultdict
+        comp_targets = defaultdict(list)
+        for name in ordered:
+            data = manifest["targets"].get(name, {})
+            comp = data.get("component", "")
+            if comp:
+                comp_targets[comp].append(name)
+        for comp, targets in comp_targets.items():
+            print("{}\t{}".format(comp, ",".join(targets)))
         return 0
 
     if ordered_targets_mode:
