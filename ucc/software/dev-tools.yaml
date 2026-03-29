@@ -348,6 +348,24 @@ targets:
     actions:
       install: brew_install '${driver.ref}'
       update: brew_upgrade '${driver.ref}'
+  cli-btop:
+    component: dev-tools
+    profile: configured
+    type: package
+    state_model: package
+    display_name: btop
+    depends_on:
+    - homebrew
+    provided_by_tool: brew
+    driver:
+      kind: brew-formula
+      ref: btop
+    observe_cmd: brew_observe '${driver.ref}'
+    evidence:
+      version: _brew_cached_version '${driver.ref}'
+    actions:
+      install: brew_install '${driver.ref}'
+      update: brew_upgrade '${driver.ref}'
   cli-tmux:
     component: dev-tools
     profile: configured
@@ -833,6 +851,7 @@ cli_tools:
 - cli-wget
 - cli-curl
 - cli-htop
+- cli-btop
 - cli-tmux
 - cli-fzf
 - cli-ripgrep
