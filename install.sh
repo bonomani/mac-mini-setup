@@ -221,7 +221,7 @@ _display_component_name() {
 _load_component_policies
 
 _uic_scope_active() {
-  local scope="$1" comp dispatch config mode
+  local scope="$1" comp config mode
   case "$scope" in
     global|target:*) return 0 ;;
     component:*)
@@ -232,8 +232,7 @@ _uic_scope_active() {
         _component_supported_for "$comp" "tic"
         return $?
       fi
-      dispatch=$(python3 "$DIR/tools/validate_targets_manifest.py" --dispatch "$comp" "$DIR/ucc" 2>/dev/null || true)
-      config=$(echo "$dispatch" | sed -n '4p')
+      config=$(printf '%s\n' "${_all_dispatch:-}" | awk -F'\t' -v c="$comp" '$1==c{print $5; exit}')
       [[ -z "$config" ]] && return 0
       _component_supported_for "$comp" "$config"
       return $?
@@ -296,6 +295,15 @@ done
 #  UIC — Gates and Preferences
 #  Evaluated before any UCC convergence begins (UIC §6)
 # ============================================================
+
+# --- Pre-load manifest caches (used by _uic_scope_active and component dispatch) ---
+_MANIFEST_DIR="$DIR/ucc"
+_QUERY_SCRIPT="$DIR/tools/validate_targets_manifest.py"
+_all_dispatch=$(python3 "$_QUERY_SCRIPT" --all-dispatch "$_MANIFEST_DIR" 2>/dev/null || true)
+export _UCC_ALL_DEPS_CACHE
+export _UCC_ALL_SOFT_DEPS_CACHE
+_UCC_ALL_DEPS_CACHE=$(python3 "$_QUERY_SCRIPT" --all-deps "$_MANIFEST_DIR" 2>/dev/null || true)
+_UCC_ALL_SOFT_DEPS_CACHE=$(python3 "$_QUERY_SCRIPT" --all-soft-deps "$_MANIFEST_DIR" 2>/dev/null || true)
 
 # --- Gates --------------------------------------------------
 load_uic_gates "$DIR"
@@ -385,8 +393,6 @@ fi
 
 # --- Run components -----------------------------------------
 FAILED_COMPONENTS=()
-_MANIFEST_DIR="$DIR/ucc"
-_QUERY_SCRIPT="$DIR/tools/validate_targets_manifest.py"
 
 _comp_prelude="source \"${DIR}/lib/ucc.sh\"; source \"${DIR}/lib/uic.sh\"; source \"${DIR}/lib/utils.sh\""
 
@@ -443,12 +449,6 @@ _DISP_LIBS=()
 _DISP_RUNNERS=()
 _DISP_ON_FAILS=()
 _DISP_CONFIGS=()
-
-_all_dispatch=$(python3 "$_QUERY_SCRIPT" --all-dispatch "$_MANIFEST_DIR" 2>/dev/null || true)
-export _UCC_ALL_DEPS_CACHE
-export _UCC_ALL_SOFT_DEPS_CACHE
-_UCC_ALL_DEPS_CACHE=$(python3 "$_QUERY_SCRIPT" --all-deps "$_MANIFEST_DIR" 2>/dev/null || true)
-_UCC_ALL_SOFT_DEPS_CACHE=$(python3 "$_QUERY_SCRIPT" --all-soft-deps "$_MANIFEST_DIR" 2>/dev/null || true)
 
 for comp in "${TO_RUN[@]}"; do
   if [[ "$comp" == "verify" ]]; then
