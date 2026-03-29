@@ -439,6 +439,8 @@ _DISP_RUNNERS=()
 _DISP_ON_FAILS=()
 _DISP_CONFIGS=()
 
+_all_dispatch=$(python3 "$_QUERY_SCRIPT" --all-dispatch "$_MANIFEST_DIR" 2>/dev/null || true)
+
 for comp in "${TO_RUN[@]}"; do
   if [[ "$comp" == "verify" ]]; then
     _mode="$(_component_mode "$comp")"
@@ -463,11 +465,11 @@ for comp in "${TO_RUN[@]}"; do
     _DISP_CONFIGS+=("tic")
     continue
   fi
-  _dispatch=$(python3 "$_QUERY_SCRIPT" --dispatch "$comp" "$_MANIFEST_DIR" 2>/dev/null || true)
-  _libs=$(echo "$_dispatch" | sed -n '1p')
-  _runner=$(echo "$_dispatch" | sed -n '2p')
-  _on_fail=$(echo "$_dispatch" | sed -n '3p')
-  _config=$(echo "$_dispatch" | sed -n '4p')
+  _dispatch=$(printf '%s\n' "$_all_dispatch" | awk -F'\t' -v c="$comp" '$1==c{print $2"\n"$3"\n"$4"\n"$5; exit}')
+  _libs=$(printf '%s\n' "$_dispatch" | sed -n '1p')
+  _runner=$(printf '%s\n' "$_dispatch" | sed -n '2p')
+  _on_fail=$(printf '%s\n' "$_dispatch" | sed -n '3p')
+  _config=$(printf '%s\n' "$_dispatch" | sed -n '4p')
   _mode="$(_component_mode "$comp")"
   case "$_mode" in
     disabled)

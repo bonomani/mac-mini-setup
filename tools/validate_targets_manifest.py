@@ -768,6 +768,7 @@ def main():
     soft_deps_mode = False
     components_mode = False
     dispatch_mode = False
+    all_dispatch_mode = False
     oracles_mode = False
     runtime_endpoints_mode = False
     ordered_targets_mode = False
@@ -788,6 +789,9 @@ def main():
         dispatch_mode = True
         target_name = args[1]
         args = args[2:]
+    elif len(args) >= 1 and args[0] == "--all-dispatch":
+        all_dispatch_mode = True
+        args = args[1:]
     elif len(args) >= 2 and args[0] == "--ordered-targets":
         target_name = args[1]
         args = args[2:]
@@ -841,6 +845,17 @@ def main():
         print(meta.get("runner", ""))
         print(meta.get("on_fail", ""))
         print(meta.get("file", ""))
+        return 0
+
+    if all_dispatch_mode:
+        for comp_name, meta in manifest["components"].items():
+            print("{}\t{}\t{}\t{}\t{}".format(
+                comp_name,
+                meta.get("libs", ""),
+                meta.get("runner", ""),
+                meta.get("on_fail", ""),
+                meta.get("file", ""),
+            ))
         return 0
 
     if ordered_targets_mode:
