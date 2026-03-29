@@ -333,8 +333,14 @@ ucc_yaml_simple_target() {
 
 _ucc_observe_yaml_capability_target() {
   local cfg_dir="$1" yaml="$2" target="$3"
+  local fn="${target//[^a-zA-Z0-9]/_}"
+  local _cached_var="_UCC_OBS_CACHED_${fn}"
   local runtime_cmd
-  runtime_cmd="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "oracle.runtime")"
+  if [[ -n "${!_cached_var:-}" ]]; then
+    local _v="_UCC_CAP_RUNTIME_${fn}"; runtime_cmd="${!_v}"
+  else
+    runtime_cmd="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "oracle.runtime")"
+  fi
   if [[ -n "$runtime_cmd" ]] && _ucc_yaml_expr_succeeds "$cfg_dir" "$yaml" "$target" "$runtime_cmd"; then
     ucc_asm_state --installation Configured --runtime Running --health Healthy --admin Enabled --dependencies DepsReady
   else
@@ -344,8 +350,13 @@ _ucc_observe_yaml_capability_target() {
 
 ucc_yaml_capability_target() {
   local cfg_dir="$1" yaml="$2" target="$3"
-  local fn
+  local fn runtime_cmd
   fn="${target//[^a-zA-Z0-9]/_}"
+  runtime_cmd="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "oracle.runtime")"
+
+  export "_UCC_OBS_CACHED_${fn}=1"
+  export "_UCC_OBS_EVIDENCE_${fn}=$(python3 "$cfg_dir/tools/read_config.py" --evidence "$yaml" "$target" 2>/dev/null | base64)"
+  export "_UCC_CAP_RUNTIME_${fn}=${runtime_cmd}"
 
   eval "_uyct_obs_${fn}() { _ucc_observe_yaml_capability_target '${cfg_dir}' '${yaml}' '${target}'; }"
   eval "_uyct_evd_${fn}() { ucc_eval_evidence_from_yaml '${cfg_dir}' '${yaml}' '${target}'; }"
@@ -400,15 +411,23 @@ _ucc_yaml_parametric_desired_state() {
 _ucc_observe_yaml_parametric_target() {
   local cfg_dir="$1" yaml="$2" target="$3"
   local observe_cmd desired gate current dep_state
-  while IFS=$'\t' read -r -d '' key value; do
-    case "$key" in
-      observe_cmd) observe_cmd="$value" ;;
-      dependency_gate) gate="$value" ;;
-    esac
-  done < <(_ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" observe_cmd dependency_gate)
-  desired="$(_ucc_yaml_parametric_desired_value "$cfg_dir" "$yaml" "$target")"
+  local fn="${target//[^a-zA-Z0-9]/_}"
+  local _cached_var="_UCC_OBS_CACHED_${fn}"
+  if [[ -n "${!_cached_var:-}" ]]; then
+    local _v
+    _v="_UCC_PARAM_OBS_CMD_${fn}"; observe_cmd="${!_v}"
+    _v="_UCC_PARAM_GATE_${fn}";    gate="${!_v}"
+    _v="_UCC_PARAM_DESIRED_${fn}"; desired="${!_v}"
+  else
+    while IFS=$'\t' read -r -d '' key value; do
+      case "$key" in
+        observe_cmd)     observe_cmd="$value" ;;
+        dependency_gate) gate="$value" ;;
+      esac
+    done < <(_ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" observe_cmd dependency_gate)
+    desired="$(_ucc_yaml_parametric_desired_value "$cfg_dir" "$yaml" "$target")"
+  fi
   dep_state="$(_ucc_yaml_gate_dependency_state "$gate")"
-
   current="$(_ucc_eval_yaml_scalar_cmd "$cfg_dir" "$yaml" "$target" "$observe_cmd")"
   _ucc_yaml_parametric_observed_state "$current" "$desired" "$dep_state"
 }
@@ -416,12 +435,17 @@ _ucc_observe_yaml_parametric_target() {
 _ucc_evidence_yaml_parametric_target() {
   local cfg_dir="$1" yaml="$2" target="$3"
   local observe_cmd current evidence
-  while IFS=$'\t' read -r -d '' key value; do
-    case "$key" in
-      observe_cmd) observe_cmd="$value" ;;
-    esac
-  done < <(_ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" observe_cmd)
-
+  local fn="${target//[^a-zA-Z0-9]/_}"
+  local _cached_var="_UCC_OBS_CACHED_${fn}"
+  if [[ -n "${!_cached_var:-}" ]]; then
+    local _v="_UCC_PARAM_OBS_CMD_${fn}"; observe_cmd="${!_v}"
+  else
+    while IFS=$'\t' read -r -d '' key value; do
+      case "$key" in
+        observe_cmd) observe_cmd="$value" ;;
+      esac
+    done < <(_ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" observe_cmd)
+  fi
   local CFG_DIR="$cfg_dir" YAML_PATH="$yaml" TARGET_NAME="$target"
   evidence="$(ucc_eval_evidence_from_yaml "$cfg_dir" "$yaml" "$target")"
   if [[ -n "$evidence" ]]; then
@@ -452,12 +476,35 @@ _ucc_yaml_parametric_desired_value() {
 ucc_yaml_parametric_target() {
   local cfg_dir="$1" yaml="$2" target="$3"
   local fn install_cmd update_cmd desired gate dep_state
+  local obs_cmd="" obs_gate="" desired_cmd="" desired_value_raw=""
   fn="${target//[^a-zA-Z0-9]/_}"
-  install_cmd="$(_ucc_yaml_target_action_get "$cfg_dir" "$yaml" "$target" "install")"
-  update_cmd="$(_ucc_yaml_target_action_get "$cfg_dir" "$yaml" "$target" "update")"
-  desired="$(_ucc_yaml_parametric_desired_value "$cfg_dir" "$yaml" "$target")"
-  gate="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "dependency_gate")"
+  install_cmd=""
+  update_cmd=""
+  while IFS=$'\t' read -r -d '' key value; do
+    case "$key" in
+      actions.install)  install_cmd="$value" ;;
+      actions.update)   update_cmd="$value" ;;
+      desired_cmd)      desired_cmd="$value" ;;
+      desired_value)    desired_value_raw="$value" ;;
+      dependency_gate)  obs_gate="$value" ;;
+      observe_cmd)      obs_cmd="$value" ;;
+    esac
+  done < <(_ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" \
+      actions.install actions.update desired_cmd desired_value dependency_gate observe_cmd)
+  [[ -z "$update_cmd" ]] && update_cmd="$install_cmd"
+  if [[ -n "$desired_cmd" ]]; then
+    desired="$(_ucc_eval_yaml_scalar_cmd "$cfg_dir" "$yaml" "$target" "$desired_cmd")"
+  else
+    desired="$desired_value_raw"
+  fi
+  gate="$obs_gate"
   dep_state="$(_ucc_yaml_gate_dependency_state "$gate")"
+
+  export "_UCC_OBS_CACHED_${fn}=1"
+  export "_UCC_OBS_EVIDENCE_${fn}=$(python3 "$cfg_dir/tools/read_config.py" --evidence "$yaml" "$target" 2>/dev/null | base64)"
+  export "_UCC_PARAM_OBS_CMD_${fn}=${obs_cmd}"
+  export "_UCC_PARAM_GATE_${fn}=${gate}"
+  export "_UCC_PARAM_DESIRED_${fn}=${desired}"
 
   eval "_uypt_obs_${fn}() { _ucc_observe_yaml_parametric_target '${cfg_dir}' '${yaml}' '${target}'; }"
   eval "_uypt_evd_${fn}() { _ucc_evidence_yaml_parametric_target '${cfg_dir}' '${yaml}' '${target}'; }"
@@ -480,17 +527,21 @@ ucc_yaml_parametric_target() {
 
 _ucc_observe_yaml_runtime_target() {
   local cfg_dir="$1" yaml="$2" target="$3"
+  local fn="${target//[^a-zA-Z0-9]/_}"
+  local _cached_var="_UCC_OBS_CACHED_${fn}"
   local runtime_driver
-  runtime_driver="$(_ucc_yaml_target_driver_get "$cfg_dir" "$yaml" "$target" "kind")"
+  if [[ -n "${!_cached_var:-}" ]]; then
+    local _v="_UCC_RT_DRIVER_${fn}"; runtime_driver="${!_v}"
+  else
+    runtime_driver="$(_ucc_yaml_target_driver_get "$cfg_dir" "$yaml" "$target" "kind")"
+  fi
   case "$runtime_driver" in
     desktop-app)
       _ucc_observe_yaml_desktop_app_runtime_target "$cfg_dir" "$yaml" "$target"
-      return
-      ;;
+      return ;;
     docker-compose)
       _ucc_observe_yaml_docker_compose_runtime_target "$cfg_dir" "$yaml" "$target"
-      return
-      ;;
+      return ;;
   esac
   _ucc_observe_yaml_runtime_oracle_target "$cfg_dir" "$yaml" "$target"
 }
@@ -498,17 +549,29 @@ _ucc_observe_yaml_runtime_target() {
 _ucc_observe_yaml_runtime_oracle_target() {
   local cfg_dir="$1" yaml="$2" target="$3"
   local configured_cmd runtime_cmd stopped_installation stopped_runtime stopped_health stopped_dependencies
-  while IFS=$'\t' read -r -d '' key value; do
-    case "$key" in
-      oracle.configured) configured_cmd="$value" ;;
-      oracle.runtime) runtime_cmd="$value" ;;
-      stopped_installation) stopped_installation="$value" ;;
-      stopped_runtime) stopped_runtime="$value" ;;
-      stopped_health) stopped_health="$value" ;;
-      stopped_dependencies) stopped_dependencies="$value" ;;
-    esac
-  done < <(_ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" \
-    oracle.configured oracle.runtime stopped_installation stopped_runtime stopped_health stopped_dependencies)
+  local fn="${target//[^a-zA-Z0-9]/_}"
+  local _cached_var="_UCC_OBS_CACHED_${fn}"
+  if [[ -n "${!_cached_var:-}" ]]; then
+    local _v
+    _v="_UCC_RT_CONFIGURED_${fn}";    configured_cmd="${!_v}"
+    _v="_UCC_RT_RUNTIME_${fn}";       runtime_cmd="${!_v}"
+    _v="_UCC_RT_STOPPED_INST_${fn}";  stopped_installation="${!_v}"
+    _v="_UCC_RT_STOPPED_RT_${fn}";    stopped_runtime="${!_v}"
+    _v="_UCC_RT_STOPPED_HEALTH_${fn}";stopped_health="${!_v}"
+    _v="_UCC_RT_STOPPED_DEPS_${fn}";  stopped_dependencies="${!_v}"
+  else
+    while IFS=$'\t' read -r -d '' key value; do
+      case "$key" in
+        oracle.configured)    configured_cmd="$value" ;;
+        oracle.runtime)       runtime_cmd="$value" ;;
+        stopped_installation) stopped_installation="$value" ;;
+        stopped_runtime)      stopped_runtime="$value" ;;
+        stopped_health)       stopped_health="$value" ;;
+        stopped_dependencies) stopped_dependencies="$value" ;;
+      esac
+    done < <(_ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" \
+      oracle.configured oracle.runtime stopped_installation stopped_runtime stopped_health stopped_dependencies)
+  fi
   [[ -n "$stopped_installation" ]] || stopped_installation="Configured"
   [[ -n "$stopped_runtime" ]] || stopped_runtime="Stopped"
   [[ -n "$stopped_health" ]] || stopped_health="Degraded"
@@ -535,16 +598,27 @@ _ucc_observe_yaml_runtime_oracle_target() {
 _ucc_observe_yaml_desktop_app_runtime_target() {
   local cfg_dir="$1" yaml="$2" target="$3"
   local configured_cmd runtime_cmd package_ref app_path greedy_auto_updates observed install_source policy
-  while IFS=$'\t' read -r -d '' key value; do
-    case "$key" in
-      oracle.configured) configured_cmd="$value" ;;
-      oracle.runtime) runtime_cmd="$value" ;;
-      driver.package_ref) package_ref="$value" ;;
-      driver.app_path) app_path="$value" ;;
-      driver.greedy_auto_updates) greedy_auto_updates="$value" ;;
-    esac
-  done < <(_ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" \
-    oracle.configured oracle.runtime driver.package_ref driver.app_path driver.greedy_auto_updates)
+  local fn="${target//[^a-zA-Z0-9]/_}"
+  local _cached_var="_UCC_OBS_CACHED_${fn}"
+  if [[ -n "${!_cached_var:-}" ]]; then
+    local _v
+    _v="_UCC_RT_CONFIGURED_${fn}"; configured_cmd="${!_v}"
+    _v="_UCC_RT_RUNTIME_${fn}";    runtime_cmd="${!_v}"
+    _v="_UCC_RT_PKG_${fn}";        package_ref="${!_v}"
+    _v="_UCC_RT_APP_${fn}";        app_path="${!_v}"
+    _v="_UCC_RT_GREEDY_${fn}";     greedy_auto_updates="${!_v}"
+  else
+    while IFS=$'\t' read -r -d '' key value; do
+      case "$key" in
+        oracle.configured)          configured_cmd="$value" ;;
+        oracle.runtime)             runtime_cmd="$value" ;;
+        driver.package_ref)         package_ref="$value" ;;
+        driver.app_path)            app_path="$value" ;;
+        driver.greedy_auto_updates) greedy_auto_updates="$value" ;;
+      esac
+    done < <(_ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" \
+      oracle.configured oracle.runtime driver.package_ref driver.app_path driver.greedy_auto_updates)
+  fi
 
   observed="installed"
   policy="${UIC_PREF_PREFERRED_DRIVER_POLICY:-warn}"
@@ -594,12 +668,20 @@ _ucc_observe_yaml_desktop_app_runtime_target() {
 _ucc_observe_yaml_docker_compose_runtime_target() {
   local cfg_dir="$1" yaml="$2" target="$3"
   local runtime_cmd service_name state
-  while IFS=$'\t' read -r -d '' key value; do
-    case "$key" in
-      oracle.runtime) runtime_cmd="$value" ;;
-      driver.service_name) service_name="$value" ;;
-    esac
-  done < <(_ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" oracle.runtime driver.service_name)
+  local fn="${target//[^a-zA-Z0-9]/_}"
+  local _cached_var="_UCC_OBS_CACHED_${fn}"
+  if [[ -n "${!_cached_var:-}" ]]; then
+    local _v
+    _v="_UCC_RT_RUNTIME_${fn}"; runtime_cmd="${!_v}"
+    _v="_UCC_RT_SERVICE_${fn}"; service_name="${!_v}"
+  else
+    while IFS=$'\t' read -r -d '' key value; do
+      case "$key" in
+        oracle.runtime)      runtime_cmd="$value" ;;
+        driver.service_name) service_name="$value" ;;
+      esac
+    done < <(_ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" oracle.runtime driver.service_name)
+  fi
   [[ -f "${COMPOSE_FILE:-}" ]] || {
     ucc_asm_state --installation Absent --runtime Stopped --health Unavailable --admin Enabled --dependencies DepsFailed
     return
@@ -626,9 +708,47 @@ _ucc_observe_yaml_docker_compose_runtime_target() {
 ucc_yaml_runtime_target() {
   local cfg_dir="$1" yaml="$2" target="$3" install_fn="${4:-}" update_fn="${5:-}"
   local fn install_cmd update_cmd
+  local obs_configured="" obs_runtime="" obs_driver="" obs_service="" obs_pkg="" obs_app="" obs_greedy=""
+  local obs_stopped_inst="" obs_stopped_rt="" obs_stopped_health="" obs_stopped_deps=""
   fn="${target//[^a-zA-Z0-9]/_}"
-  install_cmd="$(_ucc_yaml_target_action_get "$cfg_dir" "$yaml" "$target" "install")"
-  update_cmd="$(_ucc_yaml_target_action_get "$cfg_dir" "$yaml" "$target" "update")"
+  install_cmd=""
+  update_cmd=""
+  while IFS=$'\t' read -r -d '' key value; do
+    case "$key" in
+      actions.install)             install_cmd="$value" ;;
+      actions.update)              update_cmd="$value" ;;
+      oracle.configured)           obs_configured="$value" ;;
+      oracle.runtime)              obs_runtime="$value" ;;
+      driver.kind)                 obs_driver="$value" ;;
+      driver.service_name)         obs_service="$value" ;;
+      driver.package_ref)          obs_pkg="$value" ;;
+      driver.app_path)             obs_app="$value" ;;
+      driver.greedy_auto_updates)  obs_greedy="$value" ;;
+      stopped_installation)        obs_stopped_inst="$value" ;;
+      stopped_runtime)             obs_stopped_rt="$value" ;;
+      stopped_health)              obs_stopped_health="$value" ;;
+      stopped_dependencies)        obs_stopped_deps="$value" ;;
+    esac
+  done < <(_ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" \
+      actions.install actions.update oracle.configured oracle.runtime \
+      driver.kind driver.service_name driver.package_ref driver.app_path \
+      driver.greedy_auto_updates stopped_installation stopped_runtime \
+      stopped_health stopped_dependencies)
+  [[ -z "$update_cmd" ]] && update_cmd="$install_cmd"
+
+  export "_UCC_OBS_CACHED_${fn}=1"
+  export "_UCC_OBS_EVIDENCE_${fn}=$(python3 "$cfg_dir/tools/read_config.py" --evidence "$yaml" "$target" 2>/dev/null | base64)"
+  export "_UCC_RT_CONFIGURED_${fn}=${obs_configured}"
+  export "_UCC_RT_RUNTIME_${fn}=${obs_runtime}"
+  export "_UCC_RT_DRIVER_${fn}=${obs_driver}"
+  export "_UCC_RT_SERVICE_${fn}=${obs_service}"
+  export "_UCC_RT_PKG_${fn}=${obs_pkg}"
+  export "_UCC_RT_APP_${fn}=${obs_app}"
+  export "_UCC_RT_GREEDY_${fn}=${obs_greedy}"
+  export "_UCC_RT_STOPPED_INST_${fn}=${obs_stopped_inst}"
+  export "_UCC_RT_STOPPED_RT_${fn}=${obs_stopped_rt}"
+  export "_UCC_RT_STOPPED_HEALTH_${fn}=${obs_stopped_health}"
+  export "_UCC_RT_STOPPED_DEPS_${fn}=${obs_stopped_deps}"
 
   eval "_uyrt_obs_${fn}() { _ucc_observe_yaml_runtime_target '${cfg_dir}' '${yaml}' '${target}'; }"
   eval "_uyrt_evd_${fn}() { ucc_eval_evidence_from_yaml '${cfg_dir}' '${yaml}' '${target}'; }"
