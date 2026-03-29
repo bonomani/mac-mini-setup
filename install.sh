@@ -440,6 +440,10 @@ _DISP_ON_FAILS=()
 _DISP_CONFIGS=()
 
 _all_dispatch=$(python3 "$_QUERY_SCRIPT" --all-dispatch "$_MANIFEST_DIR" 2>/dev/null || true)
+export _UCC_ALL_DEPS_CACHE
+export _UCC_ALL_SOFT_DEPS_CACHE
+_UCC_ALL_DEPS_CACHE=$(python3 "$_QUERY_SCRIPT" --all-deps "$_MANIFEST_DIR" 2>/dev/null || true)
+_UCC_ALL_SOFT_DEPS_CACHE=$(python3 "$_QUERY_SCRIPT" --all-soft-deps "$_MANIFEST_DIR" 2>/dev/null || true)
 
 for comp in "${TO_RUN[@]}"; do
   if [[ "$comp" == "verify" ]]; then

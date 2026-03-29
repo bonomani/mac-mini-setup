@@ -99,12 +99,22 @@ _ucc_evidence_text() {
   printf 'observed=%s' "$(_ucc_display_state "$observed" "$axes")"
 }
 
+_ucc_deps_for_target() {
+  local target="$1" cache_var="$2"
+  local cache="${!cache_var:-}"
+  if [[ -n "$cache" ]]; then
+    printf '%s\n' "$cache" | awk -F'\t' -v t="$target" '$1==t{print $2; exit}' | tr ',' '\n'
+  else
+    python3 "$UCC_TARGETS_QUERY_SCRIPT" "$3" "$target" "$UCC_TARGETS_MANIFEST" 2>/dev/null || true
+  fi
+}
+
 _ucc_dependency_evidence() {
   local target="$1" deps="" dep status pairs=()
   [[ "$target" == "system-composition" ]] && return 0
   [[ -n "${UCC_TARGETS_MANIFEST:-}" && -n "${UCC_TARGETS_QUERY_SCRIPT:-}" && -n "${UCC_TARGET_STATUS_FILE:-}" ]] || return 0
   [[ -e "${UCC_TARGETS_MANIFEST}" && -f "${UCC_TARGETS_QUERY_SCRIPT}" ]] || return 0
-  deps=$(python3 "$UCC_TARGETS_QUERY_SCRIPT" --deps "$target" "$UCC_TARGETS_MANIFEST" 2>/dev/null || true)
+  deps=$(_ucc_deps_for_target "$target" "_UCC_ALL_DEPS_CACHE" "--deps")
   [[ -n "$deps" ]] || return 0
   while IFS= read -r dep; do
     [[ -n "$dep" ]] || continue
@@ -119,7 +129,7 @@ _ucc_soft_dependency_evidence() {
   local target="$1" deps="" dep status pairs=() gate gate_key
   [[ -n "${UCC_TARGETS_MANIFEST:-}" && -n "${UCC_TARGETS_QUERY_SCRIPT:-}" ]] || return 0
   [[ -e "${UCC_TARGETS_MANIFEST}" && -f "${UCC_TARGETS_QUERY_SCRIPT}" ]] || return 0
-  deps=$(python3 "$UCC_TARGETS_QUERY_SCRIPT" --soft-deps "$target" "$UCC_TARGETS_MANIFEST" 2>/dev/null || true)
+  deps=$(_ucc_deps_for_target "$target" "_UCC_ALL_SOFT_DEPS_CACHE" "--soft-deps")
   [[ -n "$deps" ]] || return 0
   while IFS= read -r dep; do
     [[ -n "$dep" ]] || continue

@@ -769,6 +769,8 @@ def main():
     components_mode = False
     dispatch_mode = False
     all_dispatch_mode = False
+    all_deps_mode = False
+    all_soft_deps_mode = False
     oracles_mode = False
     runtime_endpoints_mode = False
     ordered_targets_mode = False
@@ -791,6 +793,12 @@ def main():
         args = args[2:]
     elif len(args) >= 1 and args[0] == "--all-dispatch":
         all_dispatch_mode = True
+        args = args[1:]
+    elif len(args) >= 1 and args[0] == "--all-deps":
+        all_deps_mode = True
+        args = args[1:]
+    elif len(args) >= 1 and args[0] == "--all-soft-deps":
+        all_soft_deps_mode = True
         args = args[1:]
     elif len(args) >= 2 and args[0] == "--ordered-targets":
         target_name = args[1]
@@ -845,6 +853,20 @@ def main():
         print(meta.get("runner", ""))
         print(meta.get("on_fail", ""))
         print(meta.get("file", ""))
+        return 0
+
+    if all_deps_mode:
+        for target_name, data in manifest["targets"].items():
+            deps = _effective_target_deps(data or {})
+            if deps:
+                print("{}\t{}".format(target_name, ",".join(deps)))
+        return 0
+
+    if all_soft_deps_mode:
+        for target_name, data in manifest["targets"].items():
+            soft_deps = (data or {}).get("soft_depends_on", []) or []
+            if soft_deps:
+                print("{}\t{}".format(target_name, ",".join(soft_deps)))
         return 0
 
     if all_dispatch_mode:
