@@ -132,9 +132,14 @@ _gate_ai_apps_template(){
 }
 _gate_ollama_api()      {
   local host port path
-  host="$(python3 "$DIR/tools/read_config.py" --get "$DIR/ucc/software/ollama.yaml" api_host 2>/dev/null || true)"
-  port="$(python3 "$DIR/tools/read_config.py" --get "$DIR/ucc/software/ollama.yaml" api_port 2>/dev/null || true)"
-  path="$(python3 "$DIR/tools/read_config.py" --get "$DIR/ucc/software/ollama.yaml" api_tags_path 2>/dev/null || true)"
+  while IFS=$'\t' read -r -d '' key value; do
+    case "$key" in
+      api_host)      host="$value" ;;
+      api_port)      port="$value" ;;
+      api_tags_path) path="$value" ;;
+    esac
+  done < <(python3 "$DIR/tools/read_config.py" --get-many "$DIR/ucc/software/ollama.yaml" \
+      api_host api_port api_tags_path 2>/dev/null || true)
   [[ -z "$host" ]] && host="127.0.0.1"
   [[ -z "$port" ]] && port="11434"
   [[ -z "$path" ]] && path="/api/tags"

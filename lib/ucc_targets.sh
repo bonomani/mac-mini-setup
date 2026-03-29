@@ -1010,7 +1010,11 @@ _ucc_target_status_value() {
 _ucc_require_declared_dependencies_resolved() {
   local target="$1" deps="" dep status
   [[ -n "${UCC_TARGETS_MANIFEST:-}" && -n "${UCC_TARGETS_QUERY_SCRIPT:-}" ]] || return 0
-  deps=$(python3 "$UCC_TARGETS_QUERY_SCRIPT" --deps "$target" "$UCC_TARGETS_MANIFEST" 2>/dev/null || true)
+  if [[ -n "${_UCC_ALL_DEPS_CACHE:-}" ]]; then
+    deps=$(printf '%s\n' "$_UCC_ALL_DEPS_CACHE" | awk -F'\t' -v t="$target" '$1==t{print $2; exit}' | tr ',' '\n')
+  else
+    deps=$(python3 "$UCC_TARGETS_QUERY_SCRIPT" --deps "$target" "$UCC_TARGETS_MANIFEST" 2>/dev/null || true)
+  fi
   [[ -n "$deps" ]] || return 0
   while IFS= read -r dep; do
     [[ -n "$dep" ]] || continue
