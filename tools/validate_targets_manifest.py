@@ -773,6 +773,7 @@ def main():
     all_soft_deps_mode = False
     all_ordered_targets_mode = False
     all_display_names_mode = False
+    all_caches_mode = False
     oracles_mode = False
     runtime_endpoints_mode = False
     ordered_targets_mode = False
@@ -807,6 +808,9 @@ def main():
         args = args[1:]
     elif len(args) >= 1 and args[0] == "--all-display-names":
         all_display_names_mode = True
+        args = args[1:]
+    elif len(args) >= 1 and args[0] == "--all-caches":
+        all_caches_mode = True
         args = args[1:]
     elif len(args) >= 2 and args[0] == "--ordered-targets":
         target_name = args[1]
@@ -848,6 +852,41 @@ def main():
         if isinstance(display_name, str):
             display_name = substitute_scalars(display_name, data=subst_data)
         print(display_name)
+        return 0
+
+    if all_caches_mode:
+        # --all-deps
+        print("__section__\tall_deps")
+        for target_name, data in manifest["targets"].items():
+            deps = _effective_target_deps(data or {})
+            if deps:
+                print("{}\t{}".format(target_name, ",".join(deps)))
+        # --all-soft-deps
+        print("__section__\tall_soft_deps")
+        for target_name, data in manifest["targets"].items():
+            soft_deps = (data or {}).get("soft_depends_on", []) or []
+            if soft_deps:
+                print("{}\t{}".format(target_name, ",".join(soft_deps)))
+        # --all-ordered-targets
+        print("__section__\tall_ordered_targets")
+        from collections import defaultdict
+        comp_targets = defaultdict(list)
+        for name in ordered:
+            data = manifest["targets"].get(name, {})
+            comp = data.get("component", "")
+            if comp:
+                comp_targets[comp].append(name)
+        for comp, targets in comp_targets.items():
+            print("{}\t{}".format(comp, ",".join(targets)))
+        # --all-display-names
+        print("__section__\tall_display_names")
+        for name, data in manifest["targets"].items():
+            data = data or {}
+            display_name = data.get("display_name", "") or name
+            subst_data = data.get("__manifest_scalars__") or {}
+            if isinstance(display_name, str):
+                display_name = substitute_scalars(display_name, data=subst_data)
+            print("{}\t{}".format(name, display_name or name))
         return 0
 
     if all_display_names_mode:

@@ -94,7 +94,15 @@ _ucc_yaml_target_action_get() {
 
 _ucc_yaml_target_admin_required() {
   local cfg_dir="$1" yaml="$2" target="$3" val=""
-  val="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "admin_required")"
+  local yaml_fn="${yaml//[^a-zA-Z0-9]/_}"
+  local target_fn="${target//[^a-zA-Z0-9]/_}"
+  local cache_var="_UCC_YTGT_${yaml_fn}_${target_fn}"
+  if [[ -n "${!cache_var:-}" ]]; then
+    val=$(printf '%s' "${!cache_var}" | base64 -d \
+      | awk 'BEGIN{RS="\0"} /^admin_required\t/{sub(/^admin_required\t/,""); print; exit}')
+  else
+    val="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "admin_required")"
+  fi
   [[ "$val" == "true" || "$val" == "1" || "$val" == "yes" ]]
 }
 

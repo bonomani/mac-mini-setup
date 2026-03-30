@@ -417,6 +417,56 @@ def main() -> int:
             return 1
         return 0
 
+    if mode == "--split-yaml-batch":
+        # Combined: --all-targets-get-many-with-evidence + split_yaml_batch in one process.
+        # Usage: read_config.py --split-yaml-batch <yaml_fn> <file> <key1> [key2 ...]
+        # Outputs shell export statements:
+        #   export _UCC_YTGT_<yaml_fn>_<target_fn>='<base64(NUL-rows)>'
+        import base64 as _b64
+        import re as _re
+        if len(args) < 4:
+            print("Usage: read_config.py --split-yaml-batch <yaml_fn> <file> <key1> [key2 ...]", file=sys.stderr)
+            return 1
+        yaml_fn = args[1]
+        path = Path(args[2])
+        keys = args[3:]
+        if not path.exists():
+            return 0
+        try:
+            data = load_yaml(path)
+        except Exception as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 1
+        targets = data.get("targets") or {}
+        if not isinstance(targets, dict):
+            return 0
+        for target_name, target in targets.items():
+            target_fn = _re.sub(r"[^a-zA-Z0-9]", "_", target_name)
+            sclrs = target_scalars(data, target_name)
+            target = target or {}
+            rows = b""
+            for key in keys:
+                value = get_path(target, key)
+                if isinstance(value, (dict, list)):
+                    rendered = b""
+                else:
+                    rendered_str = stringify(value)
+                    if isinstance(value, str):
+                        rendered_str = substitute_scalars(rendered_str, sclrs)
+                    rendered = rendered_str.encode("utf-8")
+                rows += f"{key}\t".encode("utf-8") + rendered + b"\0"
+            ev_bytes = b""
+            evidence = target.get("evidence") or {}
+            if isinstance(evidence, dict):
+                for ev_key, cmd in evidence.items():
+                    rendered_str = substitute_scalars(stringify(cmd), sclrs)
+                    ev_bytes += f"{ev_key}\t{rendered_str}".encode("utf-8") + b"\0"
+            ev_b64 = _b64.b64encode(ev_bytes).decode("ascii")
+            rows += f"__evidence__\t{ev_b64}".encode("ascii") + b"\0"
+            b64 = _b64.b64encode(rows).decode("ascii")
+            print(f"export _UCC_YTGT_{yaml_fn}_{target_fn}={b64!r}")
+        return 0
+
     if len(args) < 3:
         print(__doc__, file=sys.stderr)
         return 1

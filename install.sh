@@ -299,15 +299,37 @@ done
 #  Evaluated before any UCC convergence begins (UIC §6)
 # ============================================================
 
-# --- Pre-load remaining manifest caches (deps, soft-deps, ordered) ---
+# --- Pre-load remaining manifest caches (one python3 call for all four) ---
 export _UCC_ALL_DEPS_CACHE
 export _UCC_ALL_SOFT_DEPS_CACHE
 export _UCC_ALL_ORDERED_CACHE
 export _UCC_ALL_DISPLAY_NAMES_CACHE
-_UCC_ALL_DEPS_CACHE=$(python3 "$_QUERY_SCRIPT" --all-deps "$_MANIFEST_DIR" 2>/dev/null || true)
-_UCC_ALL_SOFT_DEPS_CACHE=$(python3 "$_QUERY_SCRIPT" --all-soft-deps "$_MANIFEST_DIR" 2>/dev/null || true)
-_UCC_ALL_ORDERED_CACHE=$(python3 "$_QUERY_SCRIPT" --all-ordered-targets "$_MANIFEST_DIR" 2>/dev/null || true)
-_UCC_ALL_DISPLAY_NAMES_CACHE=$(python3 "$_QUERY_SCRIPT" --all-display-names "$_MANIFEST_DIR" 2>/dev/null || true)
+_UCC_ALL_DEPS_CACHE=""
+_UCC_ALL_SOFT_DEPS_CACHE=""
+_UCC_ALL_ORDERED_CACHE=""
+_UCC_ALL_DISPLAY_NAMES_CACHE=""
+_current_section=""
+while IFS= read -r _cache_line; do
+  case "$_cache_line" in
+    "__section__	all_deps")           _current_section="deps" ;;
+    "__section__	all_soft_deps")      _current_section="soft_deps" ;;
+    "__section__	all_ordered_targets") _current_section="ordered" ;;
+    "__section__	all_display_names")  _current_section="display" ;;
+    *)
+      case "$_current_section" in
+        deps)    _UCC_ALL_DEPS_CACHE="${_UCC_ALL_DEPS_CACHE:+${_UCC_ALL_DEPS_CACHE}
+}${_cache_line}" ;;
+        soft_deps) _UCC_ALL_SOFT_DEPS_CACHE="${_UCC_ALL_SOFT_DEPS_CACHE:+${_UCC_ALL_SOFT_DEPS_CACHE}
+}${_cache_line}" ;;
+        ordered) _UCC_ALL_ORDERED_CACHE="${_UCC_ALL_ORDERED_CACHE:+${_UCC_ALL_ORDERED_CACHE}
+}${_cache_line}" ;;
+        display) _UCC_ALL_DISPLAY_NAMES_CACHE="${_UCC_ALL_DISPLAY_NAMES_CACHE:+${_UCC_ALL_DISPLAY_NAMES_CACHE}
+}${_cache_line}" ;;
+      esac
+      ;;
+  esac
+done < <(python3 "$_QUERY_SCRIPT" --all-caches "$_MANIFEST_DIR" 2>/dev/null || true)
+unset _current_section _cache_line
 
 # --- Gates --------------------------------------------------
 load_uic_gates "$DIR"
@@ -518,7 +540,7 @@ _UCC_YAML_BATCH_KEYS="profile actions.install actions.update \
   desired_cmd desired_value dependency_gate driver.kind \
   driver.service_name driver.package_ref driver.app_path \
   driver.greedy_auto_updates stopped_installation stopped_runtime \
-  stopped_health stopped_dependencies"
+  stopped_health stopped_dependencies admin_required"
 _seen_yaml_files=()
 for _i in "${!_DISP_COMPS[@]}"; do
   _yaml_file="${_DISP_CONFIGS[$_i]}"
@@ -534,9 +556,8 @@ for _i in "${!_DISP_COMPS[@]}"; do
   while IFS= read -r _export_stmt; do
     [[ -n "$_export_stmt" ]] && eval "$_export_stmt"
   done < <(python3 "$DIR/tools/read_config.py" \
-    --all-targets-get-many-with-evidence "$DIR/$_yaml_file" \
-    $(printf '%s\n' "$_UCC_YAML_BATCH_KEYS") 2>/dev/null \
-    | python3 "$DIR/tools/split_yaml_batch.py" "$_yaml_fn" 2>/dev/null)
+    --split-yaml-batch "$_yaml_fn" "$DIR/$_yaml_file" \
+    $(printf '%s\n' "$_UCC_YAML_BATCH_KEYS") 2>/dev/null || true)
 done
 unset _seen_yaml_files _already_seen _seen _yaml_file _yaml_fn _i _export_stmt
 
