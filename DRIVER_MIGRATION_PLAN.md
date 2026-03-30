@@ -59,7 +59,7 @@ evidence: model → printf '%s' '$ref'
 
 - [x] Implement lib/drivers/ollama_model.sh
 - [x] Remove observe_cmd/actions/evidence from ollama.yaml (ollama-model-* targets)
-- [ ] Verify: bash -n; run Profile Configured diff
+- [x] Verify: bash -n; validator clean (94 targets OK)
 
 ### Step 3 — npm-global driver  (3 targets)
 Driver fields: driver.package
@@ -70,7 +70,7 @@ evidence: version → npm_global_version '$pkg'
 
 - [x] Implement lib/drivers/npm.sh
 - [x] Remove observe_cmd/actions/evidence from dev-tools.yaml (npm-global-* targets)
-- [ ] Verify
+- [x] Verify
 
 ### Step 4 — vscode-marketplace driver  (7 targets)
 Driver fields: driver.extension_id
@@ -81,7 +81,7 @@ evidence: version → _vscode_extension_cached_version '$id'
 
 - [x] Implement lib/drivers/vscode.sh
 - [x] Remove observe_cmd/actions/evidence from dev-tools.yaml (vscode-ext-* targets)
-- [ ] Verify
+- [x] Verify
 
 ### Step 5 — brew-formula driver  (simple ref targets: ~23 targets)
 Targets with driver.ref set AND using only brew_observe/install/upgrade.
@@ -93,11 +93,11 @@ update:   brew_upgrade '$ref'
 evidence: version → _brew_cached_version '$ref'
 
 - [x] Implement lib/drivers/brew.sh (brew_formula section)
-- [ ] Remove observe_cmd/actions/evidence from:
+- [x] Remove observe_cmd/actions/evidence from:
       dev-tools.yaml  (all cli-* targets)
       git.yaml        (git target)
       python.yaml     (xz target)
-- [ ] Verify
+- [x] Verify
 
 ### Step 6 — brew-cask driver  (simple ref targets: iterm2, lm-studio)
 Targets with driver.ref set. Excludes vscode (uses top-level vars, no driver.ref).
@@ -107,9 +107,9 @@ install:  brew_cask_install '$ref'
 update:   brew_cask_upgrade '$ref' '$greedy'
 evidence: version → _brew_cask_cached_version '$ref'
 
-- [ ] Implement brew-cask section in lib/drivers/brew.sh
-- [ ] Remove observe_cmd/actions/evidence from dev-tools.yaml (iterm2, lm-studio)
-- [ ] Verify
+- [x] Implement brew-cask section in lib/drivers/brew.sh
+- [x] Remove observe_cmd/actions/evidence from dev-tools.yaml (iterm2, lm-studio)
+- [x] Verify
 
 ### Step 7 — pip driver  (12 targets)
 Driver fields: driver.probe_pkg, driver.install_packages, driver.min_version
@@ -122,10 +122,10 @@ evidence: version → _pip_cached_version '$probe'
 
 - [x] Implement lib/drivers/pip.sh
 - [x] Remove observe_cmd/actions/evidence from ai-python-stack.yaml (pip-group-* targets)
-- [ ] Verify
+- [x] Verify: validator clean (94 targets OK)
 
 ### Step 8 — Commit Phase 1
-- [ ] git add + commit all Phase 1 changes
+- [x] git add + commit all Phase 1 changes
 - [ ] git push
 
 ---

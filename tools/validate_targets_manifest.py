@@ -299,10 +299,13 @@ def _validate_generated_target_collection(
             errors.append(f"generated target '{item}' in section '{section_name}' must use state_model 'package'")
         if not isinstance(target.get("provided_by_tool"), str) or not target.get("provided_by_tool", "").strip():
             errors.append(f"generated target '{item}' in section '{section_name}' requires provided_by_tool")
-        if not isinstance(target.get("observe_cmd"), str) or not target.get("observe_cmd", "").strip():
-            errors.append(f"generated target '{item}' in section '{section_name}' requires observe_cmd")
-        if not _action_cmd(target, "install"):
-            errors.append(f"generated target '{item}' in section '{section_name}' requires actions.install")
+        driver_kind = (target.get("driver") or {}).get("kind", "")
+        driver_dispatched = bool(driver_kind) and driver_kind != "custom"
+        if not driver_dispatched:
+            if not isinstance(target.get("observe_cmd"), str) or not target.get("observe_cmd", "").strip():
+                errors.append(f"generated target '{item}' in section '{section_name}' requires observe_cmd")
+            if not _action_cmd(target, "install"):
+                errors.append(f"generated target '{item}' in section '{section_name}' requires actions.install")
         if required_dep and required_dep not in (target.get("depends_on") or []):
             errors.append(
                 f"generated target '{item}' in section '{section_name}' must depend on '{required_dep}'"
@@ -461,15 +464,17 @@ def validate(manifest, known_gates):
                 errors.append(f"target '{name}' has unknown package driver '{package_driver}'")
             if not isinstance(data.get("provided_by_tool"), str) or not data.get("provided_by_tool", "").strip():
                 errors.append(f"target '{name}' type 'package' requires provided_by_tool")
-            has_observe_cmd = isinstance(data.get("observe_cmd"), str) and data.get("observe_cmd", "").strip()
-            if not has_observe_cmd:
-                errors.append(f"target '{name}' type 'package' requires observe_cmd")
-            if not isinstance(data.get("evidence"), dict) or not data.get("evidence"):
-                errors.append(f"target '{name}' type 'package' requires evidence")
-            if not _action_cmd(data, "install"):
-                errors.append(f"target '{name}' type 'package' requires actions.install")
-            if not _action_cmd(data, "update"):
-                errors.append(f"target '{name}' type 'package' requires actions.update")
+            driver_dispatched = bool(package_driver) and package_driver != "custom"
+            if not driver_dispatched:
+                has_observe_cmd = isinstance(data.get("observe_cmd"), str) and data.get("observe_cmd", "").strip()
+                if not has_observe_cmd:
+                    errors.append(f"target '{name}' type 'package' requires observe_cmd")
+                if not isinstance(data.get("evidence"), dict) or not data.get("evidence"):
+                    errors.append(f"target '{name}' type 'package' requires evidence")
+                if not _action_cmd(data, "install"):
+                    errors.append(f"target '{name}' type 'package' requires actions.install")
+                if not _action_cmd(data, "update"):
+                    errors.append(f"target '{name}' type 'package' requires actions.update")
         if target_type == "config" and profile != "parametric" and state_model != "config":
             errors.append(f"target '{name}' type 'config' with profile '{profile}' requires state_model 'config'")
         if target_type == "config":
