@@ -48,8 +48,16 @@ _ucc_ytgt_source() {
 }
 
 _ucc_yaml_target_get() {
-  local cfg_dir="$1" yaml="$2" target="$3" key="$4" default="${5:-}" val=""
-  val="$(python3 "$cfg_dir/tools/read_config.py" --target-get "$yaml" "$target" "$key" 2>/dev/null || true)"
+  local cfg_dir="$1" yaml="$2" target="$3" key="$4" default="${5:-}"
+  local yaml_fn="${yaml//[^a-zA-Z0-9]/_}"
+  local target_fn="${target//[^a-zA-Z0-9]/_}"
+  local cache_var="_UCC_YTGT_${yaml_fn}_${target_fn}"
+  local val=""
+  if [[ -n "${!cache_var:-}" ]]; then
+    val="$(printf '%s' "${!cache_var}" | base64 -d | awk -v k="$key" -F'\t' 'BEGIN{RS="\0"} $1==k{print $2; exit}')"
+  else
+    val="$(python3 "$cfg_dir/tools/read_config.py" --target-get "$yaml" "$target" "$key" 2>/dev/null || true)"
+  fi
   printf '%s' "${val:-$default}"
 }
 
