@@ -201,6 +201,40 @@ def print_nul_rows(rows: list[str]) -> None:
         stream.write(b"\0")
 
 
+def read_target_scalars_with_evidence(path: Path, target_name: str, keys: list[str]) -> tuple[list[str], list[str]]:
+    """Return (scalar_rows, evidence_rows) in one YAML parse."""
+    data = load_yaml(path)
+    targets = data.get("targets") or {}
+    if not isinstance(targets, dict):
+        raise ValueError("top-level 'targets' must be a mapping")
+    target = targets.get(target_name)
+    scalars = target_scalars(data, target_name)
+
+    scalar_rows = []
+    if not isinstance(target, dict):
+        scalar_rows = [f"{key}\t" for key in keys]
+    else:
+        for key in keys:
+            value = get_path(target, key)
+            if isinstance(value, (dict, list)):
+                rendered = ""
+            else:
+                rendered = stringify(value)
+                if isinstance(value, str):
+                    rendered = substitute_scalars(rendered, scalars)
+            scalar_rows.append(f"{key}\t{rendered}")
+
+    evidence_rows = []
+    if isinstance(target, dict):
+        evidence = target.get("evidence") or {}
+        if isinstance(evidence, dict):
+            for key, cmd in evidence.items():
+                rendered = substitute_scalars(stringify(cmd), scalars)
+                evidence_rows.append(f"{key}\t{rendered}")
+
+    return scalar_rows, evidence_rows
+
+
 def read_evidence(path: Path, target_name: str) -> list[str]:
     data = load_yaml(path)
     targets = data.get("targets") or {}
@@ -299,6 +333,24 @@ def main() -> int:
             return 1
         try:
             print_nul_rows(read_target_scalars(path, args[2], args[3:]))
+        except Exception as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 1
+        return 0
+
+    if mode == "--target-get-many-with-evidence":
+        if len(args) < 4:
+            print("Usage: read_config.py --target-get-many-with-evidence <file> <target> <key1> [key2 ...]", file=sys.stderr)
+            return 1
+        path = Path(args[1])
+        if not path.exists():
+            print(f"ERROR: {path} not found", file=sys.stderr)
+            return 1
+        try:
+            scalar_rows, evidence_rows = read_target_scalars_with_evidence(path, args[2], args[3:])
+            print_nul_rows(scalar_rows)
+            print_nul_rows(["__evidence__\t"])
+            print_nul_rows(evidence_rows)
         except Exception as exc:
             print(f"ERROR: {exc}", file=sys.stderr)
             return 1

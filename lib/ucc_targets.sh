@@ -284,12 +284,18 @@ ucc_yaml_simple_target() {
   local cfg_dir="$1" yaml="$2" target="$3"
   local fn profile install_cmd update_cmd externally_managed_updates
   local obs_type="" obs_oracle="" obs_cmd="" obs_model="" obs_success="" obs_failure=""
+  local _in_evidence=0 _ev_buf=""
   fn="${target//[^a-zA-Z0-9]/_}"
   profile="configured"
   install_cmd=""
   update_cmd=""
   externally_managed_updates=""
   while IFS=$'\t' read -r -d '' key value; do
+    if [[ "$key" == "__evidence__" ]]; then _in_evidence=1; continue; fi
+    if [[ $_in_evidence -eq 1 ]]; then
+      _ev_buf+="${key}"$'\t'"${value}"$'\0'
+      continue
+    fi
     case "$key" in
       profile)                           [[ -n "$value" ]] && profile="$value" ;;
       actions.install)                   install_cmd="$value" ;;
@@ -302,9 +308,9 @@ ucc_yaml_simple_target() {
       observe_success)                   obs_success="$value" ;;
       observe_failure)                   obs_failure="$value" ;;
     esac
-  done < <(_ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" \
+  done < <(python3 "$cfg_dir/tools/read_config.py" --target-get-many-with-evidence "$yaml" "$target" \
       profile actions.install actions.update driver.externally_managed_updates \
-      type oracle.configured observe_cmd state_model observe_success observe_failure)
+      type oracle.configured observe_cmd state_model observe_success observe_failure 2>/dev/null || true)
   [[ -z "$update_cmd" ]] && update_cmd="$install_cmd"
 
   export "_UCC_OBS_CACHED_${fn}=1"
@@ -314,7 +320,7 @@ ucc_yaml_simple_target() {
   export "_UCC_OBS_MODEL_${fn}=${obs_model}"
   export "_UCC_OBS_SUCCESS_${fn}=${obs_success}"
   export "_UCC_OBS_FAILURE_${fn}=${obs_failure}"
-  export "_UCC_OBS_EVIDENCE_${fn}=$(python3 "$cfg_dir/tools/read_config.py" --evidence "$yaml" "$target" 2>/dev/null | base64)"
+  export "_UCC_OBS_EVIDENCE_${fn}=$(printf '%s' "$_ev_buf" | base64)"
 
   eval "_uyst_obs_${fn}() { _ucc_observe_yaml_simple_target '${cfg_dir}' '${yaml}' '${target}'; }"
   eval "_uyst_evd_${fn}() { ucc_eval_evidence_from_yaml '${cfg_dir}' '${yaml}' '${target}'; }"
@@ -350,12 +356,23 @@ _ucc_observe_yaml_capability_target() {
 
 ucc_yaml_capability_target() {
   local cfg_dir="$1" yaml="$2" target="$3"
-  local fn runtime_cmd
+  local fn runtime_cmd=""
+  local _in_evidence=0 _ev_buf=""
   fn="${target//[^a-zA-Z0-9]/_}"
-  runtime_cmd="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "oracle.runtime")"
+  while IFS=$'\t' read -r -d '' key value; do
+    if [[ "$key" == "__evidence__" ]]; then _in_evidence=1; continue; fi
+    if [[ $_in_evidence -eq 1 ]]; then
+      _ev_buf+="${key}"$'\t'"${value}"$'\0'
+      continue
+    fi
+    case "$key" in
+      oracle.runtime) runtime_cmd="$value" ;;
+    esac
+  done < <(python3 "$cfg_dir/tools/read_config.py" --target-get-many-with-evidence "$yaml" "$target" \
+      oracle.runtime 2>/dev/null || true)
 
   export "_UCC_OBS_CACHED_${fn}=1"
-  export "_UCC_OBS_EVIDENCE_${fn}=$(python3 "$cfg_dir/tools/read_config.py" --evidence "$yaml" "$target" 2>/dev/null | base64)"
+  export "_UCC_OBS_EVIDENCE_${fn}=$(printf '%s' "$_ev_buf" | base64)"
   export "_UCC_CAP_RUNTIME_${fn}=${runtime_cmd}"
 
   eval "_uyct_obs_${fn}() { _ucc_observe_yaml_capability_target '${cfg_dir}' '${yaml}' '${target}'; }"
@@ -477,10 +494,16 @@ ucc_yaml_parametric_target() {
   local cfg_dir="$1" yaml="$2" target="$3"
   local fn install_cmd update_cmd desired gate dep_state
   local obs_cmd="" obs_gate="" desired_cmd="" desired_value_raw=""
+  local _in_evidence=0 _ev_buf=""
   fn="${target//[^a-zA-Z0-9]/_}"
   install_cmd=""
   update_cmd=""
   while IFS=$'\t' read -r -d '' key value; do
+    if [[ "$key" == "__evidence__" ]]; then _in_evidence=1; continue; fi
+    if [[ $_in_evidence -eq 1 ]]; then
+      _ev_buf+="${key}"$'\t'"${value}"$'\0'
+      continue
+    fi
     case "$key" in
       actions.install)  install_cmd="$value" ;;
       actions.update)   update_cmd="$value" ;;
@@ -489,8 +512,8 @@ ucc_yaml_parametric_target() {
       dependency_gate)  obs_gate="$value" ;;
       observe_cmd)      obs_cmd="$value" ;;
     esac
-  done < <(_ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" \
-      actions.install actions.update desired_cmd desired_value dependency_gate observe_cmd)
+  done < <(python3 "$cfg_dir/tools/read_config.py" --target-get-many-with-evidence "$yaml" "$target" \
+      actions.install actions.update desired_cmd desired_value dependency_gate observe_cmd 2>/dev/null || true)
   [[ -z "$update_cmd" ]] && update_cmd="$install_cmd"
   if [[ -n "$desired_cmd" ]]; then
     desired="$(_ucc_eval_yaml_scalar_cmd "$cfg_dir" "$yaml" "$target" "$desired_cmd")"
@@ -501,7 +524,7 @@ ucc_yaml_parametric_target() {
   dep_state="$(_ucc_yaml_gate_dependency_state "$gate")"
 
   export "_UCC_OBS_CACHED_${fn}=1"
-  export "_UCC_OBS_EVIDENCE_${fn}=$(python3 "$cfg_dir/tools/read_config.py" --evidence "$yaml" "$target" 2>/dev/null | base64)"
+  export "_UCC_OBS_EVIDENCE_${fn}=$(printf '%s' "$_ev_buf" | base64)"
   export "_UCC_PARAM_OBS_CMD_${fn}=${obs_cmd}"
   export "_UCC_PARAM_GATE_${fn}=${gate}"
   export "_UCC_PARAM_DESIRED_${fn}=${desired}"
@@ -710,10 +733,16 @@ ucc_yaml_runtime_target() {
   local fn install_cmd update_cmd
   local obs_configured="" obs_runtime="" obs_driver="" obs_service="" obs_pkg="" obs_app="" obs_greedy=""
   local obs_stopped_inst="" obs_stopped_rt="" obs_stopped_health="" obs_stopped_deps=""
+  local _in_evidence=0 _ev_buf=""
   fn="${target//[^a-zA-Z0-9]/_}"
   install_cmd=""
   update_cmd=""
   while IFS=$'\t' read -r -d '' key value; do
+    if [[ "$key" == "__evidence__" ]]; then _in_evidence=1; continue; fi
+    if [[ $_in_evidence -eq 1 ]]; then
+      _ev_buf+="${key}"$'\t'"${value}"$'\0'
+      continue
+    fi
     case "$key" in
       actions.install)             install_cmd="$value" ;;
       actions.update)              update_cmd="$value" ;;
@@ -729,15 +758,15 @@ ucc_yaml_runtime_target() {
       stopped_health)              obs_stopped_health="$value" ;;
       stopped_dependencies)        obs_stopped_deps="$value" ;;
     esac
-  done < <(_ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" \
+  done < <(python3 "$cfg_dir/tools/read_config.py" --target-get-many-with-evidence "$yaml" "$target" \
       actions.install actions.update oracle.configured oracle.runtime \
       driver.kind driver.service_name driver.package_ref driver.app_path \
       driver.greedy_auto_updates stopped_installation stopped_runtime \
-      stopped_health stopped_dependencies)
+      stopped_health stopped_dependencies 2>/dev/null || true)
   [[ -z "$update_cmd" ]] && update_cmd="$install_cmd"
 
   export "_UCC_OBS_CACHED_${fn}=1"
-  export "_UCC_OBS_EVIDENCE_${fn}=$(python3 "$cfg_dir/tools/read_config.py" --evidence "$yaml" "$target" 2>/dev/null | base64)"
+  export "_UCC_OBS_EVIDENCE_${fn}=$(printf '%s' "$_ev_buf" | base64)"
   export "_UCC_RT_CONFIGURED_${fn}=${obs_configured}"
   export "_UCC_RT_RUNTIME_${fn}=${obs_runtime}"
   export "_UCC_RT_DRIVER_${fn}=${obs_driver}"
