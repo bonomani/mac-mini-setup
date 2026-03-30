@@ -100,14 +100,6 @@ PY
   }
 fi
 
-_ucc_state_obj() {
-  if _ucc_is_json_obj "$1"; then
-    printf '%s' "$1"
-  else
-    printf '{"state":"%s"}' "$(_ucc_jstr "$1")"
-  fi
-}
-
 if command -v jq >/dev/null 2>&1; then
   _ucc_diff_obj() {
     local before="$1" after="$2" axes="${3:-}"
@@ -139,11 +131,17 @@ if command -v jq >/dev/null 2>&1; then
 else
   _ucc_diff_obj() {
     local before="$1" after="$2" axes="${3:-}"
-    if _ucc_is_json_obj "$before" || _ucc_is_json_obj "$after"; then
+    local _bo _ao
+    _ucc_is_json_obj "$before" && _bo=1 || _bo=0
+    _ucc_is_json_obj "$after"  && _ao=1 || _ao=0
+    if [[ $_bo -eq 1 || $_ao -eq 1 ]]; then
       if _ucc_json_equal "$before" "$after" "$axes"; then
         printf '{}'
       else
-        printf '{"before":%s,"after":%s}' "$(_ucc_state_obj "$before")" "$(_ucc_state_obj "$after")"
+        local _bs _as
+        [[ $_bo -eq 1 ]] && _bs="$before" || _bs="$(printf '{"state":"%s"}' "$(_ucc_jstr "$before")")"
+        [[ $_ao -eq 1 ]] && _as="$after"  || _as="$(printf '{"state":"%s"}' "$(_ucc_jstr "$after")")"
+        printf '{"before":%s,"after":%s}' "$_bs" "$_as"
       fi
     else
       if [[ "$before" == "$after" ]]; then
@@ -155,7 +153,6 @@ else
     fi
   }
 fi
-
 
 _ucc_evidence_text() {
   local observed="$1" axes="${2:-}" evidence_fn="${3:-}" evidence=""
@@ -197,7 +194,7 @@ _ucc_dependency_evidence() {
 
 _ucc_soft_dependency_evidence() {
   local target="$1" deps="" dep status pairs=() gate gate_key
-  [[ -n "${UCC_TARGETS_MANIFEST:-}" && -n "${UCC_TARGETS_QUERY_SCRIPT:-}" ]] || return 0
+  [[ -n "${UCC_TARGETS_MANIFEST:-}" && -n "${UCC_TARGETS_QUERY_SCRIPT:-}" && -n "${UCC_TARGET_STATUS_FILE:-}" ]] || return 0
   [[ -e "${UCC_TARGETS_MANIFEST}" && -f "${UCC_TARGETS_QUERY_SCRIPT}" ]] || return 0
   deps=$(_ucc_deps_for_target "$target" "_UCC_ALL_SOFT_DEPS_CACHE" "--soft-deps")
   [[ -n "$deps" ]] || return 0
@@ -331,36 +328,32 @@ _UCC_PROFILE_HEALTH=()
 _UCC_PROFILE_ADMIN=()
 _UCC_PROFILE_DEPENDENCIES=()
 
+_ucc_profile_flush() {
+  [[ -n "$current_id" ]] || return 0
+  _UCC_PROFILE_IDS+=("$current_id")
+  _UCC_PROFILE_LABELS+=("$current_label")
+  _UCC_PROFILE_ALIASES+=("$current_aliases")
+  _UCC_PROFILE_AXES+=("$current_axes")
+  _UCC_PROFILE_EXPECTED_TEXT+=("$current_expected")
+  _UCC_PROFILE_INSTALLATION+=("$current_installation")
+  _UCC_PROFILE_RUNTIME+=("$current_runtime")
+  _UCC_PROFILE_HEALTH+=("$current_health")
+  _UCC_PROFILE_ADMIN+=("$current_admin")
+  _UCC_PROFILE_DEPENDENCIES+=("$current_dependencies")
+}
+
 _ucc_load_profiles() {
-  local profile_file="" line="" current_id="" current_label="" current_aliases="" current_axes="" current_expected="" current_installation="" current_runtime="" current_health="" current_admin="" current_dependencies=""
+  local profile_file="" line current_id="" current_label="" current_aliases="" current_axes="" current_expected="" current_installation="" current_runtime="" current_health="" current_admin="" current_dependencies=""
   profile_file="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/policy/profiles.yaml"
   [[ -f "$profile_file" ]] || return 0
 
   while IFS= read -r line; do
     case "$line" in
       "  - id: "*)
-        if [[ -n "$current_id" ]]; then
-          _UCC_PROFILE_IDS+=("$current_id")
-          _UCC_PROFILE_LABELS+=("$current_label")
-          _UCC_PROFILE_ALIASES+=("$current_aliases")
-          _UCC_PROFILE_AXES+=("$current_axes")
-          _UCC_PROFILE_EXPECTED_TEXT+=("$current_expected")
-          _UCC_PROFILE_INSTALLATION+=("$current_installation")
-          _UCC_PROFILE_RUNTIME+=("$current_runtime")
-          _UCC_PROFILE_HEALTH+=("$current_health")
-          _UCC_PROFILE_ADMIN+=("$current_admin")
-          _UCC_PROFILE_DEPENDENCIES+=("$current_dependencies")
-        fi
+        _ucc_profile_flush
         current_id="${line#  - id: }"
-        current_label=""
-        current_aliases=""
-        current_axes=""
-        current_expected=""
-        current_installation=""
-        current_runtime=""
-        current_health=""
-        current_admin=""
-        current_dependencies=""
+        current_label="" current_aliases="" current_axes="" current_expected=""
+        current_installation="" current_runtime="" current_health="" current_admin="" current_dependencies=""
         ;;
       "    label: "*)        current_label="${line#    label: }" ;;
       "    aliases: "*)      current_aliases="${line#    aliases: }" ;;
@@ -374,24 +367,13 @@ _ucc_load_profiles() {
     esac
   done < "$profile_file"
 
-  if [[ -n "$current_id" ]]; then
-    _UCC_PROFILE_IDS+=("$current_id")
-    _UCC_PROFILE_LABELS+=("$current_label")
-    _UCC_PROFILE_ALIASES+=("$current_aliases")
-    _UCC_PROFILE_AXES+=("$current_axes")
-    _UCC_PROFILE_EXPECTED_TEXT+=("$current_expected")
-    _UCC_PROFILE_INSTALLATION+=("$current_installation")
-    _UCC_PROFILE_RUNTIME+=("$current_runtime")
-    _UCC_PROFILE_HEALTH+=("$current_health")
-    _UCC_PROFILE_ADMIN+=("$current_admin")
-    _UCC_PROFILE_DEPENDENCIES+=("$current_dependencies")
-  fi
+  _ucc_profile_flush
 }
 
 _ucc_load_profiles
 
 _ucc_profile_index() {
-  local profile="$1" i aliases alias
+  local profile="$1" i aliases alias _ucc_alias_list
   for i in "${!_UCC_PROFILE_IDS[@]}"; do
     [[ "${_UCC_PROFILE_IDS[$i]}" == "$profile" ]] && { printf '%s' "$i"; return 0; }
     aliases="${_UCC_PROFILE_ALIASES[$i]}"
@@ -400,7 +382,6 @@ _ucc_profile_index() {
       [[ -n "$alias" && "$alias" == "$profile" ]] && { printf '%s' "$i"; return 0; }
     done
   done
-  printf ''
 }
 
 ucc_asm_runtime_desired() {
@@ -415,13 +396,13 @@ ucc_asm_runtime_desired() {
 _ucc_profile_axes() {
   local idx
   idx="$(_ucc_profile_index "$1")"
-  [[ -n "$idx" ]] && printf '%s' "${_UCC_PROFILE_AXES[$idx]}" || printf ''
+  [[ -n "$idx" ]] && printf '%s' "${_UCC_PROFILE_AXES[$idx]}"
 }
 
 _ucc_profile_desired() {
   local idx
   idx="$(_ucc_profile_index "$1")"
-  [[ -n "$idx" ]] || { printf ''; return 0; }
+  [[ -n "$idx" ]] || return 0
   ucc_asm_state \
     --installation "${_UCC_PROFILE_INSTALLATION[$idx]}" \
     --runtime "${_UCC_PROFILE_RUNTIME[$idx]}" \
@@ -439,7 +420,7 @@ ucc_profile_label() {
 ucc_profile_expected_text() {
   local idx
   idx="$(_ucc_profile_index "$1")"
-  [[ -n "$idx" ]] && printf '%s' "${_UCC_PROFILE_EXPECTED_TEXT[$idx]}" || printf ''
+  [[ -n "$idx" ]] && printf '%s' "${_UCC_PROFILE_EXPECTED_TEXT[$idx]}"
 }
 
 UCC_ASM_CONFIGURED_AXES="$(_ucc_profile_axes configured)"
