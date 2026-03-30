@@ -39,7 +39,27 @@ _ucc_driver_app_bundle_observe() {
   fi
 
   ver="$(defaults read "$app_path/Contents/Info" CFBundleShortVersionString 2>/dev/null)"
-  log_debug "app-bundle[$target] observe: plist version='${ver:-<unreadable>}' → reporting '${ver:-installed}'"
+  log_debug "app-bundle[$target] observe: plist version='${ver:-<unreadable>}'"
+
+  # Compare against latest from API to detect outdated
+  local update_api latest response
+  update_api="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.update_api")"
+  if [[ -n "$update_api" && -n "$ver" ]]; then
+    log_debug "app-bundle[$target] observe: fetching latest version from '$update_api'"
+    response="$(curl -sL --max-time 30 "$update_api" 2>/dev/null)"
+    latest="$(printf '%s' "$response" | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -1)"
+    log_debug "app-bundle[$target] observe: latest='${latest:-<parse failed>}' current='$ver'"
+    if [[ -n "$latest" && "$latest" != "$ver" ]]; then
+      local oldest
+      oldest="$(printf '%s\n%s' "$ver" "$latest" | sort -V | head -1)"
+      if [[ "$oldest" == "$ver" ]]; then
+        log_debug "app-bundle[$target] observe: '$ver' < '$latest' → outdated"
+        printf 'outdated'
+        return
+      fi
+    fi
+  fi
+
   printf '%s' "${ver:-installed}"
 }
 
