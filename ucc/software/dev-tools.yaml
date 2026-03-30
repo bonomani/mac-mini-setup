@@ -29,7 +29,7 @@ targets:
     - homebrew
     provided_by_tool: brew-cask
     driver:
-      kind: brew-cask
+      kind: custom
       greedy_auto_updates: true
     observe_cmd: "if [[ -d \"${vscode_app_path}\" ]] && ! brew_cask_is_installed \"\
       ${vscode_cask_id}\"; then\n  defaults read \"${vscode_app_path}/Contents/Info\"\
@@ -50,7 +50,7 @@ targets:
     depends_on:
     - vscode
     driver:
-      kind: symlink-command
+      kind: custom
     oracle:
       configured: code --version >/dev/null 2>&1
     evidence:
@@ -73,40 +73,10 @@ targets:
     - vscode
     driver:
       kind: json-merge
-    oracle:
-      configured: "python3 - \"$HOME/${vscode_settings_relpath}\" \"$CFG_DIR/${vscode_settings_patch}\"\
-        \ <<'PY'\nimport json\nimport sys\nfrom pathlib import Path\n\nsettings_path\
-        \ = Path(sys.argv[1])\npatch_path = Path(sys.argv[2])\n\ntry:\n    settings\
-        \ = json.loads(settings_path.read_text())\n    patch = json.loads(patch_path.read_text())\n\
-        except Exception:\n    raise SystemExit(1)\n\nif not isinstance(settings,\
-        \ dict) or not isinstance(patch, dict):\n    raise SystemExit(1)\n\nfor key,\
-        \ value in patch.items():\n    if settings.get(key) != value:\n        raise\
-        \ SystemExit(1)\n\nraise SystemExit(0)\nPY\n"
+      settings_relpath: ${vscode_settings_relpath}
+      patch_relpath: ${vscode_settings_patch}
     evidence:
       path: printf '%s' "$HOME/${vscode_settings_relpath}"
-    actions:
-      install: "mkdir -p \"$(dirname \"$HOME/${vscode_settings_relpath}\")\"\ntmp=\"\
-        $(mktemp)\"\npython3 - \"$HOME/${vscode_settings_relpath}\" \"$CFG_DIR/${vscode_settings_patch}\"\
-        \ \"$tmp\" <<'PY'\nimport json\nimport sys\nfrom pathlib import Path\n\nsettings_path\
-        \ = Path(sys.argv[1])\npatch_path = Path(sys.argv[2])\ntmp_path = Path(sys.argv[3])\n\
-        \npatch = json.loads(patch_path.read_text())\nif not isinstance(patch, dict):\n\
-        \    raise SystemExit(1)\n\nif settings_path.exists():\n    try:\n       \
-        \ settings = json.loads(settings_path.read_text())\n    except Exception:\n\
-        \        settings = {}\nelse:\n    settings = {}\n\nif not isinstance(settings,\
-        \ dict):\n    settings = {}\n\nsettings.update(patch)\ntmp_path.write_text(json.dumps(settings,\
-        \ indent=2, sort_keys=True) + \"\\n\")\nPY\nmv \"$tmp\" \"$HOME/${vscode_settings_relpath}\"\
-        \n"
-      update: "mkdir -p \"$(dirname \"$HOME/${vscode_settings_relpath}\")\"\ntmp=\"\
-        $(mktemp)\"\npython3 - \"$HOME/${vscode_settings_relpath}\" \"$CFG_DIR/${vscode_settings_patch}\"\
-        \ \"$tmp\" <<'PY'\nimport json\nimport sys\nfrom pathlib import Path\n\nsettings_path\
-        \ = Path(sys.argv[1])\npatch_path = Path(sys.argv[2])\ntmp_path = Path(sys.argv[3])\n\
-        \npatch = json.loads(patch_path.read_text())\nif not isinstance(patch, dict):\n\
-        \    raise SystemExit(1)\n\nif settings_path.exists():\n    try:\n       \
-        \ settings = json.loads(settings_path.read_text())\n    except Exception:\n\
-        \        settings = {}\nelse:\n    settings = {}\n\nif not isinstance(settings,\
-        \ dict):\n    settings = {}\n\nsettings.update(patch)\ntmp_path.write_text(json.dumps(settings,\
-        \ indent=2, sort_keys=True) + \"\\n\")\nPY\nmv \"$tmp\" \"$HOME/${vscode_settings_relpath}\"\
-        \n"
   node-lts:
     component: dev-tools
     profile: configured
@@ -117,7 +87,7 @@ targets:
     - homebrew
     provided_by_tool: brew
     driver:
-      kind: brew-formula
+      kind: custom
     observe_cmd: "ver=\"$(node --version 2>/dev/null)\"\nif [[ \"$ver\" != v${node_version}.*\
       \ ]]; then\n  printf 'absent'\nelif [[ \"${UIC_PREF_PACKAGE_UPDATE_POLICY:-always-upgrade}\"\
       \ == \"always-upgrade\" ]] && _brew_is_outdated \"node@${node_version}\"; then\n\
@@ -143,7 +113,7 @@ targets:
     state_model: config
     display_name: Oh My Zsh
     driver:
-      kind: shell-bootstrap
+      kind: custom
     oracle:
       configured: '[[ -d "$HOME/.oh-my-zsh" ]]'
     evidence:
@@ -165,7 +135,7 @@ targets:
     depends_on:
     - oh-my-zsh
     driver:
-      kind: shell-file-edit
+      kind: custom
     oracle:
       configured: grep -q "^ZSH_THEME=\"${omz_theme}\"" "$HOME/.zshrc" 2>/dev/null
     evidence:
@@ -183,7 +153,7 @@ targets:
     state_model: config
     display_name: ~/bin in PATH
     driver:
-      kind: path-export
+      kind: custom
     oracle:
       configured: grep -q 'export PATH="$HOME/bin:$PATH"' "$HOME/.zprofile" 2>/dev/null
     evidence:
@@ -205,7 +175,7 @@ targets:
     depends_on:
     - home-bin-in-path
     driver:
-      kind: script-install
+      kind: custom
     oracle:
       configured: '[[ -x "$HOME/bin/ai-healthcheck" ]]'
     evidence:

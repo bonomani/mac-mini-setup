@@ -25,7 +25,7 @@ targets:
     display_name: Xcode Command Line Tools
     provided_by_tool: macos-installer
     driver:
-      kind: macos-clt
+      kind: custom
       externally_managed_updates: true
     oracle:
       configured: xcode-select -p >/dev/null 2>&1
@@ -54,7 +54,7 @@ targets:
       - xcode-command-line-tools
     provided_by_tool: brew-installer
     driver:
-      kind: brew-bootstrap
+      kind: custom
     observe_cmd: "if is_installed brew; then\n  brew --version 2>/dev/null | awk 'NR==1\
       \ {print $2}'\nelse\n  printf 'absent'\nfi\n"
     evidence:

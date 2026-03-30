@@ -19,7 +19,7 @@ targets:
     - homebrew
     provided_by_tool: brew-cask
     driver:
-      kind: desktop-app
+      kind: custom
       package_ref: ${docker_desktop_cask_id}
       app_name: ${docker_desktop_app_name}
       app_path: ${docker_desktop_app_path}

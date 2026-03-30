@@ -32,6 +32,7 @@ KNOWN_PACKAGE_DRIVERS = {
 }
 KNOWN_RUNTIME_DRIVERS = {
     "brew-service",
+    "custom",
     "custom-daemon",
     "desktop-app",
     "docker-compose",

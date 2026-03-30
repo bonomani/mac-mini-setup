@@ -24,7 +24,7 @@ targets:
     state_model: config
     display_name: Ollama host support
     driver:
-      kind: platform-check
+      kind: custom
     oracle:
       configured: "if [[ \"${HOST_PLATFORM:-unknown}\" == \"macos\" ]]; then\n  [[\
         \ \"$(sw_vers -productVersion 2>/dev/null | awk -F. '{print $1}')\" -ge ${macos_min_version}\

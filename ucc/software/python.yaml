@@ -18,7 +18,7 @@ targets:
     - homebrew
     provided_by_tool: brew
     driver:
-      kind: brew-formula
+      kind: custom
     observe_cmd: brew_observe pyenv
     evidence:
       version: pyenv --version 2>/dev/null | awk '{print $2}'
@@ -66,7 +66,7 @@ targets:
     - xz
     provided_by_tool: pyenv
     driver:
-      kind: pyenv-version
+      kind: custom
     observe_cmd: 'version="${UIC_PREF_PYTHON_VERSION:-${python_version}}"
 
       pyenv versions 2>/dev/null | grep -q "$version" && printf ''%s'' "$version"
@@ -100,7 +100,7 @@ targets:
     depends_on:
     - python
     driver:
-      kind: pip-bootstrap
+      kind: custom
     oracle:
       configured: pip --version >/dev/null 2>&1
     evidence:
