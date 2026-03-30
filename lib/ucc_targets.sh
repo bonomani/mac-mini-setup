@@ -1155,13 +1155,8 @@ _ucc_execute_target() {
   # @present wildcard: any value other than "absent" or "outdated" counts as present
   _ucc_satisfied() {
     local obs="$1" des="$2"
-    if _ucc_is_json_obj "$obs" || _ucc_is_json_obj "$des"; then
-      _ucc_json_equal "$obs" "$des" "$axes" && return 0
-      return 1
-    fi
-    [[ "$obs" == "$des" ]] && return 0
     [[ "$des" == "@present" && "$obs" != "absent" && "$obs" != "outdated" ]] && return 0
-    return 1
+    [[ "$(_ucc_diff_obj "$obs" "$des" "$axes")" == "{}" ]]
   }
 
   # Step 3 – Diff: is observed state == desired?

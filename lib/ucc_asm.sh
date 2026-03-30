@@ -100,13 +100,20 @@ PY
   }
 fi
 
-_ucc_state_obj() {
-  if _ucc_is_json_obj "$1"; then
-    printf '%s' "$1"
-  else
-    printf '{"state":"%s"}' "$(_ucc_jstr "$1")"
-  fi
-}
+if command -v jq >/dev/null 2>&1; then
+  _ucc_state_obj() {
+    printf '%s' "$1" | jq -c 'if type == "object" then . else {"state": .} end' 2>/dev/null \
+      || printf '{"state":"%s"}' "$(_ucc_jstr "$1")"
+  }
+else
+  _ucc_state_obj() {
+    if _ucc_is_json_obj "$1"; then
+      printf '%s' "$1"
+    else
+      printf '{"state":"%s"}' "$(_ucc_jstr "$1")"
+    fi
+  }
+fi
 
 if command -v jq >/dev/null 2>&1; then
   _ucc_diff_obj() {
