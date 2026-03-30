@@ -14,6 +14,11 @@ ucc_eval_evidence_from_yaml() {
   local fn="${target//[^a-zA-Z0-9]/_}"
   local _cached_var="_UCC_OBS_CACHED_${fn}"
   local _ev_var="_UCC_OBS_EVIDENCE_${fn}"
+
+  if _ucc_driver_evidence "$cfg_dir" "$yaml" "$target"; then
+    return
+  fi
+
   while IFS=$'\t' read -r -d '' _key _cmd; do
     [[ -z "$_key" || -z "$_cmd" ]] && continue
     _val=$(_ucc_eval_yaml_expr "$cfg_dir" "$yaml" "$target" "$_cmd" 2>/dev/null || true)
@@ -216,6 +221,10 @@ _ucc_observe_yaml_simple_target() {
   local fn="${target//[^a-zA-Z0-9]/_}"
   local _cached_var="_UCC_OBS_CACHED_${fn}"
 
+  if _ucc_driver_observe "$cfg_dir" "$yaml" "$target"; then
+    return
+  fi
+
   if [[ -n "${!_cached_var:-}" ]]; then
     local _v
     _v="_UCC_OBS_TYPE_${fn}";    target_type="${!_v}"
@@ -283,6 +292,13 @@ _ucc_observe_yaml_simple_target() {
 _ucc_run_yaml_action() {
   local cfg_dir="$1" yaml="$2" target="$3" action_key="$4"
   local cmd
+
+  if [[ "$action_key" == "install" || "$action_key" == "update" ]]; then
+    if _ucc_driver_action "$cfg_dir" "$yaml" "$target" "$action_key"; then
+      return $?
+    fi
+  fi
+
   case "$action_key" in
     install)
       cmd="$(_ucc_yaml_target_action_get "$cfg_dir" "$yaml" "$target" "install")"

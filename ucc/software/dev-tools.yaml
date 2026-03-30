@@ -288,12 +288,6 @@ targets:
     driver:
       kind: brew-formula
       ref: jq
-    observe_cmd: brew_observe '${driver.ref}'
-    evidence:
-      version: _brew_cached_version '${driver.ref}'
-    actions:
-      install: brew_install '${driver.ref}'
-      update: brew_upgrade '${driver.ref}'
   cli-wget:
     component: dev-tools
     profile: configured
@@ -306,12 +300,6 @@ targets:
     driver:
       kind: brew-formula
       ref: wget
-    observe_cmd: brew_observe '${driver.ref}'
-    evidence:
-      version: _brew_cached_version '${driver.ref}'
-    actions:
-      install: brew_install '${driver.ref}'
-      update: brew_upgrade '${driver.ref}'
   cli-curl:
     component: dev-tools
     profile: configured
@@ -324,12 +312,6 @@ targets:
     driver:
       kind: brew-formula
       ref: curl
-    observe_cmd: brew_observe '${driver.ref}'
-    evidence:
-      version: _brew_cached_version '${driver.ref}'
-    actions:
-      install: brew_install '${driver.ref}'
-      update: brew_upgrade '${driver.ref}'
   cli-htop:
     component: dev-tools
     profile: configured
@@ -342,12 +324,6 @@ targets:
     driver:
       kind: brew-formula
       ref: htop
-    observe_cmd: brew_observe '${driver.ref}'
-    evidence:
-      version: _brew_cached_version '${driver.ref}'
-    actions:
-      install: brew_install '${driver.ref}'
-      update: brew_upgrade '${driver.ref}'
   cli-btop:
     component: dev-tools
     profile: configured
@@ -360,12 +336,6 @@ targets:
     driver:
       kind: brew-formula
       ref: btop
-    observe_cmd: brew_observe '${driver.ref}'
-    evidence:
-      version: _brew_cached_version '${driver.ref}'
-    actions:
-      install: brew_install '${driver.ref}'
-      update: brew_upgrade '${driver.ref}'
   cli-tmux:
     component: dev-tools
     profile: configured
@@ -378,12 +348,6 @@ targets:
     driver:
       kind: brew-formula
       ref: tmux
-    observe_cmd: brew_observe '${driver.ref}'
-    evidence:
-      version: _brew_cached_version '${driver.ref}'
-    actions:
-      install: brew_install '${driver.ref}'
-      update: brew_upgrade '${driver.ref}'
   cli-fzf:
     component: dev-tools
     profile: configured
@@ -396,12 +360,6 @@ targets:
     driver:
       kind: brew-formula
       ref: fzf
-    observe_cmd: brew_observe '${driver.ref}'
-    evidence:
-      version: _brew_cached_version '${driver.ref}'
-    actions:
-      install: brew_install '${driver.ref}'
-      update: brew_upgrade '${driver.ref}'
   cli-ripgrep:
     component: dev-tools
     profile: configured
@@ -414,12 +372,6 @@ targets:
     driver:
       kind: brew-formula
       ref: ripgrep
-    observe_cmd: brew_observe '${driver.ref}'
-    evidence:
-      version: _brew_cached_version '${driver.ref}'
-    actions:
-      install: brew_install '${driver.ref}'
-      update: brew_upgrade '${driver.ref}'
   cli-fd:
     component: dev-tools
     profile: configured
@@ -432,12 +384,6 @@ targets:
     driver:
       kind: brew-formula
       ref: fd
-    observe_cmd: brew_observe '${driver.ref}'
-    evidence:
-      version: _brew_cached_version '${driver.ref}'
-    actions:
-      install: brew_install '${driver.ref}'
-      update: brew_upgrade '${driver.ref}'
   cli-tree:
     component: dev-tools
     profile: configured
@@ -450,12 +396,6 @@ targets:
     driver:
       kind: brew-formula
       ref: tree
-    observe_cmd: brew_observe '${driver.ref}'
-    evidence:
-      version: _brew_cached_version '${driver.ref}'
-    actions:
-      install: brew_install '${driver.ref}'
-      update: brew_upgrade '${driver.ref}'
   cli-uv:
     component: dev-tools
     profile: configured
@@ -468,12 +408,6 @@ targets:
     driver:
       kind: brew-formula
       ref: uv
-    observe_cmd: brew_observe '${driver.ref}'
-    evidence:
-      version: _brew_cached_version '${driver.ref}'
-    actions:
-      install: brew_install '${driver.ref}'
-      update: brew_upgrade '${driver.ref}'
   cli-pnpm:
     component: dev-tools
     profile: configured
@@ -486,12 +420,6 @@ targets:
     driver:
       kind: brew-formula
       ref: pnpm
-    observe_cmd: brew_observe '${driver.ref}'
-    evidence:
-      version: _brew_cached_version '${driver.ref}'
-    actions:
-      install: brew_install '${driver.ref}'
-      update: brew_upgrade '${driver.ref}'
   cli-gcc:
     component: dev-tools
     profile: configured
@@ -504,12 +432,6 @@ targets:
     driver:
       kind: brew-formula
       ref: gcc
-    observe_cmd: brew_observe '${driver.ref}'
-    evidence:
-      version: _brew_cached_version '${driver.ref}'
-    actions:
-      install: brew_install '${driver.ref}'
-      update: brew_upgrade '${driver.ref}'
   cli-gh:
     component: dev-tools
     profile: configured
@@ -522,12 +444,6 @@ targets:
     driver:
       kind: brew-formula
       ref: gh
-    observe_cmd: brew_observe '${driver.ref}'
-    evidence:
-      version: _brew_cached_version '${driver.ref}'
-    actions:
-      install: brew_install '${driver.ref}'
-      update: brew_upgrade '${driver.ref}'
   cli-llama.cpp:
     component: dev-tools
     profile: configured
@@ -540,12 +456,6 @@ targets:
     driver:
       kind: brew-formula
       ref: llama.cpp
-    observe_cmd: brew_observe '${driver.ref}'
-    evidence:
-      version: _brew_cached_version '${driver.ref}'
-    actions:
-      install: brew_install '${driver.ref}'
-      update: brew_upgrade '${driver.ref}'
   cli-opencode:
     component: dev-tools
     profile: configured
@@ -558,12 +468,6 @@ targets:
     driver:
       kind: brew-formula
       ref: opencode
-    observe_cmd: brew_observe '${driver.ref}'
-    evidence:
-      version: _brew_cached_version '${driver.ref}'
-    actions:
-      install: brew_install '${driver.ref}'
-      update: brew_upgrade '${driver.ref}'
   cli-aria2:
     component: dev-tools
     profile: configured
@@ -576,12 +480,6 @@ targets:
     driver:
       kind: brew-formula
       ref: aria2
-    observe_cmd: brew_observe '${driver.ref}'
-    evidence:
-      version: _brew_cached_version '${driver.ref}'
-    actions:
-      install: brew_install '${driver.ref}'
-      update: brew_upgrade '${driver.ref}'
   cli-cmake:
     component: dev-tools
     profile: configured
@@ -594,12 +492,6 @@ targets:
     driver:
       kind: brew-formula
       ref: cmake
-    observe_cmd: brew_observe '${driver.ref}'
-    evidence:
-      version: _brew_cached_version '${driver.ref}'
-    actions:
-      install: brew_install '${driver.ref}'
-      update: brew_upgrade '${driver.ref}'
   vscode-ext-ms-python.python:
     component: dev-tools
     profile: configured
@@ -612,16 +504,6 @@ targets:
     driver:
       kind: vscode-marketplace
       extension_id: ms-python.python
-    observe_cmd: 'ver="$(_vscode_extension_cached_version ''${driver.extension_id}'')"
-
-      printf ''%s'' "${ver:-absent}"
-
-      '
-    evidence:
-      version: _vscode_extension_cached_version '${driver.extension_id}'
-    actions:
-      install: vscode_extension_install '${driver.extension_id}'
-      update: vscode_extension_update '${driver.extension_id}'
   vscode-ext-ms-python.vscode-pylance:
     component: dev-tools
     profile: configured
@@ -634,16 +516,6 @@ targets:
     driver:
       kind: vscode-marketplace
       extension_id: ms-python.vscode-pylance
-    observe_cmd: 'ver="$(_vscode_extension_cached_version ''${driver.extension_id}'')"
-
-      printf ''%s'' "${ver:-absent}"
-
-      '
-    evidence:
-      version: _vscode_extension_cached_version '${driver.extension_id}'
-    actions:
-      install: vscode_extension_install '${driver.extension_id}'
-      update: vscode_extension_update '${driver.extension_id}'
   vscode-ext-ms-toolsai.jupyter:
     component: dev-tools
     profile: configured
@@ -656,16 +528,6 @@ targets:
     driver:
       kind: vscode-marketplace
       extension_id: ms-toolsai.jupyter
-    observe_cmd: 'ver="$(_vscode_extension_cached_version ''${driver.extension_id}'')"
-
-      printf ''%s'' "${ver:-absent}"
-
-      '
-    evidence:
-      version: _vscode_extension_cached_version '${driver.extension_id}'
-    actions:
-      install: vscode_extension_install '${driver.extension_id}'
-      update: vscode_extension_update '${driver.extension_id}'
   vscode-ext-ms-vscode.cpptools:
     component: dev-tools
     profile: configured
@@ -678,16 +540,6 @@ targets:
     driver:
       kind: vscode-marketplace
       extension_id: ms-vscode.cpptools
-    observe_cmd: 'ver="$(_vscode_extension_cached_version ''${driver.extension_id}'')"
-
-      printf ''%s'' "${ver:-absent}"
-
-      '
-    evidence:
-      version: _vscode_extension_cached_version '${driver.extension_id}'
-    actions:
-      install: vscode_extension_install '${driver.extension_id}'
-      update: vscode_extension_update '${driver.extension_id}'
   vscode-ext-continue.continue:
     component: dev-tools
     profile: configured
@@ -700,16 +552,6 @@ targets:
     driver:
       kind: vscode-marketplace
       extension_id: continue.continue
-    observe_cmd: 'ver="$(_vscode_extension_cached_version ''${driver.extension_id}'')"
-
-      printf ''%s'' "${ver:-absent}"
-
-      '
-    evidence:
-      version: _vscode_extension_cached_version '${driver.extension_id}'
-    actions:
-      install: vscode_extension_install '${driver.extension_id}'
-      update: vscode_extension_update '${driver.extension_id}'
   vscode-ext-eamodio.gitlens:
     component: dev-tools
     profile: configured
@@ -722,16 +564,6 @@ targets:
     driver:
       kind: vscode-marketplace
       extension_id: eamodio.gitlens
-    observe_cmd: 'ver="$(_vscode_extension_cached_version ''${driver.extension_id}'')"
-
-      printf ''%s'' "${ver:-absent}"
-
-      '
-    evidence:
-      version: _vscode_extension_cached_version '${driver.extension_id}'
-    actions:
-      install: vscode_extension_install '${driver.extension_id}'
-      update: vscode_extension_update '${driver.extension_id}'
   vscode-ext-ms-vscode-remote.remote-containers:
     component: dev-tools
     profile: configured
@@ -744,16 +576,6 @@ targets:
     driver:
       kind: vscode-marketplace
       extension_id: ms-vscode-remote.remote-containers
-    observe_cmd: 'ver="$(_vscode_extension_cached_version ''${driver.extension_id}'')"
-
-      printf ''%s'' "${ver:-absent}"
-
-      '
-    evidence:
-      version: _vscode_extension_cached_version '${driver.extension_id}'
-    actions:
-      install: vscode_extension_install '${driver.extension_id}'
-      update: vscode_extension_update '${driver.extension_id}'
   iterm2:
     component: dev-tools
     profile: configured
@@ -767,12 +589,6 @@ targets:
       kind: brew-cask
       ref: iterm2
       greedy_auto_updates: true
-    observe_cmd: brew_cask_observe '${driver.ref}' '${driver.greedy_auto_updates}'
-    evidence:
-      version: _brew_cask_cached_version '${driver.ref}'
-    actions:
-      install: brew_cask_install '${driver.ref}'
-      update: brew_cask_upgrade '${driver.ref}' '${driver.greedy_auto_updates}'
   lm-studio:
     component: dev-tools
     profile: configured
@@ -786,12 +602,6 @@ targets:
       kind: brew-cask
       ref: lm-studio
       greedy_auto_updates: true
-    observe_cmd: brew_cask_observe '${driver.ref}' '${driver.greedy_auto_updates}'
-    evidence:
-      version: _brew_cask_cached_version '${driver.ref}'
-    actions:
-      install: brew_cask_install '${driver.ref}'
-      update: brew_cask_upgrade '${driver.ref}' '${driver.greedy_auto_updates}'
   npm-global-@openai/codex:
     component: dev-tools
     profile: configured
@@ -804,12 +614,6 @@ targets:
     driver:
       kind: npm-global
       package: '@openai/codex'
-    observe_cmd: npm_global_observe '${driver.package}'
-    evidence:
-      version: npm_global_version '${driver.package}'
-    actions:
-      install: npm_global_install '${driver.package}'
-      update: npm_global_update '${driver.package}'
   npm-global-@anthropic-ai/claude-code:
     component: dev-tools
     profile: configured
@@ -822,12 +626,6 @@ targets:
     driver:
       kind: npm-global
       package: '@anthropic-ai/claude-code'
-    observe_cmd: npm_global_observe '${driver.package}'
-    evidence:
-      version: npm_global_version '${driver.package}'
-    actions:
-      install: npm_global_install '${driver.package}'
-      update: npm_global_update '${driver.package}'
   npm-global-bmad-method:
     component: dev-tools
     profile: configured
@@ -840,12 +638,6 @@ targets:
     driver:
       kind: npm-global
       package: bmad-method
-    observe_cmd: npm_global_observe '${driver.package}'
-    evidence:
-      version: npm_global_version '${driver.package}'
-    actions:
-      install: npm_global_install '${driver.package}'
-      update: npm_global_update '${driver.package}'
 cli_tools:
 - cli-jq
 - cli-wget

@@ -54,12 +54,7 @@ targets:
     provided_by_tool: brew
     driver:
       kind: brew-formula
-    observe_cmd: brew_observe xz
-    evidence:
-      version: _brew_cached_version xz
-    actions:
-      install: brew_install xz
-      update: brew_upgrade xz
+      ref: xz
   python:
     component: python
     profile: configured

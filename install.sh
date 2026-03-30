@@ -540,7 +540,9 @@ _UCC_YAML_BATCH_KEYS="profile actions.install actions.update \
   desired_cmd desired_value dependency_gate driver.kind \
   driver.service_name driver.package_ref driver.app_path \
   driver.greedy_auto_updates stopped_installation stopped_runtime \
-  stopped_health stopped_dependencies admin_required"
+  stopped_health stopped_dependencies admin_required \
+  driver.ref driver.probe_pkg driver.install_packages \
+  driver.min_version driver.extension_id driver.package"
 _seen_yaml_files=()
 for _i in "${!_DISP_COMPS[@]}"; do
   _yaml_file="${_DISP_CONFIGS[$_i]}"
