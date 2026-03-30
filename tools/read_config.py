@@ -201,8 +201,14 @@ def print_nul_rows(rows: list[str]) -> None:
         stream.write(b"\0")
 
 
-def read_target_scalars_with_evidence(path: Path, target_name: str, keys: list[str]) -> tuple[list[str], list[str]]:
-    """Return (scalar_rows, evidence_rows) in one YAML parse."""
+def read_target_scalars_with_evidence(path: Path, target_name: str, keys: list[str]) -> tuple[list[str], str]:
+    """Return (scalar_rows, evidence_b64) in one YAML parse.
+
+    evidence_b64 is the base64 encoding of the NUL-delimited evidence rows,
+    matching exactly what --evidence | base64 would produce. Bash stores it
+    as a plain string without NUL-byte issues.
+    """
+    import base64
     data = load_yaml(path)
     targets = data.get("targets") or {}
     if not isinstance(targets, dict):
@@ -224,15 +230,15 @@ def read_target_scalars_with_evidence(path: Path, target_name: str, keys: list[s
                     rendered = substitute_scalars(rendered, scalars)
             scalar_rows.append(f"{key}\t{rendered}")
 
-    evidence_rows = []
+    ev_bytes = b""
     if isinstance(target, dict):
         evidence = target.get("evidence") or {}
         if isinstance(evidence, dict):
             for key, cmd in evidence.items():
                 rendered = substitute_scalars(stringify(cmd), scalars)
-                evidence_rows.append(f"{key}\t{rendered}")
+                ev_bytes += f"{key}\t{rendered}".encode("utf-8") + b"\0"
 
-    return scalar_rows, evidence_rows
+    return scalar_rows, base64.b64encode(ev_bytes).decode("ascii")
 
 
 def read_evidence(path: Path, target_name: str) -> list[str]:
@@ -347,10 +353,9 @@ def main() -> int:
             print(f"ERROR: {path} not found", file=sys.stderr)
             return 1
         try:
-            scalar_rows, evidence_rows = read_target_scalars_with_evidence(path, args[2], args[3:])
+            scalar_rows, evidence_b64 = read_target_scalars_with_evidence(path, args[2], args[3:])
             print_nul_rows(scalar_rows)
-            print_nul_rows(["__evidence__\t"])
-            print_nul_rows(evidence_rows)
+            print_nul_rows([f"__evidence__\t{evidence_b64}"])
         except Exception as exc:
             print(f"ERROR: {exc}", file=sys.stderr)
             return 1
