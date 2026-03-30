@@ -16,26 +16,24 @@ _ucc_driver_app_bundle_observe() {
   brew_cask="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.brew_cask")"
   log_debug "app-bundle[$target] observe: brew_cask='${brew_cask:-<none>}'"
 
-  # If cask is already installed via brew, delegate entirely — it is brew-managed now
+  # brew-cask is the preferred driver; app-bundle is a fallback for unmanaged installs
   if [[ -n "$brew_cask" ]]; then
     cask_ver="$(_brew_cask_cached_version "$brew_cask")"
     log_debug "app-bundle[$target] observe: brew cask cached version='${cask_ver:-<not installed>}'"
     if [[ -n "$cask_ver" ]]; then
+      log_warn "app-bundle '$target': managed by brew cask '$brew_cask' — preferred driver is brew-cask; change driver.kind to brew-cask in YAML"
       log_debug "app-bundle[$target] observe: delegating to brew_cask_observe '$brew_cask'"
       brew_cask_observe "$brew_cask"
       return
     fi
+    # Cask not yet brew-installed but available: recommend it
+    log_warn "app-bundle '$target': brew cask '$brew_cask' is available — preferred driver is brew-cask; run 'brew install --cask $brew_cask' then change driver.kind to brew-cask in YAML"
   fi
 
   if [[ ! -d "$app_path" ]]; then
     log_debug "app-bundle[$target] observe: app not found at '$app_path' → absent"
     printf 'absent'
     return
-  fi
-
-  # App exists but not brew-managed: warn once if cask is configured
-  if [[ -n "$brew_cask" ]]; then
-    log_warn "app-bundle '$target': '${app_path##*/}' is available as brew cask '$brew_cask' — consider migrating (driver.kind: brew-cask)"
   fi
 
   ver="$(defaults read "$app_path/Contents/Info" CFBundleShortVersionString 2>/dev/null)"
@@ -71,7 +69,7 @@ _ucc_driver_app_bundle_action() {
   log_debug "app-bundle[$target] action=$action: app_path='$app_path' brew_cask='${brew_cask:-<none>}'"
   [[ -n "$app_path" ]] || return 1
 
-  # If cask is already installed via brew, delegate to brew
+  # brew-cask is the preferred driver; delegate if already brew-managed
   if [[ -n "$brew_cask" ]] && [[ -n "$(_brew_cask_cached_version "$brew_cask")" ]]; then
     log_debug "app-bundle[$target] action: delegating to brew cask ($action '$brew_cask')"
     case "$action" in
@@ -79,11 +77,6 @@ _ucc_driver_app_bundle_action() {
       update)  brew_cask_upgrade "$brew_cask" ;;
     esac
     return
-  fi
-
-  # Cask available but not installed: warn and proceed with direct download
-  if [[ -n "$brew_cask" ]]; then
-    log_warn "app-bundle '$target': brew cask '$brew_cask' is available — run 'brew install --cask $brew_cask' to migrate to brew management"
   fi
 
   update_api="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.update_api")"
