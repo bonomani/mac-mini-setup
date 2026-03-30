@@ -47,7 +47,24 @@
       "Read(//home/bc/repos/github/bonomani/ucc/**)",
       "Bash(grep -rn \"ariaflow\\\\|aria\" /home/bc/repos/github/bonomani/mac-mini-setup/ --include=*.sh --include=*.yaml --include=*.yml -i)",
       "Bash(grep -n \"_brew_is_outdated\\\\|brew_is_outdated\\\\|brew outdated\\\\|needs-update\\\\|outdated\" /home/bc/repos/github/bonomani/mac-mini-setup/lib/*.sh)",
-      "Bash(grep -n \"brew_cache_outdated\\\\|_BREW_OUTDATED_STALE\" /home/bc/repos/github/bonomani/mac-mini-setup/install.sh /home/bc/repos/github/bonomani/mac-mini-setup/lib/*.sh)"
+      "Bash(grep -n \"brew_cache_outdated\\\\|_BREW_OUTDATED_STALE\" /home/bc/repos/github/bonomani/mac-mini-setup/install.sh /home/bc/repos/github/bonomani/mac-mini-setup/lib/*.sh)",
+      "Bash(grep -c \"observe_cmd\\\\|oracle\\\\|evidence:\" ucc/**/*.yaml)",
+      "Bash(wc -l lib/*.sh tools/*.py)",
+      "Bash(/tmp/perf_summary.txt:*)",
+      "Bash(python3 tools/validate_targets_manifest.py --all-soft-deps ucc)",
+      "Bash(python3 tools/read_config.py --target-get-many ucc/software/git.yaml git profile actions.install actions.update driver.externally_managed_updates)",
+      "Bash(python3 tools/read_config.py --target-get-many ucc/software/homebrew.yaml xcode-command-line-tools profile actions.install actions.update driver.externally_managed_updates)",
+      "Bash(python3 tools/read_config.py --evidence ucc/software/git.yaml git)",
+      "Bash(python3 tools/read_config.py --evidence ucc/software/docker.yaml docker-desktop)",
+      "Bash(python3 tools/read_config.py --target-get-many-with-evidence ucc/software/dev-tools.yaml vscode profile actions.install actions.update driver.externally_managed_updates type oracle.configured observe_cmd state_model observe_success observe_failure)",
+      "Bash(python3 tools/validate_targets_manifest.py --all-display-names ucc)",
+      "Bash(python3 tools/validate_targets_manifest.py --all-dispatch ucc)",
+      "Bash(grep -v \"^--\\\\|done\\\\|python3\\\\|^$\")",
+      "Bash(python3 tools/read_config.py --all-targets-get-many-with-evidence ucc/software/homebrew.yaml profile actions.install type oracle.configured)",
+      "Bash(python3 -:*)"
+    ],
+    "additionalDirectories": [
+      "/tmp"
     ]
   }
 }
