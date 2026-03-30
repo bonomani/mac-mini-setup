@@ -29,18 +29,12 @@ targets:
     - homebrew
     provided_by_tool: brew-cask
     driver:
-      kind: custom
-      greedy_auto_updates: true
-    observe_cmd: "if [[ -d \"${vscode_app_path}\" ]] && ! brew_cask_is_installed \"\
-      ${vscode_cask_id}\"; then\n  defaults read \"${vscode_app_path}/Contents/Info\"\
-      \ CFBundleShortVersionString 2>/dev/null || printf 'present'\nelse\n  brew_cask_observe\
-      \ \"${vscode_cask_id}\" \"${driver.greedy_auto_updates}\"\nfi\n"
-    evidence:
-      version: defaults read "${vscode_app_path}/Contents/Info" CFBundleShortVersionString
-        2>/dev/null || true
-    actions:
-      install: brew_cask_install '${vscode_cask_id}'
-      update: brew_cask_upgrade '${vscode_cask_id}' '${driver.greedy_auto_updates}'
+      kind: app-bundle
+      app_path: /Applications/Visual Studio Code.app
+      brew_cask: visual-studio-code
+      update_api: https://update.code.visualstudio.com/api/releases/stable
+      download_url_tpl: https://update.code.visualstudio.com/{version}/darwin-universal/stable
+      package_ext: zip
   vscode-code-cmd:
     component: dev-tools
     profile: configured
