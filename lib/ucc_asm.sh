@@ -106,23 +106,53 @@ _ucc_state_obj() {
   fi
 }
 
-_ucc_diff_obj() {
-  local before="$1" after="$2" axes="${3:-}"
-  if _ucc_is_json_obj "$before" || _ucc_is_json_obj "$after"; then
-    if _ucc_json_equal "$before" "$after" "$axes"; then
-      printf '{}'
+if command -v jq >/dev/null 2>&1; then
+  _ucc_diff_obj() {
+    local before="$1" after="$2" axes="${3:-}"
+    jq -cn \
+      --arg before "$before" \
+      --arg after  "$after"  \
+      --arg axes   "$axes"   \
+    '
+      def is_obj: try (fromjson | type == "object") catch false;
+      def to_state: . as $v | try ($v | fromjson) catch {"state": $v};
+      def proj($ax): if ($ax | length) > 0
+        then to_entries | map(select(.key | IN($ax[]))) | from_entries
+        else . end;
+      ($before | is_obj) as $bo |
+      ($after  | is_obj) as $ao |
+      ($axes | if . == "" then [] else split(",") | map(select(length>0)) end) as $ax |
+      if ($bo or $ao) then
+        ($before | to_state) as $b | ($after | to_state) as $a |
+        if ($b | proj($ax)) == ($a | proj($ax)) then {}
+        else {"before": $b, "after": $a}
+        end
+      else
+        if $before == $after then {}
+        else {"state": {"before": $before, "after": $after}}
+        end
+      end
+    ' 2>/dev/null
+  }
+else
+  _ucc_diff_obj() {
+    local before="$1" after="$2" axes="${3:-}"
+    if _ucc_is_json_obj "$before" || _ucc_is_json_obj "$after"; then
+      if _ucc_json_equal "$before" "$after" "$axes"; then
+        printf '{}'
+      else
+        printf '{"before":%s,"after":%s}' "$(_ucc_state_obj "$before")" "$(_ucc_state_obj "$after")"
+      fi
     else
-      printf '{"before":%s,"after":%s}' "$(_ucc_state_obj "$before")" "$(_ucc_state_obj "$after")"
+      if [[ "$before" == "$after" ]]; then
+        printf '{}'
+      else
+        printf '{"state":{"before":"%s","after":"%s"}}' \
+          "$(_ucc_jstr "$before")" "$(_ucc_jstr "$after")"
+      fi
     fi
-  else
-    if [[ "$before" == "$after" ]]; then
-      printf '{}'
-    else
-      printf '{"state":{"before":"%s","after":"%s"}}' \
-        "$(_ucc_jstr "$before")" "$(_ucc_jstr "$after")"
-    fi
-  fi
-}
+  }
+fi
 
 
 _ucc_evidence_text() {
