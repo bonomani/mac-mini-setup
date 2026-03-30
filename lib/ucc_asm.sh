@@ -100,6 +100,14 @@ PY
   }
 fi
 
+_ucc_state_obj() {
+  if _ucc_is_json_obj "$1"; then
+    printf '%s' "$1"
+  else
+    printf '{"state":"%s"}' "$(_ucc_jstr "$1")"
+  fi
+}
+
 if command -v jq >/dev/null 2>&1; then
   _ucc_diff_obj() {
     local before="$1" after="$2" axes="${3:-}"
