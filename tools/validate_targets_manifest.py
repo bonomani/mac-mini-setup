@@ -490,8 +490,10 @@ def validate(manifest, known_gates):
                 errors.append(f"target '{name}' type 'config' requires driver.kind")
             elif config_driver not in KNOWN_CONFIG_DRIVERS:
                 errors.append(f"target '{name}' has unknown config driver '{config_driver}'")
-            if not isinstance(data.get("evidence"), dict) or not data.get("evidence"):
-                errors.append(f"target '{name}' type 'config' requires evidence")
+            config_driver_dispatched = bool(config_driver) and config_driver != "custom"
+            if not config_driver_dispatched:
+                if not isinstance(data.get("evidence"), dict) or not data.get("evidence"):
+                    errors.append(f"target '{name}' type 'config' requires evidence")
         if target_type == "precondition" and state_model != "config":
             errors.append(f"target '{name}' type 'precondition' requires state_model 'config'")
         if target_type == "precondition":

@@ -223,7 +223,7 @@ targets:
     depends_on:
     - pip-group-pytorch
     driver:
-      kind: capability
+      kind: custom
     runtime_manager: capability
     probe_kind: command
     oracle:

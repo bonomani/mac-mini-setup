@@ -39,7 +39,7 @@ targets:
     - ai-stack-compose-file
     provided_by_tool: docker-compose
     driver:
-      kind: docker-compose
+      kind: custom
       service_name: open-webui
     runtime_manager: docker-compose
     probe_kind: http
@@ -67,7 +67,7 @@ targets:
     - ai-stack-compose-file
     provided_by_tool: docker-compose
     driver:
-      kind: docker-compose
+      kind: custom
       service_name: flowise
     runtime_manager: docker-compose
     probe_kind: http
@@ -94,7 +94,7 @@ targets:
     - ai-stack-compose-file
     provided_by_tool: docker-compose
     driver:
-      kind: docker-compose
+      kind: custom
       service_name: openhands
     runtime_manager: docker-compose
     probe_kind: http
@@ -121,7 +121,7 @@ targets:
     - ai-stack-compose-file
     provided_by_tool: docker-compose
     driver:
-      kind: docker-compose
+      kind: custom
       service_name: n8n
     runtime_manager: docker-compose
     probe_kind: http
@@ -148,7 +148,7 @@ targets:
     - ai-stack-compose-file
     provided_by_tool: docker-compose
     driver:
-      kind: docker-compose
+      kind: custom
       service_name: qdrant
     runtime_manager: docker-compose
     probe_kind: http

@@ -23,11 +23,4 @@ targets:
     driver:
       kind: docker-settings
     desired_cmd: printf "mem=%sGB cpu=%s" "${DOCKER_MEM_GB}" "${DOCKER_CPU_COUNT}"
-    evidence:
-      memory: "python3 - <<'PY'\nimport json, os\n\npath = os.path.expanduser(os.environ[\"\
-        DOCKER_SETTINGS_PATH\"])\nwith open(path) as fh:\n    data = json.load(fh)\n\
-        \nprint(int(data.get(\"memoryMiB\", 0)) // 1024)\nPY\n"
-      cpus: "python3 - <<'PY'\nimport json, os\n\npath = os.path.expanduser(os.environ[\"\
-        DOCKER_SETTINGS_PATH\"])\nwith open(path) as fh:\n    data = json.load(fh)\n\
-        \nprint(int(data.get(\"cpus\", 0)))\nPY\n"
     dependency_gate: docker-settings-file
