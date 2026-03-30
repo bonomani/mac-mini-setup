@@ -108,15 +108,11 @@ _ucc_driver_app_bundle_evidence() {
   [[ -n "$app_path" && -d "$app_path" ]] || return 1
   brew_cask="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.brew_cask")"
 
-  # If brew-managed, report cask version (may differ from plist version)
-  if [[ -n "$brew_cask" ]] && [[ -n "$(_brew_cask_cached_version "$brew_cask")" ]]; then
-    local cask_ver
-    cask_ver="$(_brew_cask_cached_version "$brew_cask")"
-    printf 'version=%s  managed=brew-cask  path=%s' "$cask_ver" "$app_path"
-    return
-  fi
-
   ver="$(defaults read "$app_path/Contents/Info" CFBundleShortVersionString 2>/dev/null)"
   [[ -n "$ver" ]] || return 1
-  printf 'version=%s  path=%s' "$ver" "$app_path"
+  if [[ -n "$brew_cask" ]] && [[ -n "$(_brew_cask_cached_version "$brew_cask")" ]]; then
+    printf 'version=%s  managed=brew-cask  path=%s' "$ver" "$app_path"
+  else
+    printf 'version=%s  path=%s' "$ver" "$app_path"
+  fi
 }
