@@ -18,6 +18,8 @@ for _ucc_drv_file in \
   "$_UCC_DRIVERS_DIR/ollama_model.sh" \
   "$_UCC_DRIVERS_DIR/npm.sh" \
   "$_UCC_DRIVERS_DIR/pip.sh" \
+  "$_UCC_DRIVERS_DIR/macos_defaults.sh" \
+  "$_UCC_DRIVERS_DIR/macos_swupdate.sh" \
   ; do
   [[ -f "$_ucc_drv_file" ]] && source "$_ucc_drv_file"
 done

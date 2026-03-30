@@ -487,6 +487,12 @@ _ucc_observe_yaml_parametric_target() {
     desired="$(_ucc_yaml_parametric_desired_value "$cfg_dir" "$yaml" "$target")"
   fi
   dep_state="$(_ucc_yaml_gate_dependency_state "$gate")"
+  local driver_raw
+  if driver_raw="$(_ucc_driver_observe "$cfg_dir" "$yaml" "$target")"; then
+    [[ -n "$driver_raw" ]] || driver_raw="absent"
+    _ucc_yaml_parametric_observed_state "$driver_raw" "$desired" "$dep_state"
+    return
+  fi
   current="$(_ucc_eval_yaml_scalar_cmd "$cfg_dir" "$yaml" "$target" "$observe_cmd")"
   _ucc_yaml_parametric_observed_state "$current" "$desired" "$dep_state"
 }
@@ -534,12 +540,13 @@ _ucc_yaml_parametric_desired_value() {
 
 ucc_yaml_parametric_target() {
   local cfg_dir="$1" yaml="$2" target="$3"
-  local fn install_cmd update_cmd desired gate dep_state
+  local fn install_cmd update_cmd desired gate dep_state driver_kind
   local obs_cmd="" obs_gate="" desired_cmd="" desired_value_raw=""
   local _ev_b64=""
   fn="${target//[^a-zA-Z0-9]/_}"
   install_cmd=""
   update_cmd=""
+  driver_kind=""
   while IFS=$'\t' read -r -d '' key value; do
     if [[ "$key" == "__evidence__" ]]; then _ev_b64="$value"; continue; fi
     case "$key" in
@@ -549,10 +556,13 @@ ucc_yaml_parametric_target() {
       desired_value)    desired_value_raw="$value" ;;
       dependency_gate)  obs_gate="$value" ;;
       observe_cmd)      obs_cmd="$value" ;;
+      driver.kind)      driver_kind="$value" ;;
     esac
   done < <(_ucc_ytgt_source "$cfg_dir" "$yaml" "$target" \
-      actions.install actions.update desired_cmd desired_value dependency_gate observe_cmd)
+      actions.install actions.update desired_cmd desired_value dependency_gate observe_cmd driver.kind)
   [[ -z "$update_cmd" ]] && update_cmd="$install_cmd"
+  local driver_dispatched=0
+  [[ -n "$driver_kind" && "$driver_kind" != "custom" ]] && driver_dispatched=1
   if [[ -n "$desired_cmd" ]]; then
     desired="$(_ucc_eval_yaml_scalar_cmd "$cfg_dir" "$yaml" "$target" "$desired_cmd")"
   else
@@ -569,7 +579,7 @@ ucc_yaml_parametric_target() {
 
   eval "_uypt_obs_${fn}() { _ucc_observe_yaml_parametric_target '${cfg_dir}' '${yaml}' '${target}'; }"
   eval "_uypt_evd_${fn}() { _ucc_evidence_yaml_parametric_target '${cfg_dir}' '${yaml}' '${target}'; }"
-  if [[ -n "$install_cmd" && "$dep_state" == "DepsReady" ]]; then
+  if [[ ("$driver_dispatched" == "1" || -n "$install_cmd") && "$dep_state" == "DepsReady" ]]; then
     eval "_uypt_ins_${fn}() { _ucc_run_yaml_action '${cfg_dir}' '${yaml}' '${target}' install; }"
     eval "_uypt_upd_${fn}() { _ucc_run_yaml_action '${cfg_dir}' '${yaml}' '${target}' update; }"
   fi
@@ -581,8 +591,8 @@ ucc_yaml_parametric_target() {
     --evidence "_uypt_evd_${fn}"
     --desired "$(_ucc_yaml_parametric_desired_state "$desired" "$dep_state")"
   )
-  [[ -n "$install_cmd" && "$dep_state" == "DepsReady" ]] && args+=(--install "_uypt_ins_${fn}")
-  [[ -n "$install_cmd" && "$dep_state" == "DepsReady" ]] && args+=(--update "_uypt_upd_${fn}")
+  [[ ("$driver_dispatched" == "1" || -n "$install_cmd") && "$dep_state" == "DepsReady" ]] && args+=(--install "_uypt_ins_${fn}")
+  [[ ("$driver_dispatched" == "1" || -n "$install_cmd") && "$dep_state" == "DepsReady" ]] && args+=(--update "_uypt_upd_${fn}")
   ucc_target "${args[@]}"
 }
 

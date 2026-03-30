@@ -16,7 +16,7 @@ targets:
     depends_on:
     - git
     driver:
-      kind: git-global-config
+      kind: custom
     oracle:
       configured: git config --global user.name >/dev/null 2>&1
     evidence:

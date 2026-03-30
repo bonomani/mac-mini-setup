@@ -65,3 +65,28 @@ _ucc_driver_brew_cask_evidence() {
   ver="$(_brew_cask_cached_version "$ref")"
   [[ -n "$ver" ]] && printf 'version=%s' "$ver"
 }
+
+# ── brew-analytics ────────────────────────────────────────────────────────────
+# No driver fields required; desired value comes from target's desired_value.
+
+_ucc_driver_brew_analytics_observe() {
+  local cfg_dir="$1" yaml="$2" target="$3"
+  brew analytics state 2>/dev/null | grep -qi disabled && echo off || echo on
+}
+
+_ucc_driver_brew_analytics_action() {
+  local cfg_dir="$1" yaml="$2" target="$3" action="$4"
+  local desired
+  desired="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "desired_value")"
+  [[ -n "$desired" ]] || desired="off"
+  case "$action" in
+    install|update) ucc_run brew analytics "$desired" ;;
+  esac
+}
+
+_ucc_driver_brew_analytics_evidence() {
+  local cfg_dir="$1" yaml="$2" target="$3"
+  local state
+  state="$(brew analytics state 2>/dev/null | grep -qi disabled && printf off || printf on)"
+  printf 'analytics=%s' "$state"
+}

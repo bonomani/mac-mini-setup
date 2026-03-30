@@ -20,6 +20,7 @@ KNOWN_STATE_MODELS = {"package", "config", "parametric"}
 KNOWN_PLATFORMS = {"macos", "linux", "wsl", "wsl1", "wsl2"}
 KNOWN_PACKAGE_DRIVERS = {
     "brew-bootstrap",
+    "custom",
     "brew-formula",
     "brew-cask",
     "macos-clt",
@@ -38,6 +39,8 @@ KNOWN_RUNTIME_DRIVERS = {
 }
 KNOWN_CONFIG_DRIVERS = {
     "brew-analytics",
+    "custom",
+    "user-defaults",
     "compose-file",
     "docker-settings",
     "git-global-config",
@@ -628,8 +631,10 @@ def validate(manifest, known_gates):
             ):
                 errors.append(f"target '{name}' with install/update commands requires observe_cmd or oracle.configured")
 
+        driver_kind_val = _driver_kind(data)
+        driver_dispatched_any = bool(driver_kind_val) and driver_kind_val != "custom"
         if admin_required is True:
-            if not _action_cmd(data, "install") and not _action_cmd(data, "update"):
+            if not driver_dispatched_any and not _action_cmd(data, "install") and not _action_cmd(data, "update"):
                 errors.append(f"target '{name}' field 'admin_required' requires actions.install or actions.update")
 
         for action_name in ("install", "update"):

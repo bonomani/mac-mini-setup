@@ -16,14 +16,11 @@ targets:
     admin_required: true
     driver:
       kind: pmset
-    oracle:
-      configured: pmset -g | grep -E '^ +sleep ' | awk '{print $2}' | grep -q '^0$'
-    observe_cmd: pmset -g | awk '/^[[:space:]]+sleep / {print $2}'
+      setting: sleep
+      value: '0'
     desired_value: '0'
     evidence:
       sleep: pmset -g | awk '/^[[:space:]]+sleep / {print $2}'
-    actions:
-      install: ucc_run sudo pmset -c sleep 0
     dependency_gate: sudo-available
   pmset-disksleep=0:
     component: macos-defaults
@@ -36,14 +33,11 @@ targets:
     admin_required: true
     driver:
       kind: pmset
-    oracle:
-      configured: pmset -g | awk '/disksleep/ {print $2}' | grep -q '^0$'
-    observe_cmd: pmset -g | awk '/disksleep/ {print $2}'
+      setting: disksleep
+      value: '0'
     desired_value: '0'
     evidence:
       disksleep: pmset -g | awk '/disksleep/ {print $2}'
-    actions:
-      install: ucc_run sudo pmset -c disksleep 0
     dependency_gate: sudo-available
   pmset-standby=0:
     component: macos-defaults
@@ -56,14 +50,11 @@ targets:
     admin_required: true
     driver:
       kind: pmset
-    oracle:
-      configured: pmset -g | awk '/^[[:space:]]+standby / {print $2}' | grep -q '^0$'
-    observe_cmd: pmset -g | awk '/^[[:space:]]+standby / {print $2}'
+      setting: standby
+      value: '0'
     desired_value: '0'
     evidence:
       standby: pmset -g | awk '/^[[:space:]]+standby / {print $2}'
-    actions:
-      install: ucc_run sudo pmset -c standby 0
     dependency_gate: sudo-available
   app-nap=disabled:
     component: macos-defaults
@@ -73,17 +64,14 @@ targets:
     display_name: App Nap
     driver:
       kind: user-defaults
-    oracle:
-      configured: defaults read NSGlobalDomain NSAppSleepDisabled 2>/dev/null | grep
-        -q '^1$'
-    observe_cmd: defaults read NSGlobalDomain NSAppSleepDisabled 2>/dev/null || echo
-      0
+      domain: NSGlobalDomain
+      key: NSAppSleepDisabled
+      value: 'YES'
+      type: bool
     desired_value: '1'
     evidence:
       NSAppSleepDisabled: defaults read NSGlobalDomain NSAppSleepDisabled 2>/dev/null
         || echo 0
-    actions:
-      install: ucc_run defaults write NSGlobalDomain NSAppSleepDisabled -bool YES
   finder-show-hidden=1:
     component: macos-defaults
     profile: parametric
@@ -92,17 +80,14 @@ targets:
     display_name: Finder hidden files
     driver:
       kind: user-defaults
-    oracle:
-      configured: defaults read com.apple.finder AppleShowAllFiles 2>/dev/null | grep
-        -qi '^1$\|^true$'
-    observe_cmd: defaults read com.apple.finder AppleShowAllFiles 2>/dev/null || echo
-      0
+      domain: com.apple.finder
+      key: AppleShowAllFiles
+      value: 'true'
+      type: bool
     desired_value: '1'
     evidence:
       AppleShowAllFiles: defaults read com.apple.finder AppleShowAllFiles 2>/dev/null
         || echo 0
-    actions:
-      install: ucc_run defaults write com.apple.finder AppleShowAllFiles -bool true
   show-all-extensions=1:
     component: macos-defaults
     profile: parametric
@@ -111,18 +96,14 @@ targets:
     display_name: Filename extensions
     driver:
       kind: user-defaults
-    oracle:
-      configured: defaults read NSGlobalDomain AppleShowAllExtensions 2>/dev/null
-        | grep -qi '^1$\|^true$'
-    observe_cmd: defaults read NSGlobalDomain AppleShowAllExtensions 2>/dev/null ||
-      echo 0
+      domain: NSGlobalDomain
+      key: AppleShowAllExtensions
+      value: 'true'
+      type: bool
     desired_value: '1'
     evidence:
       AppleShowAllExtensions: defaults read NSGlobalDomain AppleShowAllExtensions
         2>/dev/null || echo 0
-    actions:
-      install: ucc_run defaults write NSGlobalDomain AppleShowAllExtensions -bool
-        true
   dock-autohide=1:
     component: macos-defaults
     profile: parametric
@@ -131,14 +112,13 @@ targets:
     display_name: Dock auto-hide
     driver:
       kind: user-defaults
-    oracle:
-      configured: defaults read com.apple.dock autohide 2>/dev/null | grep -qi '^1$\|^true$'
-    observe_cmd: defaults read com.apple.dock autohide 2>/dev/null || echo 0
+      domain: com.apple.dock
+      key: autohide
+      value: 'true'
+      type: bool
     desired_value: '1'
     evidence:
       autohide: defaults read com.apple.dock autohide 2>/dev/null || echo 0
-    actions:
-      install: ucc_run defaults write com.apple.dock autohide -bool true
 restart_processes:
 - Finder
 - Dock

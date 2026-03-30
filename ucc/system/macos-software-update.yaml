@@ -16,13 +16,16 @@ targets:
     - gate:sudo-available
     admin_required: true
     driver:
-      kind: softwareupdate-schedule
+      kind: custom
+    oracle:
+      configured: if softwareupdate --schedule 2>/dev/null | grep -qiE 'Automatic check
+        is on\.?$'; then echo on; else echo off; fi
     observe_cmd: if softwareupdate --schedule 2>/dev/null | grep -qiE 'Automatic check
-      is on\\.?$'; then echo on; else echo off; fi
+      is on\.?$'; then echo on; else echo off; fi
     desired_value: 'on'
     evidence:
       schedule: if softwareupdate --schedule 2>/dev/null | grep -qiE 'Automatic check
-        is on\\.?$'; then echo on; else echo off; fi
+        is on\.?$'; then echo on; else echo off; fi
     actions:
       install: ucc_run sudo softwareupdate --schedule on
     dependency_gate: sudo-available
@@ -39,15 +42,11 @@ targets:
       kind: softwareupdate-defaults
       domain: ${softwareupdate_domain}
       key: AutomaticCheckEnabled
-    observe_cmd: if defaults read '${driver.domain}' '${driver.key}' 2>/dev/null |
-      grep -qiE '^1$|^true$'; then echo 1; else echo 0; fi
+      value: '1'
     desired_value: '1'
     evidence:
-      AutomaticCheckEnabled: defaults read '${driver.domain}' '${driver.key}' 2>/dev/null
-        || echo 0
-    actions:
-      install: ucc_run sudo defaults write '${driver.domain}' '${driver.key}' -bool
-        true
+      AutomaticCheckEnabled: defaults read '${softwareupdate_domain}' AutomaticCheckEnabled
+        2>/dev/null || echo 0
     dependency_gate: sudo-available
   softwareupdate-auto-download=1:
     component: macos-software-update
@@ -62,15 +61,11 @@ targets:
       kind: softwareupdate-defaults
       domain: ${softwareupdate_domain}
       key: AutomaticDownload
-    observe_cmd: if defaults read '${driver.domain}' '${driver.key}' 2>/dev/null |
-      grep -qiE '^1$|^true$'; then echo 1; else echo 0; fi
+      value: '1'
     desired_value: '1'
     evidence:
-      AutomaticDownload: defaults read '${driver.domain}' '${driver.key}' 2>/dev/null
-        || echo 0
-    actions:
-      install: ucc_run sudo defaults write '${driver.domain}' '${driver.key}' -bool
-        true
+      AutomaticDownload: defaults read '${softwareupdate_domain}' AutomaticDownload
+        2>/dev/null || echo 0
     dependency_gate: sudo-available
   softwareupdate-auto-install-macos=1:
     component: macos-software-update
@@ -85,15 +80,11 @@ targets:
       kind: softwareupdate-defaults
       domain: ${softwareupdate_domain}
       key: AutomaticallyInstallMacOSUpdates
-    observe_cmd: if defaults read '${driver.domain}' '${driver.key}' 2>/dev/null |
-      grep -qiE '^1$|^true$'; then echo 1; else echo 0; fi
+      value: '1'
     desired_value: '1'
     evidence:
-      AutomaticallyInstallMacOSUpdates: defaults read '${driver.domain}' '${driver.key}'
+      AutomaticallyInstallMacOSUpdates: defaults read '${softwareupdate_domain}' AutomaticallyInstallMacOSUpdates
         2>/dev/null || echo 0
-    actions:
-      install: ucc_run sudo defaults write '${driver.domain}' '${driver.key}' -bool
-        true
     dependency_gate: sudo-available
   softwareupdate-config-data=1:
     component: macos-software-update
@@ -108,15 +99,11 @@ targets:
       kind: softwareupdate-defaults
       domain: ${softwareupdate_domain}
       key: ConfigDataInstall
-    observe_cmd: if defaults read '${driver.domain}' '${driver.key}' 2>/dev/null |
-      grep -qiE '^1$|^true$'; then echo 1; else echo 0; fi
+      value: '1'
     desired_value: '1'
     evidence:
-      ConfigDataInstall: defaults read '${driver.domain}' '${driver.key}' 2>/dev/null
-        || echo 0
-    actions:
-      install: ucc_run sudo defaults write '${driver.domain}' '${driver.key}' -bool
-        true
+      ConfigDataInstall: defaults read '${softwareupdate_domain}' ConfigDataInstall
+        2>/dev/null || echo 0
     dependency_gate: sudo-available
   softwareupdate-critical-updates=1:
     component: macos-software-update
@@ -131,13 +118,9 @@ targets:
       kind: softwareupdate-defaults
       domain: ${softwareupdate_domain}
       key: CriticalUpdateInstall
-    observe_cmd: if defaults read '${driver.domain}' '${driver.key}' 2>/dev/null |
-      grep -qiE '^1$|^true$'; then echo 1; else echo 0; fi
+      value: '1'
     desired_value: '1'
     evidence:
-      CriticalUpdateInstall: defaults read '${driver.domain}' '${driver.key}' 2>/dev/null
-        || echo 0
-    actions:
-      install: ucc_run sudo defaults write '${driver.domain}' '${driver.key}' -bool
-        true
+      CriticalUpdateInstall: defaults read '${softwareupdate_domain}' CriticalUpdateInstall
+        2>/dev/null || echo 0
     dependency_gate: sudo-available
