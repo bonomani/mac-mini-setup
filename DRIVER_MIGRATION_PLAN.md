@@ -126,7 +126,7 @@ evidence: version → _pip_cached_version '$probe'
 
 ### Step 8 — Commit Phase 1
 - [x] git add + commit all Phase 1 changes
-- [ ] git push
+- [x] git push
 
 ---
 
@@ -142,9 +142,9 @@ oracle:   defaults read '$domain' '$key' 2>/dev/null | grep -q '^$value$'
 install:  ucc_run defaults write '$domain' '$key' -$type $value
 evidence: $key → defaults read '$domain' '$key' 2>/dev/null
 
-- [ ] Implement lib/drivers/macos_defaults.sh (user-defaults section)
-- [ ] Update macos-defaults.yaml: add driver.domain/key/value/type, remove embedded code
-- [ ] Verify
+- [x] Implement lib/drivers/macos_defaults.sh (user-defaults section)
+- [x] Update macos-defaults.yaml: add driver.domain/key/value/type, remove embedded code
+- [x] Verify: validator clean
 
 ### Step 10 — pmset driver  (3 targets)
 New driver fields: driver.setting, driver.value
@@ -153,39 +153,34 @@ oracle:   pmset -g | awk -v s='$setting' -v v='$value' '$1==s && $2==v{exit 0} E
 install:  ucc_run pmset -a '$setting' '$value'
 evidence: $setting → pmset -g | awk -v s='$setting' '$1==s{print $2}'
 
-- [ ] Implement pmset section in lib/drivers/macos_defaults.sh
-- [ ] Update macos-defaults.yaml: add driver.setting/value, remove embedded code
-- [ ] Verify
+- [x] Implement pmset section in lib/drivers/macos_defaults.sh
+- [x] Update macos-defaults.yaml: add driver.setting/value, remove embedded code
+- [x] Verify
 
 ### Step 11 — softwareupdate-defaults driver  (5 targets)
 New driver fields: driver.domain, driver.key, driver.value
 (same pattern as user-defaults but different domain/key names)
 
-- [ ] Implement lib/drivers/macos_swupdate.sh
-- [ ] Update macos-software-update.yaml
-- [ ] Verify
+- [x] Implement lib/drivers/macos_swupdate.sh
+- [x] Update macos-software-update.yaml
+- [x] Verify
 
 ### Step 12 — git-global-config driver  (1 target)
-New driver fields: driver.key, driver.value (already has driver.kind: git-global-config)
-observe:  git config --global '$key' 2>/dev/null || echo absent
-oracle:   git config --global '$key' | grep -qF '$value'
-install:  ucc_run git config --global '$key' '$value'
-evidence: $key → git config --global '$key' 2>/dev/null
+Interactive install (read -rp prompts + global_config loop) — not suitable
+for mechanical driver. Marked driver.kind: custom instead.
 
-- [ ] Implement lib/drivers/git_config.sh
-- [ ] Update git-config.yaml: add driver.key/value, remove embedded code
-- [ ] Verify
+- [x] Mark git-config.yaml git-global-config as driver.kind: custom
 
 ### Step 13 — brew-analytics driver  (1 target)
-New driver fields: driver.setting (analytics), driver.value (off)
+New driver fields: none (reads desired_value directly)
 
-- [ ] Implement brew-analytics section in lib/drivers/brew.sh
-- [ ] Update homebrew.yaml: add driver fields, remove embedded code
-- [ ] Verify
+- [x] Implement brew-analytics section in lib/drivers/brew.sh
+- [x] Update homebrew.yaml: remove observe_cmd/actions
+- [x] Verify
 
 ### Step 14 — Commit Phase 2
-- [ ] git add + commit all Phase 2 changes
-- [ ] git push
+- [x] git add + commit all Phase 2 changes
+- [x] git push
 
 ---
 
@@ -197,31 +192,33 @@ Extract embedded Python to tools/drivers/json_merge.py <check|apply> <settings> 
 oracle:   python3 tools/drivers/json_merge.py check  $settings_path $patch_path
 install:  python3 tools/drivers/json_merge.py apply  $settings_path $patch_path
 
-- [ ] Create tools/drivers/json_merge.py
-- [ ] Implement json-merge section in lib/drivers/vscode.sh
-- [ ] Update dev-tools.yaml: remove embedded Python, use driver fields
-- [ ] Verify
+- [x] Create tools/drivers/json_merge.py
+- [x] Implement json-merge section in lib/drivers/vscode.sh
+- [x] Update dev-tools.yaml: remove embedded Python, use driver.settings_relpath/patch_relpath
+- [x] Verify
 
 ### Step 16 — docker-settings driver  (docker-resources)
-Extract embedded Python to tools/drivers/docker_settings.py <check|apply> <settings_file> <patch_file>
+Extract embedded Python to tools/drivers/docker_settings.py <read|apply> <settings_file> [args]
 
-- [ ] Create tools/drivers/docker_settings.py
-- [ ] Implement docker-settings section in lib/drivers/docker.sh
-- [ ] Update docker-config.yaml: remove embedded Python
-- [ ] Verify
+- [x] Create tools/drivers/docker_settings.py
+- [x] Implement docker-settings section in lib/drivers/docker.sh
+- [x] Update docker-config.yaml: remove embedded Python
+- [x] Verify
 
 ### Step 17 — Mark remaining targets as driver.kind: custom
 Targets keeping observe_cmd/actions.*: node-lts, vscode (cask), homebrew,
-xcode-clt, ollama, unsloth-studio, ollama-host-supported, mps-available,
-pip-latest, docker-desktop, system-composition, pyenv, python, ariaflow.
-Document: driver.kind: custom is the explicit escape hatch.
+xcode-clt, ollama-host-supported, pip-latest, docker-desktop, pyenv, python,
+ariaflow, oh-my-zsh, omz-theme-agnoster, home-bin-in-path, ai-healthcheck,
+vscode-code-cmd, softwareupdate-schedule.
+driver.kind: custom is the explicit escape hatch — these targets retain
+embedded observe_cmd/actions.* in YAML.
 
-- [ ] Add driver.kind: custom to each remaining target in YAML
-- [ ] Add comment in ucc_drivers.sh explaining custom escape hatch
+- [x] Add driver.kind: custom to each remaining target in YAML
+- [x] Add 'custom' to KNOWN_CONFIG_DRIVERS, KNOWN_PACKAGE_DRIVERS, KNOWN_RUNTIME_DRIVERS
 
 ### Step 18 — Commit Phase 3
-- [ ] git add + commit all Phase 3 changes
-- [ ] git push
+- [x] git add + commit all Phase 3 changes
+- [x] git push
 
 ---
 
