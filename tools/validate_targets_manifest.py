@@ -772,6 +772,7 @@ def main():
     all_deps_mode = False
     all_soft_deps_mode = False
     all_ordered_targets_mode = False
+    all_display_names_mode = False
     oracles_mode = False
     runtime_endpoints_mode = False
     ordered_targets_mode = False
@@ -803,6 +804,9 @@ def main():
         args = args[1:]
     elif len(args) >= 1 and args[0] == "--all-ordered-targets":
         all_ordered_targets_mode = True
+        args = args[1:]
+    elif len(args) >= 1 and args[0] == "--all-display-names":
+        all_display_names_mode = True
         args = args[1:]
     elif len(args) >= 2 and args[0] == "--ordered-targets":
         target_name = args[1]
@@ -844,6 +848,16 @@ def main():
         if isinstance(display_name, str):
             display_name = substitute_scalars(display_name, data=subst_data)
         print(display_name)
+        return 0
+
+    if all_display_names_mode:
+        for name, data in manifest["targets"].items():
+            data = data or {}
+            display_name = data.get("display_name", "") or name
+            subst_data = data.get("__manifest_scalars__") or {}
+            if isinstance(display_name, str):
+                display_name = substitute_scalars(display_name, data=subst_data)
+            print("{}\t{}".format(name, display_name or name))
         return 0
 
     if soft_deps_mode:

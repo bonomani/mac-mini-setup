@@ -241,6 +241,48 @@ def read_target_scalars_with_evidence(path: Path, target_name: str, keys: list[s
     return scalar_rows, base64.b64encode(ev_bytes).decode("ascii")
 
 
+def read_all_targets_with_evidence(path: Path, keys: list[str]) -> None:
+    """Print line-oriented batch data for all targets in one YAML parse.
+
+    Output format (one line per field, newline-delimited, NUL-free):
+      __target__\t<target_name>
+      <key>\t<base64(value)>
+      ...
+      __evidence__\t<base64(NUL-delimited evidence rows)>
+
+    Values are base64-encoded so multiline values don't break line parsing.
+    """
+    import base64
+    data = load_yaml(path)
+    targets = data.get("targets") or {}
+    if not isinstance(targets, dict):
+        raise ValueError("top-level 'targets' must be a mapping")
+
+    stream = sys.stdout.buffer
+    for target_name, target in targets.items():
+        stream.write(f"__target__\t{target_name}\n".encode("utf-8"))
+        sclrs = target_scalars(data, target_name)
+        target = target or {}
+        for key in keys:
+            value = get_path(target, key)
+            if isinstance(value, (dict, list)):
+                rendered = b""
+            else:
+                rendered_str = stringify(value)
+                if isinstance(value, str):
+                    rendered_str = substitute_scalars(rendered_str, sclrs)
+                rendered = rendered_str.encode("utf-8")
+            b64 = base64.b64encode(rendered).decode("ascii")
+            stream.write(f"{key}\t{b64}\n".encode("utf-8"))
+        ev_bytes = b""
+        evidence = target.get("evidence") or {}
+        if isinstance(evidence, dict):
+            for ev_key, cmd in evidence.items():
+                rendered_str = substitute_scalars(stringify(cmd), sclrs)
+                ev_bytes += f"{ev_key}\t{rendered_str}".encode("utf-8") + b"\0"
+        stream.write(f"__evidence__\t{base64.b64encode(ev_bytes).decode('ascii')}\n".encode("utf-8"))
+
+
 def read_evidence(path: Path, target_name: str) -> list[str]:
     data = load_yaml(path)
     targets = data.get("targets") or {}
@@ -356,6 +398,20 @@ def main() -> int:
             scalar_rows, evidence_b64 = read_target_scalars_with_evidence(path, args[2], args[3:])
             print_nul_rows(scalar_rows)
             print_nul_rows([f"__evidence__\t{evidence_b64}"])
+        except Exception as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 1
+        return 0
+
+    if mode == "--all-targets-get-many-with-evidence":
+        if len(args) < 3:
+            print("Usage: read_config.py --all-targets-get-many-with-evidence <file> <key1> [key2 ...]", file=sys.stderr)
+            return 1
+        path = Path(args[1])
+        if not path.exists():
+            return 0
+        try:
+            read_all_targets_with_evidence(path, args[2:])
         except Exception as exc:
             print(f"ERROR: {exc}", file=sys.stderr)
             return 1

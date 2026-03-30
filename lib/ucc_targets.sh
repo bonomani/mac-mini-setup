@@ -30,6 +30,23 @@ ucc_eval_evidence_from_yaml() {
   )
 }
 
+# _ucc_ytgt_source <cfg_dir> <yaml> <target> <keys...>
+# Emits NUL-delimited scalar+evidence rows for <target>.
+# Uses pre-loaded _UCC_YTGT_<yaml_fn>_<target_fn> (base64 -d) when available,
+# falls back to python3 --target-get-many-with-evidence.
+_ucc_ytgt_source() {
+  local cfg_dir="$1" yaml="$2" target="$3"
+  shift 3
+  local yaml_fn="${yaml//[^a-zA-Z0-9]/_}"
+  local target_fn="${target//[^a-zA-Z0-9]/_}"
+  local cache_var="_UCC_YTGT_${yaml_fn}_${target_fn}"
+  if [[ -n "${!cache_var:-}" ]]; then
+    printf '%s' "${!cache_var}" | base64 -d
+  else
+    python3 "$cfg_dir/tools/read_config.py" --target-get-many-with-evidence "$yaml" "$target" "$@" 2>/dev/null || true
+  fi
+}
+
 _ucc_yaml_target_get() {
   local cfg_dir="$1" yaml="$2" target="$3" key="$4" default="${5:-}" val=""
   val="$(python3 "$cfg_dir/tools/read_config.py" --target-get "$yaml" "$target" "$key" 2>/dev/null || true)"
@@ -129,9 +146,22 @@ _ucc_observed_prefers_update_action() {
 
 _UCC_DISPLAY_NAME_CACHE_KEYS=()
 _UCC_DISPLAY_NAME_CACHE_VALUES=()
+_UCC_DISPLAY_NAME_CACHE_LOADED=0
+
+_ucc_display_name_load_cache() {
+  [[ $_UCC_DISPLAY_NAME_CACHE_LOADED -eq 1 ]] && return
+  _UCC_DISPLAY_NAME_CACHE_LOADED=1
+  [[ -z "${_UCC_ALL_DISPLAY_NAMES_CACHE:-}" ]] && return
+  while IFS=$'\t' read -r key value; do
+    [[ -n "$key" ]] || continue
+    _UCC_DISPLAY_NAME_CACHE_KEYS+=("$key")
+    _UCC_DISPLAY_NAME_CACHE_VALUES+=("$value")
+  done <<< "$_UCC_ALL_DISPLAY_NAMES_CACHE"
+}
 
 _ucc_display_name() {
   local target="$1" idx display_name="$1"
+  _ucc_display_name_load_cache
   for idx in "${!_UCC_DISPLAY_NAME_CACHE_KEYS[@]}"; do
     if [[ "${_UCC_DISPLAY_NAME_CACHE_KEYS[$idx]}" == "$target" ]]; then
       printf '%s' "${_UCC_DISPLAY_NAME_CACHE_VALUES[$idx]}"
@@ -304,9 +334,9 @@ ucc_yaml_simple_target() {
       observe_success)                   obs_success="$value" ;;
       observe_failure)                   obs_failure="$value" ;;
     esac
-  done < <(python3 "$cfg_dir/tools/read_config.py" --target-get-many-with-evidence "$yaml" "$target" \
+  done < <(_ucc_ytgt_source "$cfg_dir" "$yaml" "$target" \
       profile actions.install actions.update driver.externally_managed_updates \
-      type oracle.configured observe_cmd state_model observe_success observe_failure 2>/dev/null || true)
+      type oracle.configured observe_cmd state_model observe_success observe_failure)
   [[ -z "$update_cmd" ]] && update_cmd="$install_cmd"
 
   export "_UCC_OBS_CACHED_${fn}=1"
@@ -360,8 +390,7 @@ ucc_yaml_capability_target() {
     case "$key" in
       oracle.runtime) runtime_cmd="$value" ;;
     esac
-  done < <(python3 "$cfg_dir/tools/read_config.py" --target-get-many-with-evidence "$yaml" "$target" \
-      oracle.runtime 2>/dev/null || true)
+  done < <(_ucc_ytgt_source "$cfg_dir" "$yaml" "$target" oracle.runtime)
 
   export "_UCC_OBS_CACHED_${fn}=1"
   export "_UCC_OBS_EVIDENCE_${fn}=${_ev_b64}"
@@ -500,8 +529,8 @@ ucc_yaml_parametric_target() {
       dependency_gate)  obs_gate="$value" ;;
       observe_cmd)      obs_cmd="$value" ;;
     esac
-  done < <(python3 "$cfg_dir/tools/read_config.py" --target-get-many-with-evidence "$yaml" "$target" \
-      actions.install actions.update desired_cmd desired_value dependency_gate observe_cmd 2>/dev/null || true)
+  done < <(_ucc_ytgt_source "$cfg_dir" "$yaml" "$target" \
+      actions.install actions.update desired_cmd desired_value dependency_gate observe_cmd)
   [[ -z "$update_cmd" ]] && update_cmd="$install_cmd"
   if [[ -n "$desired_cmd" ]]; then
     desired="$(_ucc_eval_yaml_scalar_cmd "$cfg_dir" "$yaml" "$target" "$desired_cmd")"
@@ -742,11 +771,11 @@ ucc_yaml_runtime_target() {
       stopped_health)              obs_stopped_health="$value" ;;
       stopped_dependencies)        obs_stopped_deps="$value" ;;
     esac
-  done < <(python3 "$cfg_dir/tools/read_config.py" --target-get-many-with-evidence "$yaml" "$target" \
+  done < <(_ucc_ytgt_source "$cfg_dir" "$yaml" "$target" \
       actions.install actions.update oracle.configured oracle.runtime \
       driver.kind driver.service_name driver.package_ref driver.app_path \
       driver.greedy_auto_updates stopped_installation stopped_runtime \
-      stopped_health stopped_dependencies 2>/dev/null || true)
+      stopped_health stopped_dependencies)
   [[ -z "$update_cmd" ]] && update_cmd="$install_cmd"
 
   export "_UCC_OBS_CACHED_${fn}=1"

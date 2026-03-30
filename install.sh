@@ -303,9 +303,11 @@ done
 export _UCC_ALL_DEPS_CACHE
 export _UCC_ALL_SOFT_DEPS_CACHE
 export _UCC_ALL_ORDERED_CACHE
+export _UCC_ALL_DISPLAY_NAMES_CACHE
 _UCC_ALL_DEPS_CACHE=$(python3 "$_QUERY_SCRIPT" --all-deps "$_MANIFEST_DIR" 2>/dev/null || true)
 _UCC_ALL_SOFT_DEPS_CACHE=$(python3 "$_QUERY_SCRIPT" --all-soft-deps "$_MANIFEST_DIR" 2>/dev/null || true)
 _UCC_ALL_ORDERED_CACHE=$(python3 "$_QUERY_SCRIPT" --all-ordered-targets "$_MANIFEST_DIR" 2>/dev/null || true)
+_UCC_ALL_DISPLAY_NAMES_CACHE=$(python3 "$_QUERY_SCRIPT" --all-display-names "$_MANIFEST_DIR" 2>/dev/null || true)
 
 # --- Gates --------------------------------------------------
 load_uic_gates "$DIR"
@@ -506,6 +508,37 @@ for comp in "${TO_RUN[@]}"; do
   _DISP_ON_FAILS+=("$_on_fail")
   _DISP_CONFIGS+=("$_config")
 done
+
+# Pre-load per-target scalar+evidence cache for each component YAML file.
+# One python3 call per file; exports _UCC_YTGT_<yaml_fn>_<target_fn>=base64(NUL-rows).
+# Setup functions read from these vars (base64 -d) instead of spawning python3.
+_UCC_YAML_BATCH_KEYS="profile actions.install actions.update \
+  driver.externally_managed_updates type oracle.configured observe_cmd \
+  state_model observe_success observe_failure oracle.runtime \
+  desired_cmd desired_value dependency_gate driver.kind \
+  driver.service_name driver.package_ref driver.app_path \
+  driver.greedy_auto_updates stopped_installation stopped_runtime \
+  stopped_health stopped_dependencies"
+_seen_yaml_files=()
+for _i in "${!_DISP_COMPS[@]}"; do
+  _yaml_file="${_DISP_CONFIGS[$_i]}"
+  [[ -z "$_yaml_file" || "$_yaml_file" == "tic" ]] && continue
+  _already_seen=0
+  for _seen in "${_seen_yaml_files[@]}"; do
+    [[ "$_seen" == "$_yaml_file" ]] && { _already_seen=1; break; }
+  done
+  [[ $_already_seen -eq 1 ]] && continue
+  _seen_yaml_files+=("$_yaml_file")
+  _yaml_fn="${_yaml_file//[^a-zA-Z0-9]/_}"
+  # One python3 call per YAML file; outputs shell export statements read by eval
+  while IFS= read -r _export_stmt; do
+    [[ -n "$_export_stmt" ]] && eval "$_export_stmt"
+  done < <(python3 "$DIR/tools/read_config.py" \
+    --all-targets-get-many-with-evidence "$DIR/$_yaml_file" \
+    $(printf '%s\n' "$_UCC_YAML_BATCH_KEYS") 2>/dev/null \
+    | python3 "$DIR/tools/split_yaml_batch.py" "$_yaml_fn" 2>/dev/null)
+done
+unset _seen_yaml_files _already_seen _seen _yaml_file _yaml_fn _i _export_stmt
 
 _run_comp() {
   local comp="$1" _libs="$2" _runner="$3" _on_fail="$4" _config="$5"
