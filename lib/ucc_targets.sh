@@ -80,22 +80,9 @@ _ucc_yaml_target_driver_get() {
 
 _ucc_yaml_target_action_get() {
   local cfg_dir="$1" yaml="$2" target="$3" action="$4" val=""
-  local action_key="actions.$action"
-  local install_action=""
-  while IFS=$'\t' read -r -d '' row_key row_value; do
-    case "$row_key" in
-      "$action_key") val="$row_value" ;;
-      "actions.install") install_action="$row_value" ;;
-    esac
-  done < <(
-    if [[ "$action" == "update" ]]; then
-      _ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" "$action_key" actions.install
-    else
-      _ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" "$action_key"
-    fi
-  )
+  val="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "actions.$action")"
   if [[ -z "$val" && "$action" == "update" ]]; then
-    val="${install_action}"
+    val="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "actions.install")"
   fi
   printf '%s' "$val"
 }
@@ -107,20 +94,11 @@ _ucc_yaml_target_admin_required() {
   local cache_var="_UCC_YTGT_${yaml_fn}_${target_fn}"
   if [[ -n "${!cache_var:-}" ]]; then
     val=$(printf '%s' "${!cache_var}" | base64 -d \
-      | awk 'BEGIN{RS="\0"} /^admin_required\t/{sub(/^admin_required\t/,""); print; exit}')
+      | awk -v k="admin_required" -F'\t' 'BEGIN{RS="\0"} $1==k{print $2; exit}')
   else
     val="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "admin_required")"
   fi
   [[ "$val" == "true" || "$val" == "1" || "$val" == "yes" ]]
-}
-
-_ucc_eval_scalar_cmd() {
-  local cmd="$1" output trimmed
-  output="$(eval "$cmd" 2>/dev/null || true)"
-  output="${output%%$'\n'*}"
-  trimmed="${output#"${output%%[![:space:]]*}"}"
-  trimmed="${trimmed%"${trimmed##*[![:space:]]}"}"
-  printf '%s' "$trimmed"
 }
 
 _ucc_eval_yaml_expr() {
@@ -1105,7 +1083,6 @@ _ucc_execute_target() {
       --update)  update_fn="$2";  shift 2 ;;
       --axes)    axes="$2";       shift 2 ;;
       --evidence) evidence_fn="$2"; shift 2 ;;
-      --kind)    profile="$2";    shift 2 ;;
       --profile) profile="$2";    shift 2 ;;
       --warn-on-update-failure) warn_on_update_failure=1; shift ;;
       *) shift ;;
@@ -1347,7 +1324,7 @@ _ucc_target_with_default_profile() {
   local has_profile=0 args=()
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      --kind|--profile) has_profile=1; args+=("$1" "$2"); shift 2 ;;
+      --profile) has_profile=1; args+=("$1" "$2"); shift 2 ;;
       *) args+=("$1"); shift ;;
     esac
   done
