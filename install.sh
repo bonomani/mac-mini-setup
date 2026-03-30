@@ -524,7 +524,7 @@ for _i in "${!_DISP_COMPS[@]}"; do
   _yaml_file="${_DISP_CONFIGS[$_i]}"
   [[ -z "$_yaml_file" || "$_yaml_file" == "tic" ]] && continue
   _already_seen=0
-  for _seen in "${_seen_yaml_files[@]}"; do
+  for _seen in "${_seen_yaml_files[@]+"${_seen_yaml_files[@]}"}"; do
     [[ "$_seen" == "$_yaml_file" ]] && { _already_seen=1; break; }
   done
   [[ $_already_seen -eq 1 ]] && continue
