@@ -322,7 +322,7 @@ _ucc_run_yaml_action() {
 
 ucc_yaml_simple_target() {
   local cfg_dir="$1" yaml="$2" target="$3"
-  local fn profile install_cmd update_cmd externally_managed_updates
+  local fn profile install_cmd update_cmd externally_managed_updates driver_kind
   local obs_type="" obs_oracle="" obs_cmd="" obs_model="" obs_success="" obs_failure=""
   local _ev_b64=""
   fn="${target//[^a-zA-Z0-9]/_}"
@@ -330,6 +330,7 @@ ucc_yaml_simple_target() {
   install_cmd=""
   update_cmd=""
   externally_managed_updates=""
+  driver_kind=""
   while IFS=$'\t' read -r -d '' key value; do
     if [[ "$key" == "__evidence__" ]]; then _ev_b64="$value"; continue; fi
     case "$key" in
@@ -337,6 +338,7 @@ ucc_yaml_simple_target() {
       actions.install)                   install_cmd="$value" ;;
       actions.update)                    update_cmd="$value" ;;
       driver.externally_managed_updates) externally_managed_updates="$value" ;;
+      driver.kind)                       driver_kind="$value" ;;
       type)                              obs_type="$value" ;;
       oracle.configured)                 obs_oracle="$value" ;;
       observe_cmd)                       obs_cmd="$value" ;;
@@ -345,9 +347,12 @@ ucc_yaml_simple_target() {
       observe_failure)                   obs_failure="$value" ;;
     esac
   done < <(_ucc_ytgt_source "$cfg_dir" "$yaml" "$target" \
-      profile actions.install actions.update driver.externally_managed_updates \
+      profile actions.install actions.update driver.externally_managed_updates driver.kind \
       type oracle.configured observe_cmd state_model observe_success observe_failure)
   [[ -z "$update_cmd" ]] && update_cmd="$install_cmd"
+  # A dispatched driver handles install/update even when actions.* are absent from YAML
+  local driver_dispatched=0
+  [[ -n "$driver_kind" && "$driver_kind" != "custom" ]] && driver_dispatched=1
 
   export "_UCC_OBS_CACHED_${fn}=1"
   export "_UCC_OBS_TYPE_${fn}=${obs_type}"
@@ -360,14 +365,14 @@ ucc_yaml_simple_target() {
 
   eval "_uyst_obs_${fn}() { _ucc_observe_yaml_simple_target '${cfg_dir}' '${yaml}' '${target}'; }"
   eval "_uyst_evd_${fn}() { ucc_eval_evidence_from_yaml '${cfg_dir}' '${yaml}' '${target}'; }"
-  if [[ -n "$install_cmd" ]]; then
+  if [[ -n "$install_cmd" || "$driver_dispatched" == "1" ]]; then
     eval "_uyst_ins_${fn}() { _ucc_run_yaml_action '${cfg_dir}' '${yaml}' '${target}' install; }"
     eval "_uyst_upd_${fn}() { _ucc_run_yaml_action '${cfg_dir}' '${yaml}' '${target}' update; }"
   fi
 
   local args=(--name "$target" --profile "$profile" --observe "_uyst_obs_${fn}" --evidence "_uyst_evd_${fn}")
-  [[ -n "$install_cmd" ]] && args+=(--install "_uyst_ins_${fn}")
-  [[ -n "$install_cmd" ]] && args+=(--update "_uyst_upd_${fn}")
+  [[ -n "$install_cmd" || "$driver_dispatched" == "1" ]] && args+=(--install "_uyst_ins_${fn}")
+  [[ -n "$install_cmd" || "$driver_dispatched" == "1" ]] && args+=(--update "_uyst_upd_${fn}")
   [[ "$externally_managed_updates" == "true" || "$externally_managed_updates" == "1" || "$externally_managed_updates" == "yes" ]] && \
     args+=(--warn-on-update-failure)
   ucc_target "${args[@]}"
