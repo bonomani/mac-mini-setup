@@ -221,10 +221,6 @@ _ucc_observe_yaml_simple_target() {
   local fn="${target//[^a-zA-Z0-9]/_}"
   local _cached_var="_UCC_OBS_CACHED_${fn}"
 
-  if _ucc_driver_observe "$cfg_dir" "$yaml" "$target"; then
-    return
-  fi
-
   if [[ -n "${!_cached_var:-}" ]]; then
     local _v
     _v="_UCC_OBS_TYPE_${fn}";    target_type="${!_v}"
@@ -247,6 +243,16 @@ _ucc_observe_yaml_simple_target() {
   fi
   [[ -n "$target_type" ]] || target_type="config"
   [[ -n "$state_model" ]] || state_model="$target_type"
+
+  local driver_raw
+  if driver_raw="$(_ucc_driver_observe "$cfg_dir" "$yaml" "$target")"; then
+    [[ -n "$driver_raw" ]] || driver_raw="absent"
+    case "$state_model" in
+      package) ucc_asm_package_state "$driver_raw" ;;
+      *)       ucc_asm_config_state  "$driver_raw" ;;
+    esac
+    return
+  fi
 
   if [[ -n "$observe_cmd" ]]; then
     raw_state="$(_ucc_eval_yaml_scalar_cmd "$cfg_dir" "$yaml" "$target" "$observe_cmd")"
