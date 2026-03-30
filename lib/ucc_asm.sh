@@ -34,10 +34,11 @@ _ucc_json_equal() {
 
 _ucc_display_state() {
   local axes="${2:-}"
-  if _ucc_is_json_obj "$1"; then
-    printf '%s\n%s' "$1" "$axes" | jq -Rse '
-      split("\n") |
-      (.[0] | fromjson) as $s |
+  printf '%s\n%s' "$1" "$axes" | jq -Rse '
+    split("\n") |
+    (.[0] | try fromjson catch null) as $s |
+    if ($s | type) != "object" then .[0]
+    else
       (if .[1] != "" then .[1] | split(",") | map(select(length>0))
        else ["installation_state","runtime_state","health_state","admin_state","dependency_state","config_value"]
          | map(select($s[.] != null and $s[.] != ""))
@@ -45,10 +46,8 @@ _ucc_display_state() {
       if ($keys | length) == 0 then ($s | tojson)
       else $keys | map("\(.)=\($s[.])") | join(" ")
       end
-    ' -r 2>/dev/null
-  else
-    printf '%s' "$1"
-  fi
+    end
+  ' -r 2>/dev/null || printf '%s' "$1"
 }
 
 if ! command -v jq >/dev/null 2>&1; then
@@ -79,10 +78,16 @@ PY
   }
   _ucc_display_state() {
     local axes="${2:-}"
-    if _ucc_is_json_obj "$1"; then
-      python3 - "$1" "$axes" <<'PY' 2>/dev/null
+    python3 - "$1" "$axes" <<'PY' 2>/dev/null || printf '%s' "$1"
 import json, sys
-state = json.loads(sys.argv[1])
+try:
+    state = json.loads(sys.argv[1])
+    if not isinstance(state, dict):
+        print(sys.argv[1], end="")
+        sys.exit(0)
+except Exception:
+    print(sys.argv[1], end="")
+    sys.exit(0)
 axes = [a for a in sys.argv[2].split(",") if a] if len(sys.argv) > 2 and sys.argv[2] else []
 fields = []
 keys = axes or [k for k in ("installation_state", "runtime_state", "health_state", "admin_state", "dependency_state", "config_value") if k in state]
@@ -90,11 +95,8 @@ for key in keys:
     value = state.get(key)
     if value:
         fields.append(f"{key}={value}")
-print(" ".join(fields) if fields else json.dumps(state, separators=(",", ":")))
+print(" ".join(fields) if fields else json.dumps(state, separators=(",", ":")), end="")
 PY
-    else
-      printf '%s' "$1"
-    fi
   }
 fi
 
