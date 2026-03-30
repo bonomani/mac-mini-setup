@@ -81,25 +81,9 @@ targets:
     - homebrew
     provided_by_tool: brew
     driver:
-      kind: custom
-    observe_cmd: "ver=\"$(node --version 2>/dev/null)\"\nif [[ \"$ver\" != v${node_version}.*\
-      \ ]]; then\n  printf 'absent'\nelif [[ \"${UIC_PREF_PACKAGE_UPDATE_POLICY:-always-upgrade}\"\
-      \ == \"always-upgrade\" ]] && _brew_is_outdated \"node@${node_version}\"; then\n\
-      \  printf 'outdated'\nelse\n  printf '%s' \"${ver#v}\"\nfi\n"
-    evidence:
-      version: node --version 2>/dev/null | sed 's/^v//'
-      path: command -v node 2>/dev/null || true
-    actions:
-      install: 'brew unlink "node@${node_previous_version}" 2>/dev/null || true
-
-        ucc_run brew install "node@${node_version}" && ucc_run brew link --overwrite
-        --force "node@${node_version}"
-
-        '
-      update: 'ucc_run brew upgrade "node@${node_version}" && ucc_run brew link --overwrite
-        --force "node@${node_version}"
-
-        '
+      kind: brew-formula-pinned
+      ref: node@${node_version}
+      previous_ref: node@${node_previous_version}
   oh-my-zsh:
     component: dev-tools
     profile: configured

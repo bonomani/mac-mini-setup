@@ -66,6 +66,46 @@ _ucc_driver_brew_cask_evidence() {
   [[ -n "$ver" ]] && printf 'version=%s' "$ver"
 }
 
+# ── brew-formula-pinned ───────────────────────────────────────────────────────
+# driver.ref:          <formula@version>  (e.g. node@24)
+# driver.previous_ref: <formula@version>  (optional, unlinked before install)
+
+_ucc_driver_brew_formula_pinned_observe() {
+  local cfg_dir="$1" yaml="$2" target="$3"
+  local ref
+  ref="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.ref")"
+  [[ -n "$ref" ]] || return 1
+  brew_observe "$ref"
+}
+
+_ucc_driver_brew_formula_pinned_action() {
+  local cfg_dir="$1" yaml="$2" target="$3" action="$4"
+  local ref previous_ref
+  ref="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.ref")"
+  previous_ref="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.previous_ref")"
+  [[ -n "$ref" ]] || return 1
+  case "$action" in
+    install)
+      [[ -n "$previous_ref" ]] && brew unlink "$previous_ref" 2>/dev/null || true
+      brew_install "$ref"
+      ucc_run brew link --overwrite --force "$ref"
+      ;;
+    update)
+      brew_upgrade "$ref"
+      ucc_run brew link --overwrite --force "$ref"
+      ;;
+  esac
+}
+
+_ucc_driver_brew_formula_pinned_evidence() {
+  local cfg_dir="$1" yaml="$2" target="$3"
+  local ref ver
+  ref="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.ref")"
+  [[ -n "$ref" ]] || return 1
+  ver="$(_brew_cached_version "$ref")"
+  [[ -n "$ver" ]] && printf 'version=%s' "$ver"
+}
+
 # ── brew-analytics ────────────────────────────────────────────────────────────
 # No driver fields required; desired value comes from target's desired_value.
 

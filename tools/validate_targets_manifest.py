@@ -30,6 +30,7 @@ KNOWN_PACKAGE_DRIVERS = {
     "pyenv-version",
     "ollama-model",
     "app-bundle",
+    "brew-formula-pinned",
 }
 KNOWN_RUNTIME_DRIVERS = {
     "brew-service",

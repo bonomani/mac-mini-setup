@@ -29,10 +29,10 @@ evidence: version → python3 --version | awk '{print $2}'
           path    → pyenv which python3
 ```
 
-- [ ] Implement `lib/drivers/pyenv.sh`
-- [ ] Add `driver.version` to `_UCC_YAML_BATCH_KEYS` in `install.sh`
-- [ ] Update `python.yaml`: add `driver.version`, remove `observe_cmd`/`actions`/`evidence`
-- [ ] Verify: bash -n; validator clean
+- [x] Implement `lib/drivers/pyenv.sh`
+- [x] Add `driver.version` to `_UCC_YAML_BATCH_KEYS` in `install.sh`
+- [x] Update `python.yaml`: add `driver.version`, remove `observe_cmd`/`actions`/`evidence`
+- [x] Verify: bash -n; validator clean
 
 ## Step 2 — `brew-formula-pinned` driver  (1 target: node-lts)
 
@@ -49,15 +49,15 @@ evidence: version → node --version | sed 's/^v//'
           path    → command -v node
 ```
 
-- [ ] Implement `brew-formula-pinned` section in `lib/drivers/brew.sh`
-- [ ] Add `driver.previous_ref` to `_UCC_YAML_BATCH_KEYS` in `install.sh`
-- [ ] Update `dev-tools.yaml`: add `driver.ref`/`driver.previous_ref`, remove embedded code
-- [ ] Verify: bash -n; validator clean; add `brew-formula-pinned` to `KNOWN_PACKAGE_DRIVERS`
+- [x] Implement `brew-formula-pinned` section in `lib/drivers/brew.sh`
+- [x] Add `driver.previous_ref` to `_UCC_YAML_BATCH_KEYS` in `install.sh`
+- [x] Update `dev-tools.yaml`: add `driver.ref`/`driver.previous_ref`, remove embedded code
+- [x] Verify: bash -n; validator clean; add `brew-formula-pinned` to `KNOWN_PACKAGE_DRIVERS`
 
 ## Step 3 — Commit Phase 2
-- [ ] git add + commit all Phase 2 changes
-- [ ] git push
-- [ ] Update `DRIVER_ARCHITECTURE.md` justified custom table
+- [x] git add + commit all Phase 2 changes
+- [x] git push
+- [x] Update `DRIVER_ARCHITECTURE.md` justified custom table
 
 ---
 

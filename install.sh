@@ -545,7 +545,8 @@ _UCC_YAML_BATCH_KEYS="profile actions.install actions.update \
   driver.min_version driver.extension_id driver.package \
   driver.domain driver.key driver.value driver.type driver.setting \
   driver.settings_relpath driver.patch_relpath \
-  driver.update_api driver.download_url_tpl driver.package_ext driver.brew_cask"
+  driver.update_api driver.download_url_tpl driver.package_ext driver.brew_cask \
+  driver.version driver.previous_ref"
 _seen_yaml_files=()
 for _i in "${!_DISP_COMPS[@]}"; do
   _yaml_file="${_DISP_CONFIGS[$_i]}"

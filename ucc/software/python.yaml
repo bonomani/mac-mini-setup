@@ -66,31 +66,8 @@ targets:
     - xz
     provided_by_tool: pyenv
     driver:
-      kind: custom
-    observe_cmd: 'version="${UIC_PREF_PYTHON_VERSION:-${python_version}}"
-
-      pyenv versions 2>/dev/null | grep -q "$version" && printf ''%s'' "$version"
-      || printf ''absent''
-
-      '
-    evidence:
-      version: python3 --version 2>/dev/null | awk '{print $2}'
-      path: pyenv which python3 2>/dev/null || command -v python3 2>/dev/null || true
-    actions:
-      install: 'version="${UIC_PREF_PYTHON_VERSION:-${python_version}}"
-
-        pyenv install "$version"
-
-        pyenv global "$version"
-
-        '
-      update: 'version="${UIC_PREF_PYTHON_VERSION:-${python_version}}"
-
-        pyenv install --skip-existing "$version"
-
-        pyenv global "$version"
-
-        '
+      kind: pyenv-version
+      version: ${python_version}
   pip-latest:
     component: python
     profile: configured
