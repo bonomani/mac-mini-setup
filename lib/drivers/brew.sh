@@ -86,7 +86,7 @@ _ucc_driver_brew_formula_pinned_action() {
   [[ -n "$ref" ]] || return 1
   case "$action" in
     install)
-      [[ -n "$previous_ref" ]] && brew unlink "$previous_ref" 2>/dev/null || true
+      [[ -n "$previous_ref" ]] && { brew unlink "$previous_ref" 2>/dev/null || true; }
       brew_install "$ref"
       ucc_run brew link --overwrite --force "$ref"
       ;;
@@ -111,7 +111,9 @@ _ucc_driver_brew_formula_pinned_evidence() {
 
 _ucc_driver_brew_analytics_observe() {
   local cfg_dir="$1" yaml="$2" target="$3"
-  brew analytics state 2>/dev/null | grep -qi disabled && echo off || echo on
+  local state
+  state="$(brew analytics state 2>/dev/null)" || return 1
+  printf '%s' "$(echo "$state" | grep -qi disabled && echo off || echo on)"
 }
 
 _ucc_driver_brew_analytics_action() {
@@ -126,7 +128,9 @@ _ucc_driver_brew_analytics_action() {
 
 _ucc_driver_brew_analytics_evidence() {
   local cfg_dir="$1" yaml="$2" target="$3"
+  local state_output
+  state_output="$(brew analytics state 2>/dev/null)" || return 1
   local state
-  state="$(brew analytics state 2>/dev/null | grep -qi disabled && printf off || printf on)"
+  state="$(echo "$state_output" | grep -qi disabled && printf off || printf on)"
   printf 'analytics=%s' "$state"
 }

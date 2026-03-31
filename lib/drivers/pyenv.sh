@@ -9,7 +9,6 @@ _ucc_driver_pyenv_version_observe() {
   driver_ver="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.version")"
   [[ -n "$driver_ver" ]] || return 1
   ver="${UIC_PREF_PYTHON_VERSION:-$driver_ver}"
-  log_debug "pyenv-version[$target] observe: ver='$ver'"
   if pyenv versions 2>/dev/null | grep -q "$ver"; then
     printf '%s' "$ver"
   else
@@ -23,7 +22,6 @@ _ucc_driver_pyenv_version_action() {
   driver_ver="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.version")"
   [[ -n "$driver_ver" ]] || return 1
   ver="${UIC_PREF_PYTHON_VERSION:-$driver_ver}"
-  log_debug "pyenv-version[$target] action=$action: ver='$ver'"
   case "$action" in
     install) ucc_run pyenv install "$ver" && ucc_run pyenv global "$ver" ;;
     update)  ucc_run pyenv install --skip-existing "$ver" && ucc_run pyenv global "$ver" ;;
