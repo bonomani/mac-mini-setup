@@ -1,108 +1,67 @@
 #!/usr/bin/env bash
-# lib/drivers/brew.sh — driver.kind: brew-formula, brew-cask
+# lib/drivers/brew.sh — driver.kind: brew, brew-analytics
 
-# ── brew-formula ──────────────────────────────────────────────────────────────
-# driver.ref: <formula-name>
+# ── brew ──────────────────────────────────────────────────────────────────────
+# driver.ref:               <formula-name> or <cask-name>  (e.g. git, node@24)
+# driver.cask:              true|false  (optional, default false)
+# driver.greedy_auto_updates: true|false  (optional, cask only, default false)
+# driver.previous_ref:      <formula@version>  (optional, unlinked before
+#                           install; also forces link --overwrite after
+#                           install/update)
 
-_ucc_driver_brew_formula_observe() {
+_ucc_driver_brew_observe() {
   local cfg_dir="$1" yaml="$2" target="$3"
-  local ref
+  local ref cask greedy
   ref="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.ref")"
   [[ -n "$ref" ]] || return 1
-  brew_observe "$ref"
+  cask="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.cask")"
+  if [[ "$cask" == "true" ]]; then
+    greedy="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.greedy_auto_updates")"
+    brew_cask_observe "$ref" "$greedy"
+  else
+    brew_observe "$ref"
+  fi
 }
 
-_ucc_driver_brew_formula_action() {
+_ucc_driver_brew_action() {
   local cfg_dir="$1" yaml="$2" target="$3" action="$4"
-  local ref
+  local ref cask greedy previous_ref
   ref="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.ref")"
   [[ -n "$ref" ]] || return 1
-  case "$action" in
-    install) brew_install "$ref" ;;
-    update)  brew_upgrade "$ref" ;;
-  esac
+  cask="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.cask")"
+  if [[ "$cask" == "true" ]]; then
+    greedy="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.greedy_auto_updates")"
+    case "$action" in
+      install) brew_cask_install "$ref" ;;
+      update)  brew_cask_upgrade "$ref" "$greedy" ;;
+    esac
+  else
+    previous_ref="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.previous_ref")"
+    case "$action" in
+      install)
+        [[ -n "$previous_ref" ]] && { brew unlink "$previous_ref" 2>/dev/null || true; }
+        brew_install "$ref"
+        [[ -n "$previous_ref" ]] && ucc_run brew link --overwrite --force "$ref"
+        ;;
+      update)
+        brew_upgrade "$ref"
+        [[ -n "$previous_ref" ]] && ucc_run brew link --overwrite --force "$ref"
+        ;;
+    esac
+  fi
 }
 
-_ucc_driver_brew_formula_evidence() {
+_ucc_driver_brew_evidence() {
   local cfg_dir="$1" yaml="$2" target="$3"
-  local ref ver
+  local ref cask ver
   ref="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.ref")"
   [[ -n "$ref" ]] || return 1
-  ver="$(_brew_cached_version "$ref")"
-  [[ -n "$ver" ]] && printf 'version=%s' "$ver"
-}
-
-# ── brew-cask ─────────────────────────────────────────────────────────────────
-# driver.ref:                <cask-name>
-# driver.greedy_auto_updates: true|false  (optional, default false)
-
-_ucc_driver_brew_cask_observe() {
-  local cfg_dir="$1" yaml="$2" target="$3"
-  local ref greedy
-  ref="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.ref")"
-  [[ -n "$ref" ]] || return 1
-  greedy="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.greedy_auto_updates")"
-  brew_cask_observe "$ref" "$greedy"
-}
-
-_ucc_driver_brew_cask_action() {
-  local cfg_dir="$1" yaml="$2" target="$3" action="$4"
-  local ref greedy
-  ref="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.ref")"
-  [[ -n "$ref" ]] || return 1
-  greedy="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.greedy_auto_updates")"
-  case "$action" in
-    install) brew_cask_install "$ref" ;;
-    update)  brew_cask_upgrade "$ref" "$greedy" ;;
-  esac
-}
-
-_ucc_driver_brew_cask_evidence() {
-  local cfg_dir="$1" yaml="$2" target="$3"
-  local ref ver
-  ref="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.ref")"
-  [[ -n "$ref" ]] || return 1
-  ver="$(_brew_cask_cached_version "$ref")"
-  [[ -n "$ver" ]] && printf 'version=%s' "$ver"
-}
-
-# ── brew-formula-pinned ───────────────────────────────────────────────────────
-# driver.ref:          <formula@version>  (e.g. node@24)
-# driver.previous_ref: <formula@version>  (optional, unlinked before install)
-
-_ucc_driver_brew_formula_pinned_observe() {
-  local cfg_dir="$1" yaml="$2" target="$3"
-  local ref
-  ref="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.ref")"
-  [[ -n "$ref" ]] || return 1
-  brew_observe "$ref"
-}
-
-_ucc_driver_brew_formula_pinned_action() {
-  local cfg_dir="$1" yaml="$2" target="$3" action="$4"
-  local ref previous_ref
-  ref="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.ref")"
-  previous_ref="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.previous_ref")"
-  [[ -n "$ref" ]] || return 1
-  case "$action" in
-    install)
-      [[ -n "$previous_ref" ]] && { brew unlink "$previous_ref" 2>/dev/null || true; }
-      brew_install "$ref"
-      ucc_run brew link --overwrite --force "$ref"
-      ;;
-    update)
-      brew_upgrade "$ref"
-      ucc_run brew link --overwrite --force "$ref"
-      ;;
-  esac
-}
-
-_ucc_driver_brew_formula_pinned_evidence() {
-  local cfg_dir="$1" yaml="$2" target="$3"
-  local ref ver
-  ref="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.ref")"
-  [[ -n "$ref" ]] || return 1
-  ver="$(_brew_cached_version "$ref")"
+  cask="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.cask")"
+  if [[ "$cask" == "true" ]]; then
+    ver="$(_brew_cask_cached_version "$ref")"
+  else
+    ver="$(_brew_cached_version "$ref")"
+  fi
   [[ -n "$ver" ]] && printf 'version=%s' "$ver"
 }
 

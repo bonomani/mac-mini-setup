@@ -75,25 +75,23 @@ declare -f "$fn" >/dev/null 2>&1 || return 1
 "$fn" "$cfg_dir" "$yaml" "$target"
 ```
 
-**P3 — Uniform driver interface** — FULLY APPLIED. All 15 drivers implement observe/action/evidence:
+**P3 — Uniform driver interface** — FULLY APPLIED. All 13 drivers implement observe/action/evidence:
 
-| Driver                  | observe | action | evidence | Notes                                      |
-| ----------------------- | :-----: | :----: | :------: | ------------------------------------------ |
-| brew-formula            |    ✅   |   ✅   |    ✅    |                                            |
-| brew-cask               |    ✅   |   ✅   |    ✅    |                                            |
-| brew-analytics          |    ✅   |   ✅   |    ✅    |                                            |
-| brew-formula-pinned     |    ✅   |   ✅   |    ✅    | unlinks previous ref before install/update |
-| app-bundle              |    ✅   |   ✅   |    ✅    | delegates to brew-cask when cask installed |
-| pyenv-version           |    ✅   |   ✅   |    ✅    | respects UIC_PREF_PYTHON_VERSION override  |
-| vscode-marketplace      |    ✅   |   ✅   |    ✅    |                                            |
-| json-merge              |    ✅   |   ✅   |    ✅    |                                            |
-| ollama-model            |    ✅   |   ✅   |    ✅    |                                            |
-| npm-global              |    ✅   |   ✅   |    ✅    |                                            |
-| pip                     |    ✅   |   ✅   |    ✅    |                                            |
-| user-defaults           |    ✅   |   ✅   |    ✅    |                                            |
-| pmset                   |    ✅   |   ✅   |    ✅    |                                            |
-| softwareupdate-defaults |    ✅   |   ✅   |    ✅    |                                            |
-| docker-settings         |    ✅   |   ✅   |    ✅    | evidence uses inline heredoc Python        |
+| Driver                  | observe | action | evidence | Notes                                             |
+| ----------------------- | :-----: | :----: | :------: | ------------------------------------------------- |
+| brew                    |    ✅   |   ✅   |    ✅    | cask=true for casks; previous_ref → force-link    |
+| brew-analytics          |    ✅   |   ✅   |    ✅    |                                                   |
+| app-bundle              |    ✅   |   ✅   |    ✅    | delegates to brew-cask when cask installed        |
+| pyenv-version           |    ✅   |   ✅   |    ✅    | respects UIC_PREF_PYTHON_VERSION override         |
+| vscode-marketplace      |    ✅   |   ✅   |    ✅    |                                                   |
+| json-merge              |    ✅   |   ✅   |    ✅    |                                                   |
+| ollama-model            |    ✅   |   ✅   |    ✅    |                                                   |
+| npm-global              |    ✅   |   ✅   |    ✅    |                                                   |
+| pip                     |    ✅   |   ✅   |    ✅    |                                                   |
+| user-defaults           |    ✅   |   ✅   |    ✅    |                                                   |
+| pmset                   |    ✅   |   ✅   |    ✅    |                                                   |
+| softwareupdate-defaults |    ✅   |   ✅   |    ✅    |                                                   |
+| docker-settings         |    ✅   |   ✅   |    ✅    | evidence uses inline heredoc Python               |
 
 **P4 — Explicit escape hatch** — FULLY APPLIED.
 Every target retaining embedded code carries `driver.kind: custom`. No silent fall-throughs.
@@ -105,7 +103,7 @@ Both dispatch sites wrap driver output before returning:
 No driver emits JSON directly.
 
 **P6 — Empty-field guards** — FULLY APPLIED for all implemented drivers:
-`brew-formula/cask/pinned/ollama-model`: `[[ -n "$ref" ]] || return 1`;
+`brew/ollama-model`: `[[ -n "$ref" ]] || return 1`;
 `npm-global`: `[[ -n "$pkg" ]] || return 1`;
 `json-merge`: `[[ -n "$rel_settings" && -n "$rel_patch" ]] || return 1`;
 `user-defaults/softwareupdate-defaults`: `[[ -n "$domain" && -n "$key" ]] || return 1`;
@@ -118,7 +116,7 @@ All `driver.*` fields appear in `_UCC_YAML_BATCH_KEYS` (install.sh):
 `driver.ref`, `driver.probe_pkg`, `driver.install_packages`, `driver.min_version`,
 `driver.extension_id`, `driver.package`, `driver.domain`, `driver.key`, `driver.value`,
 `driver.type`, `driver.setting`, `driver.settings_relpath`, `driver.patch_relpath`,
-`driver.kind`, `driver.greedy_auto_updates`, `driver.app_path`, `driver.brew_cask`,
+`driver.kind`, `driver.cask`, `driver.greedy_auto_updates`, `driver.app_path`, `driver.brew_cask`,
 `driver.update_api`, `driver.download_url_tpl`, `driver.package_ext`,
 `driver.version`, `driver.previous_ref`.
 

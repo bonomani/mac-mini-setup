@@ -21,8 +21,7 @@ KNOWN_PLATFORMS = {"macos", "linux", "wsl", "wsl1", "wsl2"}
 KNOWN_PACKAGE_DRIVERS = {
     "brew-bootstrap",
     "custom",
-    "brew-formula",
-    "brew-cask",
+    "brew",
     "macos-clt",
     "vscode-marketplace",
     "npm-global",
@@ -30,7 +29,6 @@ KNOWN_PACKAGE_DRIVERS = {
     "pyenv-version",
     "ollama-model",
     "app-bundle",
-    "brew-formula-pinned",
 }
 KNOWN_RUNTIME_DRIVERS = {
     "brew-service",

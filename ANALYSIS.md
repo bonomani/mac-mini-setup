@@ -31,7 +31,7 @@ This is an AI Workstation Setup Framework for macOS with comprehensive governanc
 
 ### 1. UCC (Universal Convergence Contract) - v370c1f7
 - **28 targets** across software + system layers
-- **13 driver kinds** for package/config/runtime management
+- **15 driver kinds** across three classes: install, config, runtime
 - Topological ordering via dependency graph
 - Three-field result model: observation + outcome + completion
 
@@ -71,18 +71,46 @@ This is an AI Workstation Setup Framework for macOS with comprehensive governanc
 | docker-settings-file | docker-config | readiness | soft |
 
 ## Driver Architecture
-| Driver | observe | action | evidence |
-|--------|---------|--------|----------|
-| brew-formula | ✅ | ✅ | ✅ |
-| brew-cask | ✅ | ✅ | ✅ |
-| app-bundle | ✅ | ✅ | ✅ |
-| vscode-marketplace | ✅ | ✅ | ✅ |
-| ollama-model | ✅ | ✅ | ✅ |
-| npm-global | ✅ | ✅ | ✅ |
-| pip | ✅ | ✅ | ✅ |
-| user-defaults | ✅ | ✅ | ✅ |
-| pmset | ✅ | ✅ | ✅ |
-| docker-settings | ✅ | ✅ | ✅ |
+
+All 15 drivers are fully compliant (observe/action/evidence) and governed by 8 architecture
+principles documented in `DRIVER_ARCHITECTURE.md`. Drivers are separated into three classes
+mapped to target `type:`:
+
+**Install drivers** (`type: package`) — observe version/presence, install, update
+
+| Driver | target type | observe | action | evidence | Notes |
+|---|---|:---:|:---:|:---:|---|
+| brew | package | ✅ | ✅ | ✅ | cask=true for casks; previous_ref → force-link |
+| app-bundle | package | ✅ | ✅ | ✅ | delegates to brew-cask when cask installed; API-based outdated detection |
+| vscode-marketplace | package | ✅ | ✅ | ✅ | |
+| ollama-model | package | ✅ | ✅ | ✅ | |
+| npm-global | package | ✅ | ✅ | ✅ | |
+| pip | package | ✅ | ✅ | ✅ | min_version constraint support |
+| pyenv-version | package | ✅ | ✅ | ✅ | respects UIC_PREF_PYTHON_VERSION override |
+
+**Config drivers** (`type: config`, `type: bool`) — observe configured/absent, apply settings
+
+| Driver | target type | observe | action | evidence | Notes |
+|---|---|:---:|:---:|:---:|---|
+| json-merge | config | ✅ | ✅ | ✅ | Python-based JSON patch |
+| user-defaults | config/bool | ✅ | ✅ | ✅ | macOS defaults write |
+| pmset | config | ✅ | ✅ | ✅ | power management |
+| softwareupdate-defaults | config/bool | ✅ | ✅ | ✅ | macOS software update flags |
+| brew-analytics | config | ✅ | ✅ | ✅ | |
+| docker-settings | config | ✅ | ✅ | ✅ | |
+
+**Runtime drivers** (`type: runtime`) — observe running/stopped, start/stop service
+
+| Driver | target type | observe | action | evidence | Notes |
+|---|---|:---:|:---:|:---:|---|
+| brew-service | runtime | custom | custom | custom | managed via brew services |
+| launchd | runtime | custom | custom | custom | macOS launchd daemon |
+| custom-daemon | runtime | custom | custom | custom | ollama daemon |
+| compose-file | runtime | custom | custom | custom | docker-compose stack |
+
+> **Planned**: Formalize the 3-class separation with dedicated dispatch verbs (`apply` for
+> config, `start`/`stop`/`restart` for runtime) and validator enforcement of class–type
+> alignment. See todo list.
 
 ## Compliant Targets
 | Component | Manifest | Description |

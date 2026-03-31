@@ -53,7 +53,7 @@ targets:
     - homebrew
     provided_by_tool: brew
     driver:
-      kind: brew-formula
+      kind: brew
       ref: xz
   python:
     component: python

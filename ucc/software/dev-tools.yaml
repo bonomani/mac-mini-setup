@@ -81,7 +81,7 @@ targets:
     - homebrew
     provided_by_tool: brew
     driver:
-      kind: brew-formula-pinned
+      kind: brew
       ref: node@${node_version}
       previous_ref: node@${node_previous_version}
   oh-my-zsh:
@@ -234,7 +234,7 @@ targets:
     - homebrew
     provided_by_tool: brew
     driver:
-      kind: brew-formula
+      kind: brew
       ref: jq
   cli-wget:
     component: dev-tools
@@ -246,7 +246,7 @@ targets:
     - homebrew
     provided_by_tool: brew
     driver:
-      kind: brew-formula
+      kind: brew
       ref: wget
   cli-curl:
     component: dev-tools
@@ -258,7 +258,7 @@ targets:
     - homebrew
     provided_by_tool: brew
     driver:
-      kind: brew-formula
+      kind: brew
       ref: curl
   cli-htop:
     component: dev-tools
@@ -270,7 +270,7 @@ targets:
     - homebrew
     provided_by_tool: brew
     driver:
-      kind: brew-formula
+      kind: brew
       ref: htop
   cli-btop:
     component: dev-tools
@@ -282,7 +282,7 @@ targets:
     - homebrew
     provided_by_tool: brew
     driver:
-      kind: brew-formula
+      kind: brew
       ref: btop
   cli-tmux:
     component: dev-tools
@@ -294,7 +294,7 @@ targets:
     - homebrew
     provided_by_tool: brew
     driver:
-      kind: brew-formula
+      kind: brew
       ref: tmux
   cli-fzf:
     component: dev-tools
@@ -306,7 +306,7 @@ targets:
     - homebrew
     provided_by_tool: brew
     driver:
-      kind: brew-formula
+      kind: brew
       ref: fzf
   cli-ripgrep:
     component: dev-tools
@@ -318,7 +318,7 @@ targets:
     - homebrew
     provided_by_tool: brew
     driver:
-      kind: brew-formula
+      kind: brew
       ref: ripgrep
   cli-fd:
     component: dev-tools
@@ -330,7 +330,7 @@ targets:
     - homebrew
     provided_by_tool: brew
     driver:
-      kind: brew-formula
+      kind: brew
       ref: fd
   cli-tree:
     component: dev-tools
@@ -342,7 +342,7 @@ targets:
     - homebrew
     provided_by_tool: brew
     driver:
-      kind: brew-formula
+      kind: brew
       ref: tree
   cli-uv:
     component: dev-tools
@@ -354,7 +354,7 @@ targets:
     - homebrew
     provided_by_tool: brew
     driver:
-      kind: brew-formula
+      kind: brew
       ref: uv
   cli-pnpm:
     component: dev-tools
@@ -366,7 +366,7 @@ targets:
     - homebrew
     provided_by_tool: brew
     driver:
-      kind: brew-formula
+      kind: brew
       ref: pnpm
   cli-gcc:
     component: dev-tools
@@ -378,7 +378,7 @@ targets:
     - homebrew
     provided_by_tool: brew
     driver:
-      kind: brew-formula
+      kind: brew
       ref: gcc
   cli-gh:
     component: dev-tools
@@ -390,7 +390,7 @@ targets:
     - homebrew
     provided_by_tool: brew
     driver:
-      kind: brew-formula
+      kind: brew
       ref: gh
   cli-llama.cpp:
     component: dev-tools
@@ -402,7 +402,7 @@ targets:
     - homebrew
     provided_by_tool: brew
     driver:
-      kind: brew-formula
+      kind: brew
       ref: llama.cpp
   cli-opencode:
     component: dev-tools
@@ -414,7 +414,7 @@ targets:
     - homebrew
     provided_by_tool: brew
     driver:
-      kind: brew-formula
+      kind: brew
       ref: opencode
   cli-aria2:
     component: dev-tools
@@ -426,7 +426,7 @@ targets:
     - homebrew
     provided_by_tool: brew
     driver:
-      kind: brew-formula
+      kind: brew
       ref: aria2
   cli-cmake:
     component: dev-tools
@@ -438,7 +438,7 @@ targets:
     - homebrew
     provided_by_tool: brew
     driver:
-      kind: brew-formula
+      kind: brew
       ref: cmake
   vscode-ext-ms-python.python:
     component: dev-tools
@@ -534,7 +534,8 @@ targets:
     - homebrew
     provided_by_tool: brew-cask
     driver:
-      kind: brew-cask
+      kind: brew
+      cask: true
       ref: iterm2
       greedy_auto_updates: true
   lm-studio:
@@ -547,7 +548,8 @@ targets:
     - homebrew
     provided_by_tool: brew-cask
     driver:
-      kind: brew-cask
+      kind: brew
+      cask: true
       ref: lm-studio
       greedy_auto_updates: true
   npm-global-@openai/codex:
