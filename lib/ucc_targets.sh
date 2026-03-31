@@ -300,8 +300,11 @@ _ucc_run_yaml_action() {
   local cmd
 
   if [[ "$action_key" == "install" || "$action_key" == "update" ]]; then
-    if _ucc_driver_action "$cfg_dir" "$yaml" "$target" "$action_key"; then
-      return $?
+    local _driver_kind
+    _driver_kind="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.kind")"
+    if [[ -n "$_driver_kind" && "$_driver_kind" != "custom" ]]; then
+      _ucc_driver_action "$cfg_dir" "$yaml" "$target" "$action_key"
+      return
     fi
   fi
 
