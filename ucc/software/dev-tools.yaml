@@ -1,9 +1,10 @@
 component: dev-tools
 primary_profile: runtime
-libs: vscode_ext dev_tools
+libs: python vscode_ext dev_tools
 runner: run_dev_tools_from_yaml
 platforms:
 - macos
+python_version: 3.12.3
 node_version: 24
 node_previous_version: 20
 omz_theme: agnoster
@@ -18,7 +19,98 @@ ariaflow_tap: bonomani/ariaflow
 aria2_port: 6800
 ariaflow_port: 8000
 ariaflow_web_port: 8001
+pyenv_packages:
+- pyenv
+- pyenv-virtualenv
+pip_bootstrap:
+- pip
+- setuptools
+- wheel
 targets:
+  pyenv:
+    component: dev-tools
+    profile: configured
+    type: package
+    state_model: package
+    display_name: pyenv
+    depends_on:
+    - homebrew
+    provided_by_tool: brew
+    driver:
+      kind: custom
+    observe_cmd: brew_observe pyenv
+    evidence:
+      version: pyenv --version 2>/dev/null | awk '{print $2}'
+      root: pyenv root 2>/dev/null || true
+    actions:
+      install: 'pkgs="$(python3 "$CFG_DIR/tools/read_config.py" --list "$YAML_PATH"
+        pyenv_packages 2>/dev/null | xargs)"
+
+        [[ -n "$pkgs" ]] || pkgs="pyenv pyenv-virtualenv"
+
+        brew_install $pkgs
+
+        grep -q ''pyenv init'' "$HOME/.zshrc" 2>/dev/null || cat "$CFG_DIR/scripts/pyenv-zshrc-snippet"
+        >> "$HOME/.zshrc"
+
+        '
+      update: 'pkgs="$(python3 "$CFG_DIR/tools/read_config.py" --list "$YAML_PATH"
+        pyenv_packages 2>/dev/null | xargs)"
+
+        [[ -n "$pkgs" ]] || pkgs="pyenv pyenv-virtualenv"
+
+        brew_upgrade $pkgs
+
+        '
+  xz:
+    component: dev-tools
+    profile: configured
+    type: package
+    state_model: package
+    display_name: XZ Utils
+    depends_on:
+    - homebrew
+    provided_by_tool: brew
+    driver:
+      kind: brew
+      ref: xz
+  python:
+    component: dev-tools
+    profile: configured
+    type: package
+    state_model: package
+    display_name: Python
+    depends_on:
+    - pyenv
+    - xz
+    provided_by_tool: pyenv
+    driver:
+      kind: pyenv-version
+      version: ${python_version}
+  pip-latest:
+    component: dev-tools
+    profile: configured
+    type: config
+    state_model: config
+    display_name: pip
+    depends_on:
+    - python
+    driver:
+      kind: custom
+    oracle:
+      configured: pip --version >/dev/null 2>&1
+    evidence:
+      version: pip --version 2>/dev/null | awk '{print $2}'
+      path: command -v pip 2>/dev/null || true
+    actions:
+      install: 'local pkgs
+
+        pkgs="$(python3 "$CFG_DIR/tools/read_config.py" --list "$YAML_PATH" pip_bootstrap
+        2>/dev/null | xargs)"
+
+        [[ -n "$pkgs" ]] && pip install --upgrade $pkgs
+
+        '
   vscode:
     component: dev-tools
     profile: configured
@@ -568,6 +660,18 @@ targets:
     driver:
       kind: npm-global
       package: bmad-method
+  git:
+    component: dev-tools
+    profile: configured
+    type: package
+    state_model: package
+    display_name: Git
+    depends_on:
+    - homebrew
+    provided_by_tool: brew
+    driver:
+      kind: brew
+      ref: git
 cli_tools:
 - cli-jq
 - cli-wget

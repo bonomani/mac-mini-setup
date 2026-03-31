@@ -116,21 +116,18 @@ Config drivers additionally implement `_apply` (dedicated verb for configuration
 ## Compliant Targets
 | Component | Manifest | Description |
 |-----------|----------|-------------|
-| Homebrew | ucc/software/homebrew.yaml | Brew + Xcode CLT |
-| Git | ucc/software/git.yaml | Package install |
+| software-bootstrap | ucc/software/homebrew.yaml | Brew + Xcode CLT |
 | Docker | ucc/software/docker.yaml | Docker Desktop + settings |
-| Python | ucc/software/python.yaml | pyenv + Python 3.12.3 |
-| Ollama | ucc/software/ollama.yaml | Local LLM runtime + model autopull |
 | AI Python Stack | ucc/software/ai-python-stack.yaml | PyTorch, HF, LangChain |
-| AI Apps | ucc/software/ai-apps.yaml | Docker Compose apps stack |
-| Dev Tools | ucc/software/dev-tools.yaml | VS Code, Node, OMZ |
+| AI Apps | ucc/software/ai-apps.yaml | Docker Compose apps + Ollama runtime + models |
+| Dev Tools | ucc/software/dev-tools.yaml | VS Code, Node, OMZ, Git, Python/pyenv |
 | System | ucc/system/*.yaml | Whole-machine compose |
 
 ## Usage
 ```bash
 ./install.sh                    # Full install
 ./install.sh --dry-run          # Preview changes
-./install.sh ollama             # Single component
+./install.sh ai-apps            # Single component (includes ollama)
 ./install.sh --mode update      # Update all
 ./install.sh --preflight        # Check gates/prefs only
 ```

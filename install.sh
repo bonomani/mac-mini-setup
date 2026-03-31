@@ -139,7 +139,7 @@ _gate_ollama_api()      {
       api_port)      port="$value" ;;
       api_tags_path) path="$value" ;;
     esac
-  done < <(python3 "$DIR/tools/read_config.py" --get-many "$DIR/ucc/software/ollama.yaml" \
+  done < <(python3 "$DIR/tools/read_config.py" --get-many "$DIR/ucc/software/ai-apps.yaml" \
       api_host api_port api_tags_path 2>/dev/null || true)
   [[ -z "$host" ]] && host="127.0.0.1"
   [[ -z "$port" ]] && port="11434"
@@ -293,22 +293,44 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# Resolve each positional arg: component name → run as-is;
-# unknown name → check if it's a target and auto-resolve to its component.
+# Resolve each positional arg:
+#   component:<name>  → explicit component
+#   target:<name>     → explicit target, auto-resolve component
+#   <name>            → try component first, then target (ambiguous names: component wins)
 _resolved=()
 for _arg in "${TO_RUN[@]}"; do
-  if printf '%s\n' "${COMPONENTS[@]}" | grep -qx "$_arg"; then
-    _resolved+=("$_arg")
-  else
-    _comp=$(python3 "$_QUERY_SCRIPT" --find-target "$_arg" "$_MANIFEST_DIR" 2>/dev/null || true)
-    if [[ -z "$_comp" ]]; then
-      log_error "Unknown component or target: '$_arg'"
-    fi
-    log_info "Resolved target '$_arg' → component '$_comp'"
-    # Only set filter when a single target-name was passed alone
-    [[ -z "$UCC_TARGET_FILTER" ]] && export UCC_TARGET_FILTER="$_arg"
-    _resolved+=("$_comp")
-  fi
+  case "$_arg" in
+    component:*)
+      _name="${_arg#component:}"
+      if ! printf '%s\n' "${COMPONENTS[@]}" | grep -qx "$_name"; then
+        log_error "Unknown component: '$_name'"
+      fi
+      _resolved+=("$_name")
+      ;;
+    target:*)
+      _name="${_arg#target:}"
+      _comp=$(python3 "$_QUERY_SCRIPT" --find-target "$_name" "$_MANIFEST_DIR" 2>/dev/null || true)
+      if [[ -z "$_comp" ]]; then
+        log_error "Unknown target: '$_name'"
+      fi
+      log_info "Resolved target '$_name' → component '$_comp'"
+      [[ -z "$UCC_TARGET_FILTER" ]] && export UCC_TARGET_FILTER="$_name"
+      _resolved+=("$_comp")
+      ;;
+    *)
+      if printf '%s\n' "${COMPONENTS[@]}" | grep -qx "$_arg"; then
+        _resolved+=("$_arg")
+      else
+        _comp=$(python3 "$_QUERY_SCRIPT" --find-target "$_arg" "$_MANIFEST_DIR" 2>/dev/null || true)
+        if [[ -z "$_comp" ]]; then
+          log_error "Unknown component or target: '$_arg'"
+        fi
+        log_info "Resolved target '$_arg' → component '$_comp'"
+        [[ -z "$UCC_TARGET_FILTER" ]] && export UCC_TARGET_FILTER="$_arg"
+        _resolved+=("$_comp")
+      fi
+      ;;
+  esac
 done
 TO_RUN=("${_resolved[@]+"${_resolved[@]}"}")
 

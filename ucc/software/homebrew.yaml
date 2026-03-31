@@ -1,4 +1,4 @@
-component: homebrew
+component: software-bootstrap
 primary_profile: configured
 libs: homebrew
 runner: run_homebrew_from_yaml
@@ -18,7 +18,7 @@ platform_tool_preferences:
   - brew-installer
 targets:
   xcode-command-line-tools:
-    component: homebrew
+    component: software-bootstrap
     profile: configured
     type: package
     state_model: package
@@ -44,7 +44,7 @@ targets:
         Wait for it to complete, then re-run this script."; return 1
       update: xcode_clt_update
   homebrew:
-    component: homebrew
+    component: software-bootstrap
     profile: configured
     type: package
     state_model: package
@@ -89,7 +89,7 @@ targets:
         ' >> \"$HOME/${_hb_shell_config}\"\n  eval \"$(/home/linuxbrew/.linuxbrew/bin/brew\
         \ shellenv)\"\nfi\nbrew update && brew upgrade\n"
   brew-analytics=off:
-    component: homebrew
+    component: software-bootstrap
     profile: parametric
     type: config
     state_model: parametric

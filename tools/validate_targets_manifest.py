@@ -364,6 +364,13 @@ def validate(manifest, known_gates):
     components = manifest["components"]
     errors = []
 
+    # Component names must not collide with target names (would break CLI disambiguation).
+    for component in components:
+        if component in targets:
+            errors.append(
+                f"component '{component}' has the same name as a target — rename one of them"
+            )
+
     for component, meta in components.items():
         file_path = meta.get("file")
         manifest_data = parse_manifest_file(Path(file_path)) if file_path else {}

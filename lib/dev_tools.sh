@@ -16,6 +16,18 @@ run_dev_tools_from_yaml() {
   done < <(yaml_get_many "$cfg_dir" "$yaml" node_version ariaflow_tap)
   _ARIAFLOW_FORMULA="${_ARIAFLOW_TAP}/ariaflow"
   _ARIAFLOW_WEB_FORMULA="${_ARIAFLOW_TAP}/ariaflow-web"
+  # ---- Git ----
+  ucc_yaml_simple_target "$cfg_dir" "$yaml" "git"
+
+  # ---- Python (pyenv + python version + pip) ----
+  ucc_yaml_simple_target "$cfg_dir" "$yaml" "pyenv"
+  ucc_yaml_simple_target "$cfg_dir" "$yaml" "xz"
+  export PYENV_ROOT="$HOME/.pyenv"
+  export PATH="$PYENV_ROOT/bin:$PATH"
+  eval "$(pyenv init -)" 2>/dev/null || true
+  ucc_yaml_simple_target "$cfg_dir" "$yaml" "python"
+  ucc_yaml_simple_target "$cfg_dir" "$yaml" "pip-latest"
+
   # ---- CLI tools (brew) ----
   local _target
   while IFS= read -r _target; do
