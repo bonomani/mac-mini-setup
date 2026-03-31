@@ -27,7 +27,6 @@ register_unsloth_studio_targets() {
   # launchd does not load pyenv shims — resolve absolute binary path at source time
   bin="$(pyenv which unsloth 2>/dev/null || command -v unsloth)"
   eval "_install_unsloth_studio() {
-    [[ -d '${studio_dir}' ]] || ucc_run unsloth studio setup || return 1
     mkdir -p '\$(dirname '${plist}')'
     cat > '${plist}' <<PLIST
 ${plist_marker}
@@ -58,7 +57,6 @@ PLIST
     _ucc_wait_for_runtime_probe \"curl -fsS --max-time 5 'http://127.0.0.1:${port}' >/dev/null 2>&1\"
   }"
   eval "_update_unsloth_studio() {
-    ucc_run unsloth studio setup || return 1
     launchctl unload '${plist}' 2>/dev/null || true
     _install_unsloth_studio
   }"
