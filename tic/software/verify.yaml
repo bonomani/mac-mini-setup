@@ -38,3 +38,34 @@ tests:
     intent: "cmake must be present (required for Unsloth GGUF inference)"
     oracle: "cmake --version >/dev/null 2>&1"
     trace: "component:dev-tools / cli-cmake"
+
+  # ── ai-apps ───────────────────────────────────────────────
+  - name: open-webui-health
+    component: ai-apps
+    intent: "Open WebUI must be accessible on port 3000"
+    oracle: "curl -fsS --connect-timeout 5 http://localhost:3000 >/dev/null"
+    trace: "component:ai-apps / service:open-webui"
+
+  - name: flowise-health
+    component: ai-apps
+    intent: "Flowise must be accessible on port 3001"
+    oracle: "curl -fsS --connect-timeout 5 http://localhost:3001 >/dev/null"
+    trace: "component:ai-apps / service:flowise"
+
+  - name: openhands-health
+    component: ai-apps
+    intent: "OpenHands must be accessible on port 3002"
+    oracle: "curl -fsS --connect-timeout 5 http://localhost:3002 >/dev/null"
+    trace: "component:ai-apps / service:openhands"
+
+  - name: n8n-health
+    component: ai-apps
+    intent: "n8n must be accessible on port 5678"
+    oracle: "curl -fsS --connect-timeout 5 http://localhost:5678 >/dev/null"
+    trace: "component:ai-apps / service:n8n"
+
+  - name: qdrant-health
+    component: ai-apps
+    intent: "Qdrant must be accessible on port 6333"
+    oracle: "curl -fsS --connect-timeout 5 http://localhost:6333 >/dev/null"
+    trace: "component:ai-apps / service:qdrant"
