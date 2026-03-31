@@ -13,7 +13,7 @@ _ucc_driver_user_defaults_observe() {
   domain="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.domain")"
   key="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.key")"
   [[ -n "$domain" && -n "$key" ]] || return 1
-  defaults read "$domain" "$key" 2>/dev/null || echo 0
+  defaults read "$domain" "$key" 2>/dev/null || printf '0'
 }
 
 _ucc_driver_user_defaults_action() {

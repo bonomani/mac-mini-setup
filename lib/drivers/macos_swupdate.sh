@@ -13,9 +13,9 @@ _ucc_driver_softwareupdate_defaults_observe() {
   key="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.key")"
   [[ -n "$domain" && -n "$key" ]] || return 1
   if defaults read "$domain" "$key" 2>/dev/null | grep -qiE '^1$|^true$'; then
-    echo 1
+    printf '1'
   else
-    echo 0
+    printf '0'
   fi
 }
 

@@ -6,6 +6,7 @@ _ucc_driver_vscode_marketplace_observe() {
   local cfg_dir="$1" yaml="$2" target="$3"
   local ext_id ver
   ext_id="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.extension_id")"
+  [[ -n "$ext_id" ]] || return 1
   ver="$(_vscode_extension_cached_version "$ext_id")"
   printf '%s' "${ver:-absent}"
 }
@@ -14,6 +15,7 @@ _ucc_driver_vscode_marketplace_action() {
   local cfg_dir="$1" yaml="$2" target="$3" action="$4"
   local ext_id
   ext_id="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.extension_id")"
+  [[ -n "$ext_id" ]] || return 1
   case "$action" in
     install) vscode_extension_install "$ext_id" ;;
     update)  vscode_extension_update  "$ext_id" ;;
@@ -24,6 +26,7 @@ _ucc_driver_vscode_marketplace_evidence() {
   local cfg_dir="$1" yaml="$2" target="$3"
   local ext_id ver
   ext_id="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.extension_id")"
+  [[ -n "$ext_id" ]] || return 1
   ver="$(_vscode_extension_cached_version "$ext_id")"
   [[ -n "$ver" ]] && printf 'version=%s' "$ver"
 }
@@ -57,8 +60,8 @@ _ucc_driver_json_merge_action() {
   patch_path="$cfg_dir/$rel_patch"
   case "$action" in
     install|update)
-      mkdir -p "$(dirname "$settings_path")"
-      python3 "$cfg_dir/tools/drivers/json_merge.py" apply "$settings_path" "$patch_path"
+      ucc_run mkdir -p "$(dirname "$settings_path")"
+      ucc_run python3 "$cfg_dir/tools/drivers/json_merge.py" apply "$settings_path" "$patch_path"
       ;;
   esac
 }

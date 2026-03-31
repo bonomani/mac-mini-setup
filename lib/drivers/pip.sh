@@ -8,6 +8,7 @@ _ucc_driver_pip_observe() {
   local cfg_dir="$1" yaml="$2" target="$3"
   local probe min_ver ver
   probe="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.probe_pkg")"
+  [[ -n "$probe" ]] || return 1
   min_ver="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.min_version")"
   ver="$(_pip_cached_version "$probe")"
   if [[ -z "$ver" ]]; then
