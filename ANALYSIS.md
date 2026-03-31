@@ -31,7 +31,7 @@ This is an AI Workstation Setup Framework for macOS with comprehensive governanc
 
 ### 1. UCC (Universal Convergence Contract) - v370c1f7
 - **28 targets** across software + system layers
-- **15 driver kinds** across three classes: install, config, runtime
+- **13 driver kinds** across three classes: install, config, runtime
 - Topological ordering via dependency graph
 - Three-field result model: observation + outcome + completion
 
@@ -72,7 +72,7 @@ This is an AI Workstation Setup Framework for macOS with comprehensive governanc
 
 ## Driver Architecture
 
-All 15 drivers are fully compliant (observe/action/evidence) and governed by 8 architecture
+All 13 drivers are fully compliant (observe/action/evidence) and governed by 8 architecture
 principles documented in `DRIVER_ARCHITECTURE.md`. Drivers are separated into three classes
 mapped to target `type:`:
 
