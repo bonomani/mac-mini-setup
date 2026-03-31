@@ -77,12 +77,15 @@ _ucc_driver_brew_analytics_observe() {
 
 _ucc_driver_brew_analytics_action() {
   local cfg_dir="$1" yaml="$2" target="$3" action="$4"
+  _ucc_driver_brew_analytics_apply "$cfg_dir" "$yaml" "$target"
+}
+
+_ucc_driver_brew_analytics_apply() {
+  local cfg_dir="$1" yaml="$2" target="$3"
   local desired
   desired="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "desired_value")"
   [[ -n "$desired" ]] || desired="off"
-  case "$action" in
-    install|update) ucc_run brew analytics "$desired" ;;
-  esac
+  ucc_run brew analytics "$desired"
 }
 
 _ucc_driver_brew_analytics_evidence() {

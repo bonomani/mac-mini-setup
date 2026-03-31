@@ -75,23 +75,40 @@ declare -f "$fn" >/dev/null 2>&1 || return 1
 "$fn" "$cfg_dir" "$yaml" "$target"
 ```
 
-**P3 — Uniform driver interface** — FULLY APPLIED. All 13 drivers implement observe/action/evidence:
+**P3 — Uniform driver interface** — FULLY APPLIED. All 17 drivers implement observe/action/evidence.
+Config drivers additionally implement `apply` (called by `_ucc_driver_apply`).
+
+**Install drivers** (`type: package`)
 
 | Driver                  | observe | action | evidence | Notes                                             |
 | ----------------------- | :-----: | :----: | :------: | ------------------------------------------------- |
 | brew                    |    ✅   |   ✅   |    ✅    | cask=true for casks; previous_ref → force-link    |
-| brew-analytics          |    ✅   |   ✅   |    ✅    |                                                   |
 | app-bundle              |    ✅   |   ✅   |    ✅    | delegates to brew-cask when cask installed        |
 | pyenv-version           |    ✅   |   ✅   |    ✅    | respects UIC_PREF_PYTHON_VERSION override         |
 | vscode-marketplace      |    ✅   |   ✅   |    ✅    |                                                   |
-| json-merge              |    ✅   |   ✅   |    ✅    |                                                   |
 | ollama-model            |    ✅   |   ✅   |    ✅    |                                                   |
 | npm-global              |    ✅   |   ✅   |    ✅    |                                                   |
 | pip                     |    ✅   |   ✅   |    ✅    |                                                   |
-| user-defaults           |    ✅   |   ✅   |    ✅    |                                                   |
-| pmset                   |    ✅   |   ✅   |    ✅    |                                                   |
-| softwareupdate-defaults |    ✅   |   ✅   |    ✅    |                                                   |
-| docker-settings         |    ✅   |   ✅   |    ✅    | evidence uses inline heredoc Python               |
+
+**Config drivers** (`type: config`, `type: bool`) — also implement `_apply`
+
+| Driver                  | observe | action | apply | evidence | Notes                                        |
+| ----------------------- | :-----: | :----: | :---: | :------: | -------------------------------------------- |
+| brew-analytics          |    ✅   |   ✅   |  ✅   |    ✅    |                                              |
+| json-merge              |    ✅   |   ✅   |  ✅   |    ✅    |                                              |
+| user-defaults           |    ✅   |   ✅   |  ✅   |    ✅    |                                              |
+| pmset                   |    ✅   |   ✅   |  ✅   |    ✅    |                                              |
+| softwareupdate-defaults |    ✅   |   ✅   |  ✅   |    ✅    |                                              |
+| docker-settings         |    ✅   |   ✅   |  ✅   |    ✅    | evidence uses inline heredoc Python          |
+
+**Runtime drivers** (`type: runtime`)
+
+| Driver                  | observe | action | evidence | Notes                                             |
+| ----------------------- | :-----: | :----: | :------: | ------------------------------------------------- |
+| brew-service            |    ✅   |   ✅   |    ✅    | start/stop via brew services                      |
+| launchd                 |    ✅   |   ✅   |    ✅    | load/unload via launchctl                         |
+| custom-daemon           |    ✅   |   —    |    ✅    | observe only; daemon started externally           |
+| compose-file            |    ✅   |   —    |    ✅    | observe file exists; managed by compose           |
 
 **P4 — Explicit escape hatch** — FULLY APPLIED.
 Every target retaining embedded code carries `driver.kind: custom`. No silent fall-throughs.
@@ -103,13 +120,14 @@ Both dispatch sites wrap driver output before returning:
 No driver emits JSON directly.
 
 **P6 — Empty-field guards** — FULLY APPLIED for all implemented drivers:
-`brew/ollama-model`: `[[ -n "$ref" ]] || return 1`;
+`brew/ollama-model/brew-service`: `[[ -n "$ref" ]] || return 1`;
 `npm-global`: `[[ -n "$pkg" ]] || return 1`;
 `json-merge`: `[[ -n "$rel_settings" && -n "$rel_patch" ]] || return 1`;
 `user-defaults/softwareupdate-defaults`: `[[ -n "$domain" && -n "$key" ]] || return 1`;
 `pmset`: `[[ -n "$setting" ]] || return 1`;
 `docker-settings`: `[[ -n "$DOCKER_SETTINGS_PATH" ]] || return 1`;
-`app-bundle`: `[[ -n "$app_path" ]] || return 1`.
+`app-bundle`: `[[ -n "$app_path" ]] || return 1`;
+`launchd/custom-daemon`: `[[ -n "$plist" ]] || return 1` / `[[ -n "$bin" ]] || return 1`.
 
 **P7 — Cache pre-loading** — FULLY APPLIED.
 All `driver.*` fields appear in `_UCC_YAML_BATCH_KEYS` (install.sh):
@@ -118,11 +136,14 @@ All `driver.*` fields appear in `_UCC_YAML_BATCH_KEYS` (install.sh):
 `driver.type`, `driver.setting`, `driver.settings_relpath`, `driver.patch_relpath`,
 `driver.kind`, `driver.cask`, `driver.greedy_auto_updates`, `driver.app_path`, `driver.brew_cask`,
 `driver.update_api`, `driver.download_url_tpl`, `driver.package_ext`,
-`driver.version`, `driver.previous_ref`.
+`driver.version`, `driver.previous_ref`, `driver.cask`,
+`driver.plist`, `driver.bin`, `driver.process`, `driver.path_env`.
 
-**P8 — Evidence parity** — FULLY APPLIED for all 15 implemented drivers.
+**P8 — Evidence parity** — FULLY APPLIED for all 17 implemented drivers.
 Note: `docker-settings` evidence uses an inline heredoc Python script rather than
 delegating to `docker_settings.py` — correct behaviour, style inconsistency only.
+Note: `custom-daemon` and `compose-file` action returns 1 (no-op) by design —
+these are externally managed; no install/update action is appropriate.
 
 ---
 

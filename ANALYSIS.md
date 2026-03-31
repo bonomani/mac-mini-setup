@@ -31,7 +31,7 @@ This is an AI Workstation Setup Framework for macOS with comprehensive governanc
 
 ### 1. UCC (Universal Convergence Contract) - v370c1f7
 - **28 targets** across software + system layers
-- **13 driver kinds** across three classes: install, config, runtime
+- **17 driver kinds** across three classes: install (7), config (6), runtime (4)
 - Topological ordering via dependency graph
 - Three-field result model: observation + outcome + completion
 
@@ -72,9 +72,9 @@ This is an AI Workstation Setup Framework for macOS with comprehensive governanc
 
 ## Driver Architecture
 
-All 13 drivers are fully compliant (observe/action/evidence) and governed by 8 architecture
-principles documented in `DRIVER_ARCHITECTURE.md`. Drivers are separated into three classes
-mapped to target `type:`:
+All 17 drivers are fully compliant and governed by 8 architecture principles documented in
+`DRIVER_ARCHITECTURE.md`. Drivers are separated into three classes mapped to target `type:`.
+Config drivers additionally implement `_apply` (dedicated verb for configuration targets).
 
 **Install drivers** (`type: package`) — observe version/presence, install, update
 
@@ -103,10 +103,10 @@ mapped to target `type:`:
 
 | Driver | target type | observe | action | evidence | Notes |
 |---|---|:---:|:---:|:---:|---|
-| brew-service | runtime | custom | custom | custom | managed via brew services |
-| launchd | runtime | custom | custom | custom | macOS launchd daemon |
-| custom-daemon | runtime | custom | custom | custom | ollama daemon |
-| compose-file | runtime | custom | custom | custom | docker-compose stack |
+| brew-service | runtime | ✅ | ✅ | ✅ | start/stop via brew services |
+| launchd | runtime | ✅ | ✅ | ✅ | load/unload via launchctl |
+| custom-daemon | runtime | ✅ | — | ✅ | observe only; started externally |
+| compose-file | runtime | ✅ | — | ✅ | observe file exists; managed by compose |
 
 > **Planned**: Formalize the 3-class separation with dedicated dispatch verbs (`apply` for
 > config, `start`/`stop`/`restart` for runtime) and validator enforcement of class–type

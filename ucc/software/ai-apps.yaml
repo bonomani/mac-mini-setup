@@ -27,8 +27,7 @@ targets:
     display_name: compose file
     driver:
       kind: compose-file
-    evidence:
-      path: printf '%s' "$COMPOSE_FILE"
+      path_env: COMPOSE_FILE
   open-webui-runtime:
     component: ai-apps
     profile: runtime

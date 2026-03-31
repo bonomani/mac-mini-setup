@@ -23,6 +23,10 @@ for _ucc_drv_file in \
   "$_UCC_DRIVERS_DIR/docker.sh" \
   "$_UCC_DRIVERS_DIR/app_bundle.sh" \
   "$_UCC_DRIVERS_DIR/pyenv.sh" \
+  "$_UCC_DRIVERS_DIR/brew_service.sh" \
+  "$_UCC_DRIVERS_DIR/launchd.sh" \
+  "$_UCC_DRIVERS_DIR/custom_daemon.sh" \
+  "$_UCC_DRIVERS_DIR/compose_file.sh" \
   ; do
   [[ -f "$_ucc_drv_file" ]] && source "$_ucc_drv_file"
 done
@@ -50,6 +54,19 @@ _ucc_driver_action() {
   local fn="_ucc_driver_${kind//-/_}_action"
   declare -f "$fn" >/dev/null 2>&1 || return 1
   "$fn" "$cfg_dir" "$yaml" "$target" "$action"
+}
+
+# _ucc_driver_apply <cfg_dir> <yaml> <target>
+# For config/bool targets: routes to _ucc_driver_<kind>_apply instead of _action.
+# Returns 0 if driver handled it; returns 1 to fall through.
+_ucc_driver_apply() {
+  local cfg_dir="$1" yaml="$2" target="$3"
+  local kind
+  kind="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.kind")"
+  [[ -n "$kind" && "$kind" != "custom" ]] || return 1
+  local fn="_ucc_driver_${kind//-/_}_apply"
+  declare -f "$fn" >/dev/null 2>&1 || return 1
+  "$fn" "$cfg_dir" "$yaml" "$target"
 }
 
 # _ucc_driver_evidence <cfg_dir> <yaml> <target>

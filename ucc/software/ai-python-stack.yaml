@@ -21,25 +21,7 @@ targets:
     - pip-latest
     driver:
       kind: launchd
-    runtime_manager: launchd
-    probe_kind: http
-    oracle:
-      configured: '[[ -d "$HOME/${unsloth_studio_dir}" ]]'
-      runtime: 'launchctl list 2>/dev/null | grep -q "${unsloth_label}" &&
-
-        grep -qF "${unsloth_plist_marker}" "$HOME/Library/LaunchAgents/${unsloth_label}.plist"
-        2>/dev/null &&
-
-        _ucc_http_probe_endpoint "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME" "Unsloth Studio"
-
-        '
-    evidence:
-      version: pip show unsloth 2>/dev/null | awk '/^Version:/{print $2}'
-      folder: printf '%s' "$HOME/${unsloth_studio_dir}"
-      pid: pgrep -f 'unsloth.*studio' 2>/dev/null | head -1 || true
-      listener: _ucc_endpoint_listener "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME" "Unsloth
-        Studio"
-      plist: printf '%s/Library/LaunchAgents/${unsloth_label}.plist' "$HOME"
+      plist: ${unsloth_label}
     endpoints:
     - name: Unsloth Studio
       scheme: http

@@ -19,8 +19,6 @@ targets:
       setting: sleep
       value: '0'
     desired_value: '0'
-    evidence:
-      sleep: pmset -g | awk '/^[[:space:]]+sleep / {print $2}'
     dependency_gate: sudo-available
   pmset-disksleep=0:
     component: macos-defaults
@@ -36,8 +34,6 @@ targets:
       setting: disksleep
       value: '0'
     desired_value: '0'
-    evidence:
-      disksleep: pmset -g | awk '/disksleep/ {print $2}'
     dependency_gate: sudo-available
   pmset-standby=0:
     component: macos-defaults
@@ -53,8 +49,6 @@ targets:
       setting: standby
       value: '0'
     desired_value: '0'
-    evidence:
-      standby: pmset -g | awk '/^[[:space:]]+standby / {print $2}'
     dependency_gate: sudo-available
   app-nap=disabled:
     component: macos-defaults
@@ -69,9 +63,6 @@ targets:
       value: 'YES'
       type: bool
     desired_value: '1'
-    evidence:
-      NSAppSleepDisabled: defaults read NSGlobalDomain NSAppSleepDisabled 2>/dev/null
-        || echo 0
   finder-show-hidden=1:
     component: macos-defaults
     profile: parametric
@@ -85,9 +76,6 @@ targets:
       value: 'true'
       type: bool
     desired_value: '1'
-    evidence:
-      AppleShowAllFiles: defaults read com.apple.finder AppleShowAllFiles 2>/dev/null
-        || echo 0
   show-all-extensions=1:
     component: macos-defaults
     profile: parametric
@@ -101,9 +89,6 @@ targets:
       value: 'true'
       type: bool
     desired_value: '1'
-    evidence:
-      AppleShowAllExtensions: defaults read NSGlobalDomain AppleShowAllExtensions
-        2>/dev/null || echo 0
   dock-autohide=1:
     component: macos-defaults
     profile: parametric
@@ -117,8 +102,6 @@ targets:
       value: 'true'
       type: bool
     desired_value: '1'
-    evidence:
-      autohide: defaults read com.apple.dock autohide 2>/dev/null || echo 0
 restart_processes:
 - Finder
 - Dock

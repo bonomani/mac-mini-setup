@@ -21,6 +21,11 @@ _ucc_driver_softwareupdate_defaults_observe() {
 
 _ucc_driver_softwareupdate_defaults_action() {
   local cfg_dir="$1" yaml="$2" target="$3" action="$4"
+  _ucc_driver_softwareupdate_defaults_apply "$cfg_dir" "$yaml" "$target"
+}
+
+_ucc_driver_softwareupdate_defaults_apply() {
+  local cfg_dir="$1" yaml="$2" target="$3"
   local domain key value
   domain="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.domain")"
   key="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.key")"
@@ -29,9 +34,7 @@ _ucc_driver_softwareupdate_defaults_action() {
   [[ -n "$value" ]] || value="1"
   local bool_flag="true"
   [[ "$value" == "0" || "$value" == "false" ]] && bool_flag="false"
-  case "$action" in
-    install|update) ucc_run sudo defaults write "$domain" "$key" -bool "$bool_flag" ;;
-  esac
+  ucc_run sudo defaults write "$domain" "$key" -bool "$bool_flag"
 }
 
 _ucc_driver_softwareupdate_defaults_evidence() {

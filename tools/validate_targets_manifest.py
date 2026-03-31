@@ -32,6 +32,7 @@ KNOWN_PACKAGE_DRIVERS = {
 }
 KNOWN_RUNTIME_DRIVERS = {
     "brew-service",
+    "compose-file",
     "custom",
     "custom-daemon",
     "desktop-app",
@@ -40,12 +41,11 @@ KNOWN_RUNTIME_DRIVERS = {
 }
 KNOWN_CONFIG_DRIVERS = {
     "brew-analytics",
+    "compose-file",
     "custom",
     "user-defaults",
-    "compose-file",
     "docker-settings",
     "git-global-config",
-    "host-composition",
     "json-merge",
     "path-export",
     "pip-bootstrap",
@@ -588,14 +588,16 @@ def validate(manifest, known_gates):
                 errors.append(f"target '{name}' profile '{profile}' requires driver.kind")
             elif runtime_driver not in KNOWN_RUNTIME_DRIVERS:
                 errors.append(f"target '{name}' has unknown runtime driver '{runtime_driver}'")
-            if not isinstance(data.get("runtime_manager"), str) or not data.get("runtime_manager", "").strip():
-                errors.append(f"target '{name}' profile '{profile}' requires runtime_manager")
-            if not isinstance(data.get("probe_kind"), str) or not data.get("probe_kind", "").strip():
-                errors.append(f"target '{name}' profile '{profile}' requires probe_kind")
-            if not isinstance((oracle or {}).get("runtime"), str) or not (oracle or {}).get("runtime", "").strip():
-                errors.append(f"target '{name}' profile '{profile}' requires oracle.runtime")
-            if not isinstance(data.get("evidence"), dict) or not data.get("evidence"):
-                errors.append(f"target '{name}' profile '{profile}' requires evidence")
+            runtime_driver_dispatched = bool(runtime_driver) and runtime_driver != "custom"
+            if not runtime_driver_dispatched:
+                if not isinstance(data.get("runtime_manager"), str) or not data.get("runtime_manager", "").strip():
+                    errors.append(f"target '{name}' profile '{profile}' requires runtime_manager")
+                if not isinstance(data.get("probe_kind"), str) or not data.get("probe_kind", "").strip():
+                    errors.append(f"target '{name}' profile '{profile}' requires probe_kind")
+                if not isinstance((oracle or {}).get("runtime"), str) or not (oracle or {}).get("runtime", "").strip():
+                    errors.append(f"target '{name}' profile '{profile}' requires oracle.runtime")
+                if not isinstance(data.get("evidence"), dict) or not data.get("evidence"):
+                    errors.append(f"target '{name}' profile '{profile}' requires evidence")
 
         if profile == "capability":
             if target_type != "capability":

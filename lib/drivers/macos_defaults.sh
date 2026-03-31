@@ -18,6 +18,11 @@ _ucc_driver_user_defaults_observe() {
 
 _ucc_driver_user_defaults_action() {
   local cfg_dir="$1" yaml="$2" target="$3" action="$4"
+  _ucc_driver_user_defaults_apply "$cfg_dir" "$yaml" "$target"
+}
+
+_ucc_driver_user_defaults_apply() {
+  local cfg_dir="$1" yaml="$2" target="$3"
   local domain key value type
   domain="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.domain")"
   key="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.key")"
@@ -25,9 +30,7 @@ _ucc_driver_user_defaults_action() {
   type="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.type")"
   [[ -n "$domain" && -n "$key" && -n "$value" ]] || return 1
   [[ -n "$type" ]] || type="bool"
-  case "$action" in
-    install|update) ucc_run defaults write "$domain" "$key" -"$type" "$value" ;;
-  esac
+  ucc_run defaults write "$domain" "$key" -"$type" "$value"
 }
 
 _ucc_driver_user_defaults_evidence() {
@@ -54,13 +57,16 @@ _ucc_driver_pmset_observe() {
 
 _ucc_driver_pmset_action() {
   local cfg_dir="$1" yaml="$2" target="$3" action="$4"
+  _ucc_driver_pmset_apply "$cfg_dir" "$yaml" "$target"
+}
+
+_ucc_driver_pmset_apply() {
+  local cfg_dir="$1" yaml="$2" target="$3"
   local setting value
   setting="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.setting")"
   value="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.value")"
   [[ -n "$setting" && -n "$value" ]] || return 1
-  case "$action" in
-    install|update) ucc_run sudo pmset -c "$setting" "$value" ;;
-  esac
+  ucc_run sudo pmset -c "$setting" "$value"
 }
 
 _ucc_driver_pmset_evidence() {

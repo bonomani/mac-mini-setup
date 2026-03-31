@@ -61,6 +61,6 @@ targets:
     - pmset-ac-sleep=0
     - finder-show-hidden=1
     driver:
-      kind: host-composition
+      kind: custom
     evidence:
       kind: printf '%s' '${system_kind}'

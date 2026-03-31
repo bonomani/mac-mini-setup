@@ -53,18 +53,8 @@ targets:
     provided_by_tool: ollama-installer
     driver:
       kind: custom-daemon
-    runtime_manager: custom
-    probe_kind: http
-    oracle:
-      configured: ollama --version >/dev/null 2>&1
-      runtime: _ucc_http_probe_endpoint "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME" "Ollama
-        API"
-    evidence:
-      version: ollama --version 2>/dev/null | awk '{print $NF}'
-      path: command -v ollama 2>/dev/null
-      pid: pgrep -f 'ollama (serve|app)' 2>/dev/null | head -1
-      listener: _ucc_endpoint_listener "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME" "Ollama
-        API"
+      bin: ollama
+      process: 'ollama (serve|app)'
     endpoints:
     - name: Ollama API
       scheme: http

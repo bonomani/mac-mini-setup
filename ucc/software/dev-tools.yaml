@@ -176,17 +176,7 @@ targets:
     provided_by_tool: brew
     driver:
       kind: brew-service
-    runtime_manager: brew-service
-    probe_kind: http
-    oracle:
-      configured: ariaflow --version >/dev/null 2>&1
-      runtime: _ucc_http_probe_endpoint_timeout "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME"
-        "ariaflow API" 15
-    evidence:
-      version: _brew_cached_version ariaflow
-      pid: lsof -ti tcp:${ariaflow_port} 2>/dev/null | head -1
-      listener: _ucc_endpoint_listener "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME" "ariaflow
-        API"
+      ref: ariaflow
     endpoints:
     - name: aria2 RPC
       scheme: http
@@ -208,17 +198,7 @@ targets:
     provided_by_tool: brew
     driver:
       kind: brew-service
-    runtime_manager: brew-service
-    probe_kind: http
-    oracle:
-      configured: ariaflow-web --version >/dev/null 2>&1
-      runtime: _ucc_http_probe_endpoint_timeout "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME"
-        "ariaflow web UI" 15
-    evidence:
-      version: _brew_cached_version ariaflow-web
-      pid: lsof -ti tcp:${ariaflow_web_port} 2>/dev/null | head -1
-      listener: _ucc_endpoint_listener "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME" "ariaflow
-        web UI"
+      ref: ariaflow-web
     endpoints:
     - name: ariaflow web UI
       scheme: http
