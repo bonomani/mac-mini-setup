@@ -257,6 +257,7 @@ Options:
   --mode update     Update already-installed components
   --dry-run         Show what would change without applying it
   --preflight       Evaluate UIC gates and preferences; do NOT converge
+  --target <name>   Run only this target (auto-resolves component)
   --debug           Show DEBUG-level output
   -h, --help        Show this help
 
@@ -270,6 +271,7 @@ Examples:
   $0 --mode update --dry-run            # preview updates
   $0 ollama ai-python-stack       # run specific components
   $0 --mode update ollama            # update Ollama only
+  $0 --target unsloth-studio        # run single target (auto-resolves component)
 
 EOF
   exit 0
@@ -277,17 +279,28 @@ EOF
 
 # --- Parse arguments ----------------------------------------
 TO_RUN=()
+export UCC_TARGET_FILTER=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --dry-run)       export UCC_DRY_RUN=1;     shift ;;
     --mode)          export UCC_MODE="$2";    shift 2 ;;
     --debug)         export UCC_DEBUG=1;      shift ;;
     --preflight)     export UIC_PREFLIGHT=1;  shift ;;
+    --target)        export UCC_TARGET_FILTER="$2"; shift 2 ;;
     -h|--help)       usage ;;
     -*)              log_warn "Unknown option: $1"; shift ;;
     *)               TO_RUN+=("$1"); shift ;;
   esac
 done
+
+# If --target given without an explicit component, auto-resolve from manifest.
+if [[ -n "$UCC_TARGET_FILTER" && ${#TO_RUN[@]} -eq 0 ]]; then
+  _resolved_comp=$(python3 "$_QUERY_SCRIPT" --find-target "$UCC_TARGET_FILTER" "$_MANIFEST_DIR" 2>/dev/null || true)
+  if [[ -z "$_resolved_comp" ]]; then
+    log_error "Unknown target: '$UCC_TARGET_FILTER' — not found in any manifest"
+  fi
+  TO_RUN=("$_resolved_comp")
+fi
 
 [[ ${#TO_RUN[@]} -eq 0 ]] && TO_RUN=("${COMPONENTS[@]}")
 

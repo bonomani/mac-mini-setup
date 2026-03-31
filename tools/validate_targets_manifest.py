@@ -793,6 +793,7 @@ def main():
     runtime_endpoints_mode = False
     ordered_targets_mode = False
     target_name = None
+    find_target_mode = False
     if len(args) >= 2 and args[0] == "--deps":
         deps_mode = True
         target_name = args[1]
@@ -831,6 +832,10 @@ def main():
         target_name = args[1]
         args = args[2:]
         ordered_targets_mode = True
+    elif len(args) >= 2 and args[0] == "--find-target":
+        find_target_mode = True
+        target_name = args[1]
+        args = args[2:]
     elif len(args) >= 1 and args[0] == "--components":
         components_mode = True
         args = args[1:]
@@ -925,6 +930,14 @@ def main():
         print(meta.get("runner", ""))
         print(meta.get("on_fail", ""))
         print(meta.get("file", ""))
+        return 0
+
+    if find_target_mode:
+        data = manifest["targets"].get(target_name)
+        if data is None:
+            print(f"ERROR: target '{target_name}' not found", file=sys.stderr)
+            return 1
+        print(data.get("component", ""))
         return 0
 
     if all_deps_mode:
