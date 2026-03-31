@@ -1268,12 +1268,17 @@ _ucc_execute_target() {
 
   local action_rc=0
   $action_fn || action_rc=$?
-  if [[ $action_rc -eq 0 ]]; then
-    # Step 5 – Verify: re-observe after transition
+
+  # Step 5 – Verify: re-observe after transition.
+  # Always attempt verify when action ran (not a policy exit).  The action may
+  # have succeeded even on non-zero exit (e.g. brew exits 1 when a dependency
+  # unlinks a conflicting keg, yet the package itself was installed correctly).
+  # If verify confirms desired state, declare success regardless of action_rc.
+  if [[ $action_rc -ne 124 && $action_rc -ne 125 ]]; then
     local verified ver_exit
     verified=$($observe_fn 2>/dev/null)
     ver_exit=$?
-    log_debug "post-install observed=\"$verified\""
+    log_debug "post-${action_context} observed=\"$verified\""
     if [[ $ver_exit -eq 0 ]] && _ucc_satisfied "$verified" "$desired"; then
       _ucc_emit_target_line "$profile" "$action_label" "$display_name" "\"$(_ucc_display_state "$observed" "$axes")\" -> \"$(_ucc_display_state "$verified" "$axes")\""
       _ucc_record_outcome "$profile" "$name" "CHANGED" "ok" "changed" "$msg_id" "$started_at" \
@@ -1283,12 +1288,18 @@ _ucc_execute_target() {
       _ucc_emit_target_line "$profile" "warn" "$display_name" "update remains externally managed  $(_ucc_compose_evidence "$name" "${verified:-$observed}" "$axes" "$evidence_fn")"
       _ucc_record_outcome "$profile" "$name" "" "warn" "unchanged" "$msg_id" "$started_at" \
         "{}" "{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"policy\",\"message\":\"update must be applied externally\"}"
-    else
+    elif [[ $action_rc -eq 0 ]]; then
       _ucc_emit_target_line "$profile" "fail" "$display_name" "verify after ${action_context}: \"$(_ucc_display_state "${verified:-?}" "$axes")\"  $(_ucc_compose_evidence "$name" "${verified:-$observed}" "$axes" "$evidence_fn")"
       _ucc_record_outcome "$profile" "$name" "FAILED" "failed" "failed" "$msg_id" "$started_at" \
         "{}" "{\"observation\":\"failed\",\"message\":\"post-${action_context} verify did not reach desired state\"}"
+    else
+      _ucc_emit_target_line "$profile" "fail" "$display_name" "${action_context} error was=\"$(_ucc_display_state "$observed" "$axes")\"  $(_ucc_compose_evidence "$name" "$observed" "$axes" "$evidence_fn")"
+      _ucc_record_outcome "$profile" "$name" "FAILED" "failed" "failed" "$msg_id" "$started_at" \
+        "{}" "{\"observation\":\"failed\",\"message\":\"${action_context} function failed; verify also did not reach desired state\"}"
     fi
-  elif [[ $action_rc -eq 124 ]]; then
+    return 0
+  fi
+  if [[ $action_rc -eq 124 ]]; then
     _ucc_emit_target_line "$profile" "warn" "$display_name" \
       "$(_ucc_policy_warn_detail "$name" "$observed" "$axes" "$evidence_fn" "transition blocked by policy")"
     _ucc_record_outcome "$profile" "$name" "" "warn" "unchanged" "$msg_id" "$started_at" \
@@ -1300,14 +1311,6 @@ _ucc_execute_target() {
     _ucc_record_outcome "$profile" "$name" "" "unchanged" "unchanged" "$msg_id" "$started_at" \
       "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$desired" "$axes")}" \
       "{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"policy\",\"message\":\"transition requires admin privileges\"}"
-  elif [[ "$warn_on_update_failure" == "1" && "$action_context" == "update" ]]; then
-    _ucc_emit_target_line "$profile" "warn" "$display_name" "update remains externally managed  $(_ucc_compose_evidence "$name" "$observed" "$axes" "$evidence_fn")"
-    _ucc_record_outcome "$profile" "$name" "" "warn" "unchanged" "$msg_id" "$started_at" \
-      "{}" "{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"policy\",\"message\":\"update must be applied externally\"}"
-  else
-    _ucc_emit_target_line "$profile" "fail" "$display_name" "${action_context} error was=\"$(_ucc_display_state "$observed" "$axes")\"  $(_ucc_compose_evidence "$name" "$observed" "$axes" "$evidence_fn")"
-    _ucc_record_outcome "$profile" "$name" "FAILED" "failed" "failed" "$msg_id" "$started_at" \
-      "{}" "{\"observation\":\"failed\",\"message\":\"${action_context} function failed\"}"
   fi
 }
 
