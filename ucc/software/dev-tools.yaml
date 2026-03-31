@@ -484,10 +484,12 @@ targets:
     display_name: OpenCode
     depends_on:
     - homebrew
+    - node-lts
     provided_by_tool: brew
     driver:
       kind: brew
       ref: opencode
+      previous_ref: node
   cli-aria2:
     component: dev-tools
     profile: configured
