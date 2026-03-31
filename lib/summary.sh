@@ -119,9 +119,9 @@ print_final_summary() {
   local dir="$1" mode="$2" dry_run="$3"
   local software_comps=(); local system_comps=(); local tic_comps=()
   # Callers pass arrays by name; read from globals set during run passes
-  software_comps=("${_SOFTWARE_COMPS[@]}")
-  system_comps=("${_SYSTEM_COMPS[@]}")
-  tic_comps=("${_TIC_COMPS[@]}")
+  software_comps=(${_SOFTWARE_COMPS[@]+"${_SOFTWARE_COMPS[@]}"})
+  system_comps=(${_SYSTEM_COMPS[@]+"${_SYSTEM_COMPS[@]}"})
+  tic_comps=(${_TIC_COMPS[@]+"${_TIC_COMPS[@]}"})
 
   echo ""
   echo "========================================================"

@@ -447,7 +447,7 @@ _collect_layer_components() {
     _comp="${_DISP_COMPS[$_i]}"
     comps+=("$_comp")
   done
-  printf '%s\n' "${comps[@]}"
+  [[ ${#comps[@]} -gt 0 ]] && printf '%s\n' "${comps[@]}"
 }
 
 print_execution_plan() {
