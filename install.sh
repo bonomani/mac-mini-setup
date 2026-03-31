@@ -298,7 +298,7 @@ done
 #   target:<name>     → explicit target, auto-resolve component
 #   <name>            → try component first, then target (ambiguous names: component wins)
 _resolved=()
-for _arg in "${TO_RUN[@]}"; do
+for _arg in ${TO_RUN[@]+"${TO_RUN[@]}"}; do
   case "$_arg" in
     component:*)
       _name="${_arg#component:}"
