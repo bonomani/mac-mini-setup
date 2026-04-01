@@ -28,19 +28,9 @@ _run_docker_daemon() {
     printf '{"OpenUIOnStartupDisabled":true,"DisplayedOnboarding":true,"ShowInstallScreen":false}\n' > "$settings_store"
   fi
 
-  log_info "Starting Docker Desktop..."
-  open -a Docker
-  log_info "Waiting for Docker daemon (up to 360s)..."
-  local i
-  for ((i=1; i<=36; i++)); do
-    if docker info >/dev/null 2>&1; then
-      printf '      [%-8s] %-30s %s\n' "ok" "Docker Daemon" "pid=$(pgrep -f com.docker.backend | head -1)"
-      return 0
-    fi
-    sleep 10
-  done
-  log_warn "Docker daemon not ready — re-run once Docker Desktop has finished starting."
-  printf '      [%-8s] %-30s %s\n' "warn" "Docker Daemon" "not ready"
+  log_warn "Docker daemon is not running."
+  log_warn "Start Docker Desktop manually, then re-run: ./install.sh docker"
+  printf '      [%-8s] %-30s %s\n' "warn" "Docker Daemon" "not running — start Docker Desktop manually"
 }
 
 # Usage: run_docker_config_from_yaml <cfg_dir> <yaml_path>
