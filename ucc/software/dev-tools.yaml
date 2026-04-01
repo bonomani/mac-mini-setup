@@ -11,8 +11,6 @@ pyenv_dir: .pyenv
 omz_theme: agnoster
 omz_installer_url: https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh
 omz_dir: .oh-my-zsh
-vscode_cask_id: visual-studio-code
-vscode_app_path: /Applications/Visual Studio Code.app
 vscode_cli_path: /Applications/Visual Studio Code.app/Contents/Resources/app/bin/code
 vscode_cli_link_relpath: bin/code
 vscode_code_cmd_hint: "Symlink created. If 'code' is still missing in new shells,\
