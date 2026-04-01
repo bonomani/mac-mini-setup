@@ -108,6 +108,14 @@ _tic_target_status_is() {
   [[ "$(_tic_target_status "$target")" == "$expected" ]]
 }
 
+# Return 0 (skip) when a Docker Compose service container is not running.
+# Usage: _tic_service_not_running <service_name>
+_tic_service_not_running() {
+  local svc="$1"
+  [[ -n "$svc" ]] || return 0
+  ! docker ps --filter "name=${svc}" --filter "status=running" --format '{{.Names}}' 2>/dev/null | grep -q .
+}
+
 _tic_skip_when_reason() {
   local condition="$1" reason="${2:-conditional skip}"
   [[ -n "$condition" ]] || return 1
