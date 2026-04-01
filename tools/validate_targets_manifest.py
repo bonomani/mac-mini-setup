@@ -39,6 +39,7 @@ KNOWN_RUNTIME_DRIVERS = {
     "custom-daemon",
     "desktop-app",
     "docker-compose",
+    "docker-compose-service",
     "launchd",
 }
 KNOWN_CONFIG_DRIVERS = {
