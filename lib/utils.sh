@@ -348,6 +348,10 @@ brew_upgrade() {
 
 # Install a brew cask (cask is absent)
 brew_cask_install() {
+  sudo -n true >/dev/null 2>&1 || {
+    log_warn "Installing cask '$1' requires admin privileges; run: sudo -v"
+    return 125
+  }
   ucc_run brew install --cask "$@" || return $?
   brew_refresh_caches 2>/dev/null || true
 }
@@ -355,6 +359,10 @@ brew_cask_install() {
 # Upgrade a brew cask (cask is present but outdated)
 brew_cask_upgrade() {
   local pkg="$1" greedy_auto_updates="${2:-false}"
+  sudo -n true >/dev/null 2>&1 || {
+    log_warn "Upgrading cask '$pkg' requires admin privileges; run: sudo -v"
+    return 125
+  }
   if _brew_flag_true "$greedy_auto_updates"; then
     ucc_run brew upgrade --cask --greedy-auto-updates "$pkg" || return $?
   else
