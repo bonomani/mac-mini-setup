@@ -9,6 +9,7 @@ docker_desktop_app_name: Docker
 docker_desktop_app_path: /Applications/Docker.app
 docker_runtime_wait_attempts: 24
 docker_runtime_wait_interval: 5
+docker_socket: /var/run/docker.sock
 targets:
   docker-desktop:
     component: docker
@@ -28,15 +29,14 @@ targets:
     runtime_manager: desktop-app
     probe_kind: command
     oracle:
-      configured: '[[ -d "${docker_desktop_app_path}" ]]'
-      runtime: docker info >/dev/null 2>&1
+      configured: command -v docker >/dev/null 2>&1
+      runtime: '[[ -S "${docker_socket}" ]] && docker info >/dev/null 2>&1'
     evidence:
-      version: defaults read "${docker_desktop_app_path}/Contents/Info" CFBundleShortVersionString
-        2>/dev/null || docker --version 2>/dev/null | awk '{print $3}' | tr -d ','
+      version: docker --version 2>/dev/null | awk '{print $3}' | tr -d ','
+      socket: printf '%s' "${docker_socket}"
       install_source: src="$(desktop_app_install_source "${docker_desktop_cask_id}"
         "${docker_desktop_app_path}")"; [[ "$src" != "absent" && "$src" != "brew-cask"
         ]] && printf '%s' "$src"
-      pid: pgrep -f "${docker_desktop_app_path}" 2>/dev/null | head -1
     actions:
       install: "policy=\"${UIC_PREF_PREFERRED_DRIVER_POLICY:-warn}\"\ninstall_source=\"\
         $(desktop_app_install_source \"${docker_desktop_cask_id}\" \"${docker_desktop_app_path}\"\
