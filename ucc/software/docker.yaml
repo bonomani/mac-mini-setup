@@ -9,7 +9,7 @@ docker_desktop_app_name: Docker
 docker_desktop_app_path: /Applications/Docker.app
 docker_runtime_wait_attempts: 24
 docker_runtime_wait_interval: 5
-docker_socket: /var/run/docker.sock
+docker_socket: $HOME/.docker/run/docker.sock
 targets:
   docker-desktop:
     component: docker
@@ -53,9 +53,10 @@ targets:
         fi\nif [[ \"$observed\" == \"absent\" ]]; then\n  brew_cask_install \"${docker_desktop_cask_id}\"\
         \ || return 1\nelif [[ \"$observed\" == \"outdated\" ]]; then\n  brew_cask_upgrade\
         \ \"${docker_desktop_cask_id}\" \"${driver.greedy_auto_updates}\" || return\
-        \ 1\nfi\nopen -a \"${docker_desktop_app_name}\"\nlog_info \"Waiting for Docker\
-        \ daemon...\"\nUCC_RUNTIME_WAIT_ATTEMPTS=\"${docker_runtime_wait_attempts}\"\
+        \ 1\nfi\nlog_info \"Starting Docker Desktop...\"\ndocker desktop start >/dev/null\
+        \ 2>&1 || open -gj -a \"${docker_desktop_app_name}\" 2>/dev/null || true\n\
+        log_info \"Waiting for Docker daemon...\"\nUCC_RUNTIME_WAIT_ATTEMPTS=\"${docker_runtime_wait_attempts}\"\
         \ \\\nUCC_RUNTIME_WAIT_INTERVAL=\"${docker_runtime_wait_interval}\" \\\n \
-        \ _ucc_wait_for_runtime_probe \"docker info >/dev/null 2>&1\" \\\n  || log_warn\
-        \ \"Docker daemon did not start — complete the Docker Desktop setup wizard\
-        \ to launch it.\"\n"
+        \ _ucc_wait_for_runtime_probe \"[[ -S \\\"${docker_socket}\\\" ]] && docker\
+        \ info >/dev/null 2>&1\" \\\n  || log_warn \"Docker daemon did not start\
+        \ — complete setup in Docker Desktop and re-run.\"\n"
