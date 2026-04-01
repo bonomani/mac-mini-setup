@@ -27,11 +27,10 @@ targets:
       greedy_auto_updates: true
     oracle:
       configured: command -v docker >/dev/null 2>&1
-    observe_cmd: command -v docker >/dev/null 2>&1 && echo installed || echo absent
+    observe_cmd: docker_desktop_observe
     evidence:
-      version: docker --version 2>/dev/null | awk '{print $3}' | tr -d ','
-      install_source: src="$(desktop_app_install_source "${docker_desktop_cask_id}" "${docker_desktop_app_path}")"; [[ "$src"
-        != "absent" && "$src" != "brew-cask" ]] && printf '%s' "$src"
+      version: docker_version
+      install_source: docker_install_source_observe "${docker_desktop_cask_id}" "${docker_desktop_app_path}"
     actions:
       install: _docker_desktop_install "${docker_desktop_cask_id}" "${docker_desktop_app_path}" "${driver.greedy_auto_updates}"
   docker-daemon:
@@ -50,7 +49,7 @@ targets:
       runtime: docker info >/dev/null 2>&1
     evidence:
       socket: printf '%s' "${docker_socket}"
-      pid: pgrep -f "com.docker.backend" 2>/dev/null | head -1
+      pid: docker_daemon_pid
     stopped_dependencies: DepsReady
     actions:
       install: _docker_daemon_start

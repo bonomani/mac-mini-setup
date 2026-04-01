@@ -90,6 +90,33 @@ _install_bin_script() {
   install -m 755 "$cfg_dir/scripts/$script_name" "$bin_dir/$script_name"
 }
 
+# Print pyenv version string (e.g. "2.4.1").
+pyenv_version() {
+  pyenv --version 2>/dev/null | awk '{print $2}'
+}
+
+# Print pip version string (e.g. "24.0").
+pip_version() {
+  pip --version 2>/dev/null | awk '{print $2}'
+}
+
+# Return 0 if node is NOT resolved from Homebrew's opt path.
+node_not_from_homebrew() {
+  ! command -v node 2>/dev/null | grep -q opt/homebrew
+}
+
+# Return 0 if the given theme is active in the given zsh config.
+# Usage: _zsh_theme_is_set <theme> <zsh_config>
+_zsh_theme_is_set() {
+  grep -q "^ZSH_THEME=\"$1\"" "$HOME/$2" 2>/dev/null
+}
+
+# Return 0 if the given bin dir is already exported in PATH in the given shell profile.
+# Usage: _path_dir_in_profile <bin_dir> <shell_profile>
+_path_dir_in_profile() {
+  grep -q "export PATH=\"\$HOME/$1:\$PATH\"" "$HOME/$2" 2>/dev/null
+}
+
 # Usage: run_dev_tools_from_yaml <cfg_dir> <yaml_path>
 run_dev_tools_from_yaml() {
   local cfg_dir="$1" yaml="$2"

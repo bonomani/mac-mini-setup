@@ -2,6 +2,28 @@
 # lib/docker.sh — Docker Desktop install + daemon startup
 # Sourced by components/docker.sh
 
+# Observe docker-desktop state: installed | absent
+docker_desktop_observe() {
+  command -v docker >/dev/null 2>&1 && printf 'installed' || printf 'absent'
+}
+
+# Print Docker CLI version string (e.g. "27.3.1").
+docker_version() {
+  docker --version 2>/dev/null | awk '{print $3}' | tr -d ','
+}
+
+# Print the install source of a desktop app if it is not absent/brew-cask (i.e. app-bundle or other).
+# Usage: docker_install_source_observe <cask_id> <app_path>
+docker_install_source_observe() {
+  local src; src="$(desktop_app_install_source "$1" "$2")"
+  [[ "$src" != "absent" && "$src" != "brew-cask" ]] && printf '%s' "$src" || true
+}
+
+# Print the PID of the Docker backend process (empty if not running).
+docker_daemon_pid() {
+  pgrep -f "com.docker.backend" 2>/dev/null | head -1
+}
+
 # Usage: run_docker_from_yaml <cfg_dir> <yaml_path>
 run_docker_from_yaml() {
   local cfg_dir="$1" yaml="$2"

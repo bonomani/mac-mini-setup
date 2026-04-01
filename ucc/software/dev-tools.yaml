@@ -46,7 +46,7 @@ targets:
       kind: custom
     observe_cmd: brew_observe pyenv
     evidence:
-      version: pyenv --version 2>/dev/null | awk '{print $2}'
+      version: pyenv_version
       root: pyenv root 2>/dev/null || true
     actions:
       install: _pyenv_install "$CFG_DIR" "$YAML_PATH" "${zsh_config}"
@@ -89,7 +89,7 @@ targets:
     oracle:
       configured: pip --version >/dev/null 2>&1
     evidence:
-      version: pip --version 2>/dev/null | awk '{print $2}'
+      version: pip_version
       path: command -v pip 2>/dev/null || true
     actions:
       install: _pip_bootstrap_install "$CFG_DIR" "$YAML_PATH"
@@ -189,7 +189,7 @@ targets:
     driver:
       kind: custom
     oracle:
-      configured: grep -q "^ZSH_THEME=\"${omz_theme}\"" "$HOME/${zsh_config}" 2>/dev/null
+      configured: _zsh_theme_is_set "${omz_theme}" "${zsh_config}"
     evidence:
       theme: printf '%s' '${omz_theme}'
       file: printf '%s' "$HOME/${zsh_config}"
@@ -204,8 +204,7 @@ targets:
     driver:
       kind: custom
     oracle:
-      configured: grep -q "export PATH=\"\$HOME/${home_bin_dir}:\$PATH\"" "$HOME/${shell_profile}"
-        2>/dev/null
+      configured: _path_dir_in_profile "${home_bin_dir}" "${shell_profile}"
     evidence:
       path: printf '%s' "$HOME/${home_bin_dir}"
     actions:
@@ -641,7 +640,7 @@ targets:
     driver:
       kind: custom
     oracle:
-      configured: '! command -v node 2>/dev/null | grep -q opt/homebrew'
+      configured: node_not_from_homebrew
     evidence:
       node_path: command -v node 2>/dev/null || printf none
     actions:

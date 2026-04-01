@@ -24,6 +24,16 @@ homebrew_observe() {
   fi
 }
 
+# Print Xcode CLT version string from pkgutil (empty if not installed).
+xcode_clt_version() {
+  pkgutil --pkg-info=com.apple.pkg.CLTools_Executables 2>/dev/null | awk '/^version:/ {print $2}'
+}
+
+# Print Homebrew version string (empty if not installed).
+homebrew_version() {
+  brew --version 2>/dev/null | awk 'NR==1 {print $2}'
+}
+
 # Trigger Xcode CLT installation and exit with instructions.
 _xcode_clt_trigger() {
   log_info "Triggering Xcode Command Line Tools install..."

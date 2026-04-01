@@ -31,8 +31,7 @@ targets:
       configured: xcode-select -p >/dev/null 2>&1
     observe_cmd: xcode_clt_observe
     evidence:
-      version: pkgutil --pkg-info=com.apple.pkg.CLTools_Executables 2>/dev/null |
-        awk '/^version:/ {print $2}'
+      version: xcode_clt_version
       path: xcode-select -p 2>/dev/null || true
     actions:
       install: _xcode_clt_trigger
@@ -51,7 +50,7 @@ targets:
       kind: custom
     observe_cmd: homebrew_observe
     evidence:
-      version: brew --version 2>/dev/null | awk 'NR==1 {print $2}'
+      version: homebrew_version
       path: command -v brew 2>/dev/null || true
     actions:
       install: _homebrew_install "${shell_config_file}" "${installer_url}"
