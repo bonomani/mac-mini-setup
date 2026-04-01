@@ -42,25 +42,8 @@ targets:
       version: pyenv --version 2>/dev/null | awk '{print $2}'
       root: pyenv root 2>/dev/null || true
     actions:
-      install: 'pkgs="$(python3 "$CFG_DIR/tools/read_config.py" --list "$YAML_PATH"
-        pyenv_packages 2>/dev/null | xargs)"
-
-        [[ -n "$pkgs" ]] || pkgs="pyenv pyenv-virtualenv"
-
-        brew_install $pkgs
-
-        grep -q ''pyenv init'' "$HOME/.zshrc" 2>/dev/null || cat "$CFG_DIR/scripts/pyenv-zshrc-snippet"
-        >> "$HOME/.zshrc"
-
-        '
-      update: 'pkgs="$(python3 "$CFG_DIR/tools/read_config.py" --list "$YAML_PATH"
-        pyenv_packages 2>/dev/null | xargs)"
-
-        [[ -n "$pkgs" ]] || pkgs="pyenv pyenv-virtualenv"
-
-        brew_upgrade $pkgs
-
-        '
+      install: _pyenv_install "$CFG_DIR" "$YAML_PATH"
+      update: _pyenv_upgrade "$CFG_DIR" "$YAML_PATH"
   xz:
     component: dev-tools
     profile: configured
@@ -102,14 +85,7 @@ targets:
       version: pip --version 2>/dev/null | awk '{print $2}'
       path: command -v pip 2>/dev/null || true
     actions:
-      install: 'local pkgs
-
-        pkgs="$(python3 "$CFG_DIR/tools/read_config.py" --list "$YAML_PATH" pip_bootstrap
-        2>/dev/null | xargs)"
-
-        [[ -n "$pkgs" ]] && pip install --upgrade $pkgs
-
-        '
+      install: _pip_bootstrap_install "$CFG_DIR" "$YAML_PATH"
   vscode:
     component: dev-tools
     profile: configured
@@ -141,13 +117,7 @@ targets:
     evidence:
       path: command -v code 2>/dev/null || true
     actions:
-      install: "if [[ -x \"${vscode_cli_path}\" ]]; then\n  mkdir -p \"$(dirname \"\
-        $HOME/${vscode_cli_link_relpath}\")\"\n  ln -sf \"${vscode_cli_path}\" \"\
-        $HOME/${vscode_cli_link_relpath}\"\n  export PATH=\"$(dirname \"$HOME/${vscode_cli_link_relpath}\"\
-        ):$PATH\"\n  log_warn \"Symlink created. If 'code' is still missing in new\
-        \ shells, run: Cmd+Shift+P \u2192 'Shell Command: Install code command in\
-        \ PATH'\"\nelse\n  log_warn \"VS Code binary not found. Open VS Code manually\
-        \ first.\"\n  return 1\nfi\n"
+      install: _vscode_code_cmd_install "${vscode_cli_path}" "${vscode_cli_link_relpath}"
   vscode-settings:
     component: dev-tools
     profile: configured
@@ -221,10 +191,7 @@ targets:
       theme: printf '%s' '${omz_theme}'
       file: printf '%s' "$HOME/.zshrc"
     actions:
-      install: "if grep -q '^ZSH_THEME=' \"$HOME/.zshrc\" 2>/dev/null; then\n  sed\
-        \ -i '' \"s/^ZSH_THEME=.*/ZSH_THEME=\\\"${omz_theme}\\\"/\" \"$HOME/.zshrc\"\
-        \nelse\n  printf '\\nZSH_THEME=\"%s\"\\n' \"${omz_theme}\" >> \"$HOME/.zshrc\"\
-        \nfi\n"
+      install: _omz_set_theme "${omz_theme}"
   home-bin-in-path:
     component: dev-tools
     profile: configured
@@ -238,13 +205,7 @@ targets:
     evidence:
       path: printf '%s' "$HOME/bin"
     actions:
-      install: 'mkdir -p "$HOME/bin"
-
-        printf ''\nexport PATH="$HOME/bin:$PATH"\n'' >> "$HOME/.zprofile"
-
-        export PATH="$HOME/bin:$PATH"
-
-        '
+      install: _home_bin_add_to_path
   ai-healthcheck:
     component: dev-tools
     profile: configured
@@ -260,11 +221,7 @@ targets:
     evidence:
       path: printf '%s' "$HOME/bin/ai-healthcheck"
     actions:
-      install: 'mkdir -p "$HOME/bin"
-
-        install -m 755 "$CFG_DIR/scripts/ai-healthcheck" "$HOME/bin/ai-healthcheck"
-
-        '
+      install: _install_bin_script "$CFG_DIR" ai-healthcheck
   ariaflow:
     component: dev-tools
     profile: runtime
