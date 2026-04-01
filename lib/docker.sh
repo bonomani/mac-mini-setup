@@ -57,8 +57,7 @@ docker_daemon_pid() {
 # Usage: run_docker_from_yaml <cfg_dir> <yaml_path>
 run_docker_from_yaml() {
   local cfg_dir="$1" yaml="$2"
-  ucc_yaml_simple_target  "$cfg_dir" "$yaml" "docker-desktop"
-  ucc_yaml_runtime_target "$cfg_dir" "$yaml" "docker-daemon"
+  ucc_yaml_runtime_target "$cfg_dir" "$yaml" "docker-desktop"
 }
 
 # Apply silent-start settings to the Docker settings-store JSON.
@@ -92,6 +91,7 @@ _docker_cask_ensure() {
   fi
 }
 
+# Install Docker Desktop cask only (no daemon start).
 # Uses implicit $CFG_DIR/$YAML_PATH/$TARGET_NAME context.
 _docker_desktop_install() {
   local cask_id app_path settings_store_relpath
@@ -105,6 +105,13 @@ _docker_desktop_install() {
   local greedy; greedy="$(_ucc_yaml_target_get "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME" "driver.greedy_auto_updates")"
   _docker_cask_ensure "$cask_id" "$app_path" "$greedy" || return $?
   _docker_settings_store_patch "$settings_store_relpath"
+}
+
+# Install Docker Desktop cask + start daemon.
+# Uses implicit $CFG_DIR/$YAML_PATH/$TARGET_NAME context.
+_docker_desktop_install_and_start() {
+  _docker_desktop_install || return $?
+  _docker_daemon_start
 }
 
 # Kill all running Docker processes to avoid XPC/IPC hangs on restart.

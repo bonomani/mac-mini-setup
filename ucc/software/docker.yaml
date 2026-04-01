@@ -14,9 +14,8 @@ docker_kill_pattern: com.docker
 targets:
   docker-desktop:
     component: docker
-    profile: configured
-    type: package
-    state_model: package
+    profile: runtime
+    type: runtime
     display_name: Docker Desktop
     depends_on:
     - homebrew
@@ -27,31 +26,17 @@ targets:
       app_name: ${docker_desktop_app_name}
       app_path: ${docker_desktop_app_path}
       greedy_auto_updates: true
-    oracle:
-      configured: is_installed docker
-    observe_cmd: docker_desktop_observe
-    evidence:
-      version: docker_version
-      install_source: docker_install_source_observe
-    actions:
-      install: _docker_desktop_install
-  docker-daemon:
-    component: docker
-    profile: runtime
-    type: runtime
-    display_name: Docker Daemon
-    depends_on:
-    - docker-desktop
-    driver:
-      kind: custom
     runtime_manager: desktop-app
     probe_kind: command
     oracle:
       configured: is_installed docker
       runtime: docker_daemon_is_running
+    observe_cmd: docker_desktop_observe
     evidence:
+      version: docker_version
+      install_source: docker_install_source_observe
       socket: echo_var "${docker_socket}"
       pid: docker_daemon_pid
     stopped_dependencies: DepsReady
     actions:
-      install: _docker_daemon_start
+      install: _docker_desktop_install_and_start
