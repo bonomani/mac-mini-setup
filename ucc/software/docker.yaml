@@ -33,22 +33,7 @@ targets:
       install_source: src="$(desktop_app_install_source "${docker_desktop_cask_id}" "${docker_desktop_app_path}")"; [[ "$src"
         != "absent" && "$src" != "brew-cask" ]] && printf '%s' "$src"
     actions:
-      install: "policy=\"${UIC_PREF_PREFERRED_DRIVER_POLICY:-warn}\"\ninstall_source=\"$(desktop_app_install_source \"${docker_desktop_cask_id}\"\
-        \ \"${docker_desktop_app_path}\")\"\nif [[ \"$install_source\" == \"app-bundle\" ]]; then\n  case \"$policy\" in\n\
-        \    ignore)\n      log_info \"Docker Desktop installed outside brew-cask; ignoring (policy=ignore).\"\n      return\
-        \ 0\n      ;;\n    warn)\n      log_warn \"Docker Desktop is installed outside preferred driver brew-cask; set preferred-driver-policy=migrate\
-        \ to adopt it.\"\n      return 124\n      ;;\n    migrate)\n      sudo -n true >/dev/null 2>&1 || { log_warn \"Migrating\
-        \ Docker Desktop requires admin privileges; run: sudo -v\"; return 125; }\n      brew_cask_migrate_install \"${docker_desktop_cask_id}\"\
-        \ || return 1\n      ;;\n    *)\n      log_warn \"Unknown preferred-driver-policy '$policy'; treating as warn.\"\n\
-        \      return 124\n      ;;\n  esac\nfi\nobserved=\"$(brew_cask_observe \"${docker_desktop_cask_id}\" \"${driver.greedy_auto_updates}\"\
-        )\"\nif [[ \"$observed\" == \"absent\" && -d \"${docker_desktop_app_path}\" ]]; then\n  observed=\"installed\"\nfi\n\
-        if [[ \"$observed\" == \"absent\" ]]; then\n  brew_cask_install \"${docker_desktop_cask_id}\" || return 1\nelif [[\
-        \ \"$observed\" == \"outdated\" ]]; then\n  brew_cask_upgrade \"${docker_desktop_cask_id}\" \"${driver.greedy_auto_updates}\"\
-        \ || return 1\nfi\nlog_info \"Configuring Docker Desktop silent launch...\"\n_store=\"${docker_settings_store}\"\n\
-        if [[ -f \"$_store\" ]]; then\n  _tmp=\"$(mktemp)\"\n  jq '. + {\"OpenUIOnStartupDisabled\": true, \"DisplayedOnboarding\"\
-        : true, \"ShowInstallScreen\": false}' \"$_store\" > \"$_tmp\" && mv \"$_tmp\" \"$_store\" || rm -f \"$_tmp\"\nelse\n\
-        \  mkdir -p \"$(dirname \"$_store\")\"\n  printf '{\"OpenUIOnStartupDisabled\":true,\"DisplayedOnboarding\":true,\"\
-        ShowInstallScreen\":false}\\n' > \"$_store\"\nfi\n"
+      install: _docker_desktop_install "${docker_desktop_cask_id}" "${docker_desktop_app_path}" "${driver.greedy_auto_updates}"
   docker-daemon:
     component: docker
     profile: runtime
@@ -68,9 +53,4 @@ targets:
       pid: pgrep -f "com.docker.backend" 2>/dev/null | head -1
     stopped_dependencies: DepsReady
     actions:
-      install: "_store=\"${docker_settings_store}\"\nif [[ -f \"$_store\" ]]; then\n  _tmp=\"$(mktemp)\"\n\
-        \  jq '. + {\"OpenUIOnStartupDisabled\": true, \"DisplayedOnboarding\": true, \"ShowInstallScreen\": false}'\
-        \ \"$_store\" > \"$_tmp\" && mv \"$_tmp\" \"$_store\" || rm -f \"$_tmp\"\nelse\n  mkdir -p \"$(dirname\
-        \ \"$_store\")\"\n  printf '{\"OpenUIOnStartupDisabled\":true,\"DisplayedOnboarding\":true,\"ShowInstallScreen\":false}\\n'\
-        \ > \"$_store\"\nfi\npkill -f com.docker 2>/dev/null || true\nsleep 2\nlog_info \"Starting Docker Desktop...\"\n\
-        env -i HOME=\"$HOME\" PATH=\"$PATH\" USER=\"$USER\" TERM=\"${TERM:-}\" script -q /dev/null docker desktop start\n"
+      install: _docker_daemon_start

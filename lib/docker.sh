@@ -9,6 +9,64 @@ run_docker_from_yaml() {
   ucc_yaml_runtime_target "$cfg_dir" "$yaml" "docker-daemon"
 }
 
+_docker_settings_store_patch() {
+  local store="$HOME/Library/Group Containers/group.com.docker/settings-store.json"
+  if [[ -f "$store" ]]; then
+    local tmp; tmp="$(mktemp)"
+    jq '. + {"OpenUIOnStartupDisabled": true, "DisplayedOnboarding": true, "ShowInstallScreen": false}' \
+      "$store" > "$tmp" && mv "$tmp" "$store" || rm -f "$tmp"
+  else
+    mkdir -p "$(dirname "$store")"
+    printf '{"OpenUIOnStartupDisabled":true,"DisplayedOnboarding":true,"ShowInstallScreen":false}\n' > "$store"
+  fi
+}
+
+_docker_desktop_install() {
+  local cask_id="$1" app_path="$2" greedy="$3"
+  local policy="${UIC_PREF_PREFERRED_DRIVER_POLICY:-warn}"
+  local install_source; install_source="$(desktop_app_install_source "$cask_id" "$app_path")"
+
+  if [[ "$install_source" == "app-bundle" ]]; then
+    case "$policy" in
+      ignore)
+        log_info "Docker Desktop installed outside brew-cask; ignoring (policy=ignore)."
+        return 0
+        ;;
+      warn)
+        log_warn "Docker Desktop installed outside brew-cask; set preferred-driver-policy=migrate to adopt it."
+        return 124
+        ;;
+      migrate)
+        sudo -n true >/dev/null 2>&1 || { log_warn "Migrating Docker Desktop requires admin; run: sudo -v"; return 125; }
+        brew_cask_migrate_install "$cask_id" || return 1
+        ;;
+      *)
+        log_warn "Unknown preferred-driver-policy '$policy'; treating as warn."
+        return 124
+        ;;
+    esac
+  fi
+
+  local observed; observed="$(brew_cask_observe "$cask_id" "$greedy")"
+  [[ "$observed" == "absent" && -d "$app_path" ]] && observed="installed"
+  if [[ "$observed" == "absent" ]]; then
+    brew_cask_install "$cask_id" || return 1
+  elif [[ "$observed" == "outdated" ]]; then
+    brew_cask_upgrade "$cask_id" "$greedy" || return 1
+  fi
+
+  _docker_settings_store_patch
+}
+
+_docker_daemon_start() {
+  _docker_settings_store_patch
+  pkill -f com.docker 2>/dev/null || true
+  sleep 2
+  log_info "Starting Docker Desktop..."
+  env -i HOME="$HOME" PATH="$PATH" USER="$USER" TERM="${TERM:-}" \
+    script -q /dev/null docker desktop start
+}
+
 # Usage: run_docker_config_from_yaml <cfg_dir> <yaml_path>
 run_docker_config_from_yaml() {
   local cfg_dir="$1" yaml="$2"
