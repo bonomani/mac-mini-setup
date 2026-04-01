@@ -60,6 +60,9 @@ run_dev_tools_from_yaml() {
   # Activate the installed version for subsequent targets
   [[ -s "$NVM_DIR/nvm.sh" ]] && nvm use "$_NODE_VER" 2>/dev/null || true
 
+  # ---- Ensure brew's node is never on PATH (nvm owns node) ----
+  ucc_yaml_simple_target "$cfg_dir" "$yaml" "brew-node-unlinked"
+
   # ---- npm global packages ----
   npm_global_cache_versions
   while IFS= read -r _target; do

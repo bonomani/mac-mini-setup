@@ -669,6 +669,23 @@ targets:
     driver:
       kind: npm-global
       package: bmad-method
+  brew-node-unlinked:
+    component: dev-tools
+    profile: configured
+    type: config
+    state_model: config
+    display_name: Brew node unlinked
+    depends_on:
+    - node-lts
+    driver:
+      kind: custom
+    oracle:
+      configured: '! command -v node 2>/dev/null | grep -q opt/homebrew'
+    evidence:
+      node_path: command -v node 2>/dev/null || printf none
+    actions:
+      install: brew unlink node 2>/dev/null || true
+      update: brew unlink node 2>/dev/null || true
   git:
     component: dev-tools
     profile: configured
