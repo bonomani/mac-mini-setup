@@ -84,23 +84,26 @@ xcode_clt_update() {
   return 1
 }
 
+# Append a brew shellenv eval line to a shell config if not already present, then eval it.
+# Usage: _homebrew_shellenv_entry <brew_bin> <shell_config_relpath>
+_homebrew_shellenv_entry() {
+  local brew_bin="$1" sc="$HOME/$2"
+  grep -q "${brew_bin} shellenv" "$sc" 2>/dev/null || \
+    printf '\neval "$(%s shellenv)"\n' "$brew_bin" >> "$sc"
+  eval "$("$brew_bin" shellenv)"
+}
+
 # Ensure brew shellenv is sourced and appended to shell config (idempotent).
 # Usage: _homebrew_ensure_shellenv <shell_config>
 _homebrew_ensure_shellenv() {
   local sc="$1"
   [[ "${HOST_PLATFORM:-macos}" != "macos" && "$sc" == ".zprofile" ]] && sc=".profile"
   if [[ -x /opt/homebrew/bin/brew ]]; then
-    grep -q 'opt/homebrew/bin/brew shellenv' "$HOME/${sc}" 2>/dev/null || \
-      echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> "$HOME/${sc}"
-    eval "$(/opt/homebrew/bin/brew shellenv)"
+    _homebrew_shellenv_entry /opt/homebrew/bin/brew "$sc"
   elif [[ -x /usr/local/bin/brew ]]; then
-    grep -q 'usr/local/bin/brew shellenv' "$HOME/${sc}" 2>/dev/null || \
-      echo 'eval "$(/usr/local/bin/brew shellenv)"' >> "$HOME/${sc}"
-    eval "$(/usr/local/bin/brew shellenv)"
+    _homebrew_shellenv_entry /usr/local/bin/brew "$sc"
   elif [[ -x /home/linuxbrew/.linuxbrew/bin/brew ]]; then
-    grep -q 'linuxbrew/.linuxbrew/bin/brew shellenv' "$HOME/${sc}" 2>/dev/null || \
-      echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> "$HOME/${sc}"
-    eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+    _homebrew_shellenv_entry /home/linuxbrew/.linuxbrew/bin/brew "$sc"
   fi
 }
 

@@ -54,9 +54,9 @@ _omz_install() {
 }
 
 # Upgrade Oh My Zsh via its bundled upgrade script.
-# Usage: _omz_upgrade <omz_dir>
+# Usage: _omz_upgrade <omz_dir_relpath>
 _omz_upgrade() {
-  local omz_dir="${1:-$HOME/.oh-my-zsh}"
+  local omz_dir="$HOME/$1"
   [[ -f "$omz_dir/tools/upgrade.sh" ]] && bash "$omz_dir/tools/upgrade.sh" || true
 }
 
