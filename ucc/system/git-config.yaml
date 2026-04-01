@@ -20,8 +20,8 @@ targets:
     oracle:
       configured: git config --global user.name >/dev/null 2>&1
     evidence:
-      user: git config --global user.name 2>/dev/null || true
-      email: git config --global user.email 2>/dev/null || true
+      user: git_global_user_name
+      email: git_global_user_email
     actions:
       install: _git_global_config_interactive "$CFG_DIR" "$YAML_PATH"
 global_config:

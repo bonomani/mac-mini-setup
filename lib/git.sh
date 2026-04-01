@@ -24,6 +24,16 @@ _git_global_config_interactive() {
   done < <(yaml_records "$cfg_dir" "$yaml" global_config key value)
 }
 
+# Print git global user.name (empty if not set).
+git_global_user_name() {
+  git config --global user.name 2>/dev/null || true
+}
+
+# Print git global user.email (empty if not set).
+git_global_user_email() {
+  git config --global user.email 2>/dev/null || true
+}
+
 # Usage: run_git_from_yaml <cfg_dir> <yaml_path>
 run_git_from_yaml() {
   local cfg_dir="$1" yaml="$2"

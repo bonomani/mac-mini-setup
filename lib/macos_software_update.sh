@@ -10,6 +10,17 @@ softwareupdate_schedule_observe() {
   fi
 }
 
+# Return 0 if the softwareupdate schedule is set to 'on'.
+softwareupdate_schedule_is_on() {
+  softwareupdate_schedule_observe | grep -q '^on$'
+}
+
+# Read a softwareupdate defaults key, printing 0 if absent.
+# Usage: softwareupdate_pref_read <domain> <key>
+softwareupdate_pref_read() {
+  defaults read "$1" "$2" 2>/dev/null || echo 0
+}
+
 # Enable the automatic softwareupdate schedule (requires sudo).
 softwareupdate_schedule_enable() {
   ucc_run sudo softwareupdate --schedule on

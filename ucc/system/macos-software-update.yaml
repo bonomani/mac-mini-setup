@@ -18,7 +18,7 @@ targets:
     driver:
       kind: custom
     oracle:
-      configured: softwareupdate_schedule_observe | grep -q '^on$'
+      configured: softwareupdate_schedule_is_on
     observe_cmd: softwareupdate_schedule_observe
     desired_value: 'on'
     evidence:
@@ -42,8 +42,7 @@ targets:
       value: '1'
     desired_value: '1'
     evidence:
-      AutomaticCheckEnabled: defaults read '${softwareupdate_domain}' AutomaticCheckEnabled
-        2>/dev/null || echo 0
+      AutomaticCheckEnabled: softwareupdate_pref_read '${softwareupdate_domain}' AutomaticCheckEnabled
     dependency_gate: sudo-available
   softwareupdate-auto-download=1:
     component: macos-software-update
@@ -61,8 +60,7 @@ targets:
       value: '1'
     desired_value: '1'
     evidence:
-      AutomaticDownload: defaults read '${softwareupdate_domain}' AutomaticDownload
-        2>/dev/null || echo 0
+      AutomaticDownload: softwareupdate_pref_read '${softwareupdate_domain}' AutomaticDownload
     dependency_gate: sudo-available
   softwareupdate-auto-install-macos=1:
     component: macos-software-update
@@ -80,8 +78,7 @@ targets:
       value: '1'
     desired_value: '1'
     evidence:
-      AutomaticallyInstallMacOSUpdates: defaults read '${softwareupdate_domain}' AutomaticallyInstallMacOSUpdates
-        2>/dev/null || echo 0
+      AutomaticallyInstallMacOSUpdates: softwareupdate_pref_read '${softwareupdate_domain}' AutomaticallyInstallMacOSUpdates
     dependency_gate: sudo-available
   softwareupdate-config-data=1:
     component: macos-software-update
@@ -99,8 +96,7 @@ targets:
       value: '1'
     desired_value: '1'
     evidence:
-      ConfigDataInstall: defaults read '${softwareupdate_domain}' ConfigDataInstall
-        2>/dev/null || echo 0
+      ConfigDataInstall: softwareupdate_pref_read '${softwareupdate_domain}' ConfigDataInstall
     dependency_gate: sudo-available
   softwareupdate-critical-updates=1:
     component: macos-software-update
@@ -118,6 +114,5 @@ targets:
       value: '1'
     desired_value: '1'
     evidence:
-      CriticalUpdateInstall: defaults read '${softwareupdate_domain}' CriticalUpdateInstall
-        2>/dev/null || echo 0
+      CriticalUpdateInstall: softwareupdate_pref_read '${softwareupdate_domain}' CriticalUpdateInstall
     dependency_gate: sudo-available
