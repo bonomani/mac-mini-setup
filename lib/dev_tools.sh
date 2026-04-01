@@ -7,9 +7,8 @@
 _pyenv_install() {
   local cfg_dir="$1" yaml="$2" zsh_config="$3"
   local pkgs; pkgs="$(yaml_list "$cfg_dir" "$yaml" pyenv_packages 2>/dev/null | xargs)"
-  [[ -n "$pkgs" ]] || pkgs="pyenv pyenv-virtualenv"
   # shellcheck disable=SC2086
-  brew_install $pkgs
+  [[ -n "$pkgs" ]] && brew_install $pkgs
   grep -q 'pyenv init' "$HOME/$zsh_config" 2>/dev/null || \
     cat "$cfg_dir/scripts/pyenv-zshrc-snippet" >> "$HOME/$zsh_config"
 }
@@ -19,9 +18,8 @@ _pyenv_install() {
 _pyenv_upgrade() {
   local cfg_dir="$1" yaml="$2"
   local pkgs; pkgs="$(yaml_list "$cfg_dir" "$yaml" pyenv_packages 2>/dev/null | xargs)"
-  [[ -n "$pkgs" ]] || pkgs="pyenv pyenv-virtualenv"
   # shellcheck disable=SC2086
-  brew_upgrade $pkgs
+  [[ -n "$pkgs" ]] && brew_upgrade $pkgs
 }
 
 # Upgrade pip bootstrap packages listed in yaml.

@@ -31,8 +31,10 @@ run_docker_from_yaml() {
   ucc_yaml_runtime_target "$cfg_dir" "$yaml" "docker-daemon"
 }
 
+# Apply silent-start settings to the Docker settings-store JSON.
+# Usage: _docker_settings_store_patch <settings_store_relpath>
 _docker_settings_store_patch() {
-  local store="$HOME/Library/Group Containers/group.com.docker/settings-store.json"
+  local store="$HOME/$1"
   if [[ -f "$store" ]]; then
     local tmp; tmp="$(mktemp)"
     jq '. + {"OpenUIOnStartupDisabled": true, "DisplayedOnboarding": true, "ShowInstallScreen": false}' \
@@ -61,9 +63,9 @@ _docker_cask_ensure() {
 }
 
 _docker_desktop_install() {
-  local cask_id="$1" app_path="$2" greedy="$3"
+  local cask_id="$1" app_path="$2" greedy="$3" settings_store_relpath="$4"
   _docker_cask_ensure "$cask_id" "$app_path" "$greedy" || return $?
-  _docker_settings_store_patch
+  _docker_settings_store_patch "$settings_store_relpath"
 }
 
 # Kill all running Docker processes to avoid XPC/IPC hangs on restart.
@@ -80,7 +82,8 @@ _docker_launch() {
 }
 
 _docker_daemon_start() {
-  _docker_settings_store_patch
+  local settings_store_relpath="$1"
+  _docker_settings_store_patch "$settings_store_relpath"
   _docker_kill_zombies
   _docker_launch
 }

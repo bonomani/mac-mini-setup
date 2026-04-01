@@ -8,7 +8,7 @@ docker_desktop_cask_id: docker-desktop
 docker_desktop_app_name: Docker
 docker_desktop_app_path: /Applications/Docker.app
 docker_socket: $HOME/.docker/run/docker.sock
-docker_settings_store: $HOME/Library/Group Containers/group.com.docker/settings-store.json
+docker_settings_store_relpath: Library/Group Containers/group.com.docker/settings-store.json
 targets:
   docker-desktop:
     component: docker
@@ -32,7 +32,7 @@ targets:
       version: docker_version
       install_source: docker_install_source_observe "${docker_desktop_cask_id}" "${docker_desktop_app_path}"
     actions:
-      install: _docker_desktop_install "${docker_desktop_cask_id}" "${docker_desktop_app_path}" "${driver.greedy_auto_updates}"
+      install: _docker_desktop_install "${docker_desktop_cask_id}" "${docker_desktop_app_path}" "${driver.greedy_auto_updates}" "${docker_settings_store_relpath}"
   docker-daemon:
     component: docker
     profile: runtime
@@ -52,4 +52,4 @@ targets:
       pid: docker_daemon_pid
     stopped_dependencies: DepsReady
     actions:
-      install: _docker_daemon_start
+      install: _docker_daemon_start "${docker_settings_store_relpath}"
