@@ -617,6 +617,12 @@ _run_comp() {
   local comp="$1" _libs="$2" _runner="$3" _on_fail="$4" _config="$5"
   if uic_component_blocked "$comp"; then
     log_warn "Component $comp blocked by UIC hard gate — outcome=failed, failure_class=permanent, reason=gate_failed"
+    # Count targets in the blocked component and record them as skipped
+    local _skip_count
+    _skip_count=$(python3 "$_QUERY_SCRIPT" --ordered-targets "$comp" "$_MANIFEST_DIR" 2>/dev/null | wc -l)
+    _skip_count=$(( _skip_count + 0 ))  # ensure numeric
+    [[ -n "${UCC_SUMMARY_FILE:-}" && $_skip_count -gt 0 ]] && \
+      printf '%s|%d|%d|%d|%d\n' "$comp" 0 0 0 "$_skip_count" >> "$UCC_SUMMARY_FILE" 2>/dev/null || true
     FAILED_COMPONENTS+=("$comp"); return
   fi
   local _src=""

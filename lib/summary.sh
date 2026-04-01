@@ -88,11 +88,22 @@ print_summary_section() {
       _total_chg=$(( _total_chg + _b ))
       _total_fail=$(( _total_fail + _c ))
       _total_skip=$(( _total_skip + ${_d:-0} ))
-      local _parts=""
-      [[ $_a -gt 0 ]]      && _parts="${_a} ok"
-      [[ $_b -gt 0 ]]      && _parts="${_parts:+$_parts  }${_b} changed"
-      [[ $_c -gt 0 ]]      && _parts="${_parts:+$_parts  }${_c} FAILED"
-      [[ ${_d:-0} -gt 0 ]] && _parts="${_parts:+$_parts  }skip=${_d}"
+      local _parts="" _all_zero=1
+      [[ $_a -gt 0 ]]      && { _parts="${_a} ok"; _all_zero=0; }
+      [[ $_b -gt 0 ]]      && { _parts="${_parts:+$_parts  }${_b} changed"; _all_zero=0; }
+      [[ $_c -gt 0 ]]      && { _parts="${_parts:+$_parts  }${_c} FAILED"; _all_zero=0; }
+      [[ ${_d:-0} -gt 0 ]] && { _parts="${_parts:+$_parts  }skip=${_d}"; _all_zero=0; }
+      # If all counters are zero, count targets as skipped
+      if [[ $_all_zero -eq 1 ]]; then
+        local _comp_target_count
+        _comp_target_count=$(python3 "${UCC_TARGETS_QUERY_SCRIPT:-$DIR/tools/validate_targets_manifest.py}" \
+          --ordered-targets "$_comp" "${UCC_TARGETS_MANIFEST:-$DIR/ucc}" 2>/dev/null | wc -l)
+        _comp_target_count=$(( _comp_target_count + 0 ))
+        if [[ $_comp_target_count -gt 0 ]]; then
+          _parts="skip=${_comp_target_count}"
+          _total_skip=$(( _total_skip + _comp_target_count ))
+        fi
+      fi
       printf '  %-22s  %s\n' "$(_summary_component_label "$_comp")" "${_parts:----}"
     fi
   done < "$UCC_SUMMARY_FILE"
