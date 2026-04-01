@@ -70,12 +70,16 @@ targets:
       pid: pgrep -f "com.docker.backend" 2>/dev/null | head -1
     stopped_dependencies: DepsReady
     actions:
-      install: "log_info \"Patching Docker Desktop settings (suppress onboarding)...\"\n_store=\"${docker_settings_store}\"\n\
-        if [[ -f \"$_store\" ]]; then\n  _tmp=\"$(mktemp)\"\n  jq '. + {\"OpenUIOnStartupDisabled\": true, \"DisplayedOnboarding\"\
-        : true, \"ShowInstallScreen\": false}' \"$_store\" > \"$_tmp\" && mv \"$_tmp\" \"$_store\" || rm -f \"$_tmp\"\nelse\n\
-        \  mkdir -p \"$(dirname \"$_store\")\"\n  printf '{\"OpenUIOnStartupDisabled\":true,\"DisplayedOnboarding\":true,\"\
-        ShowInstallScreen\":false}\\n' > \"$_store\"\nfi\nlog_info \"Starting Docker Desktop...\"\nif ! pgrep -f \"com.docker.backend\" >/dev/null 2>&1; then\n\
-        \  open -g -a \"${docker_desktop_app_name}\" 2>/dev/null || true\nfi\nlog_info \"Waiting for Docker daemon...\"\n\
+      install: "log_info \"[docker-daemon] step 1: locating settings-store: ${docker_settings_store}\"\n_store=\"${docker_settings_store}\"\n\
+        if [[ -f \"$_store\" ]]; then\n  log_info \"[docker-daemon] step 2: patching existing settings-store\"\n  _tmp=\"$(mktemp)\"\n\
+        \  jq '. + {\"OpenUIOnStartupDisabled\": true, \"DisplayedOnboarding\": true, \"ShowInstallScreen\": false}' \"$_store\"\
+        \ > \"$_tmp\" && mv \"$_tmp\" \"$_store\" || { log_warn \"[docker-daemon] failed to patch settings-store\"; rm -f \"$_tmp\"; }\n\
+        else\n  log_info \"[docker-daemon] step 2: creating settings-store (file absent)\"\n  mkdir -p \"$(dirname \"$_store\")\"\n\
+        \  printf '{\"OpenUIOnStartupDisabled\":true,\"DisplayedOnboarding\":true,\"ShowInstallScreen\":false}\\n' > \"$_store\"\n\
+        fi\nlog_info \"[docker-daemon] step 3: checking if com.docker.backend already running\"\nif pgrep -f \"com.docker.backend\" >/dev/null 2>&1; then\n\
+        \  log_info \"[docker-daemon] already running — skipping open\"\nelse\n  log_info \"[docker-daemon] step 4: launching Docker Desktop (open -g)\"\n\
+        \  open -g -a \"${docker_desktop_app_name}\" 2>/dev/null || log_warn \"[docker-daemon] open failed\"\nfi\nlog_info\
+        \ \"[docker-daemon] step 5: waiting for daemon socket ${docker_socket} (${docker_runtime_wait_attempts}x${docker_runtime_wait_interval}s)\"\n\
         UCC_RUNTIME_WAIT_ATTEMPTS=\"${docker_runtime_wait_attempts}\" \\\nUCC_RUNTIME_WAIT_INTERVAL=\"${docker_runtime_wait_interval}\"\
-        \ \\\n  _ucc_wait_for_runtime_probe \"[[ -S \\\"${docker_socket}\\\" ]] && docker info >/dev/null 2>&1\" \\\n  ||\
-        \ log_warn \"Docker daemon not ready yet — re-run once Docker Desktop has finished starting.\"\n"
+        \ \\\n  _ucc_wait_for_runtime_probe \"[[ -S \\\"${docker_socket}\\\" ]] && docker info >/dev/null 2>&1\" \\\n  &&\
+        \ log_info \"[docker-daemon] daemon ready\" \\\n  || log_warn \"Docker daemon not ready yet — re-run once Docker Desktop has finished starting.\"\n"
