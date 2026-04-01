@@ -120,6 +120,53 @@ _path_dir_in_profile() {
   grep -q "export PATH=\"\$HOME/$1:\$PATH\"" "$HOME/$2" 2>/dev/null
 }
 
+# Populate the npm global packages cache (exports _NPM_GLOBAL_VERSIONS_CACHE).
+npm_global_cache_versions() {
+  export _NPM_GLOBAL_VERSIONS_CACHE
+  _NPM_GLOBAL_VERSIONS_CACHE="$(
+    npm ls -g --depth=0 --json 2>/dev/null | python3 -c "
+import json, sys
+deps = (json.load(sys.stdin) or {}).get('dependencies', {})
+for name in sorted(deps):
+    print(f'{name}\t{deps[name].get(\"version\", \"\")}')
+" 2>/dev/null || true
+  )"
+}
+
+# Install a global npm package and refresh the cache.
+npm_global_install() {
+  ucc_run npm install -g "$1" || return $?
+  npm_global_cache_versions 2>/dev/null || true
+}
+
+# Update a global npm package and refresh the cache.
+npm_global_update() {
+  ucc_run npm update -g "$1" || return $?
+  npm_global_cache_versions 2>/dev/null || true
+}
+
+# Return the installed version of a global npm package (uses cache when available).
+npm_global_version() {
+  if [[ -z "${_NPM_GLOBAL_VERSIONS_CACHE+x}" ]]; then
+    npm ls -g "$1" --depth=0 --json 2>/dev/null | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+deps = d.get('dependencies', {})
+k = next(iter(deps), '')
+if k:
+    print(deps[k].get('version', ''))
+" 2>/dev/null || true
+    return
+  fi
+  awk -F'\t' -v q="$1" '$1==q {print $2; exit}' <<< "$_NPM_GLOBAL_VERSIONS_CACHE"
+}
+
+# Observe a global npm package state: <version> | absent
+npm_global_observe() {
+  local version; version="$(npm_global_version "$1")"
+  printf '%s' "${version:-absent}"
+}
+
 # Usage: run_dev_tools_from_yaml <cfg_dir> <yaml_path>
 run_dev_tools_from_yaml() {
   local cfg_dir="$1" yaml="$2"

@@ -41,6 +41,44 @@ _xcode_clt_trigger() {
   return 1
 }
 
+# Return the softwareupdate label of the first item matching a pattern.
+# Usage: softwareupdate_first_label_matching <pattern>
+softwareupdate_first_label_matching() {
+  local pattern="$1"
+  softwareupdate --list 2>/dev/null | awk -v pat="$pattern" '
+    /^\* Label: / {
+      label = $0
+      sub(/^\* Label: /, "", label)
+      if (label ~ pat) {
+        print label
+        exit
+      }
+    }
+  ' || true
+}
+
+# Return the softwareupdate label for the pending Xcode CLT update (empty if none).
+xcode_clt_update_label() {
+  softwareupdate_first_label_matching 'Command Line Tools for Xcode'
+}
+
+# Install the pending Xcode CLT update via softwareupdate.
+xcode_clt_update() {
+  local label; label="$(xcode_clt_update_label)"
+  if [[ -z "$label" ]]; then
+    log_warn "No Command Line Tools for Xcode update label found in softwareupdate --list."
+    return 1
+  fi
+  if ucc_run softwareupdate --install "$label"; then
+    return 0
+  fi
+  if sudo -n true >/dev/null 2>&1; then
+    ucc_run sudo softwareupdate --install "$label"
+    return $?
+  fi
+  return 1
+}
+
 # Ensure brew shellenv is sourced and appended to shell config (idempotent).
 # Usage: _homebrew_ensure_shellenv <shell_config>
 _homebrew_ensure_shellenv() {

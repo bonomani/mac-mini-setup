@@ -2,6 +2,24 @@
 # lib/pip_group.sh — helper for YAML-driven pip package group targets
 # Sourced by components/ai-python-stack.sh
 
+# Populate the pip package version cache (exports _PIP_VERSIONS_CACHE).
+pip_cache_versions() {
+  _PIP_VERSIONS_CACHE=$(pip list --format=json 2>/dev/null || echo '[]')
+}
+
+# Return the installed version of a pip package, or empty string if absent.
+_pip_cached_version() {
+  [[ -z "${_PIP_VERSIONS_CACHE+x}" ]] && { pip show "$1" 2>/dev/null | awk '/^Version:/{print $2}'; return; }
+  python3 -c "
+import sys, json
+pkgs = json.load(sys.stdin)
+name = sys.argv[1].lower().replace('-','_')
+for p in pkgs:
+    if p['name'].lower().replace('-','_') == name:
+        print(p['version']); sys.exit(0)
+" "$1" 2>/dev/null <<< "$_PIP_VERSIONS_CACHE"
+}
+
 # Runner: load all pip group targets from a YAML config file.
 # Usage: load_pip_groups_from_yaml <cfg_dir> <yaml_path>
 load_pip_groups_from_yaml() {
