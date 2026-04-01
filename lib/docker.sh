@@ -5,8 +5,59 @@
 # Usage: run_docker_from_yaml <cfg_dir> <yaml_path>
 run_docker_from_yaml() {
   local cfg_dir="$1" yaml="$2"
-  ucc_yaml_simple_target  "$cfg_dir" "$yaml" "docker-desktop"
-  ucc_yaml_runtime_target "$cfg_dir" "$yaml" "docker-daemon"
+  ucc_yaml_simple_target "$cfg_dir" "$yaml" "docker-desktop"
+  _run_docker_daemon "$cfg_dir" "$yaml"
+}
+
+_run_docker_daemon() {
+  local cfg_dir="$1" yaml="$2"
+  local socket wait_attempts wait_interval settings_store
+  socket=$(python3 "$cfg_dir/tools/read_config.py" --get "$yaml" docker_socket 2>/dev/null)
+  socket="${socket/\$HOME/$HOME}"
+  wait_attempts=$(python3 "$cfg_dir/tools/read_config.py" --get "$yaml" docker_runtime_wait_attempts 2>/dev/null)
+  wait_interval=$(python3 "$cfg_dir/tools/read_config.py" --get "$yaml" docker_runtime_wait_interval 2>/dev/null)
+  settings_store=$(python3 "$cfg_dir/tools/read_config.py" --get "$yaml" docker_settings_store 2>/dev/null)
+  settings_store="${settings_store/\$HOME/$HOME}"
+
+  # Check if already running
+  if [[ -S "$socket" ]] && docker info >/dev/null 2>&1; then
+    local pid; pid=$(pgrep -f "com.docker.backend" 2>/dev/null | head -1)
+    printf '      [%-8s] %-30s %s\n' "ok" "Docker Daemon" "socket=$socket  pid=${pid:-?}"
+    return 0
+  fi
+
+  # Patch settings-store to suppress onboarding UI
+  if [[ -f "$settings_store" ]]; then
+    local _tmp; _tmp="$(mktemp)"
+    jq '. + {"OpenUIOnStartupDisabled": true, "DisplayedOnboarding": true, "ShowInstallScreen": false}' \
+      "$settings_store" > "$_tmp" && mv "$_tmp" "$settings_store" || rm -f "$_tmp"
+  else
+    mkdir -p "$(dirname "$settings_store")"
+    printf '{"OpenUIOnStartupDisabled":true,"DisplayedOnboarding":true,"ShowInstallScreen":false}\n' > "$settings_store"
+  fi
+
+  # Start daemon
+  if ! pgrep -f "com.docker.backend" >/dev/null 2>&1; then
+    log_info "Starting Docker Desktop..."
+    docker desktop start &
+    disown $! 2>/dev/null || true
+  fi
+
+  # Wait for socket
+  log_info "Waiting for Docker daemon (${wait_attempts}x${wait_interval}s)..."
+  local i
+  for ((i=1; i<=wait_attempts; i++)); do
+    if [[ -S "$socket" ]] && docker info >/dev/null 2>&1; then
+      local pid; pid=$(pgrep -f "com.docker.backend" 2>/dev/null | head -1)
+      printf '      [%-8s] %-30s %s\n' "ok" "Docker Daemon" "socket=$socket  pid=${pid:-?}"
+      return 0
+    fi
+    sleep "$wait_interval"
+  done
+
+  log_warn "Docker daemon not ready yet — re-run once Docker Desktop has finished starting."
+  printf '      [%-8s] %-30s %s\n' "warn" "Docker Daemon" "socket not ready"
+  return 0
 }
 
 # Usage: run_docker_config_from_yaml <cfg_dir> <yaml_path>
