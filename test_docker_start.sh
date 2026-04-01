@@ -35,9 +35,9 @@ echo "=== step 4: start docker desktop ==="
 if pgrep -f "com.docker.backend" >/dev/null 2>&1; then
   echo "already running — skipping"
 else
-  docker desktop start &
-  disown
-  echo "launched in background"
+  nohup docker desktop start >/dev/null 2>&1 &
+  disown $! 2>/dev/null || true
+  echo "launched in background (nohup)"
 fi
 
 echo "=== step 5: wait for socket ($WAIT_ATTEMPTS x ${WAIT_INTERVAL}s) ==="
