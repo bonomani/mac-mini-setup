@@ -42,8 +42,7 @@ targets:
     runtime_manager: launchd
     probe_kind: http
     oracle:
-      runtime: _ucc_http_probe_endpoint "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME" "Unsloth
-        Studio"
+      runtime: http_probe_endpoint
     evidence:
       plist: home_path "${unsloth_plist_relpath}"
     endpoints:
@@ -63,8 +62,7 @@ targets:
     runtime_manager: systemd
     probe_kind: http
     oracle:
-      runtime: _ucc_http_probe_endpoint "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME" "Unsloth
-        Studio"
+      runtime: http_probe_endpoint
     evidence:
       service: systemd_service_unit "${unsloth_service_name}"
     endpoints:

@@ -34,7 +34,7 @@ targets:
       version: docker_version
       install_source: docker_install_source_observe "${docker_desktop_cask_id}" "${docker_desktop_app_path}"
     actions:
-      install: _docker_desktop_install "${docker_desktop_cask_id}" "${docker_desktop_app_path}" "${driver.greedy_auto_updates}" "${docker_settings_store_relpath}"
+      install: _docker_desktop_install "${docker_desktop_cask_id}" "${docker_desktop_app_path}" "${docker_settings_store_relpath}"
   docker-daemon:
     component: docker
     profile: runtime

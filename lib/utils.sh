@@ -30,6 +30,13 @@ home_dir_exists() { [[ -d "$HOME/$1" ]]; }
 # Usage: home_file_is_executable <relpath>
 home_file_is_executable() { [[ -x "$HOME/$1" ]]; }
 
+# Probe the named HTTP endpoint for the current target (uses $CFG_DIR/$YAML_PATH/$TARGET_NAME).
+# Intended for oracle.runtime fields — hides framework plumbing from YAML.
+# Usage: http_probe_endpoint [endpoint_name]
+http_probe_endpoint() {
+  _ucc_http_probe_endpoint "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME" "${1:-}"
+}
+
 # Return 0 if a Python module can be imported.
 # Usage: python3_module_importable <module>
 python3_module_importable() { python3 -c "import $1" 2>/dev/null; }

@@ -75,7 +75,8 @@ _docker_cask_ensure() {
 }
 
 _docker_desktop_install() {
-  local cask_id="$1" app_path="$2" greedy="$3" settings_store_relpath="$4"
+  local cask_id="$1" app_path="$2" settings_store_relpath="$3"
+  local greedy; greedy="$(_ucc_yaml_target_get "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME" "driver.greedy_auto_updates")"
   _docker_cask_ensure "$cask_id" "$app_path" "$greedy" || return $?
   _docker_settings_store_patch "$settings_store_relpath"
 }
