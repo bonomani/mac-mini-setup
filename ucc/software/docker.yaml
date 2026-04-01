@@ -50,7 +50,6 @@ targets:
       configured: is_installed docker
       runtime: docker_daemon_is_running
     evidence:
-      version: docker_server_version
       socket: echo_var "${docker_socket}"
       pid: docker_daemon_pid
     stopped_dependencies: DepsReady
