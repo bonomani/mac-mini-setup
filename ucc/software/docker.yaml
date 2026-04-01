@@ -70,8 +70,8 @@ targets:
       pid: pgrep -f "com.docker.backend" 2>/dev/null | head -1
     stopped_dependencies: DepsReady
     actions:
-      install: "log_info \"Starting Docker Desktop...\"\nif ! pgrep -f \"docker-desktop desktop start\" >/dev/null 2>&1; then\n\
-        \  open -gj -a \"${docker_desktop_app_name}\" 2>/dev/null || true\nfi\nlog_info \"Waiting for Docker daemon...\"\n\
+      install: "log_info \"Starting Docker Desktop...\"\nif ! pgrep -f \"com.docker.backend\" >/dev/null 2>&1; then\n\
+        \  open -g -a \"${docker_desktop_app_name}\" 2>/dev/null || true\nfi\nlog_info \"Waiting for Docker daemon...\"\n\
         UCC_RUNTIME_WAIT_ATTEMPTS=\"${docker_runtime_wait_attempts}\" \\\nUCC_RUNTIME_WAIT_INTERVAL=\"${docker_runtime_wait_interval}\"\
         \ \\\n  _ucc_wait_for_runtime_probe \"[[ -S \\\"${docker_socket}\\\" ]] && docker info >/dev/null 2>&1\" \\\n  ||\
         \ log_warn \"Docker daemon not ready yet — re-run once Docker Desktop has finished starting.\"\n"
