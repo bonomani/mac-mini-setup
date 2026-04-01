@@ -1106,6 +1106,8 @@ def main():
 
     if runtime_endpoints_mode:
         # Output tab-separated: target_name \t endpoint_name \t url \t note
+        # Deduplicate by (endpoint_name, url) to avoid platform variants
+        seen_endpoints = set()
         for name in ordered:
             data = manifest["targets"][name]
             if data.get("profile") != "runtime":
@@ -1120,12 +1122,15 @@ def main():
                 url = _endpoint_url(endpoint, subst_data)
                 if not url:
                     continue
+                ep_name = endpoint.get("name", "")
+                dedup_key = (ep_name, url)
+                if dedup_key in seen_endpoints:
+                    continue
+                seen_endpoints.add(dedup_key)
                 note = endpoint.get("note", "")
                 if isinstance(note, str):
                     note = substitute_scalars(note, data=subst_data)
-                print(
-                    f"{name}\t{endpoint.get('name', '')}\t{url}\t{note}"
-                )
+                print(f"{name}\t{ep_name}\t{url}\t{note}")
         return 0
 
     print(f"OK: {len(manifest['targets'])} orchestration targets validated")
