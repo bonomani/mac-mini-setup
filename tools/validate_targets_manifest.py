@@ -69,9 +69,11 @@ DRIVER_SCHEMA = {
     "path-export":            {"required": ["bin_dir", "shell_profile"], "optional": []},
     "bin-script":             {"required": ["script_name", "bin_dir"], "optional": []},
     "git-global":             {"required": [], "optional": []},
+    "build-deps":             {"required": [], "optional": []},
 }
 
 KNOWN_PACKAGE_DRIVERS = {
+    "build-deps",
     "brew-bootstrap",
     "custom",
     "brew",

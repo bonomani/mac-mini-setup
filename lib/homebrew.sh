@@ -150,14 +150,15 @@ run_homebrew_from_yaml() {
     esac
   done < <(yaml_get_many "$cfg_dir" "$yaml" shell_config_file)
 
-  # ---- Step 0: Xcode Command Line Tools ----
+  # ---- Step 0: Platform-specific build prerequisites ----
   if [[ "${HOST_PLATFORM:-macos}" == "macos" ]]; then
+    ucc_skip_target "build-deps" "not applicable on macOS (xcode-clt provides build tools)"
     ucc_yaml_simple_target "$cfg_dir" "$yaml" "xcode-command-line-tools"
-
     # Abort if CLT just got triggered
     xcode-select -p >/dev/null 2>&1 || return 1
   else
     ucc_skip_target "xcode-command-line-tools" "not applicable on ${HOST_PLATFORM:-unknown}"
+    ucc_yaml_simple_target "$cfg_dir" "$yaml" "build-deps"
   fi
 
   # ---- Homebrew ----

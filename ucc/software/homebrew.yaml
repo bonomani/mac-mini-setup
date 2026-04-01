@@ -17,6 +17,15 @@ platform_tool_preferences:
   - native-package-manager
   - brew-installer
 targets:
+  build-deps:
+    component: software-bootstrap
+    profile: configured
+    type: package
+    state_model: package
+    display_name: Build dependencies
+    provided_by_tool: native-package-manager
+    driver:
+      kind: build-deps
   xcode-command-line-tools:
     component: software-bootstrap
     profile: configured
@@ -45,6 +54,10 @@ targets:
     depends_on_by_platform:
       macos:
       - xcode-command-line-tools
+      linux:
+      - build-deps
+      wsl2:
+      - build-deps
     provided_by_tool: brew-installer
     driver:
       kind: custom
