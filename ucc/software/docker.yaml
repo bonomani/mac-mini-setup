@@ -78,7 +78,7 @@ targets:
         \  printf '{\"OpenUIOnStartupDisabled\":true,\"DisplayedOnboarding\":true,\"ShowInstallScreen\":false}\\n' > \"$_store\"\n\
         fi\nlog_info \"[docker-daemon] step 3: checking if com.docker.backend already running\"\nif pgrep -f \"com.docker.backend\" >/dev/null 2>&1; then\n\
         \  log_info \"[docker-daemon] already running — skipping start\"\nelse\n  log_info \"[docker-daemon] step 4: launching Docker Desktop (nohup docker desktop start)\"\n\
-        \  nohup docker desktop start >/dev/null 2>&1 &\n  disown $! 2>/dev/null || true\nfi\nlog_info\
+        \  nohup docker desktop start >/dev/null 2>&1 &\n  disown $! 2>/dev/null || true\n  sleep 3\n  pgrep -f \"com.docker.backend\" >/dev/null 2>&1 \\\n    && log_info \"[docker-daemon] backend process detected\" \\\n    || log_warn \"[docker-daemon] backend process NOT detected after 3s — launch may have failed\"\nfi\nlog_info\
         \ \"[docker-daemon] step 5: waiting for daemon socket ${docker_socket} (${docker_runtime_wait_attempts}x${docker_runtime_wait_interval}s)\"\n\
         UCC_RUNTIME_WAIT_ATTEMPTS=\"${docker_runtime_wait_attempts}\" \\\nUCC_RUNTIME_WAIT_INTERVAL=\"${docker_runtime_wait_interval}\"\
         \ \\\n  _ucc_wait_for_runtime_probe \"[[ -S \\\"${docker_socket}\\\" ]] && docker info >/dev/null 2>&1\" \\\n  &&\
