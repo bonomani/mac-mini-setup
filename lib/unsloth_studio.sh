@@ -2,6 +2,17 @@
 # lib/unsloth_studio.sh — Unsloth Studio runtime targets (macOS launchd + Linux systemd)
 # Sourced by components/ai-python-stack.sh
 
+# Return 0 if PyTorch Metal MPS is available on this host.
+torch_mps_available() {
+  python3 -c "import torch; raise SystemExit(0 if torch.backends.mps.is_available() else 1)" 2>/dev/null
+}
+
+# Print 'available' or 'unavailable (CPU only)' depending on MPS support.
+torch_mps_status() {
+  python3 -c "import torch; print('available' if torch.backends.mps.is_available() else 'unavailable (CPU only)')" \
+    2>/dev/null || printf 'unavailable (CPU only)'
+}
+
 # Resolve absolute path to the unsloth binary — fails fast if not found.
 # launchd/systemd do not load pyenv shims so we must bake in the absolute path.
 _unsloth_bin() {
@@ -19,11 +30,12 @@ _unsloth_bin() {
 register_unsloth_studio_targets() {
   local cfg_dir="$1" yaml="$2"
 
-  local label plist_marker port host studio_dir log_file plist bin
+  local label plist_marker plist_relpath port host studio_dir log_file plist bin
   while IFS=$'\t' read -r -d '' key value; do
     case "$key" in
       unsloth_label) label="$value" ;;
       unsloth_plist_marker) plist_marker="$value" ;;
+      unsloth_plist_relpath) plist_relpath="$value" ;;
       unsloth_port) port="$value" ;;
       unsloth_host) host="$value" ;;
       unsloth_studio_dir) studio_dir="$HOME/$value" ;;
@@ -32,11 +44,12 @@ register_unsloth_studio_targets() {
   done < <(yaml_get_many "$cfg_dir" "$yaml" \
     unsloth_label \
     unsloth_plist_marker \
+    unsloth_plist_relpath \
     unsloth_port \
     unsloth_host \
     unsloth_studio_dir \
     unsloth_log_file)
-  plist="$HOME/Library/LaunchAgents/${label}.plist"
+  plist="$HOME/${plist_relpath}"
 
   eval "_install_unsloth_studio() {
     local _bin
@@ -83,18 +96,20 @@ PLIST
 register_unsloth_studio_service_targets() {
   local cfg_dir="$1" yaml="$2"
 
-  local port host log_file service_name="unsloth-studio"
-  local service_file="$HOME/.config/systemd/user/${service_name}.service"
+  local port host log_file service_name
   while IFS=$'\t' read -r -d '' key value; do
     case "$key" in
+      unsloth_service_name) service_name="$value" ;;
       unsloth_port) port="$value" ;;
       unsloth_host) host="$value" ;;
       unsloth_log_file) log_file="$HOME/$value" ;;
     esac
   done < <(yaml_get_many "$cfg_dir" "$yaml" \
+    unsloth_service_name \
     unsloth_port \
     unsloth_host \
     unsloth_log_file)
+  local service_file="$HOME/.config/systemd/user/${service_name}.service"
 
   eval "_install_unsloth_studio_service() {
     local _bin

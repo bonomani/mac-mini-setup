@@ -186,9 +186,7 @@ targets:
       configured: _ollama_host_supported "${macos_min_version}"
     evidence:
       platform: printf '%s' "${HOST_PLATFORM:-unknown}"
-      version: if [[ "${HOST_PLATFORM:-unknown}" == macos ]]; then sw_vers -productVersion
-        2>/dev/null || printf unknown; else uname -r 2>/dev/null || printf unknown;
-        fi
+      version: host_os_version
     actions:
       install: _ollama_unsupported_warn "${macos_min_version}"
   ollama:

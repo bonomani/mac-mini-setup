@@ -360,6 +360,16 @@ npm_global_observe() {
   printf '%s' "${version:-absent}"
 }
 
+# Print the OS version string appropriate for the current platform.
+# macOS: sw_vers -productVersion  Linux/WSL2: uname -r
+host_os_version() {
+  if [[ "${HOST_PLATFORM:-unknown}" == "macos" ]]; then
+    sw_vers -productVersion 2>/dev/null || printf 'unknown'
+  else
+    uname -r 2>/dev/null || printf 'unknown'
+  fi
+}
+
 # Unlink a brew formula so its binaries are not on PATH (idempotent).
 brew_formula_unlink() {
   brew unlink "$1" 2>/dev/null || true

@@ -8,10 +8,13 @@ platforms:
 - wsl2
 unsloth_label: ai.unsloth.studio
 unsloth_plist_marker: <!-- ai.unsloth.studio v2 -->
+unsloth_plist_relpath: Library/LaunchAgents/ai.unsloth.studio.plist
+unsloth_service_name: unsloth-studio
 unsloth_host: 0.0.0.0
 unsloth_log_file: .unsloth-studio.log
 unsloth_port: 8888
 unsloth_studio_dir: .unsloth/studio
+gpu_backend: Metal
 targets:
   unsloth:
     component: ai-python-stack
@@ -39,9 +42,10 @@ targets:
     runtime_manager: launchd
     probe_kind: http
     oracle:
-      runtime: curl -fsS --max-time 5 "http://127.0.0.1:${unsloth_port}" >/dev/null 2>&1
+      runtime: _ucc_http_probe_endpoint "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME" "Unsloth
+        Studio"
     evidence:
-      plist: printf '%s/Library/LaunchAgents/%s.plist' "$HOME" "${unsloth_label}"
+      plist: printf '%s' "$HOME/${unsloth_plist_relpath}"
     endpoints:
     - name: Unsloth Studio
       scheme: http
@@ -59,9 +63,10 @@ targets:
     runtime_manager: systemd
     probe_kind: http
     oracle:
-      runtime: curl -fsS --max-time 5 "http://127.0.0.1:${unsloth_port}" >/dev/null 2>&1
+      runtime: _ucc_http_probe_endpoint "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME" "Unsloth
+        Studio"
     evidence:
-      service: printf 'unsloth-studio.service'
+      service: printf '%s.service' "${unsloth_service_name}"
     endpoints:
     - name: Unsloth Studio
       scheme: http
@@ -249,12 +254,10 @@ targets:
     runtime_manager: capability
     probe_kind: command
     oracle:
-      runtime: python3 -c "import torch; raise SystemExit(0 if torch.backends.mps.is_available()
-        else 1)" 2>/dev/null
+      runtime: torch_mps_available
     evidence:
-      gpu: printf 'Metal'
-      status: python3 -c "import torch; print('available' if torch.backends.mps.is_available()
-        else 'unavailable (CPU only)')" 2>/dev/null || printf 'unavailable (CPU only)'
+      gpu: printf '%s' "${gpu_backend}"
+      status: torch_mps_status
 pip_groups:
 - pip-group-pytorch
 - pip-group-huggingface
