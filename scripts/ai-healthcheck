@@ -1,20 +1,70 @@
 #!/bin/bash
 set -euo pipefail
+
+_check_cmd() {
+  local label="$1" cmd="$2"
+  local ver
+  ver="$($cmd 2>/dev/null || true)"
+  printf "  %-12s %s\n" "${label}:" "${ver:-missing}"
+}
+
+_check_http() {
+  local name="$1" url="$2"
+  if curl -fsS --connect-timeout 5 "$url" >/dev/null 2>&1; then
+    printf "  %-16s \033[32mHEALTHY\033[0m\n" "${name}:"
+  else
+    printf "  %-16s \033[31mUNHEALTHY\033[0m\n" "${name}:"
+    return 1
+  fi
+}
+
 echo "=== AI Mac Mini Healthcheck ==="
-echo "brew:    $(command -v brew   || echo 'missing')"
-echo "python:  $(python3 --version 2>/dev/null || echo 'missing')"
-echo "node:    $(node   --version 2>/dev/null || echo 'missing')"
-echo "uv:      $(uv     --version 2>/dev/null || echo 'missing')"
-echo "code:    $(code   --version 2>/dev/null | head -n1 || echo 'missing')"
-echo "ollama:  $(ollama --version 2>/dev/null || echo 'missing')"
 echo ""
-echo "--- VSCode extensions ---"
-code --list-extensions 2>/dev/null | sort || echo "code not available"
+
+# ── Core Tools ──────────────────────────────────────────────
+echo "Core Tools"
+_check_cmd brew    "brew --version | head -1 | awk '{print \$2}'"
+_check_cmd python  "python3 --version | awk '{print \$2}'"
+_check_cmd node    "node --version"
+_check_cmd uv      "uv --version | awk '{print \$2}'"
+_check_cmd code    "code --version | head -1"
+_check_cmd docker  "docker --version | awk '{print \$3}' | tr -d ,"
+_check_cmd ollama  "ollama --version | awk '{print \$NF}'"
 echo ""
-echo "--- Ollama models ---"
-curl -fsS http://127.0.0.1:11434/api/tags 2>/dev/null \
-  | python3 -c "import sys,json; [print(m['name']) for m in json.load(sys.stdin).get('models',[])]" \
-  || echo "Ollama API not reachable"
+
+# ── Docker Daemon ───────────────────────────────────────────
+echo "Docker Daemon"
+if docker info >/dev/null 2>&1; then
+  printf "  %-16s \033[32mRUNNING\033[0m\n" "status:"
+  docker ps --format '  {{.Names}}\t{{.Status}}' 2>/dev/null || true
+else
+  printf "  %-16s \033[31mNOT RUNNING\033[0m\n" "status:"
+fi
 echo ""
-echo "--- Docker containers ---"
-docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' 2>/dev/null || echo "Docker not running"
+
+# ── Ollama API ──────────────────────────────────────────────
+echo "Ollama API"
+if _check_http "api" "http://127.0.0.1:11434/api/tags"; then
+  echo "  Models:"
+  curl -fsS http://127.0.0.1:11434/api/tags 2>/dev/null \
+    | python3 -c "import sys,json; [print(f'    {m[\"name\"]}') for m in json.load(sys.stdin).get('models',[])]" \
+    2>/dev/null || true
+fi
+echo ""
+
+# ── AI Apps ─────────────────────────────────────────────────
+echo "AI Apps"
+total=0 healthy=0
+for entry in "Open WebUI:3000" "Flowise:3001" "OpenHands:3002" "n8n:5678" "Qdrant:6333"; do
+  name="${entry%%:*}"
+  port="${entry##*:}"
+  total=$((total + 1))
+  if _check_http "$name" "http://localhost:$port"; then
+    healthy=$((healthy + 1))
+  fi
+done
+echo ""
+
+# ── Summary ─────────────────────────────────────────────────
+echo "Summary: AI Apps $healthy/$total healthy"
+[[ $healthy -eq $total ]] || exit 1
