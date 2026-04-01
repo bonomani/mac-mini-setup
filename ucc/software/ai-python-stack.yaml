@@ -20,8 +20,13 @@ targets:
     - python
     - pip-latest
     driver:
-      kind: launchd
-      plist: ${unsloth_label}
+      kind: custom
+    runtime_manager: launchd
+    probe_kind: http
+    oracle:
+      runtime: curl -fsS --max-time 5 "http://127.0.0.1:${unsloth_port}" >/dev/null 2>&1
+    evidence:
+      plist: printf '%s/Library/LaunchAgents/%s.plist' "$HOME" "${unsloth_label}"
     endpoints:
     - name: Unsloth Studio
       scheme: http
