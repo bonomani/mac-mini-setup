@@ -77,8 +77,6 @@ targets:
     type: package
     state_model: package
     display_name: Visual Studio Code
-    soft_depends_on:
-    - homebrew
     driver:
       kind: app-bundle
       app_path: /Applications/Visual Studio Code.app
@@ -189,6 +187,7 @@ targets:
     driver:
       kind: brew-service
       ref: ariaflow
+    dependency_gate: networkquality-available
     endpoints:
     - name: aria2 RPC
       scheme: http
