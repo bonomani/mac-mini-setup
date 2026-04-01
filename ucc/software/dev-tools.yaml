@@ -118,6 +118,7 @@ targets:
     display_name: Visual Studio Code
     soft_depends_on:
     - homebrew
+    admin_required: true
     provided_by_tool: brew-cask
     driver:
       kind: app-bundle
@@ -613,6 +614,7 @@ targets:
     display_name: iTerm2
     depends_on:
     - homebrew
+    admin_required: true
     provided_by_tool: brew-cask
     driver:
       kind: brew
@@ -627,6 +629,7 @@ targets:
     display_name: LM Studio
     depends_on:
     - homebrew
+    admin_required: true
     provided_by_tool: brew-cask
     driver:
       kind: brew
