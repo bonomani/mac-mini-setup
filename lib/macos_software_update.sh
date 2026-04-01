@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 # lib/macos_software_update.sh — helpers for YAML-driven macOS software update policy
 
+# Enable the automatic softwareupdate schedule (requires sudo).
+softwareupdate_schedule_enable() {
+  ucc_run sudo softwareupdate --schedule on
+}
+
 # Usage: run_macos_software_update_from_yaml <cfg_dir> <yaml_path>
 run_macos_software_update_from_yaml() {
   local cfg_dir="$1" yaml="$2"

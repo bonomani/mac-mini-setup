@@ -2,6 +2,29 @@
 # lib/ai_apps.sh — Docker Compose AI stack targets
 # Sourced by components/ai-apps.sh
 
+# Return true when the host platform/version supports Ollama.
+# Usage: _ollama_host_supported <min_macos_major>
+_ollama_host_supported() {
+  local min_major="$1"
+  if [[ "${HOST_PLATFORM:-unknown}" == "macos" ]]; then
+    [[ "$(sw_vers -productVersion 2>/dev/null | awk -F. '{print $1}')" -ge "$min_major" ]]
+  else
+    [[ "${HOST_PLATFORM:-unknown}" == "linux" || "${HOST_PLATFORM_VARIANT:-unknown}" == "wsl2" ]]
+  fi
+}
+
+# Emit a log_warn explaining why Ollama is unsupported, then return 1.
+# Usage: _ollama_unsupported_warn <min_macos_major>
+_ollama_unsupported_warn() {
+  local min_major="$1"
+  if [[ "${HOST_PLATFORM:-unknown}" == "macos" ]]; then
+    log_warn "Ollama requires macOS ${min_major}+ — current: macOS $(sw_vers -productVersion 2>/dev/null || echo unknown)"
+  else
+    log_warn "Ollama is not supported on host platform: ${HOST_PLATFORM:-unknown}"
+  fi
+  return 1
+}
+
 # Usage: run_ai_apps_from_yaml <cfg_dir> <yaml_path>
 run_ai_apps_from_yaml() {
   local cfg_dir="$1" yaml="$2"
@@ -300,18 +323,10 @@ print(",".join(sorted(services.keys())))
 PY
   }
 
-  # ---- Ollama scalars ----
+  # ---- Ollama scalars — all values come from YAML ----
   local _OLLAMA_INSTALLER_URL _OLLAMA_BREW_SERVICE_NAME
   local _OLLAMA_API_HOST _OLLAMA_API_PORT _OLLAMA_API_TAGS_PATH _OLLAMA_LOG
   local _OLLAMA_STOP_PATTERN _OLLAMA_START_CMD _OLLAMA_API_URL _OLLAMA_HOST_SUPPORTED_CMD
-  _OLLAMA_INSTALLER_URL="https://ollama.com/install.sh"
-  _OLLAMA_BREW_SERVICE_NAME="ollama"
-  _OLLAMA_API_HOST="127.0.0.1"
-  _OLLAMA_API_PORT="11434"
-  _OLLAMA_API_TAGS_PATH="/api/tags"
-  _OLLAMA_LOG="/tmp/ollama.log"
-  _OLLAMA_STOP_PATTERN="ollama (serve|app)"
-  _OLLAMA_START_CMD="ollama serve"
   while IFS=$'\t' read -r -d '' key value; do
     [[ -n "$value" ]] || continue
     case "$key" in

@@ -183,21 +183,14 @@ targets:
     driver:
       kind: custom
     oracle:
-      configured: "if [[ \"${HOST_PLATFORM:-unknown}\" == \"macos\" ]]; then\n  [[\
-        \ \"$(sw_vers -productVersion 2>/dev/null | awk -F. '{print $1}')\" -ge ${macos_min_version}\
-        \ ]]\nelse\n  [[ \"${HOST_PLATFORM:-unknown}\" == \"linux\" || \"${HOST_PLATFORM_VARIANT:-unknown}\"\
-        \ == \"wsl2\" ]]\nfi\n"
+      configured: _ollama_host_supported "${macos_min_version}"
     evidence:
       platform: printf '%s' "${HOST_PLATFORM:-unknown}"
       version: if [[ "${HOST_PLATFORM:-unknown}" == macos ]]; then sw_vers -productVersion
         2>/dev/null || printf unknown; else uname -r 2>/dev/null || printf unknown;
         fi
     actions:
-      install: "if [[ \"${HOST_PLATFORM:-unknown}\" == \"macos\" ]]; then\n  log_warn\
-        \ \"Ollama requires macOS ${macos_min_version}+ \u2014 current: macOS $(sw_vers\
-        \ -productVersion 2>/dev/null || echo unknown)\"\nelse\n  log_warn \"Ollama\
-        \ is not supported on host platform: ${HOST_PLATFORM:-unknown}\"\nfi\nreturn\
-        \ 1\n"
+      install: _ollama_unsupported_warn "${macos_min_version}"
   ollama:
     component: ai-apps
     profile: runtime

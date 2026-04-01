@@ -27,7 +27,7 @@ targets:
       schedule: if softwareupdate --schedule 2>/dev/null | grep -qiE 'Automatic check
         is on\.?$'; then echo on; else echo off; fi
     actions:
-      install: ucc_run sudo softwareupdate --schedule on
+      install: softwareupdate_schedule_enable
     dependency_gate: sudo-available
   softwareupdate-auto-check=1:
     component: macos-software-update
