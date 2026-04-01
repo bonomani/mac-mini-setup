@@ -4,7 +4,7 @@ libs: docker
 runner: run_docker_from_yaml
 platforms:
 - macos
-docker_desktop_cask_id: docker
+docker_desktop_cask_id: docker-desktop
 docker_desktop_app_name: Docker
 docker_desktop_app_path: /Applications/Docker.app
 docker_runtime_wait_attempts: 24
