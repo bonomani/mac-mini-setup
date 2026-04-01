@@ -27,7 +27,11 @@ _ucc_driver_zsh_config_action() {
   [[ -n "$key" && -n "$value" && -n "$config_file" ]] || return 1
   local file="$HOME/$config_file"
   if grep -q "^${key}=" "$file" 2>/dev/null; then
-    sed -i '' "s/^${key}=.*/${key}=\"${value}\"/" "$file"
+    if [[ "$(uname)" == "Darwin" ]]; then
+      sed -i '' "s/^${key}=.*/${key}=\"${value}\"/" "$file"
+    else
+      sed -i "s/^${key}=.*/${key}=\"${value}\"/" "$file"
+    fi
   else
     printf '\n%s="%s"\n' "$key" "$value" >> "$file"
   fi
