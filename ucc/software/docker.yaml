@@ -21,7 +21,6 @@ targets:
     depends_on:
     - homebrew
     provided_by_tool: brew-cask
-    admin_required: install,update
     driver:
       kind: custom
       package_ref: ${docker_desktop_cask_id}
@@ -51,9 +50,7 @@ targets:
         if [[ -f \"$_store\" ]]; then\n  _tmp=\"$(mktemp)\"\n  jq '. + {\"OpenUIOnStartupDisabled\": true, \"DisplayedOnboarding\"\
         : true, \"ShowInstallScreen\": false}' \"$_store\" > \"$_tmp\" && mv \"$_tmp\" \"$_store\" || rm -f \"$_tmp\"\nelse\n\
         \  mkdir -p \"$(dirname \"$_store\")\"\n  printf '{\"OpenUIOnStartupDisabled\":true,\"DisplayedOnboarding\":true,\"\
-        ShowInstallScreen\":false}\\n' > \"$_store\"\nfi\nlog_info \"Running Docker Desktop post-install setup...\"\nsudo -n\
-        \ true >/dev/null 2>&1 || { log_warn \"Docker Desktop post-install requires admin privileges; run: sudo -v\"; return\
-        \ 125; }\nsudo \"${docker_desktop_app_path}/Contents/MacOS/install\" --user \"$(id -un)\" || return 1\n"
+        ShowInstallScreen\":false}\\n' > \"$_store\"\nfi\n"
   docker-daemon:
     component: docker
     profile: runtime
