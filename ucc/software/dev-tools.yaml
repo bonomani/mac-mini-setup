@@ -119,7 +119,6 @@ targets:
     soft_depends_on:
     - homebrew
     provided_by_tool: brew-cask
-    admin_required: install
     driver:
       kind: app-bundle
       app_path: /Applications/Visual Studio Code.app
@@ -615,7 +614,6 @@ targets:
     depends_on:
     - homebrew
     provided_by_tool: brew-cask
-    admin_required: install
     driver:
       kind: brew
       cask: true
@@ -630,7 +628,6 @@ targets:
     depends_on:
     - homebrew
     provided_by_tool: brew-cask
-    admin_required: install
     driver:
       kind: brew
       cask: true

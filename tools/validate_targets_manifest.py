@@ -676,8 +676,12 @@ def validate(manifest, known_gates):
 
         for action_name in ("install", "update"):
             action_cmd = _action_cmd(data, action_name)
-            if action_cmd and "sudo " in action_cmd and not _admin_required_for(action_name):
-                errors.append(f"target '{name}' action '{action_name}' uses sudo and requires admin_required: true or admin_required: {action_name}")
+            # Flag "sudo <command>" escalation but not "sudo -n true" ticket checks
+            # (which are self-guarded and don't require the static admin_required flag)
+            if action_cmd and not _admin_required_for(action_name):
+                import re as _re
+                if _re.search(r'\bsudo\s+(?!-[nv]\b)', action_cmd):
+                    errors.append(f"target '{name}' action '{action_name}' uses sudo and requires admin_required: true or admin_required: {action_name}")
 
         depends_on = data.get("depends_on", []) or []
         if not isinstance(depends_on, list):

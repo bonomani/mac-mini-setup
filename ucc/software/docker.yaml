@@ -19,7 +19,6 @@ targets:
     depends_on:
     - homebrew
     provided_by_tool: brew-cask
-    admin_required: install
     driver:
       kind: custom
       package_ref: ${docker_desktop_cask_id}
@@ -43,7 +42,9 @@ targets:
         )\"\nif [[ \"$install_source\" == \"app-bundle\" ]]; then\n  case \"$policy\"\
         \ in\n    ignore) ;;\n    warn)\n      log_warn \"Docker Desktop is installed\
         \ outside preferred driver brew-cask; set preferred-driver-policy=migrate\
-        \ to adopt it.\"\n      return 124\n      ;;\n    migrate)\n      brew_cask_migrate_install\
+        \ to adopt it.\"\n      return 124\n      ;;\n    migrate)\n      sudo -n true\
+        \ >/dev/null 2>&1 || { log_warn \"Migrating Docker Desktop requires admin\
+        \ privileges; run: sudo -v\"; return 125; }\n      brew_cask_migrate_install\
         \ \"${docker_desktop_cask_id}\" || return 1\n      ;;\n    *)\n      log_warn\
         \ \"Unknown preferred-driver-policy '$policy'; treating as warn.\"\n     \
         \ return 124\n      ;;\n  esac\nfi\nobserved=\"$(brew_cask_observe \"${docker_desktop_cask_id}\"\
