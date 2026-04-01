@@ -21,32 +21,14 @@ _docker_settings_store_patch() {
   fi
 }
 
-_docker_desktop_install() {
+# Ensure cask is installed/up-to-date via brew, skipping if already present via app-bundle.
+_docker_cask_ensure() {
   local cask_id="$1" app_path="$2" greedy="$3"
-  local policy="${UIC_PREF_PREFERRED_DRIVER_POLICY:-warn}"
   local install_source; install_source="$(desktop_app_install_source "$cask_id" "$app_path")"
-
   if [[ "$install_source" == "app-bundle" ]]; then
-    case "$policy" in
-      ignore)
-        log_info "Docker Desktop installed outside brew-cask; ignoring (policy=ignore)."
-        return 0
-        ;;
-      warn)
-        log_warn "Docker Desktop installed outside brew-cask; set preferred-driver-policy=migrate to adopt it."
-        return 124
-        ;;
-      migrate)
-        sudo -n true >/dev/null 2>&1 || { log_warn "Migrating Docker Desktop requires admin; run: sudo -v"; return 125; }
-        brew_cask_migrate_install "$cask_id" || return 1
-        ;;
-      *)
-        log_warn "Unknown preferred-driver-policy '$policy'; treating as warn."
-        return 124
-        ;;
-    esac
+    desktop_app_handle_unmanaged_cask "$cask_id" "Docker Desktop" || return $?
+    return 0
   fi
-
   local observed; observed="$(brew_cask_observe "$cask_id" "$greedy")"
   [[ "$observed" == "absent" && -d "$app_path" ]] && observed="installed"
   if [[ "$observed" == "absent" ]]; then
@@ -54,17 +36,31 @@ _docker_desktop_install() {
   elif [[ "$observed" == "outdated" ]]; then
     brew_cask_upgrade "$cask_id" "$greedy" || return 1
   fi
+}
 
+_docker_desktop_install() {
+  local cask_id="$1" app_path="$2" greedy="$3"
+  _docker_cask_ensure "$cask_id" "$app_path" "$greedy" || return $?
   _docker_settings_store_patch
+}
+
+# Kill all running Docker processes to avoid XPC/IPC hangs on restart.
+_docker_kill_zombies() {
+  pkill -f com.docker 2>/dev/null || true
+  sleep 2
+}
+
+# Launch Docker Desktop in a clean environment with a PTY (required by docker desktop start).
+_docker_launch() {
+  log_info "Starting Docker Desktop..."
+  env -i HOME="$HOME" PATH="$PATH" USER="$USER" TERM="${TERM:-}" \
+    script -q /dev/null docker desktop start
 }
 
 _docker_daemon_start() {
   _docker_settings_store_patch
-  pkill -f com.docker 2>/dev/null || true
-  sleep 2
-  log_info "Starting Docker Desktop..."
-  env -i HOME="$HOME" PATH="$PATH" USER="$USER" TERM="${TERM:-}" \
-    script -q /dev/null docker desktop start
+  _docker_kill_zombies
+  _docker_launch
 }
 
 # Usage: run_docker_config_from_yaml <cfg_dir> <yaml_path>

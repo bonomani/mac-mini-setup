@@ -126,6 +126,32 @@ desktop_app_install_source() {
   fi
 }
 
+# Handle a cask installed outside brew-cask according to preferred-driver-policy.
+# Usage: desktop_app_handle_unmanaged_cask <cask_id> <display_name>
+# Returns: 0=handled/ok, 1=migrate failed, 124=warn, 125=needs sudo
+desktop_app_handle_unmanaged_cask() {
+  local cask_id="$1" display_name="${2:-$1}"
+  local policy="${UIC_PREF_PREFERRED_DRIVER_POLICY:-warn}"
+  case "$policy" in
+    ignore)
+      log_info "${display_name} installed outside brew-cask; ignoring (policy=ignore)."
+      return 0
+      ;;
+    warn)
+      log_warn "${display_name} installed outside brew-cask; set preferred-driver-policy=migrate to adopt it."
+      return 124
+      ;;
+    migrate)
+      sudo -n true >/dev/null 2>&1 || { log_warn "Migrating ${display_name} requires admin; run: sudo -v"; return 125; }
+      brew_cask_migrate_install "$cask_id" || return 1
+      ;;
+    *)
+      log_warn "Unknown preferred-driver-policy '$policy'; treating as warn."
+      return 124
+      ;;
+  esac
+}
+
 brew_cask_migrate_install() {
   local pkg="$1"
   ucc_run brew install --cask --force "$pkg" || return $?
