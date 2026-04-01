@@ -7,9 +7,6 @@ platforms:
 docker_desktop_cask_id: docker-desktop
 docker_desktop_app_name: Docker
 docker_desktop_app_path: /Applications/Docker.app
-docker_runtime_wait_attempts: 36
-docker_runtime_wait_interval: 10
-docker_socket: $HOME/.docker/run/docker.sock
 docker_settings_store: $HOME/Library/Group Containers/group.com.docker/settings-store.json
 targets:
   docker-desktop:
@@ -51,35 +48,3 @@ targets:
         : true, \"ShowInstallScreen\": false}' \"$_store\" > \"$_tmp\" && mv \"$_tmp\" \"$_store\" || rm -f \"$_tmp\"\nelse\n\
         \  mkdir -p \"$(dirname \"$_store\")\"\n  printf '{\"OpenUIOnStartupDisabled\":true,\"DisplayedOnboarding\":true,\"\
         ShowInstallScreen\":false}\\n' > \"$_store\"\nfi\n"
-  docker-daemon:
-    component: docker
-    profile: runtime
-    type: runtime
-    display_name: Docker Daemon
-    depends_on:
-    - docker-desktop
-    driver:
-      kind: custom
-    runtime_manager: desktop-app
-    probe_kind: command
-    oracle:
-      configured: command -v docker >/dev/null 2>&1
-      runtime: '[[ -S "${docker_socket}" ]] && docker info >/dev/null 2>&1'
-    evidence:
-      socket: printf '%s' "${docker_socket}"
-      pid: pgrep -f "com.docker.backend" 2>/dev/null | head -1
-    stopped_dependencies: DepsReady
-    actions:
-      install: "log_info \"[docker-daemon] step 1: locating settings-store: ${docker_settings_store}\"\n_store=\"${docker_settings_store}\"\n\
-        if [[ -f \"$_store\" ]]; then\n  log_info \"[docker-daemon] step 2: patching existing settings-store\"\n  _tmp=\"$(mktemp)\"\n\
-        \  jq '. + {\"OpenUIOnStartupDisabled\": true, \"DisplayedOnboarding\": true, \"ShowInstallScreen\": false}' \"$_store\"\
-        \ > \"$_tmp\" && mv \"$_tmp\" \"$_store\" || { log_warn \"[docker-daemon] failed to patch settings-store\"; rm -f \"$_tmp\"; }\n\
-        else\n  log_info \"[docker-daemon] step 2: creating settings-store (file absent)\"\n  mkdir -p \"$(dirname \"$_store\")\"\n\
-        \  printf '{\"OpenUIOnStartupDisabled\":true,\"DisplayedOnboarding\":true,\"ShowInstallScreen\":false}\\n' > \"$_store\"\n\
-        fi\nlog_info \"[docker-daemon] step 3: checking if com.docker.backend already running\"\nif pgrep -f \"com.docker.backend\" >/dev/null 2>&1; then\n\
-        \  log_info \"[docker-daemon] already running — skipping start\"\nelse\n  log_info \"[docker-daemon] step 4: launching Docker Desktop (nohup docker desktop start)\"\n\
-        \  nohup docker desktop start >/dev/null 2>&1 &\n  disown $! 2>/dev/null || true\n  sleep 3\n  pgrep -f \"com.docker.backend\" >/dev/null 2>&1 \\\n    && log_info \"[docker-daemon] backend process detected\" \\\n    || log_warn \"[docker-daemon] backend process NOT detected after 3s — launch may have failed\"\nfi\nlog_info\
-        \ \"[docker-daemon] step 5: waiting for daemon socket ${docker_socket} (${docker_runtime_wait_attempts}x${docker_runtime_wait_interval}s)\"\n\
-        UCC_RUNTIME_WAIT_ATTEMPTS=\"${docker_runtime_wait_attempts}\" \\\nUCC_RUNTIME_WAIT_INTERVAL=\"${docker_runtime_wait_interval}\"\
-        \ \\\n  _ucc_wait_for_runtime_probe \"[[ -S \\\"${docker_socket}\\\" ]] && docker info >/dev/null 2>&1\" \\\n  &&\
-        \ log_info \"[docker-daemon] daemon ready\" \\\n  || { [[ -S \"${docker_socket}\" ]] && log_warn \"[docker-daemon] socket exists but docker info failed\" || log_warn \"[docker-daemon] socket missing: ${docker_socket}\"; log_warn \"Docker daemon not ready yet — re-run once Docker Desktop has finished starting.\"; }\n"

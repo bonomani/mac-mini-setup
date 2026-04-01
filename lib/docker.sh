@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# lib/docker.sh — Docker Desktop runtime + resource settings targets
+# lib/docker.sh — Docker Desktop install + daemon startup
 # Sourced by components/docker.sh
 
 # Usage: run_docker_from_yaml <cfg_dir> <yaml_path>
 run_docker_from_yaml() {
   local cfg_dir="$1" yaml="$2"
   ucc_yaml_simple_target "$cfg_dir" "$yaml" "docker-desktop"
-  _run_docker_daemon "$cfg_dir" "$yaml"
+  _run_docker_daemon
 }
 
 _run_docker_daemon() {
@@ -18,23 +18,26 @@ _run_docker_daemon() {
     return 0
   fi
 
-  # Patch settings-store to suppress onboarding UI
+  # Suppress onboarding UI on launch
   if [[ -f "$settings_store" ]]; then
     local _tmp; _tmp="$(mktemp)"
     jq '. + {"OpenUIOnStartupDisabled": true, "DisplayedOnboarding": true, "ShowInstallScreen": false}' \
       "$settings_store" > "$_tmp" && mv "$_tmp" "$settings_store" || rm -f "$_tmp"
   else
     mkdir -p "$(dirname "$settings_store")"
-    printf '{"OpenUIOnStartupDisabled":true,"DisplayedOnboarding":true,"ShowInstallScreen":false}\n' > "$settings_store"
+    printf '{"OpenUIOnStartupDisabled":true,"DisplayedOnboarding":true,"ShowInstallScreen":false}\n' \
+      > "$settings_store"
   fi
 
-  # Kill any stuck Docker processes before starting fresh
+  # Kill any stuck Docker processes to avoid XPC hangs
   pkill -f com.docker 2>/dev/null || true
   sleep 2
 
+  # Start daemon — clean env + PTY required for docker desktop start
   log_info "Starting Docker Desktop..."
   env -i HOME="$HOME" PATH="$PATH" USER="$USER" TERM="${TERM:-}" \
     script -q /dev/null docker desktop start
+
   if docker info >/dev/null 2>&1; then
     printf '      [%-8s] %-30s %s\n' "ok" "Docker Daemon" "pid=$(pgrep -f com.docker.backend | head -1)"
   else
@@ -52,10 +55,10 @@ run_docker_config_from_yaml() {
     [[ -n "$value" ]] || continue
     case "$key" in
       settings_relpath) settings_relpath="$value" ;;
-      memory_gb) memory_gb="$value" ;;
-      cpu_count) cpu_count="$value" ;;
-      swap_mib) swap_mib="$value" ;;
-      disk_mib) disk_mib="$value" ;;
+      memory_gb)        memory_gb="$value" ;;
+      cpu_count)        cpu_count="$value" ;;
+      swap_mib)         swap_mib="$value" ;;
+      disk_mib)         disk_mib="$value" ;;
     esac
   done < <(yaml_get_many "$cfg_dir" "$yaml" settings_relpath memory_gb cpu_count swap_mib disk_mib)
   export DOCKER_SETTINGS_PATH="$HOME/${settings_relpath}"
@@ -65,7 +68,6 @@ run_docker_config_from_yaml() {
     return 0
   fi
 
-  # Resource settings — UIC preferences take precedence; YAML provides defaults
   export DOCKER_MEM_GB="${UIC_PREF_DOCKER_MEMORY_GB:-$memory_gb}"
   export DOCKER_MEM_MIB=$(( DOCKER_MEM_GB * 1024 ))
   export DOCKER_CPU_COUNT="${UIC_PREF_DOCKER_CPU_COUNT:-$cpu_count}"
