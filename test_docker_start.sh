@@ -23,8 +23,13 @@ else
 fi
 
 echo "=== step 3: post-install (symlinks) ==="
-sudo /Applications/Docker.app/Contents/MacOS/install --user "$(id -un)" \
-  && echo "post-install ok" || echo "WARN: post-install failed (may already be done)"
+if command -v docker >/dev/null 2>&1 && docker desktop version >/dev/null 2>&1; then
+  echo "skipped — docker CLI and 'docker desktop' subcommand already functional"
+else
+  sudo -n true >/dev/null 2>&1 || { echo "WARN: post-install needs sudo; run: sudo -v first"; exit 125; }
+  sudo /Applications/Docker.app/Contents/MacOS/install --user "$(id -un)" \
+    && echo "post-install ok" || echo "WARN: post-install failed"
+fi
 
 echo "=== step 4: start docker desktop ==="
 if pgrep -f "com.docker.backend" >/dev/null 2>&1; then
