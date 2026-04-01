@@ -51,8 +51,8 @@ targets:
       version: pyenv_version
       root: pyenv_root
     actions:
-      install: _pyenv_install "$CFG_DIR" "$YAML_PATH" "${zsh_config}"
-      update: _pyenv_upgrade "$CFG_DIR" "$YAML_PATH"
+      install: _pyenv_install "${zsh_config}"
+      update: _pyenv_upgrade
   xz:
     component: dev-tools
     profile: configured
@@ -94,7 +94,7 @@ targets:
       version: pip_version
       path: bin_path pip
     actions:
-      install: _pip_bootstrap_install "$CFG_DIR" "$YAML_PATH"
+      install: _pip_bootstrap_install
   vscode:
     component: dev-tools
     profile: configured
@@ -228,7 +228,7 @@ targets:
     evidence:
       path: home_path "${home_bin_dir}/ai-healthcheck"
     actions:
-      install: _install_bin_script "$CFG_DIR" ai-healthcheck "${home_bin_dir}"
+      install: _install_bin_script ai-healthcheck "${home_bin_dir}"
   ariaflow:
     component: dev-tools
     profile: runtime

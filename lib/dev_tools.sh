@@ -3,30 +3,31 @@
 # Sourced by components/dev-tools.sh
 
 # Install pyenv + plugins via brew, then append zshrc snippet if missing.
-# Usage: _pyenv_install <cfg_dir> <yaml_path> <zsh_config>
+# Uses implicit $CFG_DIR/$YAML_PATH context.
+# Usage: _pyenv_install <zsh_config>
 _pyenv_install() {
-  local cfg_dir="$1" yaml="$2" zsh_config="$3"
-  local pkgs; pkgs="$(yaml_list "$cfg_dir" "$yaml" pyenv_packages 2>/dev/null | xargs)"
+  local zsh_config="$1"
+  local pkgs; pkgs="$(yaml_list "$CFG_DIR" "$YAML_PATH" pyenv_packages 2>/dev/null | xargs)"
   # shellcheck disable=SC2086
   [[ -n "$pkgs" ]] && brew_install $pkgs
   grep -q 'pyenv init' "$HOME/$zsh_config" 2>/dev/null || \
-    cat "$cfg_dir/scripts/pyenv-zshrc-snippet" >> "$HOME/$zsh_config"
+    cat "$CFG_DIR/scripts/pyenv-zshrc-snippet" >> "$HOME/$zsh_config"
 }
 
 # Upgrade pyenv + plugins via brew.
-# Usage: _pyenv_upgrade <cfg_dir> <yaml_path>
+# Uses implicit $CFG_DIR/$YAML_PATH context.
+# Usage: _pyenv_upgrade
 _pyenv_upgrade() {
-  local cfg_dir="$1" yaml="$2"
-  local pkgs; pkgs="$(yaml_list "$cfg_dir" "$yaml" pyenv_packages 2>/dev/null | xargs)"
+  local pkgs; pkgs="$(yaml_list "$CFG_DIR" "$YAML_PATH" pyenv_packages 2>/dev/null | xargs)"
   # shellcheck disable=SC2086
   [[ -n "$pkgs" ]] && brew_upgrade $pkgs
 }
 
-# Upgrade pip bootstrap packages listed in yaml.
-# Usage: _pip_bootstrap_install <cfg_dir> <yaml_path>
+# Install pip bootstrap packages listed in yaml.
+# Uses implicit $CFG_DIR/$YAML_PATH context.
+# Usage: _pip_bootstrap_install
 _pip_bootstrap_install() {
-  local cfg_dir="$1" yaml="$2"
-  local pkgs; pkgs="$(yaml_list "$cfg_dir" "$yaml" pip_bootstrap 2>/dev/null | xargs)"
+  local pkgs; pkgs="$(yaml_list "$CFG_DIR" "$YAML_PATH" pip_bootstrap 2>/dev/null | xargs)"
   # shellcheck disable=SC2086
   [[ -n "$pkgs" ]] && pip install --upgrade $pkgs
 }
@@ -80,12 +81,13 @@ _path_dir_add_to_profile() {
   export PATH="$bin_dir:$PATH"
 }
 
-# Install a script from cfg_dir/scripts/ into a target directory with executable permissions.
-# Usage: _install_bin_script <cfg_dir> <script_name> <bin_dir>
+# Install a script from $CFG_DIR/scripts/ into a target directory with executable permissions.
+# Uses implicit $CFG_DIR context.
+# Usage: _install_bin_script <script_name> <bin_dir>
 _install_bin_script() {
-  local cfg_dir="$1" script_name="$2" bin_dir="$HOME/$3"
+  local script_name="$1" bin_dir="$HOME/$2"
   mkdir -p "$bin_dir"
-  install -m 755 "$cfg_dir/scripts/$script_name" "$bin_dir/$script_name"
+  install -m 755 "$CFG_DIR/scripts/$script_name" "$bin_dir/$script_name"
 }
 
 # Print pyenv root directory path.

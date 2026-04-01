@@ -23,7 +23,7 @@ targets:
       user: git_global_user_name
       email: git_global_user_email
     actions:
-      install: _git_global_config_interactive "$CFG_DIR" "$YAML_PATH"
+      install: _git_global_config_interactive
 global_config:
 - key: init.defaultBranch
   value: main

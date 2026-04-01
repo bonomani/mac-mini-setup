@@ -4,9 +4,9 @@
 
 # Interactively prompt for git user.name + user.email, then apply global_config records.
 # Non-interactive shells print instructions and return 1.
-# Usage: _git_global_config_interactive <cfg_dir> <yaml_path>
+# Uses implicit $CFG_DIR/$YAML_PATH context.
+# Usage: _git_global_config_interactive
 _git_global_config_interactive() {
-  local cfg_dir="$1" yaml="$2"
   if [[ ! -t 0 ]]; then
     log_warn "git-global-config: non-interactive shell — skipping. Set manually:"
     log_warn "  git config --global user.name  'Your Name'"
@@ -21,7 +21,7 @@ _git_global_config_interactive() {
   local cfg_key cfg_val
   while IFS=$'\t' read -r cfg_key cfg_val; do
     [[ -n "$cfg_key" ]] && git config --global "$cfg_key" "$cfg_val"
-  done < <(yaml_records "$cfg_dir" "$yaml" global_config key value)
+  done < <(yaml_records "$CFG_DIR" "$YAML_PATH" global_config key value)
 }
 
 # Return 0 if git global user.name is set.

@@ -96,20 +96,23 @@ PLIST
 register_unsloth_studio_service_targets() {
   local cfg_dir="$1" yaml="$2"
 
-  local port host log_file service_name
+  local port host log_file service_name systemd_user_dir
   while IFS=$'\t' read -r -d '' key value; do
     case "$key" in
       unsloth_service_name) service_name="$value" ;;
       unsloth_port) port="$value" ;;
       unsloth_host) host="$value" ;;
       unsloth_log_file) log_file="$HOME/$value" ;;
+      systemd_user_dir) systemd_user_dir="$value" ;;
     esac
   done < <(yaml_get_many "$cfg_dir" "$yaml" \
     unsloth_service_name \
     unsloth_port \
     unsloth_host \
-    unsloth_log_file)
-  local service_file="$HOME/.config/systemd/user/${service_name}.service"
+    unsloth_log_file \
+    systemd_user_dir)
+  systemd_user_dir="${systemd_user_dir:-.config/systemd/user}"
+  local service_file="$HOME/${systemd_user_dir}/${service_name}.service"
 
   eval "_install_unsloth_studio_service() {
     local _bin
