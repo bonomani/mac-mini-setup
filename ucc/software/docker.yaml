@@ -37,18 +37,20 @@ targets:
       install_source: src="$(desktop_app_install_source "${docker_desktop_cask_id}"
         "${docker_desktop_app_path}")"; [[ "$src" != "absent" && "$src" != "brew-cask"
         ]] && printf '%s' "$src"
+    stopped_dependencies: DepsReady
     actions:
       install: "policy=\"${UIC_PREF_PREFERRED_DRIVER_POLICY:-warn}\"\ninstall_source=\"\
         $(desktop_app_install_source \"${docker_desktop_cask_id}\" \"${docker_desktop_app_path}\"\
         )\"\nif [[ \"$install_source\" == \"app-bundle\" ]]; then\n  case \"$policy\"\
-        \ in\n    ignore) ;;\n    warn)\n      log_warn \"Docker Desktop is installed\
-        \ outside preferred driver brew-cask; set preferred-driver-policy=migrate\
-        \ to adopt it.\"\n      return 124\n      ;;\n    migrate)\n      sudo -n true\
-        \ >/dev/null 2>&1 || { log_warn \"Migrating Docker Desktop requires admin\
-        \ privileges; run: sudo -v\"; return 125; }\n      brew_cask_migrate_install\
-        \ \"${docker_desktop_cask_id}\" || return 1\n      ;;\n    *)\n      log_warn\
-        \ \"Unknown preferred-driver-policy '$policy'; treating as warn.\"\n     \
-        \ return 124\n      ;;\n  esac\nfi\nobserved=\"$(brew_cask_observe \"${docker_desktop_cask_id}\"\
+        \ in\n    ignore)\n      log_info \"Docker Desktop installed outside brew-cask;\
+        \ ignoring (policy=ignore).\"\n      return 0\n      ;;\n    warn)\n     \
+        \ log_warn \"Docker Desktop is installed outside preferred driver brew-cask;\
+        \ set preferred-driver-policy=migrate to adopt it.\"\n      return 124\n  \
+        \    ;;\n    migrate)\n      sudo -n true >/dev/null 2>&1 || { log_warn \"\
+        Migrating Docker Desktop requires admin privileges; run: sudo -v\"; return\
+        \ 125; }\n      brew_cask_migrate_install \"${docker_desktop_cask_id}\" ||\
+        \ return 1\n      ;;\n    *)\n      log_warn \"Unknown preferred-driver-policy\
+        \ '$policy'; treating as warn.\"\n      return 124\n      ;;\n  esac\nfi\nobserved=\"$(brew_cask_observe \"${docker_desktop_cask_id}\"\
         \ \"${driver.greedy_auto_updates}\")\"\nif [[ \"$observed\" == \"absent\"\
         \ && -d \"${docker_desktop_app_path}\" ]]; then\n  observed=\"installed\"\n\
         fi\nif [[ \"$observed\" == \"absent\" ]]; then\n  brew_cask_install \"${docker_desktop_cask_id}\"\
