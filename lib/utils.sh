@@ -45,6 +45,18 @@ python3_module_importable() { python3 -c "import $1" 2>/dev/null; }
 # Usage: http_probe_localhost <port>
 http_probe_localhost() { curl -fsS --connect-timeout 5 "http://localhost:$1" >/dev/null 2>&1; }
 
+# Return 0 if a pip package is installed at or above the given minimum version.
+# Works standalone (no cache required); pip_group.sh overrides with cached version.
+# Usage: pip_package_min_version <pkg> <min_version>
+pip_package_min_version() {
+  local ver; ver="$(pip show "$1" 2>/dev/null | awk '/^Version:/{print $2}')"
+  [[ -n "$ver" ]] || return 1
+  python3 -c "
+from packaging.version import Version; import sys
+raise SystemExit(0 if Version(sys.argv[1]) <= Version(sys.argv[2]) else 1)
+" "$2" "$ver" 2>/dev/null
+}
+
 # Print the absolute path to a command, or empty if not found.
 # Usage: bin_path <cmd>
 bin_path() { command -v "$1" 2>/dev/null || true; }
