@@ -28,6 +28,10 @@ _run_docker_daemon() {
     printf '{"OpenUIOnStartupDisabled":true,"DisplayedOnboarding":true,"ShowInstallScreen":false}\n' > "$settings_store"
   fi
 
+  # Kill any stuck Docker processes before starting fresh
+  pkill -f com.docker 2>/dev/null || true
+  sleep 2
+
   log_info "Starting Docker Desktop..."
   env -i HOME="$HOME" PATH="$PATH" USER="$USER" TERM="${TERM:-}" \
     script -q /dev/null docker desktop start
