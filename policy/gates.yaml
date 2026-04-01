@@ -25,7 +25,7 @@ gates:
     blocking: soft
   - name: sudo-available
     condition: _gate_sudo
-    scope: component:macos-defaults
+    scope: component:macos-config
     class: authorization
-    target_state: macos-defaults admin_state=Enabled dependency_state=DepsReady
+    target_state: macos-config admin_state=Enabled dependency_state=DepsReady
     blocking: soft

@@ -12,3 +12,36 @@ tests:
     intent: "system-composition must converge before system verification is accepted"
     oracle: '_tic_target_status_is "system-composition" "ok"'
     trace: "component:system / ucc-target:system-composition / tic-suite:system"
+
+  # ── Independent health checks (do not depend on UCC status file) ──
+  - name: homebrew-installed
+    component: system
+    intent: "Homebrew package manager must be installed"
+    oracle: 'is_installed brew'
+    trace: "component:system / verification:homebrew"
+
+  - name: python3-available
+    component: system
+    intent: "Python 3 must be available for AI stack"
+    oracle: 'is_installed python3'
+    trace: "component:system / verification:python"
+
+  - name: git-available
+    component: system
+    intent: "Git must be available"
+    oracle: 'is_installed git'
+    trace: "component:system / verification:git"
+
+  - name: docker-desktop-running
+    component: system
+    intent: "Docker Desktop must be running to execute AI apps"
+    oracle: 'docker_daemon_is_running'
+    trace: "component:system / verification:docker-daemon"
+    skip_when: 'is_not_installed docker'
+
+  - name: ollama-api-reachable
+    component: system
+    intent: "Ollama API must be reachable for local LLM inference"
+    oracle: 'http_probe_localhost 11434'
+    trace: "component:system / verification:ollama-api"
+    skip_when: 'is_not_installed ollama'

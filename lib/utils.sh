@@ -22,6 +22,9 @@ fi
 # Check if a command exists
 is_installed() { command -v "$1" &>/dev/null; }
 
+# Return 0 if a command is NOT installed.
+is_not_installed() { ! command -v "$1" &>/dev/null; }
+
 # Probe the named HTTP endpoint for the current target (uses $CFG_DIR/$YAML_PATH/$TARGET_NAME).
 # Intended for oracle.runtime fields — hides framework plumbing from YAML.
 # Usage: http_probe_endpoint [endpoint_name]

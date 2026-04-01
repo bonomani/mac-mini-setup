@@ -9,9 +9,7 @@ components:
     mode: enabled
   - name: ai-python-stack
     mode: enabled
-  - name: macos-software-update
-    mode: enabled
-  - name: macos-defaults
+  - name: macos-config
     mode: enabled
   - name: system
     mode: enabled

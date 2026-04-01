@@ -1,0 +1,127 @@
+name: Validate
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  lint-and-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Python dependencies
+        run: pip install pyyaml
+
+      - name: Bash syntax check (lib/*.sh)
+        run: |
+          errors=0
+          for f in lib/*.sh lib/drivers/*.sh; do
+            if ! bash -n "$f" 2>&1; then
+              echo "FAIL: $f"
+              errors=$((errors + 1))
+            fi
+          done
+          [[ $errors -eq 0 ]] && echo "All shell files pass syntax check"
+          exit $errors
+
+      - name: Bash syntax check (install.sh)
+        run: bash -n install.sh
+
+      - name: YAML manifest validation
+        run: python3 tools/validate_targets_manifest.py ucc/
+
+      - name: YAML syntax check
+        run: |
+          python3 -c "
+          import yaml, sys, os
+          errors = 0
+          for root, _, files in os.walk('ucc'):
+              for f in files:
+                  if not f.endswith('.yaml'): continue
+                  path = os.path.join(root, f)
+                  try:
+                      with open(path) as fh:
+                          yaml.safe_load(fh)
+                  except yaml.YAMLError as e:
+                      print(f'FAIL: {path}: {e}')
+                      errors += 1
+          for path in ['policy/gates.yaml', 'policy/components.yaml']:
+              if os.path.exists(path):
+                  try:
+                      with open(path) as fh:
+                          yaml.safe_load(fh)
+                  except yaml.YAMLError as e:
+                      print(f'FAIL: {path}: {e}')
+                      errors += 1
+          if errors:
+              sys.exit(1)
+          print('All YAML files pass syntax check')
+          "
+
+      - name: No duplicate targets
+        run: |
+          python3 -c "
+          import yaml, os, collections, sys
+          targets = collections.defaultdict(list)
+          for root, _, files in os.walk('ucc'):
+              for f in files:
+                  if not f.endswith('.yaml'): continue
+                  path = os.path.join(root, f)
+                  with open(path) as fh:
+                      data = yaml.safe_load(fh) or {}
+                  for t in (data.get('targets') or {}):
+                      targets[t].append(path)
+          dupes = {t: f for t, f in targets.items() if len(f) > 1}
+          if dupes:
+              for t, files in sorted(dupes.items()):
+                  print(f'DUPLICATE: {t} in {files}')
+              sys.exit(1)
+          print(f'OK: {len(targets)} unique targets')
+          "
+
+      - name: Rule 1 — no shell operators in YAML action fields
+        run: |
+          python3 -c "
+          import yaml, os, re, sys
+          SHELL_PATTERNS = re.compile(r'[|&;><]|\\\$\(|[\\[\\]]\\s')
+          FIELDS = ['oracle.configured', 'oracle.runtime', 'observe_cmd',
+                    'desired_cmd', 'evidence', 'actions', 'skip_when']
+          errors = 0
+          for root, _, files in os.walk('ucc'):
+              for f in files:
+                  if not f.endswith('.yaml'): continue
+                  path = os.path.join(root, f)
+                  with open(path) as fh:
+                      data = yaml.safe_load(fh) or {}
+                  for tname, tdata in (data.get('targets') or {}).items():
+                      if not isinstance(tdata, dict): continue
+                      for field in FIELDS:
+                          parts = field.split('.')
+                          val = tdata
+                          for p in parts:
+                              if isinstance(val, dict):
+                                  val = val.get(p)
+                              else:
+                                  val = None
+                                  break
+                          if isinstance(val, dict):
+                              vals = list(val.values())
+                          elif isinstance(val, str):
+                              vals = [val]
+                          else:
+                              continue
+                          for v in vals:
+                              if isinstance(v, str) and SHELL_PATTERNS.search(v):
+                                  print(f'Rule 1 violation: {path} target={tname} field={field} value={v!r}')
+                                  errors += 1
+          if errors:
+              sys.exit(1)
+          print('Rule 1: no shell operators in YAML fields')
+          "
