@@ -2,7 +2,7 @@
 # lib/docker.sh — Docker Desktop install + daemon startup
 # Sourced by components/docker.sh
 
-# Observe docker-desktop state: installed | absent
+# Observe docker-desktop install state: installed | absent
 docker_desktop_observe() {
   command -v docker >/dev/null 2>&1 && printf 'installed' || printf 'absent'
 }
@@ -91,8 +91,7 @@ _docker_daemon_start() {
 # Usage: run_docker_config_from_yaml <cfg_dir> <yaml_path>
 run_docker_config_from_yaml() {
   local cfg_dir="$1" yaml="$2"
-  local settings_relpath="Library/Group Containers/group.com.docker/settings.json"
-  local memory_gb="48" cpu_count="10" swap_mib="4096" disk_mib="204800"
+  local settings_relpath memory_gb cpu_count swap_mib disk_mib
   while IFS=$'\t' read -r -d '' key value; do
     [[ -n "$value" ]] || continue
     case "$key" in

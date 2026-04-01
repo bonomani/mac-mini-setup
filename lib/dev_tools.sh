@@ -88,6 +88,11 @@ _install_bin_script() {
   install -m 755 "$cfg_dir/scripts/$script_name" "$bin_dir/$script_name"
 }
 
+# Print pyenv root directory path.
+pyenv_root() {
+  pyenv root 2>/dev/null || true
+}
+
 # Print pyenv version string (e.g. "2.4.1").
 pyenv_version() {
   pyenv --version 2>/dev/null | awk '{print $2}'

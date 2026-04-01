@@ -9,8 +9,7 @@ xcode_clt_observe() {
   elif softwareupdate --list 2>/dev/null | grep -qi 'Command Line Tools for Xcode'; then
     printf 'outdated'
   else
-    local ver
-    ver="$(pkgutil --pkg-info=com.apple.pkg.CLTools_Executables 2>/dev/null | awk '/^version:/ {print $2}')"
+    local ver; ver="$(xcode_clt_version)"
     printf '%s' "${ver:-present}"
   fi
 }
@@ -18,7 +17,7 @@ xcode_clt_observe() {
 # Observe Homebrew state: absent | <version>
 homebrew_observe() {
   if is_installed brew; then
-    brew --version 2>/dev/null | awk 'NR==1 {print $2}'
+    homebrew_version
   else
     printf 'absent'
   fi

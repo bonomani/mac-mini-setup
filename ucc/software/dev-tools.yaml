@@ -47,7 +47,7 @@ targets:
     observe_cmd: brew_observe pyenv
     evidence:
       version: pyenv_version
-      root: pyenv root 2>/dev/null || true
+      root: pyenv_root
     actions:
       install: _pyenv_install "$CFG_DIR" "$YAML_PATH" "${zsh_config}"
       update: _pyenv_upgrade "$CFG_DIR" "$YAML_PATH"
