@@ -117,7 +117,7 @@ source "$DIR/lib/summary.sh"
 _MANIFEST_DIR="$DIR/ucc"
 _QUERY_SCRIPT="$DIR/tools/validate_targets_manifest.py"
 _all_dispatch=$(python3 "$_QUERY_SCRIPT" --all-dispatch "$_MANIFEST_DIR" 2>/dev/null || true)
-_GATE_DOCKER_SETTINGS_REL=$(python3 "$DIR/tools/read_config.py" --get "$DIR/ucc/system/docker-config.yaml" settings_relpath 2>/dev/null || true)
+_GATE_DOCKER_SETTINGS_REL=$(python3 "$DIR/tools/read_config.py" --get "$DIR/ucc/software/docker.yaml" settings_relpath 2>/dev/null || true)
 _GATE_AI_APPS_TEMPLATE_REL=$(python3 "$DIR/tools/read_config.py" --get "$DIR/ucc/software/ai-apps.yaml" stack.definition_template 2>/dev/null || true)
 [[ -z "$_GATE_DOCKER_SETTINGS_REL" ]] && _GATE_DOCKER_SETTINGS_REL="Library/Group Containers/group.com.docker/settings.json"
 [[ -z "$_GATE_AI_APPS_TEMPLATE_REL" ]] && _GATE_AI_APPS_TEMPLATE_REL="stack/docker-compose.yml"

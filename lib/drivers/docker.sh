@@ -2,7 +2,7 @@
 # lib/drivers/docker.sh — driver.kind: docker-settings
 
 # ── docker-settings ───────────────────────────────────────────────────────────
-# Uses env vars set by the docker-config runner:
+# Uses env vars set by the docker runner:
 #   DOCKER_SETTINGS_PATH  full path to Docker settings.json
 #   DOCKER_MEM_MIB        memory in MiB
 #   DOCKER_CPU_COUNT      CPU count

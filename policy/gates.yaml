@@ -31,9 +31,9 @@ gates:
     blocking: hard
   - name: docker-settings-file
     condition: _gate_docker_settings
-    scope: component:docker-config
+    scope: component:docker
     class: readiness
-    target_state: docker-config installation_state=Configured dependency_state=DepsReady
+    target_state: docker installation_state=Configured dependency_state=DepsReady
     blocking: soft
   - name: ollama-api
     condition: _gate_ollama_api

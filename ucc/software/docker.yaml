@@ -11,6 +11,11 @@ docker_socket: $HOME/.docker/run/docker.sock
 docker_settings_store_relpath: Library/Group Containers/group.com.docker/settings-store.json
 docker_backend_process: com.docker.backend
 docker_kill_pattern: com.docker
+settings_relpath: Library/Group Containers/group.com.docker/settings.json
+memory_gb: 48
+cpu_count: 10
+swap_mib: 4096
+disk_mib: 204800
 targets:
   docker-desktop:
     component: docker
@@ -40,3 +45,17 @@ targets:
     stopped_dependencies: DepsReady
     actions:
       install: _docker_desktop_install_and_start
+  docker-resources:
+    component: docker
+    profile: parametric
+    type: config
+    state_model: parametric
+    display_name: Docker resources
+    depends_on:
+    - docker-desktop
+    soft_depends_on:
+    - gate:docker-settings-file
+    driver:
+      kind: docker-settings
+    desired_cmd: docker_desired_resources "${DOCKER_MEM_GB}" "${DOCKER_CPU_COUNT}"
+    dependency_gate: docker-settings-file

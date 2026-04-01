@@ -218,8 +218,9 @@ run_dev_tools_from_yaml() {
   done < <(yaml_get_many "$cfg_dir" "$yaml" node_version ariaflow_tap nvm_dir pyenv_dir)
   _ARIAFLOW_FORMULA="${_ARIAFLOW_TAP}/ariaflow"
   _ARIAFLOW_WEB_FORMULA="${_ARIAFLOW_TAP}/ariaflow-web"
-  # ---- Git ----
+  # ---- Git (install + config) ----
   ucc_yaml_simple_target "$cfg_dir" "$yaml" "git"
+  ucc_yaml_simple_target "$cfg_dir" "$yaml" "git-global-config"
 
   # ---- Python (pyenv + python version + pip) ----
   ucc_yaml_simple_target "$cfg_dir" "$yaml" "pyenv"

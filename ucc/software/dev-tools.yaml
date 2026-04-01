@@ -1,6 +1,6 @@
 component: dev-tools
 primary_profile: runtime
-libs: python vscode_ext dev_tools
+libs: python vscode_ext dev_tools git
 runner: run_dev_tools_from_yaml
 platforms:
 - macos
@@ -665,6 +665,23 @@ targets:
     driver:
       kind: brew
       ref: git
+  git-global-config:
+    component: dev-tools
+    profile: configured
+    type: config
+    state_model: config
+    display_name: Git global config
+    depends_on:
+    - git
+    driver:
+      kind: custom
+    oracle:
+      configured: git_global_user_name_is_set
+    evidence:
+      user: git_global_user_name
+      email: git_global_user_email
+    actions:
+      install: _git_global_config_interactive
 cli_tools:
 - cli-jq
 - cli-wget
@@ -699,3 +716,10 @@ npm_packages:
 casks:
 - iterm2
 - lm-studio
+global_config:
+- key: init.defaultBranch
+  value: main
+- key: pull.rebase
+  value: 'false'
+- key: core.autocrlf
+  value: input
