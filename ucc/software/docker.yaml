@@ -82,4 +82,4 @@ targets:
         \ \"[docker-daemon] step 5: waiting for daemon socket ${docker_socket} (${docker_runtime_wait_attempts}x${docker_runtime_wait_interval}s)\"\n\
         UCC_RUNTIME_WAIT_ATTEMPTS=\"${docker_runtime_wait_attempts}\" \\\nUCC_RUNTIME_WAIT_INTERVAL=\"${docker_runtime_wait_interval}\"\
         \ \\\n  _ucc_wait_for_runtime_probe \"[[ -S \\\"${docker_socket}\\\" ]] && docker info >/dev/null 2>&1\" \\\n  &&\
-        \ log_info \"[docker-daemon] daemon ready\" \\\n  || log_warn \"Docker daemon not ready yet — re-run once Docker Desktop has finished starting.\"\n"
+        \ log_info \"[docker-daemon] daemon ready\" \\\n  || { [[ -S \"${docker_socket}\" ]] && log_warn \"[docker-daemon] socket exists but docker info failed\" || log_warn \"[docker-daemon] socket missing: ${docker_socket}\"; log_warn \"Docker daemon not ready yet — re-run once Docker Desktop has finished starting.\"; }\n"
