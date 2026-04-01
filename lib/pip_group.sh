@@ -18,7 +18,20 @@ run_ai_python_stack_from_yaml() {
   local cfg_dir="$1" yaml="$2"
   pip_cache_versions
   load_pip_groups_from_yaml "$cfg_dir" "$yaml"
-  register_unsloth_studio_targets "$cfg_dir" "$yaml"
+
+  # ---- Unsloth package (all platforms) ----
+  ucc_yaml_simple_target "$cfg_dir" "$yaml" "unsloth"
+
+  # ---- Unsloth Studio runtime (platform-specific) ----
+  case "${HOST_PLATFORM:-macos}" in
+    macos)
+      register_unsloth_studio_targets "$cfg_dir" "$yaml"
+      ;;
+    linux|wsl2)
+      register_unsloth_studio_service_targets "$cfg_dir" "$yaml"
+      ;;
+  esac
+
   if [[ "$UCC_DRY_RUN" != "1" ]] && is_installed python3; then
     ucc_yaml_capability_target "$cfg_dir" "$yaml" "mps-available"
   fi

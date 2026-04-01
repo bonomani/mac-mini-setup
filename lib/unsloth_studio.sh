@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# lib/unsloth_studio.sh — Unsloth Studio software target
+# lib/unsloth_studio.sh — Unsloth Studio runtime targets (macOS launchd + Linux systemd)
 # Sourced by components/ai-python-stack.sh
 
 # Usage: register_unsloth_studio_targets <cfg_dir> <yaml_path>
@@ -62,4 +62,56 @@ PLIST
   }"
 
   ucc_yaml_runtime_target "$cfg_dir" "$yaml" "unsloth-studio" _install_unsloth_studio _update_unsloth_studio
+}
+
+# Usage: register_unsloth_studio_service_targets <cfg_dir> <yaml_path>
+# Linux/WSL2: manages unsloth-studio as a systemd user service.
+register_unsloth_studio_service_targets() {
+  local cfg_dir="$1" yaml="$2"
+
+  local port host log_file bin service_name="unsloth-studio"
+  local service_file="$HOME/.config/systemd/user/${service_name}.service"
+  while IFS=$'\t' read -r -d '' key value; do
+    case "$key" in
+      unsloth_port) port="$value" ;;
+      unsloth_host) host="$value" ;;
+      unsloth_log_file) log_file="$HOME/$value" ;;
+    esac
+  done < <(yaml_get_many "$cfg_dir" "$yaml" \
+    unsloth_port \
+    unsloth_host \
+    unsloth_log_file)
+  # systemd does not load pyenv shims — resolve absolute binary path at source time
+  bin="$(pyenv which unsloth 2>/dev/null || command -v unsloth 2>/dev/null || true)"
+
+  eval "_install_unsloth_studio_service() {
+    mkdir -p '\$(dirname '${service_file}')'
+    cat > '${service_file}' <<UNIT
+[Unit]
+Description=Unsloth Studio
+After=network.target
+
+[Service]
+ExecStart=${bin} studio -H ${host} -p ${port}
+Restart=always
+StandardOutput=append:${log_file}
+StandardError=append:${log_file}
+
+[Install]
+WantedBy=default.target
+UNIT
+    ucc_run systemctl --user daemon-reload
+    ucc_run systemctl --user enable --now '${service_name}'
+    UCC_RUNTIME_WAIT_ATTEMPTS=10 \\
+    UCC_RUNTIME_WAIT_INTERVAL=2 \\
+    _ucc_wait_for_runtime_probe \"curl -fsS --max-time 5 'http://127.0.0.1:${port}' >/dev/null 2>&1\"
+  }"
+  eval "_update_unsloth_studio_service() {
+    ucc_run systemctl --user restart '${service_name}'
+    UCC_RUNTIME_WAIT_ATTEMPTS=10 \\
+    UCC_RUNTIME_WAIT_INTERVAL=2 \\
+    _ucc_wait_for_runtime_probe \"curl -fsS --max-time 5 'http://127.0.0.1:${port}' >/dev/null 2>&1\"
+  }"
+
+  ucc_yaml_runtime_target "$cfg_dir" "$yaml" "unsloth-studio-service" _install_unsloth_studio_service _update_unsloth_studio_service
 }

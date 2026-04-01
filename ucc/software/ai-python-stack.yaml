@@ -4,6 +4,8 @@ libs: pip_group unsloth_studio
 runner: run_ai_python_stack_from_yaml
 platforms:
 - macos
+- linux
+- wsl2
 unsloth_label: ai.unsloth.studio
 unsloth_plist_marker: <!-- ai.unsloth.studio v2 -->
 unsloth_host: 0.0.0.0
@@ -11,14 +13,27 @@ unsloth_log_file: .unsloth-studio.log
 unsloth_port: 8888
 unsloth_studio_dir: .unsloth/studio
 targets:
+  unsloth:
+    component: ai-python-stack
+    profile: configured
+    type: package
+    state_model: package
+    display_name: Unsloth
+    depends_on:
+    - pip-latest
+    provided_by_tool: pip
+    driver:
+      kind: pip
+      probe_pkg: unsloth
+      install_packages: unsloth
+      min_version: ''
   unsloth-studio:
     component: ai-python-stack
     profile: runtime
     type: runtime
     display_name: Unsloth Studio
     depends_on:
-    - python
-    - pip-latest
+    - unsloth
     driver:
       kind: custom
     runtime_manager: launchd
@@ -27,6 +42,26 @@ targets:
       runtime: curl -fsS --max-time 5 "http://127.0.0.1:${unsloth_port}" >/dev/null 2>&1
     evidence:
       plist: printf '%s/Library/LaunchAgents/%s.plist' "$HOME" "${unsloth_label}"
+    endpoints:
+    - name: Unsloth Studio
+      scheme: http
+      host: 127.0.0.1
+      port: ${unsloth_port}
+  unsloth-studio-service:
+    component: ai-python-stack
+    profile: runtime
+    type: runtime
+    display_name: Unsloth Studio
+    depends_on:
+    - unsloth
+    driver:
+      kind: custom
+    runtime_manager: systemd
+    probe_kind: http
+    oracle:
+      runtime: curl -fsS --max-time 5 "http://127.0.0.1:${unsloth_port}" >/dev/null 2>&1
+    evidence:
+      service: printf 'unsloth-studio.service'
     endpoints:
     - name: Unsloth Studio
       scheme: http
