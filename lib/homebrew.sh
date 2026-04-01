@@ -2,6 +2,28 @@
 # lib/homebrew.sh — Homebrew + Xcode CLT targets
 # Sourced by components/homebrew.sh
 
+# Observe Xcode CLT state: absent | outdated | <version>
+xcode_clt_observe() {
+  if ! xcode-select -p >/dev/null 2>&1; then
+    printf 'absent'
+  elif softwareupdate --list 2>/dev/null | grep -qi 'Command Line Tools for Xcode'; then
+    printf 'outdated'
+  else
+    local ver
+    ver="$(pkgutil --pkg-info=com.apple.pkg.CLTools_Executables 2>/dev/null | awk '/^version:/ {print $2}')"
+    printf '%s' "${ver:-present}"
+  fi
+}
+
+# Observe Homebrew state: absent | <version>
+homebrew_observe() {
+  if is_installed brew; then
+    brew --version 2>/dev/null | awk 'NR==1 {print $2}'
+  else
+    printf 'absent'
+  fi
+}
+
 # Trigger Xcode CLT installation and exit with instructions.
 _xcode_clt_trigger() {
   log_info "Triggering Xcode Command Line Tools install..."

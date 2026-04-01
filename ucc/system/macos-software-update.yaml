@@ -18,14 +18,11 @@ targets:
     driver:
       kind: custom
     oracle:
-      configured: if softwareupdate --schedule 2>/dev/null | grep -qiE 'Automatic check
-        is on\.?$'; then echo on; else echo off; fi
-    observe_cmd: if softwareupdate --schedule 2>/dev/null | grep -qiE 'Automatic check
-      is on\.?$'; then echo on; else echo off; fi
+      configured: softwareupdate_schedule_observe | grep -q '^on$'
+    observe_cmd: softwareupdate_schedule_observe
     desired_value: 'on'
     evidence:
-      schedule: if softwareupdate --schedule 2>/dev/null | grep -qiE 'Automatic check
-        is on\.?$'; then echo on; else echo off; fi
+      schedule: softwareupdate_schedule_observe
     actions:
       install: softwareupdate_schedule_enable
     dependency_gate: sudo-available

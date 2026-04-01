@@ -1,6 +1,15 @@
 #!/usr/bin/env bash
 # lib/macos_software_update.sh — helpers for YAML-driven macOS software update policy
 
+# Observe softwareupdate schedule state: on | off
+softwareupdate_schedule_observe() {
+  if softwareupdate --schedule 2>/dev/null | grep -qiE 'Automatic check is on\.?$'; then
+    echo on
+  else
+    echo off
+  fi
+}
+
 # Enable the automatic softwareupdate schedule (requires sudo).
 softwareupdate_schedule_enable() {
   ucc_run sudo softwareupdate --schedule on
