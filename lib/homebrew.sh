@@ -113,16 +113,29 @@ _homebrew_ensure_shellenv() {
 }
 
 # Install Homebrew via the official installer, then configure shellenv.
-# Usage: _homebrew_install <shell_config> <installer_url>
+# Uses implicit $CFG_DIR/$YAML_PATH context.
 _homebrew_install() {
-  /bin/bash -c "$(curl -fsSL "$2")"
-  _homebrew_ensure_shellenv "$1"
+  local shell_config installer_url
+  while IFS=$'\t' read -r -d '' key value; do
+    case "$key" in
+      shell_config_file) shell_config="$value" ;;
+      installer_url) installer_url="$value" ;;
+    esac
+  done < <(yaml_get_many "$CFG_DIR" "$YAML_PATH" shell_config_file installer_url)
+  /bin/bash -c "$(curl -fsSL "$installer_url")"
+  _homebrew_ensure_shellenv "$shell_config"
 }
 
 # Ensure shellenv is configured, then update and upgrade all formulae.
-# Usage: _homebrew_upgrade <shell_config>
+# Uses implicit $CFG_DIR/$YAML_PATH context.
 _homebrew_upgrade() {
-  _homebrew_ensure_shellenv "$1"
+  local shell_config
+  while IFS=$'\t' read -r -d '' key value; do
+    case "$key" in
+      shell_config_file) shell_config="$value" ;;
+    esac
+  done < <(yaml_get_many "$CFG_DIR" "$YAML_PATH" shell_config_file)
+  _homebrew_ensure_shellenv "$shell_config"
   brew update && brew upgrade
 }
 

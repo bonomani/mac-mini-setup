@@ -32,9 +32,9 @@ targets:
     observe_cmd: docker_desktop_observe
     evidence:
       version: docker_version
-      install_source: docker_install_source_observe "${docker_desktop_cask_id}" "${docker_desktop_app_path}"
+      install_source: docker_install_source_observe
     actions:
-      install: _docker_desktop_install "${docker_desktop_cask_id}" "${docker_desktop_app_path}" "${docker_settings_store_relpath}"
+      install: _docker_desktop_install
   docker-daemon:
     component: docker
     profile: runtime
@@ -51,7 +51,7 @@ targets:
       runtime: docker_daemon_is_running
     evidence:
       socket: echo_var "${docker_socket}"
-      pid: docker_daemon_pid "${docker_backend_process}"
+      pid: docker_daemon_pid
     stopped_dependencies: DepsReady
     actions:
-      install: _docker_daemon_start "${docker_settings_store_relpath}" "${docker_kill_pattern}"
+      install: _docker_daemon_start

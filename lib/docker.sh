@@ -23,17 +23,30 @@ docker_daemon_is_running() {
   docker info >/dev/null 2>&1
 }
 
-# Print the install source of a desktop app if it is not absent/brew-cask (i.e. app-bundle or other).
-# Usage: docker_install_source_observe <cask_id> <app_path>
+# Print the install source of Docker Desktop if it is not absent/brew-cask.
+# Uses implicit $CFG_DIR/$YAML_PATH context.
 docker_install_source_observe() {
-  local src; src="$(desktop_app_install_source "$1" "$2")"
+  local cask_id app_path
+  while IFS=$'\t' read -r -d '' key value; do
+    case "$key" in
+      docker_desktop_cask_id) cask_id="$value" ;;
+      docker_desktop_app_path) app_path="$value" ;;
+    esac
+  done < <(yaml_get_many "$CFG_DIR" "$YAML_PATH" docker_desktop_cask_id docker_desktop_app_path)
+  local src; src="$(desktop_app_install_source "$cask_id" "$app_path")"
   [[ "$src" != "absent" && "$src" != "brew-cask" ]] && printf '%s' "$src" || true
 }
 
 # Print the PID of the Docker backend process (empty if not running).
-# Usage: docker_daemon_pid <backend_process_pattern>
+# Uses implicit $CFG_DIR/$YAML_PATH context.
 docker_daemon_pid() {
-  pgrep -f "$1" 2>/dev/null | head -1
+  local pattern
+  while IFS=$'\t' read -r -d '' key value; do
+    case "$key" in
+      docker_backend_process) pattern="$value" ;;
+    esac
+  done < <(yaml_get_many "$CFG_DIR" "$YAML_PATH" docker_backend_process)
+  pgrep -f "$pattern" 2>/dev/null | head -1
 }
 
 # Usage: run_docker_from_yaml <cfg_dir> <yaml_path>
@@ -74,8 +87,16 @@ _docker_cask_ensure() {
   fi
 }
 
+# Uses implicit $CFG_DIR/$YAML_PATH/$TARGET_NAME context.
 _docker_desktop_install() {
-  local cask_id="$1" app_path="$2" settings_store_relpath="$3"
+  local cask_id app_path settings_store_relpath
+  while IFS=$'\t' read -r -d '' key value; do
+    case "$key" in
+      docker_desktop_cask_id) cask_id="$value" ;;
+      docker_desktop_app_path) app_path="$value" ;;
+      docker_settings_store_relpath) settings_store_relpath="$value" ;;
+    esac
+  done < <(yaml_get_many "$CFG_DIR" "$YAML_PATH" docker_desktop_cask_id docker_desktop_app_path docker_settings_store_relpath)
   local greedy; greedy="$(_ucc_yaml_target_get "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME" "driver.greedy_auto_updates")"
   _docker_cask_ensure "$cask_id" "$app_path" "$greedy" || return $?
   _docker_settings_store_patch "$settings_store_relpath"
@@ -95,8 +116,15 @@ _docker_launch() {
     script -q /dev/null docker desktop start
 }
 
+# Uses implicit $CFG_DIR/$YAML_PATH context.
 _docker_daemon_start() {
-  local settings_store_relpath="$1" kill_pattern="$2"
+  local settings_store_relpath kill_pattern
+  while IFS=$'\t' read -r -d '' key value; do
+    case "$key" in
+      docker_settings_store_relpath) settings_store_relpath="$value" ;;
+      docker_kill_pattern) kill_pattern="$value" ;;
+    esac
+  done < <(yaml_get_many "$CFG_DIR" "$YAML_PATH" docker_settings_store_relpath docker_kill_pattern)
   _docker_settings_store_patch "$settings_store_relpath"
   _docker_kill_zombies "$kill_pattern"
   _docker_launch

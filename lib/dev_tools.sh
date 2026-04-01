@@ -49,15 +49,27 @@ _install_cli_symlink() {
 }
 
 # Install Oh My Zsh via its official installer (unattended).
-# Usage: _omz_install <installer_url>
+# Uses implicit $CFG_DIR/$YAML_PATH context.
 _omz_install() {
-  sh -c "$(curl -fsSL "$1")" "" --unattended
+  local url
+  while IFS=$'\t' read -r -d '' key value; do
+    case "$key" in
+      omz_installer_url) url="$value" ;;
+    esac
+  done < <(yaml_get_many "$CFG_DIR" "$YAML_PATH" omz_installer_url)
+  sh -c "$(curl -fsSL "$url")" "" --unattended
 }
 
 # Upgrade Oh My Zsh via its bundled upgrade script.
-# Usage: _omz_upgrade <omz_dir_relpath>
+# Uses implicit $CFG_DIR/$YAML_PATH context.
 _omz_upgrade() {
-  local omz_dir="$HOME/$1"
+  local omz_dir_rel
+  while IFS=$'\t' read -r -d '' key value; do
+    case "$key" in
+      omz_dir) omz_dir_rel="$value" ;;
+    esac
+  done < <(yaml_get_many "$CFG_DIR" "$YAML_PATH" omz_dir)
+  local omz_dir="$HOME/$omz_dir_rel"
   [[ -f "$omz_dir/tools/upgrade.sh" ]] && bash "$omz_dir/tools/upgrade.sh" || true
 }
 

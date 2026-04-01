@@ -180,8 +180,8 @@ targets:
     evidence:
       folder: home_path "${omz_dir}"
     actions:
-      install: _omz_install "${omz_installer_url}"
-      update: _omz_upgrade "${omz_dir}"
+      install: _omz_install
+      update: _omz_upgrade
   omz-theme-agnoster:
     component: dev-tools
     profile: configured

@@ -41,8 +41,6 @@ targets:
       key: AutomaticCheckEnabled
       value: '1'
     desired_value: '1'
-    evidence:
-      AutomaticCheckEnabled: softwareupdate_pref_read '${softwareupdate_domain}' AutomaticCheckEnabled
     dependency_gate: sudo-available
   softwareupdate-auto-download=1:
     component: macos-software-update
@@ -59,8 +57,6 @@ targets:
       key: AutomaticDownload
       value: '1'
     desired_value: '1'
-    evidence:
-      AutomaticDownload: softwareupdate_pref_read '${softwareupdate_domain}' AutomaticDownload
     dependency_gate: sudo-available
   softwareupdate-auto-install-macos=1:
     component: macos-software-update
@@ -77,8 +73,6 @@ targets:
       key: AutomaticallyInstallMacOSUpdates
       value: '1'
     desired_value: '1'
-    evidence:
-      AutomaticallyInstallMacOSUpdates: softwareupdate_pref_read '${softwareupdate_domain}' AutomaticallyInstallMacOSUpdates
     dependency_gate: sudo-available
   softwareupdate-config-data=1:
     component: macos-software-update
@@ -95,8 +89,6 @@ targets:
       key: ConfigDataInstall
       value: '1'
     desired_value: '1'
-    evidence:
-      ConfigDataInstall: softwareupdate_pref_read '${softwareupdate_domain}' ConfigDataInstall
     dependency_gate: sudo-available
   softwareupdate-critical-updates=1:
     component: macos-software-update
@@ -113,6 +105,4 @@ targets:
       key: CriticalUpdateInstall
       value: '1'
     desired_value: '1'
-    evidence:
-      CriticalUpdateInstall: softwareupdate_pref_read '${softwareupdate_domain}' CriticalUpdateInstall
     dependency_gate: sudo-available
