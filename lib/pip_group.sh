@@ -23,7 +23,7 @@ run_ai_python_stack_from_yaml() {
   ucc_yaml_simple_target "$cfg_dir" "$yaml" "unsloth"
 
   # ---- Unsloth Studio runtime (platform-specific) ----
-  case "${HOST_PLATFORM:-macos}" in
+  case "${HOST_PLATFORM:-}" in
     macos)
       register_unsloth_studio_targets "$cfg_dir" "$yaml"
       ;;

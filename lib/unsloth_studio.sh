@@ -2,7 +2,20 @@
 # lib/unsloth_studio.sh — Unsloth Studio runtime targets (macOS launchd + Linux systemd)
 # Sourced by components/ai-python-stack.sh
 
+# Resolve absolute path to the unsloth binary — fails fast if not found.
+# launchd/systemd do not load pyenv shims so we must bake in the absolute path.
+_unsloth_bin() {
+  local bin
+  bin="$(pyenv which unsloth 2>/dev/null || command -v unsloth 2>/dev/null)"
+  if [[ -z "$bin" ]]; then
+    log_error "unsloth binary not found — is the unsloth package installed?"
+    return 1
+  fi
+  printf '%s' "$bin"
+}
+
 # Usage: register_unsloth_studio_targets <cfg_dir> <yaml_path>
+# macOS: manages unsloth-studio as a launchd user agent.
 register_unsloth_studio_targets() {
   local cfg_dir="$1" yaml="$2"
 
@@ -24,9 +37,10 @@ register_unsloth_studio_targets() {
     unsloth_studio_dir \
     unsloth_log_file)
   plist="$HOME/Library/LaunchAgents/${label}.plist"
-  # launchd does not load pyenv shims — resolve absolute binary path at source time
-  bin="$(pyenv which unsloth 2>/dev/null || command -v unsloth)"
+
   eval "_install_unsloth_studio() {
+    local _bin
+    _bin=\"\$(_unsloth_bin)\" || return 1
     mkdir -p '\$(dirname '${plist}')'
     cat > '${plist}' <<PLIST
 ${plist_marker}
@@ -37,7 +51,7 @@ ${plist_marker}
   <key>Label</key>             <string>${label}</string>
   <key>ProgramArguments</key>
   <array>
-    <string>${bin}</string>
+    <string>\${_bin}</string>
     <string>studio</string>
     <string>-H</string><string>${host}</string>
     <string>-p</string><string>${port}</string>
@@ -69,7 +83,7 @@ PLIST
 register_unsloth_studio_service_targets() {
   local cfg_dir="$1" yaml="$2"
 
-  local port host log_file bin service_name="unsloth-studio"
+  local port host log_file service_name="unsloth-studio"
   local service_file="$HOME/.config/systemd/user/${service_name}.service"
   while IFS=$'\t' read -r -d '' key value; do
     case "$key" in
@@ -81,10 +95,10 @@ register_unsloth_studio_service_targets() {
     unsloth_port \
     unsloth_host \
     unsloth_log_file)
-  # systemd does not load pyenv shims — resolve absolute binary path at source time
-  bin="$(pyenv which unsloth 2>/dev/null || command -v unsloth 2>/dev/null || true)"
 
   eval "_install_unsloth_studio_service() {
+    local _bin
+    _bin=\"\$(_unsloth_bin)\" || return 1
     mkdir -p '\$(dirname '${service_file}')'
     cat > '${service_file}' <<UNIT
 [Unit]
@@ -92,7 +106,7 @@ Description=Unsloth Studio
 After=network.target
 
 [Service]
-ExecStart=${bin} studio -H ${host} -p ${port}
+ExecStart=\${_bin} studio -H ${host} -p ${port}
 Restart=always
 StandardOutput=append:${log_file}
 StandardError=append:${log_file}
@@ -107,10 +121,7 @@ UNIT
     _ucc_wait_for_runtime_probe \"curl -fsS --max-time 5 'http://127.0.0.1:${port}' >/dev/null 2>&1\"
   }"
   eval "_update_unsloth_studio_service() {
-    ucc_run systemctl --user restart '${service_name}'
-    UCC_RUNTIME_WAIT_ATTEMPTS=10 \\
-    UCC_RUNTIME_WAIT_INTERVAL=2 \\
-    _ucc_wait_for_runtime_probe \"curl -fsS --max-time 5 'http://127.0.0.1:${port}' >/dev/null 2>&1\"
+    _install_unsloth_studio_service
   }"
 
   ucc_yaml_runtime_target "$cfg_dir" "$yaml" "unsloth-studio-service" _install_unsloth_studio_service _update_unsloth_studio_service
