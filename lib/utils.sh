@@ -360,6 +360,11 @@ npm_global_observe() {
   printf '%s' "${version:-absent}"
 }
 
+# Unlink a brew formula so its binaries are not on PATH (idempotent).
+brew_formula_unlink() {
+  brew unlink "$1" 2>/dev/null || true
+}
+
 # Install a brew formula (package is absent)
 brew_install() {
   ucc_run brew install "$@" || return $?

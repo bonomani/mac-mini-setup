@@ -8,12 +8,17 @@ python_version: 3.12.3
 node_version: 24
 omz_theme: agnoster
 omz_installer_url: https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh
+omz_dir: .oh-my-zsh
 vscode_cask_id: visual-studio-code
 vscode_app_path: /Applications/Visual Studio Code.app
 vscode_cli_path: /Applications/Visual Studio Code.app/Contents/Resources/app/bin/code
 vscode_cli_link_relpath: bin/code
 vscode_settings_relpath: Library/Application Support/Code/User/settings.json
 vscode_settings_patch: ucc/software/vscode-settings.json
+zsh_config: .zshrc
+shell_profile: .zprofile
+home_bin_dir: bin
+node_formula: node
 ariaflow_tap: bonomani/ariaflow
 aria2_port: 6800
 ariaflow_port: 8000
@@ -42,7 +47,7 @@ targets:
       version: pyenv --version 2>/dev/null | awk '{print $2}'
       root: pyenv root 2>/dev/null || true
     actions:
-      install: _pyenv_install "$CFG_DIR" "$YAML_PATH"
+      install: _pyenv_install "$CFG_DIR" "$YAML_PATH" "${zsh_config}"
       update: _pyenv_upgrade "$CFG_DIR" "$YAML_PATH"
   xz:
     component: dev-tools
@@ -117,7 +122,9 @@ targets:
     evidence:
       path: command -v code 2>/dev/null || true
     actions:
-      install: _vscode_code_cmd_install "${vscode_cli_path}" "${vscode_cli_link_relpath}"
+      install: _install_cli_symlink "${vscode_cli_path}" "${vscode_cli_link_relpath}" "Symlink
+        created. If 'code' is still missing in new shells, run: Cmd+Shift+P → 'Shell
+        Command: Install code command in PATH'"
   vscode-settings:
     component: dev-tools
     profile: configured
@@ -164,17 +171,12 @@ targets:
     driver:
       kind: custom
     oracle:
-      configured: '[[ -d "$HOME/.oh-my-zsh" ]]'
+      configured: '[[ -d "$HOME/${omz_dir}" ]]'
     evidence:
-      folder: printf '%s' "$HOME/.oh-my-zsh"
+      folder: printf '%s' "$HOME/${omz_dir}"
     actions:
-      install: 'sh -c "$(curl -fsSL "${omz_installer_url}")" "" --unattended
-
-        '
-      update: '[[ -f "$HOME/.oh-my-zsh/tools/upgrade.sh" ]] && bash "$HOME/.oh-my-zsh/tools/upgrade.sh"
-        || true
-
-        '
+      install: _omz_install "${omz_installer_url}"
+      update: _omz_upgrade "${omz_dir}"
   omz-theme-agnoster:
     component: dev-tools
     profile: configured
@@ -186,12 +188,12 @@ targets:
     driver:
       kind: custom
     oracle:
-      configured: grep -q "^ZSH_THEME=\"${omz_theme}\"" "$HOME/.zshrc" 2>/dev/null
+      configured: grep -q "^ZSH_THEME=\"${omz_theme}\"" "$HOME/${zsh_config}" 2>/dev/null
     evidence:
       theme: printf '%s' '${omz_theme}'
-      file: printf '%s' "$HOME/.zshrc"
+      file: printf '%s' "$HOME/${zsh_config}"
     actions:
-      install: _omz_set_theme "${omz_theme}"
+      install: _zsh_set_theme "${omz_theme}" "${zsh_config}"
   home-bin-in-path:
     component: dev-tools
     profile: configured
@@ -201,11 +203,12 @@ targets:
     driver:
       kind: custom
     oracle:
-      configured: grep -q 'export PATH="$HOME/bin:$PATH"' "$HOME/.zprofile" 2>/dev/null
+      configured: grep -q "export PATH=\"\$HOME/${home_bin_dir}:\$PATH\"" "$HOME/${shell_profile}"
+        2>/dev/null
     evidence:
-      path: printf '%s' "$HOME/bin"
+      path: printf '%s' "$HOME/${home_bin_dir}"
     actions:
-      install: _home_bin_add_to_path
+      install: _path_dir_add_to_profile "${home_bin_dir}" "${shell_profile}"
   ai-healthcheck:
     component: dev-tools
     profile: configured
@@ -217,11 +220,11 @@ targets:
     driver:
       kind: custom
     oracle:
-      configured: '[[ -x "$HOME/bin/ai-healthcheck" ]]'
+      configured: '[[ -x "$HOME/${home_bin_dir}/ai-healthcheck" ]]'
     evidence:
-      path: printf '%s' "$HOME/bin/ai-healthcheck"
+      path: printf '%s' "$HOME/${home_bin_dir}/ai-healthcheck"
     actions:
-      install: _install_bin_script "$CFG_DIR" ai-healthcheck
+      install: _install_bin_script "$CFG_DIR" ai-healthcheck "${home_bin_dir}"
   ariaflow:
     component: dev-tools
     profile: runtime
@@ -641,8 +644,8 @@ targets:
     evidence:
       node_path: command -v node 2>/dev/null || printf none
     actions:
-      install: brew unlink node 2>/dev/null || true
-      update: brew unlink node 2>/dev/null || true
+      install: brew_formula_unlink "${node_formula}"
+      update: brew_formula_unlink "${node_formula}"
   git:
     component: dev-tools
     profile: configured

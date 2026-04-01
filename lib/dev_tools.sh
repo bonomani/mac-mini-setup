@@ -3,15 +3,15 @@
 # Sourced by components/dev-tools.sh
 
 # Install pyenv + plugins via brew, then append zshrc snippet if missing.
-# Usage: _pyenv_install <cfg_dir> <yaml_path>
+# Usage: _pyenv_install <cfg_dir> <yaml_path> <zsh_config>
 _pyenv_install() {
-  local cfg_dir="$1" yaml="$2"
+  local cfg_dir="$1" yaml="$2" zsh_config="$3"
   local pkgs; pkgs="$(yaml_list "$cfg_dir" "$yaml" pyenv_packages 2>/dev/null | xargs)"
   [[ -n "$pkgs" ]] || pkgs="pyenv pyenv-virtualenv"
   # shellcheck disable=SC2086
   brew_install $pkgs
-  grep -q 'pyenv init' "$HOME/.zshrc" 2>/dev/null || \
-    cat "$cfg_dir/scripts/pyenv-zshrc-snippet" >> "$HOME/.zshrc"
+  grep -q 'pyenv init' "$HOME/$zsh_config" 2>/dev/null || \
+    cat "$cfg_dir/scripts/pyenv-zshrc-snippet" >> "$HOME/$zsh_config"
 }
 
 # Upgrade pyenv + plugins via brew.
@@ -33,45 +33,61 @@ _pip_bootstrap_install() {
   [[ -n "$pkgs" ]] && pip install --upgrade $pkgs
 }
 
-# Create the ~/bin/code symlink pointing at the VS Code CLI binary.
-# Usage: _vscode_code_cmd_install <cli_path> <link_relpath>
-_vscode_code_cmd_install() {
-  local cli_path="$1" link_relpath="$2"
-  if [[ -x "$cli_path" ]]; then
+# Create a symlink from a source binary into a target directory (idempotent).
+# Adds the link directory to PATH for the current session.
+# Usage: _install_cli_symlink <src_path> <link_relpath> <warn_msg>
+_install_cli_symlink() {
+  local src_path="$1" link_relpath="$2" warn_msg="${3:-}"
+  if [[ -x "$src_path" ]]; then
     mkdir -p "$(dirname "$HOME/${link_relpath}")"
-    ln -sf "$cli_path" "$HOME/${link_relpath}"
+    ln -sf "$src_path" "$HOME/${link_relpath}"
     export PATH="$(dirname "$HOME/${link_relpath}"):$PATH"
-    log_warn "Symlink created. If 'code' is still missing in new shells, run: Cmd+Shift+P → 'Shell Command: Install code command in PATH'"
+    [[ -n "$warn_msg" ]] && log_warn "$warn_msg"
   else
-    log_warn "VS Code binary not found. Open VS Code manually first."
+    log_warn "Source binary not found at '${src_path}'. Install the app first."
     return 1
   fi
 }
 
-# Set ZSH_THEME in ~/.zshrc (update existing line or append).
-# Usage: _omz_set_theme <theme>
-_omz_set_theme() {
-  local theme="$1"
-  if grep -q '^ZSH_THEME=' "$HOME/.zshrc" 2>/dev/null; then
-    sed -i '' "s/^ZSH_THEME=.*/ZSH_THEME=\"${theme}\"/" "$HOME/.zshrc"
+# Install Oh My Zsh via its official installer (unattended).
+# Usage: _omz_install <installer_url>
+_omz_install() {
+  sh -c "$(curl -fsSL "$1")" "" --unattended
+}
+
+# Upgrade Oh My Zsh via its bundled upgrade script.
+# Usage: _omz_upgrade <omz_dir>
+_omz_upgrade() {
+  local omz_dir="${1:-$HOME/.oh-my-zsh}"
+  [[ -f "$omz_dir/tools/upgrade.sh" ]] && bash "$omz_dir/tools/upgrade.sh" || true
+}
+
+# Set a ZSH_THEME= line in a shell config file (update existing or append).
+# Usage: _zsh_set_theme <theme> <zsh_config>
+_zsh_set_theme() {
+  local theme="$1" zsh_config="$HOME/$2"
+  if grep -q '^ZSH_THEME=' "$zsh_config" 2>/dev/null; then
+    sed -i '' "s/^ZSH_THEME=.*/ZSH_THEME=\"${theme}\"/" "$zsh_config"
   else
-    printf '\nZSH_THEME="%s"\n' "$theme" >> "$HOME/.zshrc"
+    printf '\nZSH_THEME="%s"\n' "$theme" >> "$zsh_config"
   fi
 }
 
-# Add ~/bin to PATH in ~/.zprofile (append only, idempotency enforced by oracle).
-_home_bin_add_to_path() {
-  mkdir -p "$HOME/bin"
-  printf '\nexport PATH="$HOME/bin:$PATH"\n' >> "$HOME/.zprofile"
-  export PATH="$HOME/bin:$PATH"
+# Add a directory to PATH in a shell profile (append; idempotency enforced by oracle).
+# Usage: _path_dir_add_to_profile <bin_dir> <shell_profile>
+_path_dir_add_to_profile() {
+  local bin_dir="$HOME/$1" shell_profile="$HOME/$2"
+  mkdir -p "$bin_dir"
+  printf '\nexport PATH="%s:$PATH"\n' "$bin_dir" >> "$shell_profile"
+  export PATH="$bin_dir:$PATH"
 }
 
-# Install a script from cfg_dir/scripts/ into ~/bin with executable permissions.
-# Usage: _install_bin_script <cfg_dir> <script_name>
+# Install a script from cfg_dir/scripts/ into a target directory with executable permissions.
+# Usage: _install_bin_script <cfg_dir> <script_name> <bin_dir>
 _install_bin_script() {
-  local cfg_dir="$1" script_name="$2"
-  mkdir -p "$HOME/bin"
-  install -m 755 "$cfg_dir/scripts/$script_name" "$HOME/bin/$script_name"
+  local cfg_dir="$1" script_name="$2" bin_dir="$HOME/$3"
+  mkdir -p "$bin_dir"
+  install -m 755 "$cfg_dir/scripts/$script_name" "$bin_dir/$script_name"
 }
 
 # Usage: run_dev_tools_from_yaml <cfg_dir> <yaml_path>
