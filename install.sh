@@ -606,7 +606,11 @@ _UCC_YAML_BATCH_KEYS="profile actions.install actions.update \
   driver.settings_relpath driver.patch_relpath \
   driver.update_api driver.download_url_tpl driver.package_ext driver.brew_cask \
   driver.version driver.previous_ref driver.cask \
-  driver.plist driver.bin driver.process driver.path_env"
+  driver.plist driver.bin driver.process driver.path_env \
+  driver.src_path driver.link_relpath driver.cmd driver.hint \
+  driver.install_url driver.install_dir driver.install_args driver.upgrade_script \
+  driver.config_file driver.bin_dir driver.shell_profile \
+  driver.script_name driver.formula driver.launchd_dir driver.nvm_dir"
 _seen_yaml_files=()
 for _i in "${!_DISP_COMPS[@]}"; do
   _yaml_file="${_DISP_CONFIGS[$_i]}"

@@ -29,6 +29,15 @@ for _ucc_drv_file in \
   "$_UCC_DRIVERS_DIR/custom_daemon.sh" \
   "$_UCC_DRIVERS_DIR/compose_file.sh" \
   "$_UCC_DRIVERS_DIR/docker_compose_service.sh" \
+  "$_UCC_DRIVERS_DIR/pyenv_brew.sh" \
+  "$_UCC_DRIVERS_DIR/pip_bootstrap.sh" \
+  "$_UCC_DRIVERS_DIR/cli_symlink.sh" \
+  "$_UCC_DRIVERS_DIR/script_installer.sh" \
+  "$_UCC_DRIVERS_DIR/zsh_config.sh" \
+  "$_UCC_DRIVERS_DIR/path_export.sh" \
+  "$_UCC_DRIVERS_DIR/bin_script.sh" \
+  "$_UCC_DRIVERS_DIR/brew_unlink.sh" \
+  "$_UCC_DRIVERS_DIR/git_global.sh" \
   ; do
   [[ -f "$_ucc_drv_file" ]] && source "$_ucc_drv_file"
 done

@@ -45,14 +45,7 @@ targets:
     - homebrew
     provided_by_tool: brew
     driver:
-      kind: custom
-    observe_cmd: brew_observe pyenv
-    evidence:
-      version: pyenv_version
-      root: pyenv_root
-    actions:
-      install: _pyenv_install "${zsh_config}"
-      update: _pyenv_upgrade
+      kind: pyenv-brew
   xz:
     component: dev-tools
     profile: configured
@@ -87,14 +80,7 @@ targets:
     depends_on:
     - python
     driver:
-      kind: custom
-    oracle:
-      configured: is_installed pip
-    evidence:
-      version: pip_version
-      path: bin_path pip
-    actions:
-      install: _pip_bootstrap_install
+      kind: pip-bootstrap
   vscode:
     component: dev-tools
     profile: configured
@@ -120,15 +106,11 @@ targets:
     depends_on:
     - vscode
     driver:
-      kind: custom
-    oracle:
-      configured: is_installed code
-    evidence:
-      version: code_version
-      path: bin_path code
-    actions:
-      install: _install_cli_symlink "${vscode_cli_path}" "${vscode_cli_link_relpath}"
-        "${vscode_code_cmd_hint}"
+      kind: cli-symlink
+      src_path: ${vscode_cli_path}
+      link_relpath: ${vscode_cli_link_relpath}
+      cmd: code
+      hint: ${vscode_code_cmd_hint}
   vscode-settings:
     component: dev-tools
     profile: configured
@@ -175,15 +157,10 @@ targets:
     state_model: config
     display_name: Oh My Zsh
     driver:
-      kind: custom
-    oracle:
-      configured: home_dir_exists "${omz_dir}"
-    evidence:
-      version: omz_version
-      folder: home_path "${omz_dir}"
-    actions:
-      install: _omz_install
-      update: _omz_upgrade
+      kind: script-installer
+      install_url: ${omz_installer_url}
+      install_dir: ${omz_dir}
+      upgrade_script: tools/upgrade.sh
   omz-theme-agnoster:
     component: dev-tools
     profile: configured
@@ -193,14 +170,10 @@ targets:
     depends_on:
     - oh-my-zsh
     driver:
-      kind: custom
-    oracle:
-      configured: _zsh_theme_is_set "${omz_theme}" "${zsh_config}"
-    evidence:
-      theme: echo_var "${omz_theme}"
-      file: home_path "${zsh_config}"
-    actions:
-      install: _zsh_set_theme "${omz_theme}" "${zsh_config}"
+      kind: zsh-config
+      key: ZSH_THEME
+      value: ${omz_theme}
+      config_file: ${zsh_config}
   home-bin-in-path:
     component: dev-tools
     profile: configured
@@ -208,13 +181,9 @@ targets:
     state_model: config
     display_name: ~/bin in PATH
     driver:
-      kind: custom
-    oracle:
-      configured: _path_dir_in_profile "${home_bin_dir}" "${shell_profile}"
-    evidence:
-      path: home_path "${home_bin_dir}"
-    actions:
-      install: _path_dir_add_to_profile "${home_bin_dir}" "${shell_profile}"
+      kind: path-export
+      bin_dir: ${home_bin_dir}
+      shell_profile: ${shell_profile}
   ai-healthcheck:
     component: dev-tools
     profile: configured
@@ -224,14 +193,9 @@ targets:
     depends_on:
     - home-bin-in-path
     driver:
-      kind: custom
-    oracle:
-      configured: home_file_is_executable "${home_bin_dir}/ai-healthcheck"
-    evidence:
-      version: script_md5 "${home_bin_dir}/ai-healthcheck"
-      path: home_path "${home_bin_dir}/ai-healthcheck"
-    actions:
-      install: _install_bin_script ai-healthcheck "${home_bin_dir}"
+      kind: bin-script
+      script_name: ai-healthcheck
+      bin_dir: ${home_bin_dir}
   ariaflow:
     component: dev-tools
     profile: runtime
@@ -645,14 +609,8 @@ targets:
     depends_on:
     - node-lts
     driver:
-      kind: custom
-    oracle:
-      configured: node_not_from_homebrew
-    evidence:
-      node_path: node_path_or_none
-    actions:
-      install: brew_formula_unlink "${node_formula}"
-      update: brew_formula_unlink "${node_formula}"
+      kind: brew-unlink
+      formula: ${node_formula}
   git:
     component: dev-tools
     profile: configured
@@ -674,14 +632,7 @@ targets:
     depends_on:
     - git
     driver:
-      kind: custom
-    oracle:
-      configured: git_global_user_name_is_set
-    evidence:
-      user: git_global_user_name
-      email: git_global_user_email
-    actions:
-      install: _git_global_config_interactive
+      kind: git-global
 cli_tools:
 - cli-jq
 - cli-wget

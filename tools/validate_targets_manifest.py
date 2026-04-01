@@ -26,6 +26,7 @@ KNOWN_PACKAGE_DRIVERS = {
     "vscode-marketplace",
     "npm-global",
     "pip",
+    "pyenv-brew",
     "pyenv-version",
     "nvm",
     "nvm-version",
@@ -43,11 +44,14 @@ KNOWN_RUNTIME_DRIVERS = {
     "launchd",
 }
 KNOWN_CONFIG_DRIVERS = {
+    "bin-script",
     "brew-analytics",
+    "brew-unlink",
+    "cli-symlink",
     "compose-file",
     "custom",
-    "user-defaults",
     "docker-settings",
+    "git-global",
     "git-global-config",
     "json-merge",
     "path-export",
@@ -55,12 +59,14 @@ KNOWN_CONFIG_DRIVERS = {
     "platform-check",
     "pmset",
     "script-install",
+    "script-installer",
     "shell-bootstrap",
     "shell-file-edit",
     "softwareupdate-defaults",
     "softwareupdate-schedule",
     "symlink-command",
     "user-defaults",
+    "zsh-config",
 }
 CANONICAL_TARGET_KEY_ORDER = [
     "component",
