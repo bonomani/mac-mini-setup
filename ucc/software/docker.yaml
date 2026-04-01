@@ -70,7 +70,11 @@ targets:
       pid: pgrep -f "com.docker.backend" 2>/dev/null | head -1
     stopped_dependencies: DepsReady
     actions:
-      install: "log_info \"Starting Docker Desktop...\"\nif ! pgrep -f \"com.docker.backend\" >/dev/null 2>&1; then\n\
+      install: "log_info \"Patching Docker Desktop settings (suppress onboarding)...\"\n_store=\"${docker_settings_store}\"\n\
+        if [[ -f \"$_store\" ]]; then\n  _tmp=\"$(mktemp)\"\n  jq '. + {\"OpenUIOnStartupDisabled\": true, \"DisplayedOnboarding\"\
+        : true, \"ShowInstallScreen\": false}' \"$_store\" > \"$_tmp\" && mv \"$_tmp\" \"$_store\" || rm -f \"$_tmp\"\nelse\n\
+        \  mkdir -p \"$(dirname \"$_store\")\"\n  printf '{\"OpenUIOnStartupDisabled\":true,\"DisplayedOnboarding\":true,\"\
+        ShowInstallScreen\":false}\\n' > \"$_store\"\nfi\nlog_info \"Starting Docker Desktop...\"\nif ! pgrep -f \"com.docker.backend\" >/dev/null 2>&1; then\n\
         \  open -g -a \"${docker_desktop_app_name}\" 2>/dev/null || true\nfi\nlog_info \"Waiting for Docker daemon...\"\n\
         UCC_RUNTIME_WAIT_ATTEMPTS=\"${docker_runtime_wait_attempts}\" \\\nUCC_RUNTIME_WAIT_INTERVAL=\"${docker_runtime_wait_interval}\"\
         \ \\\n  _ucc_wait_for_runtime_probe \"[[ -S \\\"${docker_socket}\\\" ]] && docker info >/dev/null 2>&1\" \\\n  ||\
