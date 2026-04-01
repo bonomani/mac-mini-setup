@@ -7,8 +7,8 @@ platforms:
 docker_desktop_cask_id: docker-desktop
 docker_desktop_app_name: Docker
 docker_desktop_app_path: /Applications/Docker.app
-docker_runtime_wait_attempts: 24
-docker_runtime_wait_interval: 5
+docker_runtime_wait_attempts: 36
+docker_runtime_wait_interval: 10
 docker_socket: $HOME/.docker/run/docker.sock
 docker_settings_store: $HOME/Library/Group Containers/group.com.docker/settings-store.json
 targets:
@@ -53,5 +53,9 @@ targets:
         if [[ -f \"$_store\" ]]; then\n  _tmp=\"$(mktemp)\"\n  jq '. + {\"OpenUIOnStartupDisabled\": true, \"DisplayedOnboarding\"\
         : true, \"ShowInstallScreen\": false}' \"$_store\" > \"$_tmp\" && mv \"$_tmp\" \"$_store\" || rm -f \"$_tmp\"\nelse\n\
         \  mkdir -p \"$(dirname \"$_store\")\"\n  printf '{\"OpenUIOnStartupDisabled\":true,\"DisplayedOnboarding\":true,\"\
-        ShowInstallScreen\":false}\\n' > \"$_store\"\nfi\nlog_info \"Starting Docker Desktop...\"\ndocker desktop start >/dev/null\
-        \ 2>&1 &\nlog_info \"Docker Desktop starting in background — daemon will be ready in a minute.\"\n"
+        ShowInstallScreen\":false}\\n' > \"$_store\"\nfi\nlog_info \"Starting Docker Desktop...\"\n# Avoid double-launch if\
+        \ docker desktop start is already running\nif ! pgrep -f \"docker-desktop desktop start\" >/dev/null 2>&1; then\n\
+        \  open -gj -a \"${docker_desktop_app_name}\" 2>/dev/null || true\nfi\nlog_info \"Waiting for Docker daemon...\"\n\
+        UCC_RUNTIME_WAIT_ATTEMPTS=\"${docker_runtime_wait_attempts}\" \\\nUCC_RUNTIME_WAIT_INTERVAL=\"${docker_runtime_wait_interval}\"\
+        \ \\\n  _ucc_wait_for_runtime_probe \"[[ -S \\\"${docker_socket}\\\" ]] && docker info >/dev/null 2>&1\" \\\n  ||\
+        \ log_warn \"Docker daemon not ready yet — re-run once Docker Desktop has finished starting.\"\n"
