@@ -54,7 +54,7 @@ targets:
         \ || return 1\nelif [[ \"$observed\" == \"outdated\" ]]; then\n  brew_cask_upgrade\
         \ \"${docker_desktop_cask_id}\" \"${driver.greedy_auto_updates}\" || return\
         \ 1\nfi\nlog_info \"Starting Docker Desktop...\"\ndocker desktop start >/dev/null\
-        \ 2>&1 || open -gj -a \"${docker_desktop_app_name}\" 2>/dev/null || true\n\
+        \ 2>&1 &\nopen -gj -a \"${docker_desktop_app_name}\" 2>/dev/null || true\n\
         log_info \"Waiting for Docker daemon...\"\nUCC_RUNTIME_WAIT_ATTEMPTS=\"${docker_runtime_wait_attempts}\"\
         \ \\\nUCC_RUNTIME_WAIT_INTERVAL=\"${docker_runtime_wait_interval}\" \\\n \
         \ _ucc_wait_for_runtime_probe \"[[ -S \\\"${docker_socket}\\\" ]] && docker\
