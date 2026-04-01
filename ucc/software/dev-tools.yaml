@@ -6,7 +6,6 @@ platforms:
 - macos
 python_version: 3.12.3
 node_version: 24
-node_previous_version: 20
 omz_theme: agnoster
 omz_installer_url: https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh
 vscode_cask_id: visual-studio-code
@@ -163,6 +162,17 @@ targets:
       patch_relpath: ${vscode_settings_patch}
     evidence:
       path: printf '%s' "$HOME/${vscode_settings_relpath}"
+  nvm:
+    component: dev-tools
+    profile: configured
+    type: package
+    state_model: package
+    display_name: nvm
+    depends_on:
+    - homebrew
+    provided_by_tool: nvm-installer
+    driver:
+      kind: nvm
   node-lts:
     component: dev-tools
     profile: configured
@@ -170,12 +180,11 @@ targets:
     state_model: package
     display_name: Node.js LTS
     depends_on:
-    - homebrew
-    provided_by_tool: brew
+    - nvm
+    provided_by_tool: nvm
     driver:
-      kind: brew
-      ref: node@${node_version}
-      previous_ref: node@${node_previous_version}
+      kind: nvm-version
+      version: ${node_version}
   oh-my-zsh:
     component: dev-tools
     profile: configured
@@ -484,12 +493,10 @@ targets:
     display_name: OpenCode
     depends_on:
     - homebrew
-    - node-lts
     provided_by_tool: brew
     driver:
       kind: brew
       ref: opencode
-      previous_ref: node
   cli-aria2:
     component: dev-tools
     profile: configured

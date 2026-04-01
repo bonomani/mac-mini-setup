@@ -27,6 +27,8 @@ KNOWN_PACKAGE_DRIVERS = {
     "npm-global",
     "pip",
     "pyenv-version",
+    "nvm",
+    "nvm-version",
     "ollama-model",
     "app-bundle",
 }
