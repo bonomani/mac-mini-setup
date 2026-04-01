@@ -58,7 +58,7 @@ run_dev_tools_from_yaml() {
   [[ -s "$NVM_DIR/nvm.sh" ]] && source "$NVM_DIR/nvm.sh" 2>/dev/null || true
   ucc_yaml_simple_target "$cfg_dir" "$yaml" "node-lts"
   # Activate the installed version for subsequent targets
-  [[ -s "$NVM_DIR/nvm.sh" ]] && nvm use "$_NODE_VER" 2>/dev/null || true
+  [[ -s "$NVM_DIR/nvm.sh" ]] && nvm use "$_NODE_VER" >/dev/null 2>&1 || true
 
   # ---- Ensure brew's node is never on PATH (nvm owns node) ----
   ucc_yaml_simple_target "$cfg_dir" "$yaml" "brew-node-unlinked"
