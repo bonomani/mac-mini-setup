@@ -29,7 +29,8 @@ _run_docker_daemon() {
   fi
 
   log_info "Starting Docker Desktop..."
-  bash "$(dirname "${BASH_SOURCE[0]}")/docker2.sh"
+  env -i HOME="$HOME" PATH="$PATH" USER="$USER" TERM="${TERM:-}" \
+    script -q /dev/null docker desktop start
   if docker info >/dev/null 2>&1; then
     printf '      [%-8s] %-30s %s\n' "ok" "Docker Daemon" "pid=$(pgrep -f com.docker.backend | head -1)"
   else

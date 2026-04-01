@@ -641,7 +641,6 @@ _run_comp() {
     ignore) _run="ucc_reset_registered_targets; export UCC_TARGET_DEFER=1; ${_runner} \"${DIR}\" \"${_config}\" && ucc_flush_registered_targets \"${comp}\" || true" ;;
     *)      _run="ucc_reset_registered_targets; export UCC_TARGET_DEFER=1; ${_runner} \"${DIR}\" \"${_config}\" && ucc_flush_registered_targets \"${comp}\"" ;;
   esac
-  [[ "$comp" == "docker" ]] && env -i HOME="$HOME" PATH="$PATH" USER="$USER" TERM="$TERM" script -q /dev/null docker desktop start
   if ! bash -c "${_comp_prelude}; ${_src}${_run}; ucc_summary \"${comp}\""; then
     log_warn "Component failed: $comp"
     FAILED_COMPONENTS+=("$comp")
