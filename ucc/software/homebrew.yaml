@@ -32,7 +32,7 @@ targets:
     observe_cmd: xcode_clt_observe
     evidence:
       version: xcode_clt_version
-      path: xcode-select -p 2>/dev/null || true
+      path: xcode_clt_path
     actions:
       install: _xcode_clt_trigger
       update: xcode_clt_update
@@ -51,7 +51,7 @@ targets:
     observe_cmd: homebrew_observe
     evidence:
       version: homebrew_version
-      path: command -v brew 2>/dev/null || true
+      path: homebrew_path
     actions:
       install: _homebrew_install "${shell_config_file}" "${installer_url}"
       update: _homebrew_upgrade "${shell_config_file}"

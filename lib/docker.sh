@@ -20,8 +20,9 @@ docker_install_source_observe() {
 }
 
 # Print the PID of the Docker backend process (empty if not running).
+# Usage: docker_daemon_pid <backend_process_pattern>
 docker_daemon_pid() {
-  pgrep -f "com.docker.backend" 2>/dev/null | head -1
+  pgrep -f "$1" 2>/dev/null | head -1
 }
 
 # Usage: run_docker_from_yaml <cfg_dir> <yaml_path>
@@ -69,8 +70,9 @@ _docker_desktop_install() {
 }
 
 # Kill all running Docker processes to avoid XPC/IPC hangs on restart.
+# Usage: _docker_kill_zombies <kill_pattern>
 _docker_kill_zombies() {
-  pkill -f com.docker 2>/dev/null || true
+  pkill -f "$1" 2>/dev/null || true
   sleep 2
 }
 
@@ -82,9 +84,9 @@ _docker_launch() {
 }
 
 _docker_daemon_start() {
-  local settings_store_relpath="$1"
+  local settings_store_relpath="$1" kill_pattern="$2"
   _docker_settings_store_patch "$settings_store_relpath"
-  _docker_kill_zombies
+  _docker_kill_zombies "$kill_pattern"
   _docker_launch
 }
 

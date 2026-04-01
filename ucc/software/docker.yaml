@@ -9,6 +9,8 @@ docker_desktop_app_name: Docker
 docker_desktop_app_path: /Applications/Docker.app
 docker_socket: $HOME/.docker/run/docker.sock
 docker_settings_store_relpath: Library/Group Containers/group.com.docker/settings-store.json
+docker_backend_process: com.docker.backend
+docker_kill_pattern: com.docker
 targets:
   docker-desktop:
     component: docker
@@ -49,7 +51,7 @@ targets:
       runtime: docker info >/dev/null 2>&1
     evidence:
       socket: printf '%s' "${docker_socket}"
-      pid: docker_daemon_pid
+      pid: docker_daemon_pid "${docker_backend_process}"
     stopped_dependencies: DepsReady
     actions:
-      install: _docker_daemon_start "${docker_settings_store_relpath}"
+      install: _docker_daemon_start "${docker_settings_store_relpath}" "${docker_kill_pattern}"

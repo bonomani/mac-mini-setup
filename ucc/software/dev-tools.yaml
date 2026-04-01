@@ -642,7 +642,7 @@ targets:
     oracle:
       configured: node_not_from_homebrew
     evidence:
-      node_path: command -v node 2>/dev/null || printf none
+      node_path: node_path_or_none
     actions:
       install: brew_formula_unlink "${node_formula}"
       update: brew_formula_unlink "${node_formula}"

@@ -103,6 +103,11 @@ pip_version() {
   pip --version 2>/dev/null | awk '{print $2}'
 }
 
+# Print the path to the node binary, or 'none' if not installed.
+node_path_or_none() {
+  command -v node 2>/dev/null || printf none
+}
+
 # Return 0 if node is NOT resolved from Homebrew's opt path.
 node_not_from_homebrew() {
   ! command -v node 2>/dev/null | grep -q opt/homebrew
