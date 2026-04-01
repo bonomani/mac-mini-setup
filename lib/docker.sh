@@ -5,7 +5,8 @@
 # Usage: run_docker_from_yaml <cfg_dir> <yaml_path>
 run_docker_from_yaml() {
   local cfg_dir="$1" yaml="$2"
-  ucc_yaml_runtime_target "$cfg_dir" "$yaml" "docker-desktop"
+  ucc_yaml_simple_target  "$cfg_dir" "$yaml" "docker-desktop"
+  ucc_yaml_runtime_target "$cfg_dir" "$yaml" "docker-daemon"
 }
 
 # Usage: run_docker_config_from_yaml <cfg_dir> <yaml_path>

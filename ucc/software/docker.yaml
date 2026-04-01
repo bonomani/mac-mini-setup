@@ -67,6 +67,7 @@ targets:
       runtime: '[[ -S "${docker_socket}" ]] && docker info >/dev/null 2>&1'
     evidence:
       socket: printf '%s' "${docker_socket}"
+      pid: pgrep -f "com.docker.backend" 2>/dev/null | head -1
     stopped_dependencies: DepsReady
     actions:
       install: "log_info \"Starting Docker Desktop...\"\nif ! pgrep -f \"docker-desktop desktop start\" >/dev/null 2>&1; then\n\
