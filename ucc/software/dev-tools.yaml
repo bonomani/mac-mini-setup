@@ -1,6 +1,6 @@
 component: dev-tools
 primary_profile: runtime
-libs: python vscode_ext dev_tools git
+libs: vscode_ext dev_tools
 runner: run_dev_tools_from_yaml
 platforms:
 - macos

@@ -22,22 +22,6 @@ fi
 # Check if a command exists
 is_installed() { command -v "$1" &>/dev/null; }
 
-# Return 0 if a directory exists under $HOME at the given relative path.
-# Usage: home_dir_exists <relpath>
-home_dir_exists() { [[ -d "$HOME/$1" ]]; }
-
-# Return 0 if a file exists and is executable under $HOME at the given relative path.
-# Usage: home_file_is_executable <relpath>
-home_file_is_executable() { [[ -x "$HOME/$1" ]]; }
-
-# Print the short MD5 fingerprint of a file under $HOME (first 8 chars).
-# Usage: script_md5 <relpath>
-script_md5() {
-  local f="$HOME/$1"
-  [[ -f "$f" ]] || return 0
-  md5sum "$f" 2>/dev/null | awk '{print substr($1,1,8)}' || md5 -q "$f" 2>/dev/null | cut -c1-8
-}
-
 # Probe the named HTTP endpoint for the current target (uses $CFG_DIR/$YAML_PATH/$TARGET_NAME).
 # Intended for oracle.runtime fields — hides framework plumbing from YAML.
 # Usage: http_probe_endpoint [endpoint_name]
