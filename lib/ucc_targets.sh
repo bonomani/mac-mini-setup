@@ -1158,8 +1158,8 @@ _ucc_check_deps_recursive() {
           "dep-fail" "$(_ucc_display_name "$origin")" "$dep"
         return 1
       fi
-      # Oracle passed — record a synthetic status so evidence shows "prereq-ok" not "unknown"
-      _ucc_record_target_status "$dep" "prereq-ok"
+      # Oracle passed — record a synthetic status so evidence shows "oracle-pass" not "unknown"
+      _ucc_record_target_status "$dep" "oracle-pass"
     fi
     # Oracle passed (or no oracle) — recurse into this dep's own deps
     _ucc_check_deps_recursive "$dep" "$origin" "${visited}:${dep}" || return 1
