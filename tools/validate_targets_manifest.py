@@ -916,6 +916,16 @@ def main():
             if isinstance(display_name, str):
                 display_name = substitute_scalars(display_name, data=subst_data)
             print("{}\t{}".format(name, display_name or name))
+        # --all-oracle-configured
+        print("__section__\tall_oracle_configured")
+        for name, data in manifest["targets"].items():
+            data = data or {}
+            oracle = data.get("oracle") or {}
+            configured = oracle.get("configured", "") if isinstance(oracle, dict) else ""
+            if configured:
+                subst_data = data.get("__manifest_scalars__") or {}
+                configured = substitute_scalars(configured, data=subst_data)
+                print("{}\t{}".format(name, configured))
         return 0
 
     if all_display_names_mode:

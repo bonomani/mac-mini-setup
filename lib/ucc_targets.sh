@@ -1083,24 +1083,75 @@ _ucc_target_status_value() {
   awk -F'|' -v dep="$target" '$1==dep {val=$2} END {print val}' "$UCC_TARGET_STATUS_FILE" 2>/dev/null || true
 }
 
-_ucc_require_declared_dependencies_resolved() {
-  local target="$1" deps="" dep status
-  [[ -n "${UCC_TARGETS_MANIFEST:-}" && -n "${UCC_TARGETS_QUERY_SCRIPT:-}" ]] || return 0
+# Return direct depends_on list for a target (newline-separated).
+_ucc_target_direct_deps() {
+  local t="$1"
   if [[ -n "${_UCC_ALL_DEPS_CACHE:-}" ]]; then
-    deps=$(printf '%s\n' "$_UCC_ALL_DEPS_CACHE" | awk -F'\t' -v t="$target" '$1==t{print $2; exit}' | tr ',' '\n')
+    printf '%s\n' "$_UCC_ALL_DEPS_CACHE" | awk -F'\t' -v tgt="$t" '$1==tgt{print $2; exit}' | tr ',' '\n'
   else
-    deps=$(python3 "$UCC_TARGETS_QUERY_SCRIPT" --deps "$target" "$UCC_TARGETS_MANIFEST" 2>/dev/null || true)
+    python3 "$UCC_TARGETS_QUERY_SCRIPT" --deps "$t" "$UCC_TARGETS_MANIFEST" 2>/dev/null || true
   fi
+}
+
+# Return the oracle.configured command for a target, or empty if none.
+_ucc_target_oracle_configured() {
+  local t="$1"
+  if [[ -n "${_UCC_ALL_ORACLES_CACHE:-}" ]]; then
+    printf '%s\n' "$_UCC_ALL_ORACLES_CACHE" | awk -F'\t' -v tgt="$t" '$1==tgt{print $2; exit}'
+  fi
+}
+
+# Recursively walk the transitive dep closure of $root_target.
+# Arguments:
+#   $1 root_target  — the target whose deps we are checking now
+#   $2 origin       — the top-level target that started the chain (for error messages)
+#   $3 visited      — colon-separated cycle guard (e.g. "A:B:C")
+#
+# Per dep:
+#   status "failed"   → hard block (dep ran this session and failed)
+#   status non-empty, non-failed → dep ran and passed; its own transitive deps were
+#                                   already validated when it ran — skip recursion
+#   status empty      → dep not run this session; probe oracle.configured:
+#                         oracle fail → hard block
+#                         oracle pass or no oracle → recurse into dep's own deps
+_ucc_check_deps_recursive() {
+  local root_target="$1" origin="${2:-$1}" visited="${3:-}" dep deps status oracle_cmd
+  deps="$(_ucc_target_direct_deps "$root_target")"
   [[ -n "$deps" ]] || return 0
   while IFS= read -r dep; do
     [[ -n "$dep" ]] || continue
+    # Cycle guard — colons added at check time, not storage time
+    [[ ":${visited}:" == *":${dep}:"* ]] && continue
     status="$(_ucc_target_status_value "$dep")"
-    [[ -n "$status" ]] || {
-      printf '      [%-8s] %-30s declared dependency unresolved: %s\n' "dep-fail" "$(_ucc_display_name "$target")" "$dep"
+    if [[ "$status" == "failed" ]]; then
+      printf '      [%-8s] %-30s dependency failed this run: %s\n' \
+        "dep-fail" "$(_ucc_display_name "$origin")" "$dep"
       return 1
-    }
+    fi
+    if [[ -n "$status" ]]; then
+      # Dep ran this session and did not fail; its transitive deps were already
+      # validated before it executed — no need to recurse further.
+      continue
+    fi
+    # Dep not run this session — probe its oracle.configured to verify it's installed
+    oracle_cmd="$(_ucc_target_oracle_configured "$dep")"
+    if [[ -n "$oracle_cmd" ]]; then
+      if ! eval "$oracle_cmd" 2>/dev/null; then
+        printf '      [%-8s] %-30s dependency not satisfied (oracle fail): %s\n' \
+          "dep-fail" "$(_ucc_display_name "$origin")" "$dep"
+        return 1
+      fi
+    fi
+    # Oracle passed (or no oracle) — recurse into this dep's own deps
+    _ucc_check_deps_recursive "$dep" "$origin" "${visited}:${dep}" || return 1
   done <<< "$deps"
   return 0
+}
+
+_ucc_require_declared_dependencies_resolved() {
+  local target="$1"
+  [[ -n "${UCC_TARGETS_MANIFEST:-}" && -n "${UCC_TARGETS_QUERY_SCRIPT:-}" ]] || return 0
+  _ucc_check_deps_recursive "$target" "$target" "$target"
 }
 
 # ── ucc_target — full UCC Steps 0-6 lifecycle per target ─────────────────────

@@ -134,17 +134,30 @@ uic_preference() {
     return 0   # warn but do not abort the script (set -e safe)
   fi
 
-  # Resolve: operator file > safe default
+  # Resolve: env-var (--pref / CI) > operator file > safe default
   local resolved="$default"
-  local file_val
-  file_val="$(_uic_file_val "$name")"
-  if [[ -n "$file_val" ]]; then
-    if echo "$options" | tr '|' '\n' | grep -qx "$file_val" 2>/dev/null; then
-      resolved="$file_val"
+  local file_val env_key env_val
+  env_key="$(_uic_pref_key "$name")"
+  env_val="${!env_key:-}"
+  if [[ -n "$env_val" ]]; then
+    if echo "$options" | tr '|' '\n' | grep -qx "$env_val" 2>/dev/null; then
+      resolved="$env_val"
     else
-      log_warn "UIC: preference '$name' — operator value '$file_val' not in options ($options); using safe default '$default'"
+      log_warn "UIC: preference '$name' — env var value '$env_val' not in options ($options); using safe default '$default'"
+    fi
+  else
+    file_val="$(_uic_file_val "$name")"
+    if [[ -n "$file_val" ]]; then
+      if echo "$options" | tr '|' '\n' | grep -qx "$file_val" 2>/dev/null; then
+        resolved="$file_val"
+      else
+        log_warn "UIC: preference '$name' — operator value '$file_val' not in options ($options); using safe default '$default'"
+      fi
     fi
   fi
+
+  # Tag scope as env when the value came from an env var (--pref / CI)
+  [[ -n "$env_val" && "$resolved" == "$env_val" ]] && scope="env"
 
   _UIC_PREF_NAMES+=("$name")
   _UIC_PREF_VALUES+=("$resolved")

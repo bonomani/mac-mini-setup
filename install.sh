@@ -358,17 +358,20 @@ export _UCC_ALL_DEPS_CACHE
 export _UCC_ALL_SOFT_DEPS_CACHE
 export _UCC_ALL_ORDERED_CACHE
 export _UCC_ALL_DISPLAY_NAMES_CACHE
+export _UCC_ALL_ORACLES_CACHE
 _UCC_ALL_DEPS_CACHE=""
 _UCC_ALL_SOFT_DEPS_CACHE=""
 _UCC_ALL_ORDERED_CACHE=""
 _UCC_ALL_DISPLAY_NAMES_CACHE=""
+_UCC_ALL_ORACLES_CACHE=""
 _current_section=""
 while IFS= read -r _cache_line; do
   case "$_cache_line" in
-    "__section__	all_deps")           _current_section="deps" ;;
-    "__section__	all_soft_deps")      _current_section="soft_deps" ;;
-    "__section__	all_ordered_targets") _current_section="ordered" ;;
-    "__section__	all_display_names")  _current_section="display" ;;
+    "__section__	all_deps")              _current_section="deps" ;;
+    "__section__	all_soft_deps")         _current_section="soft_deps" ;;
+    "__section__	all_ordered_targets")   _current_section="ordered" ;;
+    "__section__	all_display_names")     _current_section="display" ;;
+    "__section__	all_oracle_configured") _current_section="oracles" ;;
     *)
       case "$_current_section" in
         deps)    _UCC_ALL_DEPS_CACHE="${_UCC_ALL_DEPS_CACHE:+${_UCC_ALL_DEPS_CACHE}
@@ -378,6 +381,8 @@ while IFS= read -r _cache_line; do
         ordered) _UCC_ALL_ORDERED_CACHE="${_UCC_ALL_ORDERED_CACHE:+${_UCC_ALL_ORDERED_CACHE}
 }${_cache_line}" ;;
         display) _UCC_ALL_DISPLAY_NAMES_CACHE="${_UCC_ALL_DISPLAY_NAMES_CACHE:+${_UCC_ALL_DISPLAY_NAMES_CACHE}
+}${_cache_line}" ;;
+        oracles) _UCC_ALL_ORACLES_CACHE="${_UCC_ALL_ORACLES_CACHE:+${_UCC_ALL_ORACLES_CACHE}
 }${_cache_line}" ;;
       esac
       ;;
