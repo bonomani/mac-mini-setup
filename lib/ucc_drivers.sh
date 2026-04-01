@@ -92,3 +92,64 @@ _ucc_driver_evidence() {
   declare -f "$fn" >/dev/null 2>&1 || return 1
   "$fn" "$cfg_dir" "$yaml" "$target"
 }
+
+# _ucc_driver_depends_on <kind>
+# Returns the implicit target dependency for a driver kind, or empty.
+_ucc_driver_depends_on() {
+  local kind="$1"
+  [[ -n "$kind" && "$kind" != "custom" ]] || return 0
+  local fn="_ucc_driver_${kind//-/_}_depends_on"
+  declare -f "$fn" >/dev/null 2>&1 && "$fn"
+}
+
+# _ucc_driver_provided_by <kind>
+# Returns the implicit provided_by_tool for a driver kind, or empty.
+_ucc_driver_provided_by() {
+  local kind="$1"
+  [[ -n "$kind" && "$kind" != "custom" ]] || return 0
+  local fn="_ucc_driver_${kind//-/_}_provided_by"
+  declare -f "$fn" >/dev/null 2>&1 && "$fn"
+}
+
+# ── Driver meta declarations ──────────────────────────────────────────────────
+# Each driver declares its implicit dependency target and tool name.
+# Only drivers with a non-trivial prerequisite need these.
+
+_ucc_driver_brew_depends_on()              { printf 'homebrew'; }
+_ucc_driver_brew_provided_by()             { printf 'brew'; }
+
+_ucc_driver_app_bundle_depends_on()        { printf 'homebrew'; }
+_ucc_driver_app_bundle_provided_by()       { printf 'brew-cask'; }
+
+_ucc_driver_pip_depends_on()               { printf 'pip-latest'; }
+_ucc_driver_pip_provided_by()              { printf 'pip'; }
+
+_ucc_driver_pip_bootstrap_depends_on()     { printf 'python'; }
+_ucc_driver_pip_bootstrap_provided_by()    { printf 'pip'; }
+
+_ucc_driver_npm_global_depends_on()        { printf 'node-lts'; }
+_ucc_driver_npm_global_provided_by()       { printf 'npm'; }
+
+_ucc_driver_vscode_marketplace_depends_on()  { printf 'vscode-code-cmd'; }
+_ucc_driver_vscode_marketplace_provided_by() { printf 'vscode-marketplace'; }
+
+_ucc_driver_pyenv_version_depends_on()     { printf 'pyenv'; }
+_ucc_driver_pyenv_version_provided_by()    { printf 'pyenv'; }
+
+_ucc_driver_pyenv_brew_depends_on()        { printf 'homebrew'; }
+_ucc_driver_pyenv_brew_provided_by()       { printf 'brew'; }
+
+_ucc_driver_nvm_depends_on()               { printf 'homebrew'; }
+_ucc_driver_nvm_provided_by()              { printf 'nvm-installer'; }
+
+_ucc_driver_nvm_version_depends_on()       { printf 'nvm'; }
+_ucc_driver_nvm_version_provided_by()      { printf 'nvm'; }
+
+_ucc_driver_ollama_model_depends_on()      { printf 'ollama'; }
+_ucc_driver_ollama_model_provided_by()     { printf 'ollama'; }
+
+_ucc_driver_brew_service_depends_on()      { printf 'homebrew'; }
+_ucc_driver_brew_service_provided_by()     { printf 'brew'; }
+
+_ucc_driver_docker_compose_service_depends_on()  { printf 'docker-desktop'; }
+_ucc_driver_docker_compose_service_provided_by() { printf 'docker-compose'; }

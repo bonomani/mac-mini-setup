@@ -41,9 +41,6 @@ targets:
     type: package
     state_model: package
     display_name: pyenv
-    depends_on:
-    - homebrew
-    provided_by_tool: brew
     driver:
       kind: pyenv-brew
   xz:
@@ -52,9 +49,6 @@ targets:
     type: package
     state_model: package
     display_name: XZ Utils
-    depends_on:
-    - homebrew
-    provided_by_tool: brew
     driver:
       kind: brew
       ref: xz
@@ -65,9 +59,7 @@ targets:
     state_model: package
     display_name: Python
     depends_on:
-    - pyenv
     - xz
-    provided_by_tool: pyenv
     driver:
       kind: pyenv-version
       version: ${python_version}
@@ -77,8 +69,6 @@ targets:
     type: config
     state_model: config
     display_name: pip
-    depends_on:
-    - python
     driver:
       kind: pip-bootstrap
   vscode:
@@ -89,7 +79,6 @@ targets:
     display_name: Visual Studio Code
     soft_depends_on:
     - homebrew
-    provided_by_tool: brew-cask
     driver:
       kind: app-bundle
       app_path: /Applications/Visual Studio Code.app
@@ -131,9 +120,6 @@ targets:
     type: package
     state_model: package
     display_name: nvm
-    depends_on:
-    - homebrew
-    provided_by_tool: nvm-installer
     driver:
       kind: nvm
       nvm_dir: ${nvm_dir}
@@ -143,9 +129,6 @@ targets:
     type: package
     state_model: package
     display_name: Node.js LTS
-    depends_on:
-    - nvm
-    provided_by_tool: nvm
     driver:
       kind: nvm-version
       version: ${node_version}
@@ -201,11 +184,8 @@ targets:
     profile: runtime
     type: runtime
     display_name: Ariaflow
-    depends_on:
-    - homebrew
     soft_depends_on:
     - gate:networkquality-available
-    provided_by_tool: brew
     driver:
       kind: brew-service
       ref: ariaflow
@@ -227,7 +207,6 @@ targets:
     display_name: Ariaflow Web
     depends_on:
     - ariaflow
-    provided_by_tool: brew
     driver:
       kind: brew-service
       ref: ariaflow-web
@@ -242,9 +221,6 @@ targets:
     type: package
     state_model: package
     display_name: jq
-    depends_on:
-    - homebrew
-    provided_by_tool: brew
     driver:
       kind: brew
       ref: jq
@@ -254,9 +230,6 @@ targets:
     type: package
     state_model: package
     display_name: wget
-    depends_on:
-    - homebrew
-    provided_by_tool: brew
     driver:
       kind: brew
       ref: wget
@@ -266,9 +239,6 @@ targets:
     type: package
     state_model: package
     display_name: curl
-    depends_on:
-    - homebrew
-    provided_by_tool: brew
     driver:
       kind: brew
       ref: curl
@@ -278,9 +248,6 @@ targets:
     type: package
     state_model: package
     display_name: htop
-    depends_on:
-    - homebrew
-    provided_by_tool: brew
     driver:
       kind: brew
       ref: htop
@@ -290,9 +257,6 @@ targets:
     type: package
     state_model: package
     display_name: btop
-    depends_on:
-    - homebrew
-    provided_by_tool: brew
     driver:
       kind: brew
       ref: btop
@@ -302,9 +266,6 @@ targets:
     type: package
     state_model: package
     display_name: tmux
-    depends_on:
-    - homebrew
-    provided_by_tool: brew
     driver:
       kind: brew
       ref: tmux
@@ -314,9 +275,6 @@ targets:
     type: package
     state_model: package
     display_name: fzf
-    depends_on:
-    - homebrew
-    provided_by_tool: brew
     driver:
       kind: brew
       ref: fzf
@@ -326,9 +284,6 @@ targets:
     type: package
     state_model: package
     display_name: ripgrep
-    depends_on:
-    - homebrew
-    provided_by_tool: brew
     driver:
       kind: brew
       ref: ripgrep
@@ -338,9 +293,6 @@ targets:
     type: package
     state_model: package
     display_name: fd
-    depends_on:
-    - homebrew
-    provided_by_tool: brew
     driver:
       kind: brew
       ref: fd
@@ -350,9 +302,6 @@ targets:
     type: package
     state_model: package
     display_name: tree
-    depends_on:
-    - homebrew
-    provided_by_tool: brew
     driver:
       kind: brew
       ref: tree
@@ -362,9 +311,6 @@ targets:
     type: package
     state_model: package
     display_name: uv
-    depends_on:
-    - homebrew
-    provided_by_tool: brew
     driver:
       kind: brew
       ref: uv
@@ -374,9 +320,6 @@ targets:
     type: package
     state_model: package
     display_name: pnpm
-    depends_on:
-    - homebrew
-    provided_by_tool: brew
     driver:
       kind: brew
       ref: pnpm
@@ -386,9 +329,6 @@ targets:
     type: package
     state_model: package
     display_name: GCC
-    depends_on:
-    - homebrew
-    provided_by_tool: brew
     driver:
       kind: brew
       ref: gcc
@@ -398,9 +338,6 @@ targets:
     type: package
     state_model: package
     display_name: GitHub CLI
-    depends_on:
-    - homebrew
-    provided_by_tool: brew
     driver:
       kind: brew
       ref: gh
@@ -410,9 +347,6 @@ targets:
     type: package
     state_model: package
     display_name: llama.cpp
-    depends_on:
-    - homebrew
-    provided_by_tool: brew
     driver:
       kind: brew
       ref: llama.cpp
@@ -422,9 +356,6 @@ targets:
     type: package
     state_model: package
     display_name: OpenCode
-    depends_on:
-    - homebrew
-    provided_by_tool: brew
     driver:
       kind: brew
       ref: opencode
@@ -434,9 +365,6 @@ targets:
     type: package
     state_model: package
     display_name: aria2
-    depends_on:
-    - homebrew
-    provided_by_tool: brew
     driver:
       kind: brew
       ref: aria2
@@ -446,9 +374,6 @@ targets:
     type: package
     state_model: package
     display_name: CMake
-    depends_on:
-    - homebrew
-    provided_by_tool: brew
     driver:
       kind: brew
       ref: cmake
@@ -458,9 +383,6 @@ targets:
     type: package
     state_model: package
     display_name: VS Code Python
-    depends_on:
-    - vscode-code-cmd
-    provided_by_tool: vscode-marketplace
     driver:
       kind: vscode-marketplace
       extension_id: ms-python.python
@@ -470,9 +392,6 @@ targets:
     type: package
     state_model: package
     display_name: VS Code Pylance
-    depends_on:
-    - vscode-code-cmd
-    provided_by_tool: vscode-marketplace
     driver:
       kind: vscode-marketplace
       extension_id: ms-python.vscode-pylance
@@ -482,9 +401,6 @@ targets:
     type: package
     state_model: package
     display_name: VS Code Jupyter
-    depends_on:
-    - vscode-code-cmd
-    provided_by_tool: vscode-marketplace
     driver:
       kind: vscode-marketplace
       extension_id: ms-toolsai.jupyter
@@ -494,9 +410,6 @@ targets:
     type: package
     state_model: package
     display_name: VS Code C/C++
-    depends_on:
-    - vscode-code-cmd
-    provided_by_tool: vscode-marketplace
     driver:
       kind: vscode-marketplace
       extension_id: ms-vscode.cpptools
@@ -506,9 +419,6 @@ targets:
     type: package
     state_model: package
     display_name: VS Code Continue
-    depends_on:
-    - vscode-code-cmd
-    provided_by_tool: vscode-marketplace
     driver:
       kind: vscode-marketplace
       extension_id: continue.continue
@@ -518,9 +428,6 @@ targets:
     type: package
     state_model: package
     display_name: VS Code GitLens
-    depends_on:
-    - vscode-code-cmd
-    provided_by_tool: vscode-marketplace
     driver:
       kind: vscode-marketplace
       extension_id: eamodio.gitlens
@@ -530,9 +437,6 @@ targets:
     type: package
     state_model: package
     display_name: VS Code Dev Containers
-    depends_on:
-    - vscode-code-cmd
-    provided_by_tool: vscode-marketplace
     driver:
       kind: vscode-marketplace
       extension_id: ms-vscode-remote.remote-containers
@@ -542,8 +446,6 @@ targets:
     type: package
     state_model: package
     display_name: iTerm2
-    depends_on:
-    - homebrew
     provided_by_tool: brew-cask
     driver:
       kind: brew
@@ -556,8 +458,6 @@ targets:
     type: package
     state_model: package
     display_name: LM Studio
-    depends_on:
-    - homebrew
     provided_by_tool: brew-cask
     driver:
       kind: brew
@@ -570,9 +470,6 @@ targets:
     type: package
     state_model: package
     display_name: Codex CLI
-    depends_on:
-    - node-lts
-    provided_by_tool: npm
     driver:
       kind: npm-global
       package: '@openai/codex'
@@ -582,9 +479,6 @@ targets:
     type: package
     state_model: package
     display_name: Claude Code CLI
-    depends_on:
-    - node-lts
-    provided_by_tool: npm
     driver:
       kind: npm-global
       package: '@anthropic-ai/claude-code'
@@ -594,9 +488,6 @@ targets:
     type: package
     state_model: package
     display_name: BMAD Method CLI
-    depends_on:
-    - node-lts
-    provided_by_tool: npm
     driver:
       kind: npm-global
       package: bmad-method
@@ -617,9 +508,6 @@ targets:
     type: package
     state_model: package
     display_name: Git
-    depends_on:
-    - homebrew
-    provided_by_tool: brew
     driver:
       kind: brew
       ref: git

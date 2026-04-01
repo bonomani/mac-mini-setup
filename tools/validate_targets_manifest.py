@@ -18,6 +18,24 @@ KNOWN_TARGET_TYPES = {
 }
 KNOWN_STATE_MODELS = {"package", "config", "parametric"}
 KNOWN_PLATFORMS = {"macos", "linux", "wsl", "wsl1", "wsl2"}
+
+# Maps driver.kind → (implicit depends_on target, provided_by_tool)
+# Drivers not listed here have no implicit dependency.
+DRIVER_META = {
+    "brew":                  ("homebrew",       "brew"),
+    "app-bundle":            ("homebrew",       "brew-cask"),
+    "pip":                   ("pip-latest",     "pip"),
+    "pip-bootstrap":         ("python",         "pip"),
+    "npm-global":            ("node-lts",       "npm"),
+    "vscode-marketplace":    ("vscode-code-cmd","vscode-marketplace"),
+    "pyenv-version":         ("pyenv",          "pyenv"),
+    "pyenv-brew":            ("homebrew",       "brew"),
+    "nvm":                   ("homebrew",       "nvm-installer"),
+    "nvm-version":           ("nvm",            "nvm"),
+    "ollama-model":          ("ollama",         "ollama"),
+    "brew-service":          ("homebrew",       "brew"),
+    "docker-compose-service":("docker-desktop", "docker-compose"),
+}
 KNOWN_PACKAGE_DRIVERS = {
     "brew-bootstrap",
     "custom",
@@ -310,8 +328,10 @@ def _validate_generated_target_collection(
             errors.append(f"generated target '{item}' in section '{section_name}' must use type 'package'")
         if target.get("state_model") != "package":
             errors.append(f"generated target '{item}' in section '{section_name}' must use state_model 'package'")
-        if not isinstance(target.get("provided_by_tool"), str) or not target.get("provided_by_tool", "").strip():
-            errors.append(f"generated target '{item}' in section '{section_name}' requires provided_by_tool")
+        explicit_tool = isinstance(target.get("provided_by_tool"), str) and target.get("provided_by_tool", "").strip()
+        implicit_tool = _driver_provided_by(target)
+        if not explicit_tool and not implicit_tool:
+            errors.append(f"generated target '{item}' in section '{section_name}' requires provided_by_tool (or a driver with implicit tool)")
         driver_kind = (target.get("driver") or {}).get("kind", "")
         driver_dispatched = bool(driver_kind) and driver_kind != "custom"
         if not driver_dispatched:
@@ -319,14 +339,37 @@ def _validate_generated_target_collection(
                 errors.append(f"generated target '{item}' in section '{section_name}' requires observe_cmd")
             if not _action_cmd(target, "install"):
                 errors.append(f"generated target '{item}' in section '{section_name}' requires actions.install")
-        if required_dep and required_dep not in (target.get("depends_on") or []):
+        explicit_deps = target.get("depends_on") or []
+        implicit_dep = _driver_implicit_dep(target)
+        effective_deps = list(explicit_deps) + ([implicit_dep] if implicit_dep and implicit_dep not in explicit_deps else [])
+        if required_dep and required_dep not in effective_deps:
             errors.append(
                 f"generated target '{item}' in section '{section_name}' must depend on '{required_dep}'"
             )
 
 
+def _driver_implicit_dep(data):
+    """Return the implicit depends_on target for this target's driver, or None."""
+    driver = data.get("driver") or {}
+    kind = driver.get("kind", "")
+    meta = DRIVER_META.get(kind)
+    return meta[0] if meta else None
+
+
+def _driver_provided_by(data):
+    """Return the implicit provided_by_tool for this target's driver, or None."""
+    driver = data.get("driver") or {}
+    kind = driver.get("kind", "")
+    meta = DRIVER_META.get(kind)
+    return meta[1] if meta else None
+
+
 def _target_dep_union(data):
     deps = list(data.get("depends_on", []) or [])
+    # Inject implicit driver dependency
+    implicit = _driver_implicit_dep(data)
+    if implicit and implicit not in deps:
+        deps.insert(0, implicit)
     platform_deps = data.get("depends_on_by_platform") or {}
     if isinstance(platform_deps, dict):
         for items in platform_deps.values():
@@ -349,6 +392,10 @@ def _target_order_union(data):
 
 def _effective_target_deps(data):
     deps = list(data.get("depends_on", []) or [])
+    # Inject implicit driver dependency
+    implicit = _driver_implicit_dep(data)
+    if implicit and implicit not in deps:
+        deps.insert(0, implicit)
     platform = (os.environ.get("HOST_PLATFORM_VARIANT") or "").strip()
     family = (os.environ.get("HOST_PLATFORM") or "").strip()
     candidates = []
@@ -496,8 +543,10 @@ def validate(manifest, known_gates):
                 errors.append(f"target '{name}' type 'package' requires driver.kind")
             elif package_driver not in KNOWN_PACKAGE_DRIVERS:
                 errors.append(f"target '{name}' has unknown package driver '{package_driver}'")
-            if not isinstance(data.get("provided_by_tool"), str) or not data.get("provided_by_tool", "").strip():
-                errors.append(f"target '{name}' type 'package' requires provided_by_tool")
+            explicit_tool = isinstance(data.get("provided_by_tool"), str) and data.get("provided_by_tool", "").strip()
+            implicit_tool = _driver_provided_by(data)
+            if not explicit_tool and not implicit_tool:
+                errors.append(f"target '{name}' type 'package' requires provided_by_tool (or a driver with implicit tool)")
             driver_dispatched = bool(package_driver) and package_driver != "custom"
             if not driver_dispatched:
                 has_observe_cmd = isinstance(data.get("observe_cmd"), str) and data.get("observe_cmd", "").strip()
