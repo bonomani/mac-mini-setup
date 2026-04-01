@@ -32,6 +32,7 @@ _ucc_driver_pip_action() {
   local cfg_dir="$1" yaml="$2" target="$3" action="$4"
   local pkgs
   pkgs="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.install_packages")"
+  [[ -n "$pkgs" ]] || return 1
   case "$action" in
     install) ucc_run pip install -q $pkgs && pip_cache_versions ;;
     update)  ucc_run pip install -q --upgrade $pkgs && pip_cache_versions ;;
@@ -42,6 +43,7 @@ _ucc_driver_pip_evidence() {
   local cfg_dir="$1" yaml="$2" target="$3"
   local probe ver
   probe="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.probe_pkg")"
+  [[ -n "$probe" ]] || return 1
   ver="$(_pip_cached_version "$probe")"
   printf 'version=%s  pkg=%s' "${ver:-absent}" "$probe"
 }

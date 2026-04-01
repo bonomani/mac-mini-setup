@@ -881,17 +881,11 @@ ucc_yaml_runtime_target() {
   ucc_target_service "${args[@]}"
 }
 
-_ucc_brew_service_status() {
-  local service_name="$1"
-  brew services list 2>/dev/null | awk -v svc="$service_name" '$1==svc {print $2; found=1} END {if (!found) print ""}'
-}
-
 _ucc_observe_brew_runtime_formula() {
   local pkg="$1" service_name="$2" runtime_cmd="${3:-}" configured_cmd="${4:-}" cfg_dir="${5:-}" yaml="${6:-}" target="${7:-}"
-  local pkg_state svc_status
+  local pkg_state
 
   pkg_state="$(brew_observe "$pkg")"
-  svc_status="$(_ucc_brew_service_status "$service_name")"
 
   if [[ "$pkg_state" == "absent" ]]; then
     ucc_asm_state --installation Absent --runtime NeverStarted --health Unavailable --admin Enabled --dependencies DepsUnknown
@@ -899,7 +893,7 @@ _ucc_observe_brew_runtime_formula() {
   fi
 
   if [[ "$pkg_state" == "outdated" ]]; then
-    if [[ "$svc_status" == "started" ]]; then
+    if brew_service_is_started "$service_name"; then
       ucc_asm_state --installation Installed --runtime Running --health Degraded --admin Enabled --dependencies DepsDegraded
     else
       ucc_asm_state --installation Installed --runtime Stopped --health Degraded --admin Enabled --dependencies DepsDegraded
@@ -912,7 +906,7 @@ _ucc_observe_brew_runtime_formula() {
     return
   fi
 
-  if [[ "$svc_status" != "started" ]]; then
+  if ! brew_service_is_started "$service_name"; then
     ucc_asm_state --installation Configured --runtime Stopped --health Degraded --admin Enabled --dependencies DepsDegraded
     return
   fi
@@ -936,7 +930,7 @@ _ucc_apply_brew_runtime_formula() {
     brew_upgrade "$brew_ref" || return 1
   fi
 
-  if [[ "$(_ucc_brew_service_status "$service_name")" == "started" ]]; then
+  if brew_service_is_started "$service_name"; then
     ucc_run brew services restart "$brew_ref" || return 1
   else
     ucc_run brew services start "$brew_ref" || return 1
