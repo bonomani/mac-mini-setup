@@ -209,6 +209,18 @@ _ucc_http_probe_endpoint_timeout() {
   curl -fsS --max-time "$max_time" "$url" >/dev/null 2>&1
 }
 
+# Echo a single value (use in evidence fields to expose config variables).
+# Usage: echo_var <value>
+echo_var() { printf '%s' "$1"; }
+
+# Echo an absolute path under $HOME for a relative path.
+# Usage: home_path <relpath>
+home_path() { printf '%s' "$HOME/$1"; }
+
+# Echo a systemd unit name with .service suffix.
+# Usage: systemd_service_unit <service_name>
+systemd_service_unit() { printf '%s.service' "$1"; }
+
 # _ucc_ver_path_evidence <ver> <path> [label=path]
 # Emit "version=V  label=P" evidence string (omits missing parts).
 _ucc_ver_path_evidence() {

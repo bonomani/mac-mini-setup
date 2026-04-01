@@ -50,7 +50,7 @@ targets:
       configured: is_installed docker
       runtime: docker_daemon_is_running
     evidence:
-      socket: printf '%s' "${docker_socket}"
+      socket: echo_var "${docker_socket}"
       pid: docker_daemon_pid "${docker_backend_process}"
     stopped_dependencies: DepsReady
     actions:

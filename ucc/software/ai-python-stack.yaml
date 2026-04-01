@@ -45,7 +45,7 @@ targets:
       runtime: _ucc_http_probe_endpoint "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME" "Unsloth
         Studio"
     evidence:
-      plist: printf '%s' "$HOME/${unsloth_plist_relpath}"
+      plist: home_path "${unsloth_plist_relpath}"
     endpoints:
     - name: Unsloth Studio
       scheme: http
@@ -66,7 +66,7 @@ targets:
       runtime: _ucc_http_probe_endpoint "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME" "Unsloth
         Studio"
     evidence:
-      service: printf '%s.service' "${unsloth_service_name}"
+      service: systemd_service_unit "${unsloth_service_name}"
     endpoints:
     - name: Unsloth Studio
       scheme: http
@@ -256,7 +256,7 @@ targets:
     oracle:
       runtime: torch_mps_available
     evidence:
-      gpu: printf '%s' "${gpu_backend}"
+      gpu: echo_var "${gpu_backend}"
       status: torch_mps_status
 pip_groups:
 - pip-group-pytorch

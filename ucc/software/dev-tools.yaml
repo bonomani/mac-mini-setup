@@ -141,7 +141,7 @@ targets:
       settings_relpath: ${vscode_settings_relpath}
       patch_relpath: ${vscode_settings_patch}
     evidence:
-      path: printf '%s' "$HOME/${vscode_settings_relpath}"
+      path: home_path "${vscode_settings_relpath}"
   nvm:
     component: dev-tools
     profile: configured
@@ -178,7 +178,7 @@ targets:
     oracle:
       configured: '[[ -d "$HOME/${omz_dir}" ]]'
     evidence:
-      folder: printf '%s' "$HOME/${omz_dir}"
+      folder: home_path "${omz_dir}"
     actions:
       install: _omz_install "${omz_installer_url}"
       update: _omz_upgrade "${omz_dir}"
@@ -195,8 +195,8 @@ targets:
     oracle:
       configured: _zsh_theme_is_set "${omz_theme}" "${zsh_config}"
     evidence:
-      theme: printf '%s' '${omz_theme}'
-      file: printf '%s' "$HOME/${zsh_config}"
+      theme: echo_var "${omz_theme}"
+      file: home_path "${zsh_config}"
     actions:
       install: _zsh_set_theme "${omz_theme}" "${zsh_config}"
   home-bin-in-path:
@@ -210,7 +210,7 @@ targets:
     oracle:
       configured: _path_dir_in_profile "${home_bin_dir}" "${shell_profile}"
     evidence:
-      path: printf '%s' "$HOME/${home_bin_dir}"
+      path: home_path "${home_bin_dir}"
     actions:
       install: _path_dir_add_to_profile "${home_bin_dir}" "${shell_profile}"
   ai-healthcheck:
@@ -226,7 +226,7 @@ targets:
     oracle:
       configured: '[[ -x "$HOME/${home_bin_dir}/ai-healthcheck" ]]'
     evidence:
-      path: printf '%s' "$HOME/${home_bin_dir}/ai-healthcheck"
+      path: home_path "${home_bin_dir}/ai-healthcheck"
     actions:
       install: _install_bin_script "$CFG_DIR" ai-healthcheck "${home_bin_dir}"
   ariaflow:

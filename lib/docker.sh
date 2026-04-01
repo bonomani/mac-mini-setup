@@ -12,6 +12,12 @@ docker_version() {
   docker --version 2>/dev/null | awk '{print $3}' | tr -d ','
 }
 
+# Print a docker-settings desired-state string for memory and CPU.
+# Usage: docker_desired_resources <mem_gb> <cpu_count>
+docker_desired_resources() {
+  printf 'mem=%sGB cpu=%s' "$1" "$2"
+}
+
 # Return 0 if the Docker daemon is reachable (docker info succeeds).
 docker_daemon_is_running() {
   docker info >/dev/null 2>&1

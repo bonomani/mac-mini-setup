@@ -185,7 +185,7 @@ targets:
     oracle:
       configured: _ollama_host_supported "${macos_min_version}"
     evidence:
-      platform: printf '%s' "${HOST_PLATFORM:-unknown}"
+      platform: echo_var "${HOST_PLATFORM:-unknown}"
       version: host_os_version
     actions:
       install: _ollama_unsupported_warn "${macos_min_version}"

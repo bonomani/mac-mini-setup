@@ -63,4 +63,4 @@ targets:
     driver:
       kind: custom
     evidence:
-      kind: printf '%s' '${system_kind}'
+      kind: echo_var "${system_kind}"

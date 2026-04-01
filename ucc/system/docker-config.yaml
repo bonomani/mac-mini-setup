@@ -22,5 +22,5 @@ targets:
     - gate:docker-settings-file
     driver:
       kind: docker-settings
-    desired_cmd: printf "mem=%sGB cpu=%s" "${DOCKER_MEM_GB}" "${DOCKER_CPU_COUNT}"
+    desired_cmd: docker_desired_resources "${DOCKER_MEM_GB}" "${DOCKER_CPU_COUNT}"
     dependency_gate: docker-settings-file
