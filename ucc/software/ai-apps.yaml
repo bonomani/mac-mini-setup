@@ -47,24 +47,15 @@ targets:
     - ai-stack-compose-file
     provided_by_tool: docker-compose
     driver:
-      kind: custom
+      kind: docker-compose-service
       service_name: open-webui
     runtime_manager: docker-compose
     probe_kind: http
-    oracle:
-      runtime: _ucc_http_probe_endpoint "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME" "Open
-        WebUI"
-    evidence:
-      version: _ai_service_runtime_version '${driver.service_name}'
-      digest: _ai_service_runtime_digest '${driver.service_name}'
-      ref: _ai_service_runtime_ref '${driver.service_name}'
     endpoints:
     - name: Open WebUI
       scheme: http
       host: localhost
       port: 3000
-    actions:
-      install: _ai_apply_compose_runtime
   flowise-runtime:
     component: ai-apps
     profile: runtime
@@ -75,23 +66,15 @@ targets:
     - ai-stack-compose-file
     provided_by_tool: docker-compose
     driver:
-      kind: custom
+      kind: docker-compose-service
       service_name: flowise
     runtime_manager: docker-compose
     probe_kind: http
-    oracle:
-      runtime: _ucc_http_probe_endpoint "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME" Flowise
-    evidence:
-      version: _ai_service_runtime_version '${driver.service_name}'
-      digest: _ai_service_runtime_digest '${driver.service_name}'
-      ref: _ai_service_runtime_ref '${driver.service_name}'
     endpoints:
     - name: Flowise
       scheme: http
       host: localhost
       port: 3001
-    actions:
-      install: _ai_apply_compose_runtime
   openhands-runtime:
     component: ai-apps
     profile: runtime
@@ -102,23 +85,15 @@ targets:
     - ai-stack-compose-file
     provided_by_tool: docker-compose
     driver:
-      kind: custom
+      kind: docker-compose-service
       service_name: openhands
     runtime_manager: docker-compose
     probe_kind: http
-    oracle:
-      runtime: _ucc_http_probe_endpoint "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME" OpenHands
-    evidence:
-      version: _ai_service_runtime_version '${driver.service_name}'
-      digest: _ai_service_runtime_digest '${driver.service_name}'
-      ref: _ai_service_runtime_ref '${driver.service_name}'
     endpoints:
     - name: OpenHands
       scheme: http
       host: localhost
       port: 3002
-    actions:
-      install: _ai_apply_compose_runtime
   n8n-runtime:
     component: ai-apps
     profile: runtime
@@ -129,23 +104,15 @@ targets:
     - ai-stack-compose-file
     provided_by_tool: docker-compose
     driver:
-      kind: custom
+      kind: docker-compose-service
       service_name: n8n
     runtime_manager: docker-compose
     probe_kind: http
-    oracle:
-      runtime: _ucc_http_probe_endpoint "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME" n8n
-    evidence:
-      version: _ai_service_runtime_version '${driver.service_name}'
-      digest: _ai_service_runtime_digest '${driver.service_name}'
-      ref: _ai_service_runtime_ref '${driver.service_name}'
     endpoints:
     - name: n8n
       scheme: http
       host: localhost
       port: 5678
-    actions:
-      install: _ai_apply_compose_runtime
   qdrant-runtime:
     component: ai-apps
     profile: runtime
@@ -156,24 +123,16 @@ targets:
     - ai-stack-compose-file
     provided_by_tool: docker-compose
     driver:
-      kind: custom
+      kind: docker-compose-service
       service_name: qdrant
     runtime_manager: docker-compose
     probe_kind: http
-    oracle:
-      runtime: _ucc_http_probe_endpoint "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME" Qdrant
-    evidence:
-      version: _ai_service_runtime_version '${driver.service_name}'
-      digest: _ai_service_runtime_digest '${driver.service_name}'
-      ref: _ai_service_runtime_ref '${driver.service_name}'
     endpoints:
     - name: Qdrant
       scheme: http
       host: localhost
       port: 6333
       path: /collections
-    actions:
-      install: _ai_apply_compose_runtime
   ollama-host-supported:
     component: ai-apps
     profile: configured
