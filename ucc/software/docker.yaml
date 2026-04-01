@@ -17,7 +17,7 @@ targets:
     display_name: Docker Desktop
     depends_on:
     - homebrew
-    admin_required: true
+    admin_required: install
     provided_by_tool: brew-cask
     driver:
       kind: custom

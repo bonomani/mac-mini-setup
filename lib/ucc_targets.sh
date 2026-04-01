@@ -92,8 +92,15 @@ _ucc_yaml_target_action_get() {
   printf '%s' "$val"
 }
 
+# _ucc_yaml_target_admin_required <cfg_dir> <yaml> <target> <action_key>
+# Returns 0 (true) if admin is required for this specific action.
+# admin_required values:
+#   true / yes / 1        → required for all actions
+#   install               → required for install only
+#   update                → required for update only
+#   install,update        → required for both (same as true)
 _ucc_yaml_target_admin_required() {
-  local cfg_dir="$1" yaml="$2" target="$3" val=""
+  local cfg_dir="$1" yaml="$2" target="$3" action_key="${4:-}" val=""
   local yaml_fn="${yaml//[^a-zA-Z0-9]/_}"
   local target_fn="${target//[^a-zA-Z0-9]/_}"
   local cache_var="_UCC_YTGT_${yaml_fn}_${target_fn}"
@@ -103,7 +110,17 @@ _ucc_yaml_target_admin_required() {
   else
     val="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "admin_required")"
   fi
-  [[ "$val" == "true" || "$val" == "1" || "$val" == "yes" ]]
+  [[ -n "$val" ]] || return 1
+  # true/yes/1 → all actions
+  [[ "$val" == "true" || "$val" == "1" || "$val" == "yes" ]] && return 0
+  # named action(s) — comma-separated; match against current action_key
+  [[ -n "$action_key" ]] || return 1
+  local entry
+  while IFS= read -r -d ',' entry; do
+    entry="${entry// /}"
+    [[ "$entry" == "$action_key" ]] && return 0
+  done <<< "${val},"
+  return 1
 }
 
 _ucc_eval_yaml_expr() {
@@ -320,7 +337,7 @@ _ucc_run_yaml_action() {
       ;;
   esac
   [[ -n "$cmd" ]] || return 1
-  if _ucc_yaml_target_admin_required "$cfg_dir" "$yaml" "$target"; then
+  if _ucc_yaml_target_admin_required "$cfg_dir" "$yaml" "$target" "$action_key"; then
     if ! sudo -n true >/dev/null 2>&1; then
       log_warn "Target '$target' requires admin privileges; acquire a sudo ticket first with: sudo -v"
       return 125
