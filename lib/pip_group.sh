@@ -20,6 +20,17 @@ for p in pkgs:
 " "$1" 2>/dev/null <<< "$_PIP_VERSIONS_CACHE"
 }
 
+# Return 0 if a pip package is installed at or above the given minimum version.
+# Usage: pip_package_min_version <pkg> <min_version>
+pip_package_min_version() {
+  local ver; ver="$(_pip_cached_version "$1")"
+  [[ -n "$ver" ]] || return 1
+  python3 -c "
+from packaging.version import Version; import sys
+raise SystemExit(0 if Version(sys.argv[1]) <= Version(sys.argv[2]) else 1)
+" "$2" "$ver" 2>/dev/null
+}
+
 # Runner: load all pip group targets from a YAML config file.
 # Usage: load_pip_groups_from_yaml <cfg_dir> <yaml_path>
 load_pip_groups_from_yaml() {

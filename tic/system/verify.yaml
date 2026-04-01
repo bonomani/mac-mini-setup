@@ -10,5 +10,5 @@ tests:
     component: system
     requires_status_target: system-composition
     intent: "system-composition must converge before system verification is accepted"
-    oracle: "awk -F'|' '$1==\"system-composition\" {val=$2} END {exit !(val==\"ok\")}' \"${UCC_TARGET_STATUS_FILE:-/dev/null}\""
+    oracle: '_tic_target_status_is "system-composition" "ok"'
     trace: "component:system / ucc-target:system-composition / tic-suite:system"

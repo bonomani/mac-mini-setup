@@ -22,7 +22,7 @@ tests:
   - name: langchain-core-version
     component: ai-python-stack
     intent: "langchain-core must be >=1.0.0 (required by langgraph and langchain-ollama)"
-    oracle: "pip show langchain-core 2>/dev/null | grep -E '^Version: [1-9]'"
+    oracle: 'pip_package_min_version "langchain-core" "1.0.0"'
     trace: "component:ai-python-stack / ucc-target:pip-group-langchain"
   - name: unsloth-importable
     component: ai-python-stack
@@ -36,41 +36,41 @@ tests:
   - name: cmake-installed
     component: dev-tools
     intent: "cmake must be present (required for Unsloth GGUF inference)"
-    oracle: "cmake --version >/dev/null 2>&1"
+    oracle: 'is_installed cmake'
     trace: "component:dev-tools / cli-cmake"
 
   # ── ai-apps ───────────────────────────────────────────────
   - name: open-webui-health
     component: ai-apps
     intent: "Open WebUI must be accessible on port 3000"
-    oracle: "curl -fsS --connect-timeout 5 http://localhost:3000 >/dev/null"
+    oracle: 'http_probe_localhost 3000'
     trace: "component:ai-apps / service:open-webui"
     skip_when: '_tic_service_not_running "open-webui"'
 
   - name: flowise-health
     component: ai-apps
     intent: "Flowise must be accessible on port 3001"
-    oracle: "curl -fsS --connect-timeout 5 http://localhost:3001 >/dev/null"
+    oracle: 'http_probe_localhost 3001'
     trace: "component:ai-apps / service:flowise"
     skip_when: '_tic_service_not_running "flowise"'
 
   - name: openhands-health
     component: ai-apps
     intent: "OpenHands must be accessible on port 3002"
-    oracle: "curl -fsS --connect-timeout 5 http://localhost:3002 >/dev/null"
+    oracle: 'http_probe_localhost 3002'
     trace: "component:ai-apps / service:openhands"
     skip_when: '_tic_service_not_running "openhands"'
 
   - name: n8n-health
     component: ai-apps
     intent: "n8n must be accessible on port 5678"
-    oracle: "curl -fsS --connect-timeout 5 http://localhost:5678 >/dev/null"
+    oracle: 'http_probe_localhost 5678'
     trace: "component:ai-apps / service:n8n"
     skip_when: '_tic_service_not_running "n8n"'
 
   - name: qdrant-health
     component: ai-apps
     intent: "Qdrant must be accessible on port 6333"
-    oracle: "curl -fsS --connect-timeout 5 http://localhost:6333 >/dev/null"
+    oracle: 'http_probe_localhost 6333'
     trace: "component:ai-apps / service:qdrant"
     skip_when: '_tic_service_not_running "qdrant"'

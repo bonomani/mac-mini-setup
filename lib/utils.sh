@@ -22,6 +22,18 @@ fi
 # Check if a command exists
 is_installed() { command -v "$1" &>/dev/null; }
 
+# Return 0 if a directory exists under $HOME at the given relative path.
+# Usage: home_dir_exists <relpath>
+home_dir_exists() { [[ -d "$HOME/$1" ]]; }
+
+# Return 0 if a file exists and is executable under $HOME at the given relative path.
+# Usage: home_file_is_executable <relpath>
+home_file_is_executable() { [[ -x "$HOME/$1" ]]; }
+
+# Return 0 if an HTTP server is responding on localhost at the given port.
+# Usage: http_probe_localhost <port>
+http_probe_localhost() { curl -fsS --connect-timeout 5 "http://localhost:$1" >/dev/null 2>&1; }
+
 # Print the absolute path to a command, or empty if not found.
 # Usage: bin_path <cmd>
 bin_path() { command -v "$1" 2>/dev/null || true; }

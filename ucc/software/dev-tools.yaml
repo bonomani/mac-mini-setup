@@ -89,7 +89,7 @@ targets:
     driver:
       kind: custom
     oracle:
-      configured: pip --version >/dev/null 2>&1
+      configured: is_installed pip
     evidence:
       version: pip_version
       path: bin_path pip
@@ -122,7 +122,7 @@ targets:
     driver:
       kind: custom
     oracle:
-      configured: code --version >/dev/null 2>&1
+      configured: is_installed code
     evidence:
       path: bin_path code
     actions:
@@ -176,7 +176,7 @@ targets:
     driver:
       kind: custom
     oracle:
-      configured: '[[ -d "$HOME/${omz_dir}" ]]'
+      configured: home_dir_exists "${omz_dir}"
     evidence:
       folder: home_path "${omz_dir}"
     actions:
@@ -224,7 +224,7 @@ targets:
     driver:
       kind: custom
     oracle:
-      configured: '[[ -x "$HOME/${home_bin_dir}/ai-healthcheck" ]]'
+      configured: home_file_is_executable "${home_bin_dir}/ai-healthcheck"
     evidence:
       path: home_path "${home_bin_dir}/ai-healthcheck"
     actions:
