@@ -11,18 +11,6 @@ gates:
     class: readiness
     target_state: ai-python-stack dependency_state=DepsReady
     blocking: soft
-  - name: docker-daemon
-    condition: _gate_docker_daemon
-    scope: component:ai-apps
-    class: readiness
-    target_state: ai-apps runtime_state=Running dependency_state=DepsReady
-    blocking: soft
-  - name: docker-compose-cli
-    condition: _gate_docker_compose
-    scope: component:ai-apps
-    class: readiness
-    target_state: ai-apps installation_state=Configured dependency_state=DepsReady
-    blocking: soft
   - name: ai-apps-template
     condition: _gate_ai_apps_template
     scope: component:ai-apps

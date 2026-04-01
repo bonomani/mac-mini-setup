@@ -127,8 +127,6 @@ _GATE_AI_APPS_TEMPLATE_REL=$(python3 "$DIR/tools/read_config.py" --get "$DIR/ucc
 # ============================================================
 _gate_supported_platform(){ [[ "$HOST_PLATFORM_VARIANT" == "macos" || "$HOST_PLATFORM_VARIANT" == "linux" || "$HOST_PLATFORM_VARIANT" == "wsl2" ]]; }
 _gate_arm64()           { [[ "$(uname -m)" == "arm64" ]]; }
-_gate_docker_daemon()   { docker info &>/dev/null 2>&1; }
-_gate_docker_compose()  { docker compose version &>/dev/null 2>&1; }
 _gate_docker_settings() { [[ -f "$HOME/$_GATE_DOCKER_SETTINGS_REL" ]]; }
 _gate_ai_apps_template(){ [[ -f "$DIR/$_GATE_AI_APPS_TEMPLATE_REL" ]]; }
 _gate_ollama_api()      {
