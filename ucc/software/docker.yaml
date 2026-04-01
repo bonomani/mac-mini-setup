@@ -21,7 +21,7 @@ targets:
     depends_on:
     - homebrew
     provided_by_tool: brew-cask
-    admin_required: install
+    admin_required: install,update
     driver:
       kind: custom
       package_ref: ${docker_desktop_cask_id}
