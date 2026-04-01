@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-docker desktop start
+script -q /dev/null docker desktop start
