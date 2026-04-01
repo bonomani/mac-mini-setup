@@ -90,7 +90,7 @@ targets:
       configured: pip --version >/dev/null 2>&1
     evidence:
       version: pip_version
-      path: command -v pip 2>/dev/null || true
+      path: bin_path pip
     actions:
       install: _pip_bootstrap_install "$CFG_DIR" "$YAML_PATH"
   vscode:
@@ -122,7 +122,7 @@ targets:
     oracle:
       configured: code --version >/dev/null 2>&1
     evidence:
-      path: command -v code 2>/dev/null || true
+      path: bin_path code
     actions:
       install: _install_cli_symlink "${vscode_cli_path}" "${vscode_cli_link_relpath}"
         "${vscode_code_cmd_hint}"

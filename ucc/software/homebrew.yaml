@@ -51,7 +51,7 @@ targets:
     observe_cmd: homebrew_observe
     evidence:
       version: homebrew_version
-      path: homebrew_path
+      path: bin_path brew
     actions:
       install: _homebrew_install "${shell_config_file}" "${installer_url}"
       update: _homebrew_upgrade "${shell_config_file}"

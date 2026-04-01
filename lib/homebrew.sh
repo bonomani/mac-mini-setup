@@ -28,11 +28,6 @@ xcode_clt_path() {
   xcode-select -p 2>/dev/null || true
 }
 
-# Print the absolute path to the brew binary (empty if not installed).
-homebrew_path() {
-  command -v brew 2>/dev/null || true
-}
-
 # Print Xcode CLT version string from pkgutil (empty if not installed).
 xcode_clt_version() {
   pkgutil --pkg-info=com.apple.pkg.CLTools_Executables 2>/dev/null | awk '/^version:/ {print $2}'

@@ -22,6 +22,10 @@ fi
 # Check if a command exists
 is_installed() { command -v "$1" &>/dev/null; }
 
+# Print the absolute path to a command, or empty if not found.
+# Usage: bin_path <cmd>
+bin_path() { command -v "$1" 2>/dev/null || true; }
+
 # Check if a brew formula is installed (uses version cache when available)
 brew_is_installed() {
   if [[ -n "${_BREW_VERSIONS_CACHE+x}" ]]; then
