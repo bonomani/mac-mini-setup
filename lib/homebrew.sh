@@ -23,6 +23,11 @@ homebrew_observe() {
   fi
 }
 
+# Return 0 if Xcode CLT developer directory is present.
+xcode_clt_is_installed() {
+  xcode-select -p >/dev/null 2>&1
+}
+
 # Print the active Xcode developer directory path (empty if not installed).
 xcode_clt_path() {
   xcode-select -p 2>/dev/null || true

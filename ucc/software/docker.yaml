@@ -28,7 +28,7 @@ targets:
       app_path: ${docker_desktop_app_path}
       greedy_auto_updates: true
     oracle:
-      configured: command -v docker >/dev/null 2>&1
+      configured: is_installed docker
     observe_cmd: docker_desktop_observe
     evidence:
       version: docker_version
@@ -47,8 +47,8 @@ targets:
     runtime_manager: desktop-app
     probe_kind: command
     oracle:
-      configured: command -v docker >/dev/null 2>&1
-      runtime: docker info >/dev/null 2>&1
+      configured: is_installed docker
+      runtime: docker_daemon_is_running
     evidence:
       socket: printf '%s' "${docker_socket}"
       pid: docker_daemon_pid "${docker_backend_process}"

@@ -12,6 +12,11 @@ docker_version() {
   docker --version 2>/dev/null | awk '{print $3}' | tr -d ','
 }
 
+# Return 0 if the Docker daemon is reachable (docker info succeeds).
+docker_daemon_is_running() {
+  docker info >/dev/null 2>&1
+}
+
 # Print the install source of a desktop app if it is not absent/brew-cask (i.e. app-bundle or other).
 # Usage: docker_install_source_observe <cask_id> <app_path>
 docker_install_source_observe() {

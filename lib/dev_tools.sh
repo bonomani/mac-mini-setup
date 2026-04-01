@@ -176,14 +176,16 @@ npm_global_observe() {
 run_dev_tools_from_yaml() {
   local cfg_dir="$1" yaml="$2"
 
-  local _NODE_VER="24"
+  local _NODE_VER="24" _NVM_DIR=".nvm" _PYENV_DIR=".pyenv"
   local _ARIAFLOW_TAP="bonomani/ariaflow" _ARIAFLOW_FORMULA _ARIAFLOW_WEB_FORMULA
   while IFS=$'\t' read -r -d '' key value; do
     case "$key" in
       node_version) [[ -n "$value" ]] && _NODE_VER="$value" ;;
       ariaflow_tap) [[ -n "$value" ]] && _ARIAFLOW_TAP="$value" ;;
+      nvm_dir)      [[ -n "$value" ]] && _NVM_DIR="$value" ;;
+      pyenv_dir)    [[ -n "$value" ]] && _PYENV_DIR="$value" ;;
     esac
-  done < <(yaml_get_many "$cfg_dir" "$yaml" node_version ariaflow_tap)
+  done < <(yaml_get_many "$cfg_dir" "$yaml" node_version ariaflow_tap nvm_dir pyenv_dir)
   _ARIAFLOW_FORMULA="${_ARIAFLOW_TAP}/ariaflow"
   _ARIAFLOW_WEB_FORMULA="${_ARIAFLOW_TAP}/ariaflow-web"
   # ---- Git ----
@@ -192,7 +194,7 @@ run_dev_tools_from_yaml() {
   # ---- Python (pyenv + python version + pip) ----
   ucc_yaml_simple_target "$cfg_dir" "$yaml" "pyenv"
   ucc_yaml_simple_target "$cfg_dir" "$yaml" "xz"
-  export PYENV_ROOT="$HOME/.pyenv"
+  export PYENV_ROOT="$HOME/$_PYENV_DIR"
   export PATH="$PYENV_ROOT/bin:$PATH"
   eval "$(pyenv init -)" 2>/dev/null || true
   ucc_yaml_simple_target "$cfg_dir" "$yaml" "python"
@@ -224,7 +226,7 @@ run_dev_tools_from_yaml() {
   # ---- nvm + Node.js LTS ----
   ucc_yaml_simple_target "$cfg_dir" "$yaml" "nvm"
   # Source nvm so node version check and npm targets see the right binary
-  export NVM_DIR="$HOME/.nvm"
+  export NVM_DIR="$HOME/$_NVM_DIR"
   [[ -s "$NVM_DIR/nvm.sh" ]] && source "$NVM_DIR/nvm.sh" 2>/dev/null || true
   ucc_yaml_simple_target "$cfg_dir" "$yaml" "node-lts"
   # Activate the installed version for subsequent targets

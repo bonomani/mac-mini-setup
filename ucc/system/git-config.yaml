@@ -18,7 +18,7 @@ targets:
     driver:
       kind: custom
     oracle:
-      configured: git config --global user.name >/dev/null 2>&1
+      configured: git_global_user_name_is_set
     evidence:
       user: git_global_user_name
       email: git_global_user_email

@@ -28,7 +28,7 @@ targets:
       kind: custom
       externally_managed_updates: true
     oracle:
-      configured: xcode-select -p >/dev/null 2>&1
+      configured: xcode_clt_is_installed
     observe_cmd: xcode_clt_observe
     evidence:
       version: xcode_clt_version

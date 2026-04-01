@@ -6,6 +6,8 @@ platforms:
 - macos
 python_version: 3.12.3
 node_version: 24
+nvm_dir: .nvm
+pyenv_dir: .pyenv
 omz_theme: agnoster
 omz_installer_url: https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh
 omz_dir: .oh-my-zsh
@@ -151,6 +153,7 @@ targets:
     provided_by_tool: nvm-installer
     driver:
       kind: nvm
+      nvm_dir: ${nvm_dir}
   node-lts:
     component: dev-tools
     profile: configured
@@ -163,6 +166,7 @@ targets:
     driver:
       kind: nvm-version
       version: ${node_version}
+      nvm_dir: ${nvm_dir}
   oh-my-zsh:
     component: dev-tools
     profile: configured

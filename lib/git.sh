@@ -24,6 +24,11 @@ _git_global_config_interactive() {
   done < <(yaml_records "$cfg_dir" "$yaml" global_config key value)
 }
 
+# Return 0 if git global user.name is set.
+git_global_user_name_is_set() {
+  git config --global user.name >/dev/null 2>&1
+}
+
 # Print git global user.name (empty if not set).
 git_global_user_name() {
   git config --global user.name 2>/dev/null || true
