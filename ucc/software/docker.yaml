@@ -55,4 +55,6 @@ targets:
         \ 1\nfi\nopen -a \"${docker_desktop_app_name}\"\nlog_info \"Waiting for Docker\
         \ daemon...\"\nUCC_RUNTIME_WAIT_ATTEMPTS=\"${docker_runtime_wait_attempts}\"\
         \ \\\nUCC_RUNTIME_WAIT_INTERVAL=\"${docker_runtime_wait_interval}\" \\\n \
-        \ _ucc_wait_for_runtime_probe \"docker info >/dev/null 2>&1\"\n"
+        \ _ucc_wait_for_runtime_probe \"docker info >/dev/null 2>&1\" \\\n  || log_warn\
+        \ \"Docker daemon did not start — complete the Docker Desktop setup wizard\
+        \ to launch it.\"\n"
