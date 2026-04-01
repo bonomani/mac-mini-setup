@@ -39,7 +39,7 @@ _run_docker_daemon() {
   # Start daemon
   if ! pgrep -f "com.docker.backend" >/dev/null 2>&1; then
     log_info "Starting Docker Desktop..."
-    docker desktop start &
+    docker desktop start >/dev/null 2>&1 &
     disown $! 2>/dev/null || true
   fi
 
