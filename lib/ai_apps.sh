@@ -3,20 +3,26 @@
 # Sourced by components/ai-apps.sh
 
 # Return true when the host platform/version supports Ollama.
-# Usage: _ollama_host_supported <min_macos_major>
-_ollama_host_supported() {
-  local min_major="$1"
+# Reads macos_min_version from YAML via $CFG_DIR/$YAML_PATH.
+ollama_host_supported() {
+  local min_major=""
+  while IFS=$'\t' read -r -d '' key value; do
+    [[ "$key" == "macos_min_version" ]] && min_major="$value"
+  done < <(yaml_get_many "$CFG_DIR" "$YAML_PATH" macos_min_version)
   if [[ "${HOST_PLATFORM:-unknown}" == "macos" ]]; then
-    [[ "$(sw_vers -productVersion 2>/dev/null | awk -F. '{print $1}')" -ge "$min_major" ]]
+    [[ "$(sw_vers -productVersion 2>/dev/null | awk -F. '{print $1}')" -ge "${min_major:-0}" ]]
   else
     [[ "${HOST_PLATFORM:-unknown}" == "linux" || "${HOST_PLATFORM_VARIANT:-unknown}" == "wsl2" ]]
   fi
 }
 
 # Emit a log_warn explaining why Ollama is unsupported, then return 1.
-# Usage: _ollama_unsupported_warn <min_macos_major>
-_ollama_unsupported_warn() {
-  local min_major="$1"
+# Reads macos_min_version from YAML via $CFG_DIR/$YAML_PATH.
+ollama_unsupported_warn() {
+  local min_major=""
+  while IFS=$'\t' read -r -d '' key value; do
+    [[ "$key" == "macos_min_version" ]] && min_major="$value"
+  done < <(yaml_get_many "$CFG_DIR" "$YAML_PATH" macos_min_version)
   if [[ "${HOST_PLATFORM:-unknown}" == "macos" ]]; then
     log_warn "Ollama requires macOS ${min_major}+ — current: macOS $(sw_vers -productVersion 2>/dev/null || echo unknown)"
   else

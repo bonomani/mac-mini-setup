@@ -142,12 +142,12 @@ targets:
     driver:
       kind: custom
     oracle:
-      configured: _ollama_host_supported "${macos_min_version}"
+      configured: ollama_host_supported
     evidence:
       platform: echo_var "${HOST_PLATFORM:-unknown}"
       version: host_os_version
     actions:
-      install: _ollama_unsupported_warn "${macos_min_version}"
+      install: ollama_unsupported_warn
   ollama:
     component: ai-apps
     profile: runtime
