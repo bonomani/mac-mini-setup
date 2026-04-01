@@ -348,25 +348,35 @@ brew_upgrade() {
 
 # Install a brew cask (cask is absent)
 brew_cask_install() {
-  sudo -n true >/dev/null 2>&1 || {
-    log_warn "Installing cask '$1' requires admin privileges; run: sudo -v"
-    return 125
-  }
-  ucc_run brew install --cask "$@" || return $?
+  local rc
+  # NONINTERACTIVE=1 prevents brew from prompting; sudo internally uses -A/-n
+  # so if a ticket is absent and the cask needs /Applications/, brew exits non-zero.
+  NONINTERACTIVE=1 ucc_run brew install --cask "$@"; rc=$?
+  if [[ $rc -ne 0 ]]; then
+    # If no sudo ticket and brew failed, surface a clear policy message
+    if ! sudo -n true >/dev/null 2>&1; then
+      log_warn "Installing cask '$1' may require admin privileges; run: sudo -v and retry"
+      return 125
+    fi
+    return $rc
+  fi
   brew_refresh_caches 2>/dev/null || true
 }
 
 # Upgrade a brew cask (cask is present but outdated)
 brew_cask_upgrade() {
-  local pkg="$1" greedy_auto_updates="${2:-false}"
-  sudo -n true >/dev/null 2>&1 || {
-    log_warn "Upgrading cask '$pkg' requires admin privileges; run: sudo -v"
-    return 125
-  }
+  local pkg="$1" greedy_auto_updates="${2:-false}" rc
   if _brew_flag_true "$greedy_auto_updates"; then
-    ucc_run brew upgrade --cask --greedy-auto-updates "$pkg" || return $?
+    NONINTERACTIVE=1 ucc_run brew upgrade --cask --greedy-auto-updates "$pkg"; rc=$?
   else
-    ucc_run brew upgrade --cask "$pkg" || return $?
+    NONINTERACTIVE=1 ucc_run brew upgrade --cask "$pkg"; rc=$?
+  fi
+  if [[ $rc -ne 0 ]]; then
+    if ! sudo -n true >/dev/null 2>&1; then
+      log_warn "Upgrading cask '$pkg' may require admin privileges; run: sudo -v and retry"
+      return 125
+    fi
+    return $rc
   fi
   brew_refresh_caches 2>/dev/null || true
 }
