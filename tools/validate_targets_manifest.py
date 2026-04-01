@@ -438,8 +438,22 @@ def validate(manifest, known_gates):
                 errors.append(f"target '{name}' field '{field}' must be a non-empty string")
 
         admin_required = data.get("admin_required")
-        if admin_required is not None and not isinstance(admin_required, bool):
-            errors.append(f"target '{name}' field 'admin_required' must be a boolean")
+        _ADMIN_REQUIRED_ACTIONS = {"install", "update"}
+        if admin_required is not None:
+            if isinstance(admin_required, bool):
+                pass  # true / false — applies to all actions
+            elif isinstance(admin_required, str):
+                parts = {p.strip() for p in admin_required.split(",")}
+                if not parts.issubset(_ADMIN_REQUIRED_ACTIONS):
+                    errors.append(
+                        f"target '{name}' field 'admin_required' must be a boolean "
+                        f"or a comma-separated list of: {', '.join(sorted(_ADMIN_REQUIRED_ACTIONS))}"
+                    )
+            else:
+                errors.append(
+                    f"target '{name}' field 'admin_required' must be a boolean "
+                    f"or a comma-separated list of: {', '.join(sorted(_ADMIN_REQUIRED_ACTIONS))}"
+                )
 
         driver = data.get("driver")
         if driver is not None:
@@ -647,14 +661,23 @@ def validate(manifest, known_gates):
 
         driver_kind_val = _driver_kind(data)
         driver_dispatched_any = bool(driver_kind_val) and driver_kind_val != "custom"
-        if admin_required is True:
-            if not driver_dispatched_any and not _action_cmd(data, "install") and not _action_cmd(data, "update"):
+        def _admin_required_for(action):
+            """Return True if admin_required covers the given action."""
+            if admin_required is True:
+                return True
+            if isinstance(admin_required, str):
+                return action in {p.strip() for p in admin_required.split(",")}
+            return False
+
+        if admin_required is not None and admin_required is not False:
+            covered = any(_admin_required_for(a) for a in ("install", "update"))
+            if covered and not driver_dispatched_any and not _action_cmd(data, "install") and not _action_cmd(data, "update"):
                 errors.append(f"target '{name}' field 'admin_required' requires actions.install or actions.update")
 
         for action_name in ("install", "update"):
             action_cmd = _action_cmd(data, action_name)
-            if action_cmd and "sudo " in action_cmd and admin_required is not True:
-                errors.append(f"target '{name}' action '{action_name}' uses sudo and requires admin_required: true")
+            if action_cmd and "sudo " in action_cmd and not _admin_required_for(action_name):
+                errors.append(f"target '{name}' action '{action_name}' uses sudo and requires admin_required: true or admin_required: {action_name}")
 
         depends_on = data.get("depends_on", []) or []
         if not isinstance(depends_on, list):
