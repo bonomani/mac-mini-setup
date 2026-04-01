@@ -44,8 +44,10 @@ _run_docker_daemon() {
 
   # Wait for socket
   log_info "Waiting for Docker daemon (${wait_attempts}x${wait_interval}s)..."
+  log_info "Probing: socket=$socket"
   local i
   for ((i=1; i<=wait_attempts; i++)); do
+    log_info "  attempt $i — socket: $(ls "$socket" 2>/dev/null && echo present || echo absent) | docker info: $(docker info >/dev/null 2>&1 && echo ok || echo fail)"
     if [[ -S "$socket" ]] && docker info >/dev/null 2>&1; then
       local pid; pid=$(pgrep -f "com.docker.backend" 2>/dev/null | head -1)
       printf '      [%-8s] %-30s %s\n' "ok" "Docker Daemon" "socket=$socket  pid=${pid:-?}"
