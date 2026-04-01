@@ -12,6 +12,12 @@ run_docker_from_yaml() {
 _run_docker_daemon() {
   local settings_store="$HOME/Library/Group Containers/group.com.docker/settings-store.json"
 
+  # Require docker CLI (docker-desktop must be installed)
+  if ! command -v docker >/dev/null 2>&1; then
+    printf '      [%-8s] %-30s %s\n' "skip" "Docker Daemon" "docker CLI not found — install Docker Desktop first"
+    return 0
+  fi
+
   # Already running
   if docker info >/dev/null 2>&1; then
     printf '      [%-8s] %-30s %s\n' "ok" "Docker Daemon" "pid=$(pgrep -f com.docker.backend | head -1)"
