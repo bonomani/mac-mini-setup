@@ -11,8 +11,7 @@ _ucc_driver_brew_service_observe() {
     printf 'absent'
     return
   fi
-  state="$(brew services list 2>/dev/null | awk -v s="$ref" '$1==s{print $2}')"
-  if [[ "$state" == "started" ]]; then
+  if brew_service_is_started "$ref"; then
     printf 'running'
   else
     printf 'stopped'

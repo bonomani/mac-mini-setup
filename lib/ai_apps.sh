@@ -57,7 +57,7 @@ run_ai_apps_from_yaml() {
   IMAGE_POLICY="${UIC_PREF_AI_APPS_IMAGE_POLICY:-reuse-local}"
   _AI_APPS_CFG_DIR="$cfg_dir"
   _AI_APPS_TEMPLATE_FILE="$cfg_dir/${stack_template_rel}"
-  _AI_APPS_APPLY_SENTINEL="$HOME/.ai-stack/runs/${UCC_CORRELATION_ID:-manual}.ai-apps-compose.applied"
+  _AI_APPS_APPLY_SENTINEL="${COMPOSE_DIR}/runs/${UCC_CORRELATION_ID:-manual}.ai-apps-compose.applied"
   export _AI_SERVICE_IMAGE_CACHE="" _AI_IMAGE_VERSION_CACHE="" _AI_IMAGE_DIGEST_CACHE=""
   local _AI_CACHE_VALUE="" _AI_SERVICE_IMAGE_VALUE="" _AI_IMAGE_VERSION_VALUE="" _AI_IMAGE_DIGEST_VALUE=""
 
@@ -368,7 +368,7 @@ PY
     fi
 
     if is_installed brew && brew list "$_OLLAMA_BREW_SERVICE_NAME" &>/dev/null 2>&1; then
-      if brew services list 2>/dev/null | awk -v svc="$_OLLAMA_BREW_SERVICE_NAME" '$1==svc {print $2}' | grep -q '^started$'; then
+      if brew_service_is_started "$_OLLAMA_BREW_SERVICE_NAME"; then
         brew services restart "$_OLLAMA_BREW_SERVICE_NAME"
       else
         brew services start "$_OLLAMA_BREW_SERVICE_NAME"
