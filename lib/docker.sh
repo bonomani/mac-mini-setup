@@ -18,6 +18,11 @@ docker_desired_resources() {
   printf 'mem=%sGB cpu=%s' "$1" "$2"
 }
 
+# Print the Docker server (daemon) version string.
+docker_server_version() {
+  docker version --format '{{.Server.Version}}' 2>/dev/null || true
+}
+
 # Return 0 if the Docker daemon is reachable (docker info succeeds).
 docker_daemon_is_running() {
   docker info >/dev/null 2>&1

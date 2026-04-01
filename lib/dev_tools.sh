@@ -102,6 +102,22 @@ _install_bin_script() {
   install -m 755 "$CFG_DIR/scripts/$script_name" "$bin_dir/$script_name"
 }
 
+# Print Oh My Zsh version (git tag from the OMZ directory).
+# Uses implicit $CFG_DIR/$YAML_PATH context.
+omz_version() {
+  local omz_dir_rel
+  while IFS=$'\t' read -r -d '' key value; do
+    case "$key" in omz_dir) omz_dir_rel="$value" ;; esac
+  done < <(yaml_get_many "$CFG_DIR" "$YAML_PATH" omz_dir)
+  local omz_dir="$HOME/${omz_dir_rel:-.oh-my-zsh}"
+  git -C "$omz_dir" describe --tags --abbrev=0 2>/dev/null || git -C "$omz_dir" rev-parse --short HEAD 2>/dev/null || true
+}
+
+# Print the VS Code CLI version (first line of `code --version`).
+code_version() {
+  code --version 2>/dev/null | head -1
+}
+
 # Print pyenv root directory path.
 pyenv_root() {
   pyenv root 2>/dev/null || true

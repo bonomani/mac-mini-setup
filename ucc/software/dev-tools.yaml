@@ -124,6 +124,7 @@ targets:
     oracle:
       configured: is_installed code
     evidence:
+      version: code_version
       path: bin_path code
     actions:
       install: _install_cli_symlink "${vscode_cli_path}" "${vscode_cli_link_relpath}"
@@ -178,6 +179,7 @@ targets:
     oracle:
       configured: home_dir_exists "${omz_dir}"
     evidence:
+      version: omz_version
       folder: home_path "${omz_dir}"
     actions:
       install: _omz_install
@@ -226,6 +228,7 @@ targets:
     oracle:
       configured: home_file_is_executable "${home_bin_dir}/ai-healthcheck"
     evidence:
+      version: script_md5 "${home_bin_dir}/ai-healthcheck"
       path: home_path "${home_bin_dir}/ai-healthcheck"
     actions:
       install: _install_bin_script ai-healthcheck "${home_bin_dir}"
