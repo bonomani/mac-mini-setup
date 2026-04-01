@@ -55,7 +55,7 @@ brew_service_is_started() {
 
 # Generic observe helpers — return: absent | outdated | current
 # Respect UIC_PREF_PACKAGE_UPDATE_POLICY (install-only | always-upgrade).
-# brew_is_installed / brew_cask_is_installed are defined in lib/utils.sh
+# brew_cask_is_installed is defined in lib/utils.sh
 # which is always sourced before these helpers are called.
 # Lookup version from cache (no brew subprocess)
 _brew_cached_version()      { echo "${_BREW_VERSIONS_CACHE:-}"      | awk -v p="$1" '$1==p{print $NF}'; }

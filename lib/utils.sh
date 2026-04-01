@@ -53,15 +53,6 @@ raise SystemExit(0 if Version(sys.argv[1]) <= Version(sys.argv[2]) else 1)
 # Usage: bin_path <cmd>
 bin_path() { command -v "$1" 2>/dev/null || true; }
 
-# Check if a brew formula is installed (uses version cache when available)
-brew_is_installed() {
-  if [[ -n "${_BREW_VERSIONS_CACHE+x}" ]]; then
-    echo "${_BREW_VERSIONS_CACHE}" | awk -v p="$1" '$1==p{found=1} END{exit !found}'
-  else
-    brew list "$1" &>/dev/null 2>&1
-  fi
-}
-
 # Check if a brew cask is installed (uses version cache when available)
 brew_cask_is_installed() {
   if [[ -n "${_BREW_CASK_VERSIONS_CACHE+x}" ]]; then
@@ -210,20 +201,6 @@ _ucc_endpoint_url() {
   printf '%s' "$url"
 }
 
-_ucc_endpoint_listener() {
-  local cfg_dir="$1" yaml="$2" target="$3" endpoint_name="${4:-}"
-  local row="" scheme="" host="" port=""
-  _ucc_endpoint_fields "$cfg_dir" "$yaml" "$target" "$endpoint_name" || return 1
-  row="$_UCC_ENDPOINT_FIELDS_VALUE"
-  scheme="$(_ucc_tsv_field "$row" 3)"
-  host="$(_ucc_tsv_field "$row" 4)"
-  port="$(_ucc_tsv_field "$row" 5)"
-  [[ -n "$host" ]] || return 1
-  [[ -n "$port" ]] || port="$(_ucc_endpoint_default_port "$scheme" 2>/dev/null || true)"
-  [[ -n "$port" ]] || return 1
-  printf 'tcp:%s:%s' "$host" "$port"
-}
-
 _ucc_http_probe_endpoint() {
   local cfg_dir="$1" yaml="$2" target="$3" endpoint_name="${4:-}"
   _ucc_http_probe_endpoint_timeout "$cfg_dir" "$yaml" "$target" "$endpoint_name" 5
@@ -247,13 +224,6 @@ home_path() { printf '%s' "$HOME/$1"; }
 # Echo a systemd unit name with .service suffix.
 # Usage: systemd_service_unit <service_name>
 systemd_service_unit() { printf '%s.service' "$1"; }
-
-# _ucc_ver_path_evidence <ver> <path> [label=path]
-# Emit "version=V  label=P" evidence string (omits missing parts).
-_ucc_ver_path_evidence() {
-  [[ -n "$1" ]] && printf 'version=%s' "$1"
-  [[ -n "$2" ]] && printf '%s%s=%s' "${1:+  }" "${3:-path}" "$2"
-}
 
 # Print the OS version string appropriate for the current platform.
 # macOS: sw_vers -productVersion  Linux/WSL2: uname -r
