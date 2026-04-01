@@ -259,6 +259,7 @@ Options:
   --mode update     Update already-installed components
   --dry-run         Show what would change without applying it
   --preflight       Evaluate UIC gates and preferences; do NOT converge
+  --pref key=value  Set a UIC preference for this run only (repeatable)
   --debug           Show DEBUG-level output
   -h, --help        Show this help
 
@@ -273,6 +274,7 @@ Examples:
   $0 ollama ai-python-stack             # run specific components
   $0 --mode update ollama               # update Ollama only
   $0 unsloth-studio                     # run single target (auto-resolves component)
+  $0 --pref preferred-driver-policy=migrate docker  # migrate Docker from DMG to brew-cask
 
 EOF
   exit 0
@@ -287,6 +289,13 @@ while [[ $# -gt 0 ]]; do
     --mode)          export UCC_MODE="$2";    shift 2 ;;
     --debug)         export UCC_DEBUG=1;      shift ;;
     --preflight)     export UIC_PREFLIGHT=1;  shift ;;
+    --pref)
+      _pref_kv="$2"; shift 2
+      _pref_key="${_pref_kv%%=*}"
+      _pref_val="${_pref_kv#*=}"
+      _pref_env="UIC_PREF_$(echo "${_pref_key//-/_}" | tr '[:lower:]' '[:upper:]')"
+      export "${_pref_env}=${_pref_val}"
+      ;;
     -h|--help)       usage ;;
     -*)              log_warn "Unknown option: $1"; shift ;;
     *)               TO_RUN+=("$1"); shift ;;
