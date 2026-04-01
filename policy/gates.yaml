@@ -37,9 +37,9 @@ gates:
     blocking: soft
   - name: ollama-api
     condition: _gate_ollama_api
-    scope: component:ollama
+    scope: component:ai-apps
     class: readiness
-    target_state: ollama runtime_state=Running dependency_state=DepsReady
+    target_state: ai-apps runtime_state=Running dependency_state=DepsReady
     blocking: soft
   - name: networkquality-available
     condition: _gate_networkquality

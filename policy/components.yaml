@@ -1,19 +1,13 @@
 components:
-  - name: homebrew
-    mode: enabled
-  - name: git
+  - name: software-bootstrap
     mode: enabled
   - name: docker
     mode: enabled
-  - name: python
-    mode: enabled
-  - name: ollama
-    mode: enabled
-  - name: ai-python-stack
+  - name: dev-tools
     mode: enabled
   - name: ai-apps
     mode: enabled
-  - name: dev-tools
+  - name: ai-python-stack
     mode: enabled
   - name: macos-software-update
     mode: enabled

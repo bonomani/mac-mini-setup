@@ -16,15 +16,8 @@ targets:
     - gate:sudo-available
     admin_required: true
     driver:
-      kind: custom
-    oracle:
-      configured: softwareupdate_schedule_is_on
-    observe_cmd: softwareupdate_schedule_observe
+      kind: softwareupdate-schedule
     desired_value: 'on'
-    evidence:
-      schedule: softwareupdate_schedule_observe
-    actions:
-      install: softwareupdate_schedule_enable
     dependency_gate: sudo-available
   softwareupdate-auto-check=1:
     component: macos-software-update
