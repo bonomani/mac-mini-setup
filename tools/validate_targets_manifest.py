@@ -36,6 +36,41 @@ DRIVER_META = {
     "brew-service":          ("homebrew",       "brew"),
     "docker-compose-service":("docker-desktop", "docker-compose"),
 }
+# Maps driver.kind → { required: [keys], optional: [keys] }
+# Drivers not listed here accept any keys (custom, etc.)
+DRIVER_SCHEMA = {
+    "brew":                   {"required": ["ref"], "optional": ["cask", "greedy_auto_updates", "previous_ref"]},
+    "brew-service":           {"required": ["ref"], "optional": []},
+    "brew-analytics":         {"required": [], "optional": []},
+    "brew-unlink":            {"required": ["formula"], "optional": []},
+    "app-bundle":             {"required": ["app_path", "brew_cask"], "optional": ["update_api", "download_url_tpl", "package_ext"]},
+    "pip":                    {"required": ["probe_pkg", "install_packages"], "optional": ["min_version"]},
+    "pip-bootstrap":          {"required": [], "optional": []},
+    "npm-global":             {"required": ["package"], "optional": []},
+    "vscode-marketplace":     {"required": ["extension_id"], "optional": []},
+    "pyenv-version":          {"required": ["version"], "optional": []},
+    "pyenv-brew":             {"required": [], "optional": []},
+    "nvm":                    {"required": ["nvm_dir"], "optional": []},
+    "nvm-version":            {"required": ["version", "nvm_dir"], "optional": []},
+    "ollama-model":           {"required": ["ref"], "optional": []},
+    "docker-compose-service": {"required": ["service_name"], "optional": []},
+    "compose-file":           {"required": ["path_env"], "optional": []},
+    "custom-daemon":          {"required": ["bin", "process"], "optional": []},
+    "launchd":                {"required": ["plist"], "optional": ["launchd_dir"]},
+    "docker-settings":        {"required": [], "optional": []},
+    "json-merge":             {"required": ["settings_relpath", "patch_relpath"], "optional": []},
+    "pmset":                  {"required": ["setting", "value"], "optional": []},
+    "user-defaults":          {"required": ["domain", "key", "value", "type"], "optional": []},
+    "softwareupdate-defaults":{"required": ["domain", "key", "value"], "optional": []},
+    "softwareupdate-schedule":{"required": [], "optional": []},
+    "cli-symlink":            {"required": ["src_path", "link_relpath", "cmd"], "optional": ["hint"]},
+    "script-installer":       {"required": ["install_url", "install_dir"], "optional": ["install_args", "upgrade_script"]},
+    "zsh-config":             {"required": ["key", "value", "config_file"], "optional": []},
+    "path-export":            {"required": ["bin_dir", "shell_profile"], "optional": []},
+    "bin-script":             {"required": ["script_name", "bin_dir"], "optional": []},
+    "git-global":             {"required": [], "optional": []},
+}
+
 KNOWN_PACKAGE_DRIVERS = {
     "brew-bootstrap",
     "custom",
@@ -519,6 +554,18 @@ def validate(manifest, known_gates):
                         errors.append(f"target '{name}' driver contains an empty key")
                     elif not isinstance(value, (str, int, float, bool)):
                         errors.append(f"target '{name}' driver '{key}' must be a scalar")
+                # Driver schema validation
+                dkind = driver.get("kind", "")
+                if dkind in DRIVER_SCHEMA:
+                    schema = DRIVER_SCHEMA[dkind]
+                    driver_keys = {k for k in driver if k != "kind"}
+                    allowed = set(schema["required"]) | set(schema["optional"])
+                    for req in schema["required"]:
+                        if req not in driver_keys:
+                            errors.append(f"target '{name}' driver.kind '{dkind}' requires driver.{req}")
+                    for dk in driver_keys:
+                        if dk not in allowed:
+                            errors.append(f"target '{name}' driver.kind '{dkind}' has unexpected key driver.{dk}")
 
         actions = data.get("actions")
         if actions is not None:

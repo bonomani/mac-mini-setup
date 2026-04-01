@@ -1,0 +1,51 @@
+# TIC integration tests — cross-component interaction and service health
+# These tests verify that installed software actually works together.
+
+tests:
+  # ── Ollama model inference ────────────────────────────────────
+  - name: ollama-model-loadable
+    component: ai-apps
+    intent: "Ollama must be able to load a model for inference"
+    oracle: 'ollama_model_loadable'
+    trace: "component:ai-apps / integration:ollama-inference"
+    skip_when: 'is_not_installed ollama'
+
+  # ── Docker inter-service communication ────────────────────────
+  - name: docker-compose-services-healthy
+    component: ai-apps
+    intent: "Docker Compose services must report healthy status"
+    oracle: 'docker_compose_services_healthy'
+    trace: "component:ai-apps / integration:docker-compose"
+    skip_when: 'is_not_installed docker'
+
+  # ── PyTorch MPS acceleration ──────────────────────────────────
+  - name: pytorch-mps-usable
+    component: ai-python-stack
+    intent: "PyTorch MPS backend must be usable for GPU acceleration"
+    oracle: 'torch_mps_available'
+    trace: "component:ai-python-stack / integration:mps"
+    skip_when: 'is_not_installed python3'
+
+  # ── VS Code extension interop ─────────────────────────────────
+  - name: vscode-python-extension-active
+    component: dev-tools
+    intent: "VS Code Python extension must be installed and active"
+    oracle: 'vscode_extension_installed ms-python.python'
+    trace: "component:dev-tools / integration:vscode-python"
+    skip_when: 'is_not_installed code'
+
+  # ── Node.js managed by nvm ────────────────────────────────────
+  - name: node-via-nvm
+    component: dev-tools
+    intent: "Node.js must be managed by nvm, not Homebrew"
+    oracle: 'node_not_from_homebrew_check'
+    trace: "component:dev-tools / integration:nvm-node"
+    skip_when: 'is_not_installed node'
+
+  # ── pip packages importable ───────────────────────────────────
+  - name: langchain-ollama-integration
+    component: ai-python-stack
+    intent: "langchain-ollama must be importable (bridges LangChain to local Ollama)"
+    oracle: 'python3_module_importable langchain_ollama'
+    trace: "component:ai-python-stack / integration:langchain-ollama"
+    skip_when: 'is_not_installed python3'

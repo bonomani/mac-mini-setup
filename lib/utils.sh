@@ -36,6 +36,35 @@ http_probe_endpoint() {
 # Usage: python3_module_importable <module>
 python3_module_importable() { python3 -c "import $1" 2>/dev/null; }
 
+# Return 0 if Ollama can load at least one model (list is non-empty).
+ollama_model_loadable() {
+  local tags; tags="$(curl -fsS --max-time 10 http://127.0.0.1:11434/api/tags 2>/dev/null)"
+  [[ -n "$tags" ]] && echo "$tags" | python3 -c "import sys,json; sys.exit(0 if json.load(sys.stdin).get('models') else 1)" 2>/dev/null
+}
+
+# Return 0 if all running Docker Compose services are healthy or running.
+docker_compose_services_healthy() {
+  docker compose ps --format json 2>/dev/null | python3 -c "
+import sys, json
+lines = sys.stdin.read().strip()
+if not lines: sys.exit(1)
+for line in lines.splitlines():
+    svc = json.loads(line)
+    state = svc.get('State', '')
+    if state not in ('running', 'healthy'): sys.exit(1)
+" 2>/dev/null
+}
+
+# Return 0 if a VS Code extension is installed.
+# Usage: vscode_extension_installed <extension_id>
+vscode_extension_installed() { code --list-extensions 2>/dev/null | grep -qi "^${1}$"; }
+
+# Return 0 if node is NOT from Homebrew (nvm manages it).
+node_not_from_homebrew_check() {
+  local np; np="$(command -v node 2>/dev/null || true)"
+  [[ -n "$np" ]] && [[ "$np" != *opt/homebrew* ]]
+}
+
 # Return 0 if an HTTP server is responding on localhost at the given port.
 # Usage: http_probe_localhost <port>
 http_probe_localhost() { curl -fsS --connect-timeout 5 "http://localhost:$1" >/dev/null 2>&1; }

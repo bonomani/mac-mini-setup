@@ -181,6 +181,7 @@ run_verify() {
 
   run_tic_tests_from_yaml "$cfg_dir" "$cfg_dir/tic/software/verify.yaml"
   run_tic_tests_from_yaml "$cfg_dir" "$cfg_dir/tic/system/verify.yaml"
+  run_tic_tests_from_yaml "$cfg_dir" "$cfg_dir/tic/software/integration.yaml"
 
   tic_summary "verify"
 }

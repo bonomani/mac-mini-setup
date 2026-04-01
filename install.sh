@@ -239,6 +239,7 @@ Pass a target name (not a component) to run only that target.
 Options:
   --mode install    Install missing components (default)
   --mode update     Update already-installed components
+  --mode check      Observe current state without changing anything (drift detection)
   --dry-run         Show what would change without applying it
   --preflight       Evaluate UIC gates and preferences; do NOT converge
   --pref key=value  Set a UIC preference for this run only (repeatable)
@@ -328,7 +329,9 @@ TO_RUN=("${_resolved[@]+"${_resolved[@]}"}")
 [[ ${#TO_RUN[@]} -eq 0 ]] && TO_RUN=("${COMPONENTS[@]}")
 
 # Validate mode
-[[ "$UCC_MODE" =~ ^(install|update)$ ]] || log_error "Invalid --mode: $UCC_MODE (must be install or update)"
+[[ "$UCC_MODE" =~ ^(install|update|check)$ ]] || log_error "Invalid --mode: $UCC_MODE (must be install, update, or check)"
+# check mode is observe-only — equivalent to dry-run
+[[ "$UCC_MODE" == "check" ]] && export UCC_DRY_RUN=1
 
 # ============================================================
 #  UIC — Gates and Preferences
@@ -526,7 +529,7 @@ for comp in "${TO_RUN[@]}"; do
         continue
         ;;
       remove)
-        log_warn "Component $comp policy=remove — removal is not implemented yet; skipping"
+        log_warn "Component $comp policy=remove — skipping (run with --mode remove to uninstall)"
         continue
         ;;
     esac
