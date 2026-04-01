@@ -145,14 +145,11 @@ targets:
     display_name: Ollama
     depends_on:
     - ollama-host-supported
-    soft_depends_on:
-    - gate:ollama-api
     provided_by_tool: ollama-installer
     driver:
       kind: custom-daemon
       bin: ollama
       process: 'ollama (serve|app)'
-    dependency_gate: ollama-api
     endpoints:
     - name: Ollama API
       scheme: http

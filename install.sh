@@ -126,24 +126,8 @@ _GATE_AI_APPS_TEMPLATE_REL=$(python3 "$DIR/tools/read_config.py" --get "$DIR/ucc
 #  UIC gate condition functions (read-only, no side effects)
 # ============================================================
 _gate_supported_platform(){ [[ "$HOST_PLATFORM_VARIANT" == "macos" || "$HOST_PLATFORM_VARIANT" == "linux" || "$HOST_PLATFORM_VARIANT" == "wsl2" ]]; }
-_gate_arm64()           { [[ "$(uname -m)" == "arm64" ]]; }
 _gate_docker_settings() { [[ -f "$HOME/$_GATE_DOCKER_SETTINGS_REL" ]]; }
 _gate_ai_apps_template(){ [[ -f "$DIR/$_GATE_AI_APPS_TEMPLATE_REL" ]]; }
-_gate_ollama_api()      {
-  local host port path
-  while IFS=$'\t' read -r -d '' key value; do
-    case "$key" in
-      api_host)      host="$value" ;;
-      api_port)      port="$value" ;;
-      api_tags_path) path="$value" ;;
-    esac
-  done < <(python3 "$DIR/tools/read_config.py" --get-many "$DIR/ucc/software/ai-apps.yaml" \
-      api_host api_port api_tags_path 2>/dev/null || true)
-  [[ -z "$host" ]] && host="127.0.0.1"
-  [[ -z "$port" ]] && port="11434"
-  [[ -z "$path" ]] && path="/api/tags"
-  curl -fsS "http://${host}:${port}${path}" >/dev/null 2>&1
-}
 _gate_networkquality()  { command -v networkQuality >/dev/null 2>&1; }
 _gate_sudo()            { sudo -n true 2>/dev/null; }
 

@@ -5,12 +5,6 @@ gates:
     class: readiness
     target_state: host installation_state=Configured
     blocking: hard
-  - name: apple-silicon
-    condition: _gate_arm64
-    scope: component:ai-python-stack
-    class: readiness
-    target_state: ai-python-stack dependency_state=DepsReady
-    blocking: soft
   - name: ai-apps-template
     condition: _gate_ai_apps_template
     scope: component:ai-apps
@@ -22,12 +16,6 @@ gates:
     scope: component:docker
     class: readiness
     target_state: docker installation_state=Configured dependency_state=DepsReady
-    blocking: soft
-  - name: ollama-api
-    condition: _gate_ollama_api
-    scope: component:ai-apps
-    class: readiness
-    target_state: ai-apps runtime_state=Running dependency_state=DepsReady
     blocking: soft
   - name: networkquality-available
     condition: _gate_networkquality
