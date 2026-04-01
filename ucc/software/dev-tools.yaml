@@ -13,6 +13,8 @@ vscode_cask_id: visual-studio-code
 vscode_app_path: /Applications/Visual Studio Code.app
 vscode_cli_path: /Applications/Visual Studio Code.app/Contents/Resources/app/bin/code
 vscode_cli_link_relpath: bin/code
+vscode_code_cmd_hint: "Symlink created. If 'code' is still missing in new shells,\
+  \ run: Cmd+Shift+P > Shell Command: Install code command in PATH"
 vscode_settings_relpath: Library/Application Support/Code/User/settings.json
 vscode_settings_patch: ucc/software/vscode-settings.json
 zsh_config: .zshrc
@@ -122,9 +124,8 @@ targets:
     evidence:
       path: command -v code 2>/dev/null || true
     actions:
-      install: _install_cli_symlink "${vscode_cli_path}" "${vscode_cli_link_relpath}" "Symlink
-        created. If 'code' is still missing in new shells, run: Cmd+Shift+P → 'Shell
-        Command: Install code command in PATH'"
+      install: _install_cli_symlink "${vscode_cli_path}" "${vscode_cli_link_relpath}"
+        "${vscode_code_cmd_hint}"
   vscode-settings:
     component: dev-tools
     profile: configured
