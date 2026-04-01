@@ -30,6 +30,10 @@ home_dir_exists() { [[ -d "$HOME/$1" ]]; }
 # Usage: home_file_is_executable <relpath>
 home_file_is_executable() { [[ -x "$HOME/$1" ]]; }
 
+# Return 0 if a Python module can be imported.
+# Usage: python3_module_importable <module>
+python3_module_importable() { python3 -c "import $1" 2>/dev/null; }
+
 # Return 0 if an HTTP server is responding on localhost at the given port.
 # Usage: http_probe_localhost <port>
 http_probe_localhost() { curl -fsS --connect-timeout 5 "http://localhost:$1" >/dev/null 2>&1; }

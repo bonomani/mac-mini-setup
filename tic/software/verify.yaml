@@ -7,17 +7,17 @@ tests:
   - name: torch-importable
     component: ai-python-stack
     intent: "torch must be importable"
-    oracle: "python3 -c 'import torch'"
+    oracle: 'python3_module_importable torch'
     trace: "component:ai-python-stack / ucc-target:pip-group-pytorch"
   - name: transformers-importable
     component: ai-python-stack
     intent: "transformers must be importable"
-    oracle: "python3 -c 'import transformers'"
+    oracle: 'python3_module_importable transformers'
     trace: "component:ai-python-stack / ucc-target:pip-group-huggingface"
   - name: langchain-importable
     component: ai-python-stack
     intent: "langchain must be importable"
-    oracle: "python3 -c 'import langchain'"
+    oracle: 'python3_module_importable langchain'
     trace: "component:ai-python-stack / ucc-target:pip-group-langchain"
   - name: langchain-core-version
     component: ai-python-stack
@@ -27,7 +27,7 @@ tests:
   - name: unsloth-importable
     component: ai-python-stack
     intent: "unsloth Python package is not importable on Apple Silicon (NVIDIA/AMD only)"
-    oracle: "python3 -c 'import unsloth'"
+    oracle: 'python3_module_importable unsloth'
     trace: "component:ai-python-stack / ucc-target:unsloth-studio"
     skip: "not importable on Apple Silicon (NVIDIA only) — Studio runs in its own venv"
     skip_when: '_tic_target_status_is "mps-available" "ok"'
