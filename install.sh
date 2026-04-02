@@ -406,8 +406,13 @@ if [[ "${UCC_INTERACTIVE:-0}" == "1" && -t 0 ]]; then
   if [[ ! "$_save_prefs" =~ ^[Nn] ]]; then
     mkdir -p "$(dirname "$_pref_file")"
     : > "$_pref_file"
+    local _saved=0
     for _i in "${!_UIC_PREF_NAMES[@]}"; do
-      printf '%s=%s\n' "${_UIC_PREF_NAMES[$_i]}" "${_UIC_PREF_VALUES[$_i]}" >> "$_pref_file"
+      # Only save values that differ from defaults
+      if [[ "${_UIC_PREF_VALUES[$_i]}" != "${_UIC_PREF_DEFAULTS[$_i]}" ]]; then
+        printf '%s=%s\n' "${_UIC_PREF_NAMES[$_i]}" "${_UIC_PREF_VALUES[$_i]}" >> "$_pref_file"
+        _saved=$((_saved + 1))
+      fi
     done
     log_info "Preferences saved to $_pref_file"
   fi
