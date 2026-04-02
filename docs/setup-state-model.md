@@ -12,27 +12,21 @@ bounded lifecycle and explicit admissible transitions.
 Scope:
 - AI workstation setup
 - macOS is the full-profile target; Linux and WSL2 use the portable subset
-- 14 governed components across two convergence layers plus verification:
+- 9 governed components across two convergence layers plus verification:
 
   Software layer (`ucc/software/`) — software convergence:
-  - `homebrew`
-  - `git`
-  - `docker`
-  - `python`
-  - `ollama`
-  - `ai-python-stack`
-  - `ai-apps`
-  - `dev-tools`
+  - `software-bootstrap` (Xcode CLT, build-deps, Homebrew)
+  - `dev-tools` (Git, Python, Node, CLI tools, VS Code, Oh My Zsh)
+  - `docker` (Docker Desktop + resources + capabilities)
+  - `ai-python-stack` (PyTorch, HF, LangChain, pip groups, GPU probes)
+  - `ai-apps` (Ollama + models + Docker Compose services)
 
   System layer (`ucc/system/`) — value convergence:
-  - `git-config`
-  - `docker-config`
-  - `macos-software-update`
-  - `macos-defaults`
-  - `system`
+  - `macos-config` (pmset, defaults, softwareupdate, sudo probe)
+  - `system` (host composition meta-target)
 
-  Verification (`tic/software/`, `tic/system/`):
-  - `verify`
+  Verification (`tic/`):
+  - `verify` (software verify + system verify + integration tests)
 
 Modeling rule:
 - the host setup state is a composition of component states
@@ -46,12 +40,12 @@ Modeling rule:
   and per-app runtime targets (`open-webui-runtime`, `flowise-runtime`,
   `openhands-runtime`, `n8n-runtime`, `qdrant-runtime`) because the desired
   stack definition and the running apps are governed separately
-- system-layer value-convergence components (`docker-config`, `macos-defaults`) use the
-  `parametric` ASM profile (axes include `config_value`)
+- system-layer value-convergence targets (`docker-resources`, pmset, defaults,
+  softwareupdate) use the `parametric` ASM profile (axes include `config_value`)
 - the `system` component uses a parametric composition target
   (`system-composition`) that derives whole-machine state from the
   status of required governed subsystem targets in the current run
-- system-layer non-parametric configuration components such as `git-config`
+- non-parametric configuration targets such as `git-global-config`
   use the `configured` ASM profile
 - UCC uses `profile` only for convergence targets; TIC verification
   suites use a suite `role` instead of a UCC profile
@@ -134,18 +128,17 @@ Used values in this project:
 - `DepsFailed`
 
 Meaning:
-- dependency readiness is used for preflight gates and admissible
-  target-state checks
+- dependency readiness is checked via capability/precondition targets
 - examples:
-  - Docker daemon reachable
-  - Docker settings file present
-  - Ollama API reachable
-  - sudo available for macOS defaults
+  - `docker-available` — Docker daemon reachable
+  - `docker-settings-file` — Docker settings file present
+  - `network-available` — Internet connectivity
+  - `sudo-available` — passwordless sudo for macOS config targets
 
 ### Configuration value (optional — parametric targets only)
 
-Used by: `docker-config`, `macos-defaults`, `ai-apps` stack definition target,
-`system` composition target
+Used by: `docker-resources`, pmset/defaults/softwareupdate targets, `ai-apps`
+stack definition target, `system` composition target
 
 Meaning:
 - carries the actual observed or desired configuration value as a string
