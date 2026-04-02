@@ -9,9 +9,7 @@ run_system_from_yaml() {
   manifest_dir="${UCC_TARGETS_MANIFEST:-$cfg_dir/ucc}"
   ordered="$(python3 "$query_script" --ordered-targets system "$manifest_dir" 2>/dev/null || true)"
 
-  # Probe sudo capability
-  local _sudo_ok=0
-  sudo_is_available && _sudo_ok=1
+  # Probe sudo capability (informational — drivers guard their own actions)
 
   while IFS= read -r target; do
     [[ -n "$target" ]] || continue
@@ -25,15 +23,8 @@ run_system_from_yaml() {
       continue
     fi
 
-    # Skip admin targets when sudo is not available
-    if [[ $_sudo_ok -eq 0 ]]; then
-      _admin="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "admin_required" 2>/dev/null)"
-      if [[ "$_admin" == "true" ]]; then
-        ucc_skip_target "$target" "sudo not available"
-        continue
-      fi
-    fi
-
+    # All targets run observe (read-only). Admin targets that need changes
+    # will fail gracefully at the driver action level if sudo is unavailable.
     ucc_yaml_parametric_target "$cfg_dir" "$yaml" "$target"
   done <<< "$ordered"
 
