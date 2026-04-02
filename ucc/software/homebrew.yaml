@@ -16,6 +16,9 @@ platform_tool_preferences:
   wsl2:
   - native-package-manager
   - brew-installer
+installer_url: https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh
+analytics_desired: 'off'
+shell_config_file: .zprofile
 targets:
   network-available:
     component: software-bootstrap
@@ -92,6 +95,3 @@ targets:
     driver:
       kind: brew-analytics
     desired_value: ${analytics_desired}
-installer_url: https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh
-analytics_desired: 'off'
-shell_config_file: .zprofile

@@ -459,7 +459,6 @@ targets:
     type: package
     state_model: package
     display_name: iTerm2
-    provided_by_tool: brew-cask
     driver:
       kind: package
       cask: true
@@ -471,7 +470,6 @@ targets:
     type: package
     state_model: package
     display_name: LM Studio
-    provided_by_tool: brew-cask
     driver:
       kind: package
       cask: true
