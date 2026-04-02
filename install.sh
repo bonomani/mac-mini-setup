@@ -337,10 +337,11 @@ for _c in "${_resolved[@]+"${_resolved[@]}"}"; do
 done
 TO_RUN=("${_deduped[@]+"${_deduped[@]}"}")
 
-# If no args, run all components with all targets
+# No args = run all targets
+# Explicit args = run those targets/components + deps (rest show as skip)
 if [[ ${#TO_RUN[@]} -eq 0 ]]; then
   TO_RUN=("${COMPONENTS[@]}")
-  # Build full target set from all components' ordered targets
+  # Build full target set from all components
   for _c in "${TO_RUN[@]}"; do
     while IFS= read -r _t; do
       [[ -n "$_t" ]] && UCC_TARGET_SET="${UCC_TARGET_SET}${_t}|"
