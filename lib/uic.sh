@@ -304,24 +304,27 @@ uic_resolve() {
     fi
   done
 
-  # Steps 3+4: Preferences — all loaded prefs are relevant (filtered at load time)
-  echo ""
-  for i in "${!_UIC_PREF_NAMES[@]}"; do
-    local name="${_UIC_PREF_NAMES[$i]}"
-    local val="${_UIC_PREF_VALUES[$i]}"
-    local default="${_UIC_PREF_DEFAULTS[$i]}"
-    local opts="${_UIC_PREF_OPTIONS[$i]}"
-    local rationale="${_UIC_PREF_RATIONALES[$i]}"
-    local scope="${_UIC_PREF_SCOPES[$i]}"
-    local scope_short="${scope/component:/}"
-    if [[ "$val" != "$default" ]]; then
-      printf '[PREF]  %-30s %-18s →%-20s options: %s\n' "$name" "${val} *" "$scope_short" "$opts"
-    else
-      printf '[PREF]  %-30s %-18s →%-20s options: %s\n' "$name" "$val" "$scope_short" "$opts"
-    fi
-    printf '        # %s\n' "$rationale"
-  done
-  [[ -f "$UIC_PREF_FILE" ]] && echo "  Preferences file: $UIC_PREF_FILE  [operator overrides active]"
+  # Steps 3+4: Preferences — show [PREF] summary only in non-interactive mode
+  # (interactive mode shows [?] prompts + Current preferences summary instead)
+  if [[ "${UCC_INTERACTIVE:-0}" != "1" ]]; then
+    echo ""
+    for i in "${!_UIC_PREF_NAMES[@]}"; do
+      local name="${_UIC_PREF_NAMES[$i]}"
+      local val="${_UIC_PREF_VALUES[$i]}"
+      local default="${_UIC_PREF_DEFAULTS[$i]}"
+      local opts="${_UIC_PREF_OPTIONS[$i]}"
+      local rationale="${_UIC_PREF_RATIONALES[$i]}"
+      local scope="${_UIC_PREF_SCOPES[$i]}"
+      local scope_short="${scope/component:/}"
+      if [[ "$val" != "$default" ]]; then
+        printf '[PREF]  %-30s %-18s →%-20s options: %s\n' "$name" "${val} *" "$scope_short" "$opts"
+      else
+        printf '[PREF]  %-30s %-18s →%-20s options: %s\n' "$name" "$val" "$scope_short" "$opts"
+      fi
+      printf '        # %s\n' "$rationale"
+    done
+    [[ -f "$UIC_PREF_FILE" ]] && echo "  Preferences file: $UIC_PREF_FILE  [operator overrides active]"
+  fi
 
   echo ""
   if [[ $exit_code -eq 0 ]]; then
