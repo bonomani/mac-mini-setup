@@ -469,10 +469,10 @@ if [[ "${UCC_INTERACTIVE:-0}" == "1" ]] && [[ -c /dev/tty ]]; then
     fi
   fi
 
-  # Ask about interactive mode for future runs
-  printf '  [?] %-28s [*1)yes, 2)no] ' "save-interactive-mode"
+  # Ask about disabling interactive mode for future runs
+  printf '  [?] %-28s [1)yes, *2)no] ' "disable-interactive-mode"
   read -r _save_im < /dev/tty
-  if [[ "$_save_im" == "2" ]]; then
+  if [[ "$_save_im" == "1" ]]; then
     mkdir -p "$(dirname "$_pref_file")"
     if grep -q '^interactive=' "$_pref_file" 2>/dev/null; then
       if [[ "$(uname)" == "Darwin" ]]; then
