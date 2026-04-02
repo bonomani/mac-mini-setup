@@ -543,6 +543,26 @@ if [[ "${UCC_INTERACTIVE:-0}" == "1" && -c /dev/tty && -z "$UCC_TARGET_SET" ]]; 
     UCC_SELECTED_COMPS="${UCC_SELECTED_COMPS}${_c}|"
   done
   export UCC_SELECTED_COMPS
+
+  # Save selection prompt (right after selection, before preferences)
+  if [[ -n "${_selection:-}${UCC_TARGET_SET}" ]]; then
+    printf '\n  [?] Save this selection for future runs?\n'
+    printf '      Options: 1=yes, *2=no  →  '
+    read -r _save_sel < /dev/tty
+    if [[ "$_save_sel" == "1" ]]; then
+      mkdir -p "$(dirname "$_UCC_SELECTION_FILE")"
+      printf '# Saved selection\n' > "$_UCC_SELECTION_FILE"
+      if [[ "${_selection:-}" == "a" || "${_selection:-}" == "all" ]]; then
+        for _c in "${COMPONENTS[@]}"; do echo "$_c" >> "$_UCC_SELECTION_FILE"; done
+      else
+        # Save individual targets/components from the set
+        echo "$UCC_TARGET_SET" | tr '|' '\n' | while read _t; do
+          [[ -n "$_t" ]] && echo "$_t"
+        done >> "$_UCC_SELECTION_FILE"
+      fi
+      log_info "Selection saved to $_UCC_SELECTION_FILE"
+    fi
+  fi
 fi
 
 # --- Gates --------------------------------------------------
@@ -604,40 +624,27 @@ if [[ "${UCC_INTERACTIVE:-0}" == "1" ]] && [[ -c /dev/tty ]]; then
   fi
 fi
 
-# --- Interactive: save selection --------------------------------
-if [[ "${UCC_INTERACTIVE:-0}" == "1" && -c /dev/tty && -n "${_selection:-}" ]]; then
-  printf '\n  [?] Save this selection for future runs?\n'
-  printf '      Options: 1=yes, *2=no  →  '
-  read -r _save_sel < /dev/tty
-  if [[ "$_save_sel" == "1" ]]; then
-    mkdir -p "$(dirname "$_UCC_SELECTION_FILE")"
-    printf '# Saved component/target selection\n' > "$_UCC_SELECTION_FILE"
-    printf '# Edit to change what runs by default\n' >> "$_UCC_SELECTION_FILE"
-    printf '# Use component names or target names, one per line\n' >> "$_UCC_SELECTION_FILE"
-    # Reconstruct what was selected
-    if [[ "$_selection" == "a" || "$_selection" == "all" ]]; then
-      for _c in "${COMPONENTS[@]}"; do echo "$_c" >> "$_UCC_SELECTION_FILE"; done
-    elif [[ -n "$_selection" ]]; then
-      IFS=',' read -ra _picks <<< "$_selection"
-      for _p in "${_picks[@]}"; do
-        _p="${_p// /}"
-        if [[ "$_p" =~ ^[0-9]+$ && "$_p" -ge 1 && "$_p" -le "${#COMPONENTS[@]}" ]]; then
-          echo "${COMPONENTS[$((_p - 1))]}" >> "$_UCC_SELECTION_FILE"
-        else
-          echo "$_p" >> "$_UCC_SELECTION_FILE"
-        fi
-      done
-    fi
-    log_info "Selection saved to $_UCC_SELECTION_FILE"
-  fi
-fi
-
 # --- Interactive: sudo acquisition ---------------------------
-if [[ "${UCC_INTERACTIVE:-0}" == "1" && -t 0 ]]; then
+if [[ "${UCC_INTERACTIVE:-0}" == "1" ]] && [[ -c /dev/tty ]]; then
   if sudo_not_available; then
-    printf '\n  Some targets require admin privileges. Acquire sudo now? [y/N] '
-    read -r _sudo_answer
-    if [[ "$_sudo_answer" =~ ^[Yy] ]]; then
+    # List targets that need admin
+    echo ""
+    echo "  Targets requiring admin privileges:"
+    python3 -c "
+import yaml, os
+for root, _, files in os.walk('$_MANIFEST_DIR'):
+    for f in files:
+        if not f.endswith('.yaml'): continue
+        with open(os.path.join(root, f)) as fh:
+            data = yaml.safe_load(fh) or {}
+        for t, td in (data.get('targets') or {}).items():
+            if isinstance(td, dict) and td.get('admin_required'):
+                print(f'    - {td.get(\"display_name\", t)}')
+" 2>/dev/null
+    printf '\n  [?] Acquire sudo now?\n'
+    printf '      Options: 1=yes, *2=no  →  '
+    read -r _sudo_answer < /dev/tty
+    if [[ "$_sudo_answer" == "1" ]]; then
       sudo -v
     fi
   fi
