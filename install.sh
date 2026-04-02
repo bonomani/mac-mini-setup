@@ -258,27 +258,28 @@ EOF
   exit 0
 }
 
-# --- Interactive mode: on by default for TTY, off for pipes/CI ---
-# --no-interactive explicitly disables; --interactive explicitly enables
-# Can also be saved as a preference in ~/.ai-stack/preferences.env
+# --- Interactive mode resolution ---
+# Priority: --interactive/--no-interactive flag > saved pref > TTY prompt
 if [[ -z "${UCC_INTERACTIVE:-}" ]]; then
-  # Check saved preference
   _saved_interactive=""
   _pf="${UIC_PREF_FILE:-$HOME/.ai-stack/preferences.env}"
   [[ -f "$_pf" ]] && _saved_interactive="$(grep -E '^interactive=' "$_pf" 2>/dev/null | head -1 | cut -d= -f2-)"
   if [[ "$_saved_interactive" == "no" ]]; then
     export UCC_INTERACTIVE=0
-  elif [[ -t 0 ]]; then
+  elif [[ "$_saved_interactive" == "yes" ]]; then
     export UCC_INTERACTIVE=1
+  elif [[ -c /dev/tty ]]; then
+    # No flag, no saved pref — prompt
+    printf '\n  [?] %-28s [*1)yes, 2)no] ' "interactive-mode"
+    read -r _im_choice < /dev/tty
+    if [[ "$_im_choice" == "2" ]]; then
+      export UCC_INTERACTIVE=0
+    else
+      export UCC_INTERACTIVE=1
+    fi
   else
     export UCC_INTERACTIVE=0
   fi
-fi
-
-# Show interactive mode status
-if [[ "${UCC_INTERACTIVE:-0}" == "1" ]]; then
-  echo ""
-  echo "  Interactive mode (use --no-interactive to skip prompts)"
 fi
 
 # --- Parse arguments ----------------------------------------
