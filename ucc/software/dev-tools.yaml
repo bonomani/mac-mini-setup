@@ -170,8 +170,6 @@ targets:
     profile: runtime
     type: runtime
     display_name: Ariaflow Web
-    depends_on:
-    - ariaflow
     driver:
       kind: brew-service
       ref: ariaflow-web
