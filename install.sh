@@ -133,33 +133,52 @@ _detect_host_package_manager() {
   fi
 }
 
-_detect_host_os() {
-  case "$HOST_PLATFORM" in
-    wsl)
-      # WSL runs on Windows — detect host OS
-      local _winver
-      _winver="$(cmd.exe /c ver 2>/dev/null | tr -d '\r' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || true)"
-      if [[ -n "$_winver" ]]; then
-        # Build 22000+ = Windows 11, else Windows 10
-        local _build; _build="$(echo "$_winver" | cut -d. -f3)"
-        if [[ "${_build:-0}" -ge 22000 ]]; then
-          printf 'windows-11-%s' "$_build"
-        else
-          printf 'windows-10-%s' "$_build"
-        fi
-      else
-        printf 'windows-unknown'
-      fi
-      ;;
-    *) printf '%s' "$HOST_OS_ID" ;;  # non-WSL: host OS = guest OS
-  esac
-}
-
 export HOST_ARCH="$(_detect_host_arch)"
 export HOST_OS_ID="$(_detect_host_os_id)"
 export HOST_PACKAGE_MANAGER="$(_detect_host_package_manager)"
-export HOST_OS="$(_detect_host_os)"
-export HOST_FINGERPRINT="${HOST_PLATFORM}/${HOST_ARCH}/${HOST_OS_ID}/${HOST_PACKAGE_MANAGER}/${HOST_PLATFORM_VARIANT}/${HOST_OS}"
+
+_build_host_fingerprint() {
+  local os ver arch pm
+  arch="$HOST_ARCH"
+  pm="$HOST_PACKAGE_MANAGER"
+  case "$HOST_PLATFORM" in
+    macos)
+      os="macos"
+      ver="$(sw_vers -productVersion 2>/dev/null || echo unknown)"
+      ;;
+    wsl)
+      # wsl2-ubuntu/22.04 or wsl1-debian/12
+      if [[ -f /etc/os-release ]]; then
+        . /etc/os-release
+        os="${HOST_PLATFORM_VARIANT}-${ID:-linux}"
+        ver="${VERSION_ID:-unknown}"
+      else
+        os="${HOST_PLATFORM_VARIANT}-linux"
+        ver="unknown"
+      fi
+      # Detect Windows host version
+      local _winver; _winver="$(cmd.exe /c ver 2>/dev/null | tr -d '\r' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || true)"
+      if [[ -n "$_winver" ]]; then
+        local _build; _build="$(echo "$_winver" | cut -d. -f3)"
+        [[ "${_build:-0}" -ge 22000 ]] && pm="${pm}@windows-11" || pm="${pm}@windows-10"
+      fi
+      ;;
+    linux)
+      if [[ -f /etc/os-release ]]; then
+        . /etc/os-release
+        os="${ID:-linux}"
+        ver="${VERSION_ID:-unknown}"
+      else
+        os="linux"
+        ver="unknown"
+      fi
+      ;;
+    *) os="unknown"; ver="unknown" ;;
+  esac
+  printf '%s/%s/%s/%s' "$os" "$ver" "$arch" "$pm"
+}
+
+export HOST_FINGERPRINT="$(_build_host_fingerprint)"
 source "$DIR/lib/ucc.sh"
 source "$DIR/lib/uic.sh"
 source "$DIR/lib/tic.sh"
