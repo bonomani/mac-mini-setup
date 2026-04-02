@@ -347,9 +347,16 @@ _ucc_run_yaml_action() {
 }
 
 # Return 0 if target should be skipped due to UCC_TARGET_SET filter.
+# Emits a visible [skip] line so all targets are accounted for.
 _ucc_target_filtered_out() {
   local target="$1"
-  [[ -n "${UCC_TARGET_SET:-}" && "${UCC_TARGET_SET}" != *"${target}|"* ]]
+  if [[ -n "${UCC_TARGET_SET:-}" && "${UCC_TARGET_SET}" != *"${target}|"* ]]; then
+    local display_name
+    display_name="$(_ucc_display_name "$target")"
+    printf '      [%-8s] %-30s %s\n' "skip" "$display_name" "not selected"
+    return 0
+  fi
+  return 1
 }
 
 ucc_yaml_simple_target() {
