@@ -401,11 +401,13 @@ uic_export
 # --- Interactive: save preferences to file -------------------
 if [[ "${UCC_INTERACTIVE:-0}" == "1" && -t 0 ]]; then
   _pref_file="${UIC_PREF_FILE:-$HOME/.ai-stack/preferences.env}"
-  printf '\n  Save these preferences to %s? [Y/n] ' "$_pref_file"
+  printf '\n  Save non-default preferences to %s? [Y/n] ' "$_pref_file"
   read -r _save_prefs
   if [[ ! "$_save_prefs" =~ ^[Nn] ]]; then
     mkdir -p "$(dirname "$_pref_file")"
-    : > "$_pref_file"
+    printf '# User preference overrides (non-default values only)\n' > "$_pref_file"
+    printf '# Defaults are in policy/preferences.yaml\n' >> "$_pref_file"
+    printf '# Delete a line to revert to default\n' >> "$_pref_file"
     local _saved=0
     for _i in "${!_UIC_PREF_NAMES[@]}"; do
       # Only save values that differ from defaults
