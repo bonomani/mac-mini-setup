@@ -34,6 +34,7 @@ _ucc_driver_softwareupdate_defaults_apply() {
   [[ -n "$value" ]] || value="1"
   local bool_flag="true"
   [[ "$value" == "0" || "$value" == "false" ]] && bool_flag="false"
+  sudo_is_available || { log_warn "softwareupdate-defaults requires sudo"; return 1; }
   ucc_run sudo defaults write "$domain" "$key" -bool "$bool_flag"
 }
 

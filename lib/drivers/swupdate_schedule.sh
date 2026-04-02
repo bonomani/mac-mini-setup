@@ -13,6 +13,7 @@ _ucc_driver_softwareupdate_schedule_observe() {
 
 _ucc_driver_softwareupdate_schedule_action() {
   local cfg_dir="$1" yaml="$2" target="$3" action="$4"
+  sudo_is_available || { log_warn "softwareupdate-schedule requires sudo"; return 1; }
   ucc_run sudo softwareupdate --schedule on
 }
 

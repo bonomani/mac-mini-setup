@@ -73,6 +73,11 @@ _ucc_driver_build_deps_action() {
     return 1
   }
   packages="$(_build_deps_packages "$family")" || return 1
+  # Native package managers require sudo
+  if sudo_not_available; then
+    log_warn "build-deps: sudo required for $family package manager — run: sudo -v"
+    return 1
+  fi
   log_info "Installing build dependencies via $family package manager..."
   # shellcheck disable=SC2086
   ucc_run $install_cmd $packages
