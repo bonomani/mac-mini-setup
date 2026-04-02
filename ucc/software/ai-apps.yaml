@@ -7,7 +7,7 @@ platforms:
 - macos
 - linux
 - wsl2
-installer_url: https://ollama.com/install.sh
+ollama_installer_url: https://ollama.com/install.sh
 brew_service_name: ollama
 api_host: 127.0.0.1
 api_port: 11434

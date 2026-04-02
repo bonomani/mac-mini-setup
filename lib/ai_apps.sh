@@ -339,7 +339,7 @@ PY
   while IFS=$'\t' read -r -d '' key value; do
     [[ -n "$value" ]] || continue
     case "$key" in
-      installer_url) _OLLAMA_INSTALLER_URL="$value" ;;
+      ollama_installer_url) _OLLAMA_INSTALLER_URL="$value" ;;
       brew_service_name) _OLLAMA_BREW_SERVICE_NAME="$value" ;;
       api_host) _OLLAMA_API_HOST="$value" ;;
       api_port) _OLLAMA_API_PORT="$value" ;;
@@ -349,7 +349,7 @@ PY
       fallback_start_cmd) _OLLAMA_START_CMD="$value" ;;
     esac
   done < <(yaml_get_many "$cfg_dir" "$yaml" \
-    installer_url \
+    ollama_installer_url \
     brew_service_name \
     api_host \
     api_port \

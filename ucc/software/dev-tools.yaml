@@ -17,7 +17,6 @@ vscode_code_cmd_hint: "Symlink created. If 'code' is still missing in new shells
   \ run: Cmd+Shift+P > Shell Command: Install code command in PATH"
 vscode_settings_relpath: Library/Application Support/Code/User/settings.json
 vscode_settings_patch: ucc/software/vscode-settings.json
-zsh_config: .zshrc
 shell_profile: .zprofile
 home_bin_dir: bin
 node_formula: node
@@ -109,7 +108,7 @@ targets:
       kind: zsh-config
       key: ZSH_THEME
       value: ${omz_theme}
-      config_file: ${zsh_config}
+      config_file: .zshrc
   home-bin-in-path:
     component: dev-tools
     profile: configured
