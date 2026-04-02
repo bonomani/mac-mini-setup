@@ -318,7 +318,7 @@ uic_resolve() {
     fi
   done
 
-  # Steps 3+4: Preferences — always show all with default, active value, and options
+  # Steps 3+4: Preferences — show only those relevant to the selection
   echo ""
   for i in "${!_UIC_PREF_NAMES[@]}"; do
     local name="${_UIC_PREF_NAMES[$i]}"
@@ -327,6 +327,14 @@ uic_resolve() {
     local opts="${_UIC_PREF_OPTIONS[$i]}"
     local rationale="${_UIC_PREF_RATIONALES[$i]}"
     local scope="${_UIC_PREF_SCOPES[$i]}"
+    # Skip component-scoped prefs when that component is not selected
+    if [[ "$scope" == component:* ]]; then
+      local _pc="${scope#component:}" _in_run=0
+      for _rc in ${TO_RUN[@]+"${TO_RUN[@]}"}; do
+        [[ "$_rc" == "$_pc" ]] && { _in_run=1; break; }
+      done
+      [[ $_in_run -eq 0 ]] && continue
+    fi
     local scope_short="${scope/component:/}"
     if [[ "$val" != "$default" ]]; then
       printf '[PREF]  %-30s %-18s →%-20s options: %s\n' "$name" "${val} *" "$scope_short" "$opts"
