@@ -134,7 +134,7 @@ uic_preference() {
     return 0   # warn but do not abort the script (set -e safe)
   fi
 
-  # Resolve: env-var (--pref / CI) > operator file > safe default
+  # Resolve: env-var (--pref / CI) > interactive prompt > operator file > safe default
   local resolved="$default"
   local file_val env_key env_val
   env_key="$(_uic_pref_key "$name")"
@@ -144,6 +144,25 @@ uic_preference() {
       resolved="$env_val"
     else
       log_warn "UIC: preference '$name' — env var value '$env_val' not in options ($options); using safe default '$default'"
+    fi
+  elif [[ "${UCC_INTERACTIVE:-0}" == "1" && -t 0 ]]; then
+    # Interactive mode: prompt user to choose
+    local _opts_arr=() _i=1 _choice
+    while IFS= read -r _o; do
+      _opts_arr+=("$_o")
+    done < <(echo "$options" | tr '|' '\n')
+    printf '\n  [?] %s\n' "$name"
+    printf '      %s\n' "$rationale"
+    for _o in "${_opts_arr[@]}"; do
+      local _marker="  "
+      [[ "$_o" == "$default" ]] && _marker="* "
+      printf '      %s%d) %s\n' "$_marker" "$_i" "$_o"
+      _i=$((_i + 1))
+    done
+    printf '      Choose [1-%d, default=%s]: ' "${#_opts_arr[@]}" "$default"
+    read -r _choice
+    if [[ -n "$_choice" && "$_choice" =~ ^[0-9]+$ && "$_choice" -ge 1 && "$_choice" -le "${#_opts_arr[@]}" ]]; then
+      resolved="${_opts_arr[$((_choice - 1))]}"
     fi
   else
     file_val="$(_uic_file_val "$name")"

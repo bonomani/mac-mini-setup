@@ -1330,6 +1330,19 @@ _ucc_execute_target() {
     action_context="update"
   fi
 
+  # Interactive mode: confirm before applying changes
+  if [[ "${UCC_INTERACTIVE:-0}" == "1" && -t 0 ]]; then
+    printf '      [?] %s %s? [Y/n] ' "$action_context" "$display_name"
+    local _confirm
+    read -r _confirm
+    if [[ "$_confirm" =~ ^[Nn] ]]; then
+      _ucc_emit_target_line "$profile" "skip" "$display_name" "user declined"
+      _ucc_record_outcome "$profile" "$name" "" "unchanged" "unchanged" "$msg_id" "$started_at" \
+        "{}" "{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"user\",\"message\":\"user declined interactive confirmation\"}"
+      return 0
+    fi
+  fi
+
   local action_rc=0
   $action_fn || action_rc=$?
 

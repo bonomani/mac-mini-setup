@@ -233,6 +233,7 @@ Options:
   --mode update     Update already-installed components
   --mode check      Observe current state without changing anything (drift detection)
   --dry-run         Show what would change without applying it
+  --interactive     Prompt for preferences and confirm each change
   --preflight       Evaluate UIC gates and preferences; do NOT converge
   --pref key=value  Set a UIC preference for this run only (repeatable)
   --debug           Show DEBUG-level output
@@ -262,6 +263,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --dry-run)       export UCC_DRY_RUN=1;     shift ;;
     --mode)          export UCC_MODE="$2";    shift 2 ;;
+    --interactive)   export UCC_INTERACTIVE=1; shift ;;
     --debug)         export UCC_DEBUG=1;      shift ;;
     --preflight)     export UIC_PREFLIGHT=1;  shift ;;
     --pref)
