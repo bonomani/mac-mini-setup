@@ -300,7 +300,10 @@ for _arg in ${TO_RUN[@]+"${TO_RUN[@]}"}; do
         log_error "Unknown target: '$_name'"
       fi
       log_info "Resolved target '$_name' → component '$_comp'"
-      [[ -z "$UCC_TARGET_FILTER" ]] && export UCC_TARGET_FILTER="$_name"
+      if [[ -z "$UCC_TARGET_FILTER" ]]; then
+        export UCC_TARGET_FILTER="$_name"
+        export UCC_TARGET_FILTER_COMP="$_comp"
+      fi
       while IFS= read -r _dep_comp; do
         [[ -n "$_dep_comp" ]] && _resolved+=("$_dep_comp")
       done < <(python3 "$_QUERY_SCRIPT" --dep-components "$_name" "$_MANIFEST_DIR" 2>/dev/null || true)
@@ -314,7 +317,10 @@ for _arg in ${TO_RUN[@]+"${TO_RUN[@]}"}; do
           log_error "Unknown component or target: '$_arg'"
         fi
         log_info "Resolved target '$_arg' → component '$_comp'"
-        [[ -z "$UCC_TARGET_FILTER" ]] && export UCC_TARGET_FILTER="$_arg"
+        if [[ -z "$UCC_TARGET_FILTER" ]]; then
+          export UCC_TARGET_FILTER="$_arg"
+          export UCC_TARGET_FILTER_COMP="$_comp"
+        fi
         # Add all prerequisite components for transitive deps
         while IFS= read -r _dep_comp; do
           [[ -n "$_dep_comp" ]] && _resolved+=("$_dep_comp")

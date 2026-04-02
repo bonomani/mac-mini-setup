@@ -1410,7 +1410,10 @@ ucc_flush_registered_targets() {
   for target in "${declared[@]}"; do
     idx="$(_ucc_registered_index "$target" || true)"
     [[ -n "$idx" ]] || continue
-    [[ -z "${UCC_TARGET_FILTER:-}" || "$target" == "$UCC_TARGET_FILTER" ]] || continue
+    if [[ -n "${UCC_TARGET_FILTER:-}" && "$target" != "$UCC_TARGET_FILTER" ]]; then
+      # Only filter within the target's own component; prerequisite components run all targets
+      [[ -n "${UCC_TARGET_FILTER_COMP:-}" && "$component" == "$UCC_TARGET_FILTER_COMP" ]] && continue
+    fi
     _ucc_require_declared_dependencies_resolved "$target" || return 1
     UCC_EXEC_SNAPSHOT="${_UCC_REGISTERED_ENV[$idx]}" eval "_ucc_execute_target ${_UCC_REGISTERED_ARGS[$idx]}" || return 1
   done
