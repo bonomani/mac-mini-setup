@@ -67,6 +67,8 @@ targets:
     type: package
     state_model: package
     display_name: Homebrew
+    depends_on:
+    - network-available
     depends_on_by_platform:
       macos:
       - xcode-command-line-tools
