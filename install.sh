@@ -301,7 +301,9 @@ for _arg in ${TO_RUN[@]+"${TO_RUN[@]}"}; do
       fi
       log_info "Resolved target '$_name' → component '$_comp'"
       [[ -z "$UCC_TARGET_FILTER" ]] && export UCC_TARGET_FILTER="$_name"
-      _resolved+=("$_comp")
+      while IFS= read -r _dep_comp; do
+        [[ -n "$_dep_comp" ]] && _resolved+=("$_dep_comp")
+      done < <(python3 "$_QUERY_SCRIPT" --dep-components "$_name" "$_MANIFEST_DIR" 2>/dev/null || true)
       ;;
     *)
       if printf '%s\n' "${COMPONENTS[@]}" | grep -qx "$_arg"; then
@@ -313,12 +315,23 @@ for _arg in ${TO_RUN[@]+"${TO_RUN[@]}"}; do
         fi
         log_info "Resolved target '$_arg' → component '$_comp'"
         [[ -z "$UCC_TARGET_FILTER" ]] && export UCC_TARGET_FILTER="$_arg"
-        _resolved+=("$_comp")
+        # Add all prerequisite components for transitive deps
+        while IFS= read -r _dep_comp; do
+          [[ -n "$_dep_comp" ]] && _resolved+=("$_dep_comp")
+        done < <(python3 "$_QUERY_SCRIPT" --dep-components "$_arg" "$_MANIFEST_DIR" 2>/dev/null || true)
       fi
       ;;
   esac
 done
-TO_RUN=("${_resolved[@]+"${_resolved[@]}"}")
+# Deduplicate while preserving order
+_deduped=()
+_seen_comps=""
+for _c in "${_resolved[@]+"${_resolved[@]}"}"; do
+  [[ "$_seen_comps" == *"|${_c}|"* ]] && continue
+  _seen_comps="${_seen_comps}|${_c}|"
+  _deduped+=("$_c")
+done
+TO_RUN=("${_deduped[@]+"${_deduped[@]}"}")
 
 [[ ${#TO_RUN[@]} -eq 0 ]] && TO_RUN=("${COMPONENTS[@]}")
 

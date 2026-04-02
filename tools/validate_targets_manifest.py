@@ -960,7 +960,12 @@ def main():
     ordered_targets_mode = False
     target_name = None
     find_target_mode = False
-    if len(args) >= 2 and args[0] == "--deps":
+    dep_components_mode = False
+    if len(args) >= 2 and args[0] == "--dep-components":
+        dep_components_mode = True
+        target_name = args[1]
+        args = args[2:]
+    elif len(args) >= 2 and args[0] == "--deps":
         deps_mode = True
         target_name = args[1]
         args = args[2:]
@@ -1106,6 +1111,31 @@ def main():
         print(meta.get("runner", ""))
         print(meta.get("on_fail", ""))
         print(meta.get("file", ""))
+        return 0
+
+    if dep_components_mode:
+        # Return all component names needed to satisfy transitive deps of a target
+        visited = set()
+        queue = [target_name]
+        components = set()
+        while queue:
+            t = queue.pop(0)
+            if t in visited:
+                continue
+            visited.add(t)
+            data = manifest["targets"].get(t)
+            if data is None:
+                continue
+            comp = data.get("component", "")
+            if comp:
+                components.add(comp)
+            for dep in _effective_target_deps(data or {}):
+                if dep not in visited:
+                    queue.append(dep)
+        # Print in component order
+        for comp_name in component_order(manifest, ordered):
+            if comp_name in components:
+                print(comp_name)
         return 0
 
     if find_target_mode:
