@@ -293,7 +293,7 @@ if [[ -z "${UCC_INTERACTIVE:-}" ]]; then
   elif [[ "$_saved_interactive" == "yes" ]]; then
     export UCC_INTERACTIVE=1
   elif [[ -c /dev/tty ]]; then
-    printf '\n  [?] %-28s [*1)yes, 2)no] ' "interactive-mode"
+    printf '\n  [?] Run in interactive mode? (*1=yes, 2=no) → '
     read -r _im_choice < /dev/tty
     [[ "$_im_choice" == "2" ]] && export UCC_INTERACTIVE=0 || export UCC_INTERACTIVE=1
   else
@@ -476,9 +476,9 @@ if [[ "${UCC_INTERACTIVE:-0}" == "1" ]] && [[ -c /dev/tty ]]; then
     log_info "Saved to $_pref_file"
   fi
 
-  printf '  [?] %-28s [1)yes, *2)no]\n' "save-defaults-as-user-prefs"
-  printf '      # locks current defaults so future project updates won'\''t change them\n'
-  printf '      Choose: '
+  printf '  [?] Pin current values as your preferences?\n'
+  printf '      (protects against future default changes)\n'
+  printf '      Options: 1=yes, *2=no  →  '
   read -r _save_defaults < /dev/tty
   if [[ "$_save_defaults" == "1" ]]; then
     mkdir -p "$(dirname "$_pref_file")"
