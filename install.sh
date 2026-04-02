@@ -438,10 +438,14 @@ if [[ "${UCC_INTERACTIVE:-0}" == "1" && -c /dev/tty && -z "$UCC_TARGET_SET" ]]; 
   echo "  ── Selection ─────────────────────────────────────────"
   echo "  What would you like to install?"
   echo ""
-  echo "    a) All components"
+  echo "    a) All"
   _comp_idx=1
   for _c in "${COMPONENTS[@]}"; do
-    printf '    %d) %s\n' "$_comp_idx" "$_c"
+    # Show component with its target count and key targets
+    _tcount=$(python3 "$_QUERY_SCRIPT" --ordered-targets "$_c" "$_MANIFEST_DIR" 2>/dev/null | wc -l | tr -d ' ')
+    _tlist=$(python3 "$_QUERY_SCRIPT" --ordered-targets "$_c" "$_MANIFEST_DIR" 2>/dev/null | head -5 | paste -sd, - | sed 's/,/, /g')
+    [[ $_tcount -gt 5 ]] && _tlist="${_tlist}, ..."
+    printf '    %d) %-20s (%s targets: %s)\n' "$_comp_idx" "$_c" "$_tcount" "$_tlist"
     _comp_idx=$((_comp_idx + 1))
   done
   echo ""
