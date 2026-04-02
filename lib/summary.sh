@@ -60,7 +60,7 @@ print_profile_contracts() {
 
 _summary_component_label() {
   case "$1" in
-    system) printf 'AI workstation' ;;
+    system) printf 'System' ;;
     verify) printf 'Verification' ;;
     *)      printf '%s' "$1" ;;
   esac

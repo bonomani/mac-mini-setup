@@ -189,7 +189,7 @@ _component_supported_for() {
 _display_component_name() {
   case "$1" in
     macos-software-update) printf 'macOS software update' ;;
-    system) printf 'AI workstation' ;;
+    system) printf 'System' ;;
     verify) printf 'Verification' ;;
     *)      printf '%s' "$1" ;;
   esac
@@ -370,10 +370,21 @@ for _c in "${_resolved[@]+"${_resolved[@]}"}"; do
   UCC_SELECTED_COMPS="${UCC_SELECTED_COMPS}${_c}|"
 done
 
-# Add all components so runners execute (targets filter via UCC_TARGET_SET)
-for _c in "${COMPONENTS[@]}"; do
-  _resolved+=("$_c")
-done
+# Only add components that have targets in the selection set
+# (no need to run components where everything would be [skip])
+if [[ -n "$UCC_TARGET_SET" ]]; then
+  for _c in "${COMPONENTS[@]}"; do
+    # Check if any target from this component is in the set
+    _has_selected=0
+    for _t in $(python3 "$_QUERY_SCRIPT" --ordered-targets "$_c" "$_MANIFEST_DIR" 2>/dev/null || true); do
+      [[ "${UCC_TARGET_SET}" == *"${_t}|"* ]] && { _has_selected=1; break; }
+    done
+    [[ $_has_selected -eq 1 ]] && _resolved+=("$_c")
+  done
+else
+  # Empty set = nothing selected → add all for visibility
+  for _c in "${COMPONENTS[@]}"; do _resolved+=("$_c"); done
+fi
 
 # Deduplicate components while preserving order
 _deduped=(); _seen_comps=""
