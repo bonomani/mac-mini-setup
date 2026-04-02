@@ -352,11 +352,19 @@ _ucc_run_yaml_action() {
 #   - empty = nothing selected (skip all)
 #   - populated = only targets in the set run
 _ucc_target_filtered_out() {
-  local target="$1"
+  local target="$1" cfg_dir="${2:-}" yaml="${3:-}"
   if [[ "${UCC_TARGET_SET:-}" != *"${target}|"* ]]; then
-    local display_name
+    local display_name state=""
     display_name="$(_ucc_display_name "$target")"
-    printf '      [%-8s] %-30s %s\n' "skip" "$display_name" "not selected"
+    # Try to observe current state via driver (read-only, best-effort)
+    if [[ -n "$cfg_dir" && -n "$yaml" ]]; then
+      state="$(_ucc_driver_observe "$cfg_dir" "$yaml" "$target" 2>/dev/null || true)"
+    fi
+    if [[ -n "$state" && "$state" != "absent" ]]; then
+      printf '      [%-8s] %-30s %s (current: %s)\n' "skip" "$display_name" "not selected" "$state"
+    else
+      printf '      [%-8s] %-30s %s\n' "skip" "$display_name" "not selected"
+    fi
     return 0
   fi
   return 1
@@ -364,7 +372,7 @@ _ucc_target_filtered_out() {
 
 ucc_yaml_simple_target() {
   local cfg_dir="$1" yaml="$2" target="$3"
-  _ucc_target_filtered_out "$target" && return 0
+  _ucc_target_filtered_out "$target" "$cfg_dir" "$yaml" && return 0
   local fn profile install_cmd update_cmd externally_managed_updates driver_kind
   local obs_type="" obs_oracle="" obs_cmd="" obs_model="" obs_success="" obs_failure=""
   local _ev_b64=""
@@ -440,7 +448,7 @@ _ucc_observe_yaml_capability_target() {
 
 ucc_yaml_capability_target() {
   local cfg_dir="$1" yaml="$2" target="$3"
-  _ucc_target_filtered_out "$target" && return 0
+  _ucc_target_filtered_out "$target" "$cfg_dir" "$yaml" && return 0
   local fn runtime_cmd=""
   local _ev_b64=""
   fn="${target//[^a-zA-Z0-9]/_}"
@@ -578,7 +586,7 @@ _ucc_yaml_parametric_desired_value() {
 
 ucc_yaml_parametric_target() {
   local cfg_dir="$1" yaml="$2" target="$3"
-  _ucc_target_filtered_out "$target" && return 0
+  _ucc_target_filtered_out "$target" "$cfg_dir" "$yaml" && return 0
   local fn install_cmd update_cmd desired gate dep_state driver_kind
   local obs_cmd="" obs_gate="" desired_cmd="" desired_value_raw=""
   local _ev_b64=""
@@ -817,7 +825,7 @@ _ucc_observe_yaml_docker_compose_runtime_target() {
 
 ucc_yaml_runtime_target() {
   local cfg_dir="$1" yaml="$2" target="$3" install_fn="${4:-}" update_fn="${5:-}"
-  _ucc_target_filtered_out "$target" && return 0
+  _ucc_target_filtered_out "$target" "$cfg_dir" "$yaml" && return 0
   local fn install_cmd update_cmd
   local obs_configured="" obs_runtime="" obs_driver="" obs_service="" obs_pkg="" obs_app="" obs_greedy=""
   local obs_stopped_inst="" obs_stopped_rt="" obs_stopped_health="" obs_stopped_deps=""
@@ -1000,7 +1008,7 @@ _ucc_wait_for_yaml_runtime_probe() {
 # runtime probe are governed as one runtime-profile target.
 ucc_brew_runtime_formula_target() {
   local tname="$1" pkg="$2" brew_ref="${3:-$2}" cfg_dir="${4:-}" yaml="${5:-}" service_name="${6:-$2}"
-  _ucc_target_filtered_out "$tname" && return 0
+  _ucc_target_filtered_out "$tname" "$cfg_dir" "$yaml" && return 0
   local fn; fn="${tname//[^a-zA-Z0-9]/_}"
   eval "_ubrt_obs_${fn}() {
     local runtime_cmd configured_cmd
