@@ -275,6 +275,12 @@ if [[ -z "${UCC_INTERACTIVE:-}" ]]; then
   fi
 fi
 
+# Show interactive mode status
+if [[ "${UCC_INTERACTIVE:-0}" == "1" ]]; then
+  echo ""
+  echo "  Interactive mode (use --no-interactive to skip prompts)"
+fi
+
 # --- Parse arguments ----------------------------------------
 TO_RUN=()
 export UCC_TARGET_SET=""
