@@ -84,22 +84,34 @@ run_dev_tools_from_yaml() {
     [[ -n "$_target" ]] && ucc_yaml_simple_target "$cfg_dir" "$yaml" "$_target"
   done < <(yaml_list "$cfg_dir" "$yaml" cli_tools)
 
-  # ---- VSCode (macOS only — cask + extensions) ----
+  # ---- VSCode ----
   if [[ "${HOST_PLATFORM:-macos}" == "macos" ]]; then
     ucc_yaml_simple_target "$cfg_dir" "$yaml" "vscode"
     ucc_yaml_simple_target "$cfg_dir" "$yaml" "vscode-code-cmd"
+  else
+    # On Linux, VS Code is externally managed (apt/snap/remote-wsl)
+    if is_installed code; then
+      ucc_skip_target "vscode" "externally installed"
+      ucc_skip_target "vscode-code-cmd" "code already in PATH"
+    else
+      ucc_skip_target "vscode" "install VS Code manually on Linux"
+      ucc_skip_target "vscode-code-cmd" "code not available"
+    fi
+  fi
+
+  # ---- VSCode extensions (cross-platform if code is available) ----
+  if is_installed code; then
     load_vscode_extensions_from_yaml "$cfg_dir" "$yaml"
     ucc_yaml_simple_target "$cfg_dir" "$yaml" "vscode-settings"
+  else
+    ucc_skip_target "vscode-settings" "code not available"
+  fi
 
-    # ---- GUI tools (brew cask, macOS only) ----
+  # ---- GUI tools (brew cask, macOS only) ----
+  if [[ "${HOST_PLATFORM:-macos}" == "macos" ]]; then
     while IFS= read -r _target; do
       [[ -n "$_target" ]] && ucc_yaml_simple_target "$cfg_dir" "$yaml" "$_target"
     done < <(yaml_list "$cfg_dir" "$yaml" casks)
-  else
-    for _skip in vscode vscode-code-cmd vscode-settings; do
-      ucc_skip_target "$_skip" "macOS only"
-    done
-    load_vscode_extensions_from_yaml "$cfg_dir" "$yaml" 2>/dev/null || true
   fi
 
   # ---- nvm + Node.js LTS ----
