@@ -45,6 +45,20 @@ targets:
     stopped_dependencies: DepsReady
     actions:
       install: _docker_desktop_install_and_start
+  docker-settings-file:
+    component: docker
+    profile: configured
+    type: precondition
+    state_model: config
+    display_name: Docker settings file
+    depends_on:
+    - docker-desktop
+    driver:
+      kind: custom
+    oracle:
+      configured: home_file_exists "${settings_relpath}"
+    evidence:
+      path: home_path "${settings_relpath}"
   docker-resources:
     component: docker
     profile: parametric
@@ -53,12 +67,10 @@ targets:
     display_name: Docker resources
     depends_on:
     - docker-desktop
-    soft_depends_on:
-    - gate:docker-settings-file
+    - docker-settings-file
     driver:
       kind: docker-settings
     desired_cmd: docker_desired_resources "${DOCKER_MEM_GB}" "${DOCKER_CPU_COUNT}"
-    dependency_gate: docker-settings-file
   docker-available:
     component: docker
     profile: capability

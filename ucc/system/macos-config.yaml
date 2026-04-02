@@ -10,6 +10,19 @@ restart_processes:
 - Dock
 - SystemUIServer
 targets:
+  sudo-available:
+    component: macos-config
+    profile: capability
+    type: capability
+    display_name: sudo access
+    driver:
+      kind: custom
+    runtime_manager: capability
+    probe_kind: command
+    oracle:
+      runtime: sudo_is_available
+    evidence:
+      status: sudo_is_available
   # ── macOS defaults (pmset, user-defaults) ────────────────────
   pmset-ac-sleep=0:
     component: macos-config
@@ -17,45 +30,42 @@ targets:
     type: config
     state_model: parametric
     display_name: AC sleep
-    soft_depends_on:
-    - gate:sudo-available
+    depends_on:
+    - sudo-available
     admin_required: true
     driver:
       kind: pmset
       setting: sleep
       value: '0'
     desired_value: '0'
-    dependency_gate: sudo-available
   pmset-disksleep=0:
     component: macos-config
     profile: parametric
     type: config
     state_model: parametric
     display_name: Disk sleep
-    soft_depends_on:
-    - gate:sudo-available
+    depends_on:
+    - sudo-available
     admin_required: true
     driver:
       kind: pmset
       setting: disksleep
       value: '0'
     desired_value: '0'
-    dependency_gate: sudo-available
   pmset-standby=0:
     component: macos-config
     profile: parametric
     type: config
     state_model: parametric
     display_name: Standby
-    soft_depends_on:
-    - gate:sudo-available
+    depends_on:
+    - sudo-available
     admin_required: true
     driver:
       kind: pmset
       setting: standby
       value: '0'
     desired_value: '0'
-    dependency_gate: sudo-available
   app-nap=disabled:
     component: macos-config
     profile: parametric
@@ -115,21 +125,20 @@ targets:
     type: config
     state_model: parametric
     display_name: Software Update schedule
-    soft_depends_on:
-    - gate:sudo-available
+    depends_on:
+    - sudo-available
     admin_required: true
     driver:
       kind: softwareupdate-schedule
     desired_value: 'on'
-    dependency_gate: sudo-available
   softwareupdate-auto-check=1:
     component: macos-config
     profile: parametric
     type: config
     state_model: parametric
     display_name: Automatic update checks
-    soft_depends_on:
-    - gate:sudo-available
+    depends_on:
+    - sudo-available
     admin_required: true
     driver:
       kind: softwareupdate-defaults
@@ -137,15 +146,14 @@ targets:
       key: AutomaticCheckEnabled
       value: '1'
     desired_value: '1'
-    dependency_gate: sudo-available
   softwareupdate-auto-download=1:
     component: macos-config
     profile: parametric
     type: config
     state_model: parametric
     display_name: Automatic update downloads
-    soft_depends_on:
-    - gate:sudo-available
+    depends_on:
+    - sudo-available
     admin_required: true
     driver:
       kind: softwareupdate-defaults
@@ -153,15 +161,14 @@ targets:
       key: AutomaticDownload
       value: '1'
     desired_value: '1'
-    dependency_gate: sudo-available
   softwareupdate-auto-install-macos=1:
     component: macos-config
     profile: parametric
     type: config
     state_model: parametric
     display_name: Automatic macOS updates
-    soft_depends_on:
-    - gate:sudo-available
+    depends_on:
+    - sudo-available
     admin_required: true
     driver:
       kind: softwareupdate-defaults
@@ -169,15 +176,14 @@ targets:
       key: AutomaticallyInstallMacOSUpdates
       value: '1'
     desired_value: '1'
-    dependency_gate: sudo-available
   softwareupdate-config-data=1:
     component: macos-config
     profile: parametric
     type: config
     state_model: parametric
     display_name: Configuration data updates
-    soft_depends_on:
-    - gate:sudo-available
+    depends_on:
+    - sudo-available
     admin_required: true
     driver:
       kind: softwareupdate-defaults
@@ -185,15 +191,14 @@ targets:
       key: ConfigDataInstall
       value: '1'
     desired_value: '1'
-    dependency_gate: sudo-available
   softwareupdate-critical-updates=1:
     component: macos-config
     profile: parametric
     type: config
     state_model: parametric
     display_name: Security updates
-    soft_depends_on:
-    - gate:sudo-available
+    depends_on:
+    - sudo-available
     admin_required: true
     driver:
       kind: softwareupdate-defaults
@@ -201,4 +206,3 @@ targets:
       key: CriticalUpdateInstall
       value: '1'
     desired_value: '1'
-    dependency_gate: sudo-available

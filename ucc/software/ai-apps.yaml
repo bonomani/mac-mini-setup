@@ -28,12 +28,26 @@ stack:
   - n8n
   - qdrant
 targets:
+  ai-apps-template:
+    component: ai-apps
+    profile: configured
+    type: precondition
+    state_model: config
+    display_name: Compose template
+    driver:
+      kind: custom
+    oracle:
+      configured: ai_apps_template_exists
+    evidence:
+      template: echo_var "${stack.definition_template}"
   ai-stack-compose-file:
     component: ai-apps
     profile: parametric
     type: config
     state_model: parametric
     display_name: compose file
+    depends_on:
+    - ai-apps-template
     driver:
       kind: compose-file
       path_env: COMPOSE_FILE

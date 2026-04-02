@@ -138,6 +138,24 @@ _tic_not_macos() {
   [[ "${HOST_PLATFORM:-unknown}" != "macos" ]]
 }
 
+# Return 0 if passwordless sudo is available.
+sudo_is_available() { sudo -n true 2>/dev/null; }
+
+# Return 0 if the networkQuality command exists (macOS only).
+networkquality_is_available() { command -v networkQuality >/dev/null 2>&1; }
+
+# Return 0 if a file exists at the given path under $HOME.
+# Usage: home_file_exists <relpath>
+home_file_exists() { [[ -f "$HOME/$1" ]]; }
+
+# Return 0 if the compose template file exists.
+# Uses implicit $CFG_DIR context.
+ai_apps_template_exists() {
+  local tpl
+  tpl="$(python3 "$CFG_DIR/tools/read_config.py" --get "$CFG_DIR/ucc/software/ai-apps.yaml" stack.definition_template 2>/dev/null || true)"
+  [[ -n "$tpl" ]] && [[ -f "$CFG_DIR/$tpl" ]]
+}
+
 # Return 0 if the Ollama process is NOT running.
 _tic_ollama_not_running() {
   ! pgrep -f 'ollama' >/dev/null 2>&1

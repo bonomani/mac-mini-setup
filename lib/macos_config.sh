@@ -9,8 +9,12 @@ run_macos_config_from_yaml() {
   manifest_dir="${UCC_TARGETS_MANIFEST:-$cfg_dir/ucc}"
   ordered="$(python3 "$query_script" --ordered-targets macos-config "$manifest_dir" 2>/dev/null || true)"
 
+  # Probe sudo capability first
+  ucc_yaml_capability_target "$cfg_dir" "$yaml" "sudo-available"
+
   while IFS= read -r target; do
-    [[ -n "$target" ]] || continue
+    [[ -n "$target" || "$target" == "sudo-available" ]] || continue
+    [[ "$target" == "sudo-available" ]] && continue  # already probed
     ucc_yaml_parametric_target "$cfg_dir" "$yaml" "$target"
   done <<< "$ordered"
 

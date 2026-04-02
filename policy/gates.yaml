@@ -5,27 +5,3 @@ gates:
     class: readiness
     target_state: host installation_state=Configured
     blocking: hard
-  - name: ai-apps-template
-    condition: _gate_ai_apps_template
-    scope: component:ai-apps
-    class: integrity
-    target_state: ai-apps installation_state=Configured dependency_state=DepsReady
-    blocking: hard
-  - name: docker-settings-file
-    condition: _gate_docker_settings
-    scope: component:docker
-    class: readiness
-    target_state: docker installation_state=Configured dependency_state=DepsReady
-    blocking: soft
-  - name: networkquality-available
-    condition: _gate_networkquality
-    scope: component:dev-tools
-    class: readiness
-    target_state: ariaflow dependency_state=DepsReady
-    blocking: soft
-  - name: sudo-available
-    condition: _gate_sudo
-    scope: component:macos-config
-    class: authorization
-    target_state: macos-config admin_state=Enabled dependency_state=DepsReady
-    blocking: soft

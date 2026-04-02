@@ -68,10 +68,8 @@ run_docker_from_yaml() {
   done < <(yaml_get_many "$cfg_dir" "$yaml" settings_relpath memory_gb cpu_count swap_mib disk_mib)
   export DOCKER_SETTINGS_PATH="$HOME/${settings_relpath}"
 
-  if [[ "${UIC_GATE_FAILED_DOCKER_SETTINGS_FILE:-0}" == "1" ]]; then
-    ucc_skip_target "docker-resources" "gate=docker-settings-file:warn (launch Docker Desktop first)"
-    return 0
-  fi
+  # ---- Precondition: settings file must exist ----
+  ucc_yaml_simple_target "$cfg_dir" "$yaml" "docker-settings-file"
 
   export DOCKER_MEM_GB="${UIC_PREF_DOCKER_MEMORY_GB:-$memory_gb}"
   export DOCKER_MEM_MIB=$(( DOCKER_MEM_GB * 1024 ))

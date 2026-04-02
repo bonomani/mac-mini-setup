@@ -178,17 +178,29 @@ targets:
       kind: bin-script
       script_name: ai-healthcheck
       bin_dir: ${home_bin_dir}
+  networkquality-available:
+    component: dev-tools
+    profile: capability
+    type: capability
+    display_name: networkQuality
+    driver:
+      kind: custom
+    runtime_manager: capability
+    probe_kind: command
+    oracle:
+      runtime: networkquality_is_available
+    evidence:
+      path: bin_path networkQuality
   ariaflow:
     component: dev-tools
     profile: runtime
     type: runtime
     display_name: Ariaflow
-    soft_depends_on:
-    - gate:networkquality-available
+    depends_on:
+    - networkquality-available
     driver:
       kind: brew-service
       ref: ariaflow
-    dependency_gate: networkquality-available
     endpoints:
     - name: aria2 RPC
       scheme: http

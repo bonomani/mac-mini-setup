@@ -144,9 +144,11 @@ run_dev_tools_from_yaml() {
 
   # ---- Ariaflow (macOS only — brew tap service) ----
   if [[ "${HOST_PLATFORM:-macos}" == "macos" ]]; then
+    ucc_yaml_capability_target "$cfg_dir" "$yaml" "networkquality-available"
     ucc_brew_runtime_formula_target "ariaflow" "ariaflow" "$_ARIAFLOW_FORMULA" "$cfg_dir" "$yaml"
     ucc_brew_runtime_formula_target "ariaflow-web" "ariaflow-web" "$_ARIAFLOW_WEB_FORMULA" "$cfg_dir" "$yaml"
   else
+    ucc_skip_target "networkquality-available" "macOS only"
     ucc_skip_target "ariaflow" "macOS only (brew tap service)"
     ucc_skip_target "ariaflow-web" "macOS only (brew tap service)"
   fi

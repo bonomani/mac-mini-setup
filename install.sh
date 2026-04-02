@@ -117,19 +117,11 @@ source "$DIR/lib/summary.sh"
 _MANIFEST_DIR="$DIR/ucc"
 _QUERY_SCRIPT="$DIR/tools/validate_targets_manifest.py"
 _all_dispatch=$(python3 "$_QUERY_SCRIPT" --all-dispatch "$_MANIFEST_DIR" 2>/dev/null || true)
-_GATE_DOCKER_SETTINGS_REL=$(python3 "$DIR/tools/read_config.py" --get "$DIR/ucc/software/docker.yaml" settings_relpath 2>/dev/null || true)
-_GATE_AI_APPS_TEMPLATE_REL=$(python3 "$DIR/tools/read_config.py" --get "$DIR/ucc/software/ai-apps.yaml" stack.definition_template 2>/dev/null || true)
-[[ -z "$_GATE_DOCKER_SETTINGS_REL" ]] && _GATE_DOCKER_SETTINGS_REL="Library/Group Containers/group.com.docker/settings.json"
-[[ -z "$_GATE_AI_APPS_TEMPLATE_REL" ]] && _GATE_AI_APPS_TEMPLATE_REL="stack/docker-compose.yml"
 
 # ============================================================
 #  UIC gate condition functions (read-only, no side effects)
 # ============================================================
 _gate_supported_platform(){ [[ "$HOST_PLATFORM_VARIANT" == "macos" || "$HOST_PLATFORM_VARIANT" == "linux" || "$HOST_PLATFORM_VARIANT" == "wsl2" ]]; }
-_gate_docker_settings() { [[ -f "$HOME/$_GATE_DOCKER_SETTINGS_REL" ]]; }
-_gate_ai_apps_template(){ [[ -f "$DIR/$_GATE_AI_APPS_TEMPLATE_REL" ]]; }
-_gate_networkquality()  { command -v networkQuality >/dev/null 2>&1; }
-_gate_sudo()            { sudo -n true 2>/dev/null; }
 
 _load_components() {
   local components=()

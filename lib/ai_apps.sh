@@ -35,6 +35,9 @@ ollama_unsupported_warn() {
 run_ai_apps_from_yaml() {
   local cfg_dir="$1" yaml="$2"
 
+  # ---- Precondition: compose template must exist ----
+  ucc_yaml_simple_target "$cfg_dir" "$yaml" "ai-apps-template"
+
   local compose_dir_rel=".ai-stack" compose_file_name="docker-compose.yml"
   local stack_template_rel="stack/docker-compose.yml" stack_marker=""
   while IFS=$'\t' read -r -d '' key value; do
