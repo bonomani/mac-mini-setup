@@ -146,7 +146,7 @@ uic_preference() {
       log_warn "UIC: preference '$name' — env var value '$env_val' not in options ($options); using safe default '$default'"
     fi
   elif [[ "${UCC_INTERACTIVE:-0}" == "1" ]] && [[ -c /dev/tty ]]; then
-    log_debug "uic_preference: interactive prompt for '$name'"
+    log_debug "uic_preference: interactive prompt for '$name' (env_val='$env_val')"
     # Interactive mode: prompt user to choose
     # Print header once before first interactive preference
     if [[ -z "${_UIC_INTERACTIVE_HEADER_SHOWN:-}" ]]; then
@@ -438,12 +438,17 @@ load_uic_preferences() {
   local name="" default="" options="" scope="" rationale=""
   [[ -f "$pref_file" ]] || return 0
   # Read YAML via fd 3 to keep stdin free for interactive prompts
-  local _prefs=()
+  # Collect pref declarations first (arrays), then call uic_preference outside the read loop
+  local _pref_names=() _pref_defaults=() _pref_options=() _pref_rationales=() _pref_scopes=()
   while IFS= read -r _line; do
     case "$_line" in
       "  - name: "*)
         if [[ -n "$name" ]]; then
-          _prefs+=("$name|$default|$options|$rationale|${scope:-global}")
+          _pref_names+=("$name")
+          _pref_defaults+=("$default")
+          _pref_options+=("$options")
+          _pref_rationales+=("$rationale")
+          _pref_scopes+=("${scope:-global}")
         fi
         name="${_line#  - name: }"; default=""; options=""
         scope="global"; rationale="" ;;
@@ -453,12 +458,18 @@ load_uic_preferences() {
       "    rationale: "*) rationale="$(_uic_unquote_scalar "${_line#    rationale: }")" ;;
     esac
   done < "$pref_file"
-  [[ -n "$name" ]] && _prefs+=("$name|$default|$options|$rationale|${scope:-global}")
-  # Now call uic_preference with stdin free (not redirected from file)
-  for _p in "${_prefs[@]}"; do
-    IFS='|' read -r _pn _pd _po _pr _ps <<< "$_p"
-    uic_preference --name "$_pn" --default "$_pd" \
-      --options "$_po" --rationale "$_pr" --scope "$_ps"
+  if [[ -n "$name" ]]; then
+    _pref_names+=("$name")
+    _pref_defaults+=("$default")
+    _pref_options+=("$options")
+    _pref_rationales+=("$rationale")
+    _pref_scopes+=("${scope:-global}")
+  fi
+  # Call uic_preference with stdin free (not redirected from YAML file)
+  for _i in "${!_pref_names[@]}"; do
+    uic_preference --name "${_pref_names[$_i]}" --default "${_pref_defaults[$_i]}" \
+      --options "${_pref_options[$_i]}" --rationale "${_pref_rationales[$_i]}" \
+      --scope "${_pref_scopes[$_i]}"
   done
 }
 
