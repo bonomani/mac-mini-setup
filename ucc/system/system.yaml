@@ -1,36 +1,197 @@
 component: system
 primary_profile: parametric
-libs: system
+libs: macos_config system
 runner: run_system_from_yaml
 on_fail: ignore
 platforms:
 - macos
-system:
-  kind: host-composition
-  depends_on:
-  - homebrew
-  - git
-  - docker-desktop
-  - python
-  - ollama
-  - open-webui-runtime
-  - flowise-runtime
-  - openhands-runtime
-  - n8n-runtime
-  - qdrant-runtime
-  - ariaflow
-  - ariaflow-web
-  - unsloth-studio
-  - git-global-config
-  - softwareupdate-schedule=on
-  - softwareupdate-auto-check=1
-  - softwareupdate-auto-download=1
-  - softwareupdate-auto-install-macos=1
-  - softwareupdate-config-data=1
-  - softwareupdate-critical-updates=1
-  - pmset-ac-sleep=0
-  - finder-show-hidden=1
+softwareupdate_domain: /Library/Preferences/com.apple.SoftwareUpdate
+restart_processes:
+- Finder
+- Dock
+- SystemUIServer
 targets:
+  # ── Capabilities ─────────────────────────────────────────────
+  sudo-available:
+    component: system
+    profile: capability
+    type: capability
+    display_name: sudo access
+    driver:
+      kind: custom
+    runtime_manager: capability
+    probe_kind: command
+    oracle:
+      runtime: sudo_is_available
+    evidence:
+      status: sudo_is_available
+  # ── Power management (pmset) ─────────────────────────────────
+  pmset-ac-sleep=0:
+    component: system
+    profile: parametric
+    type: config
+    state_model: parametric
+    display_name: AC sleep
+    admin_required: true
+    driver:
+      kind: pmset
+      setting: sleep
+      value: '0'
+    desired_value: '0'
+  pmset-disksleep=0:
+    component: system
+    profile: parametric
+    type: config
+    state_model: parametric
+    display_name: Disk sleep
+    admin_required: true
+    driver:
+      kind: pmset
+      setting: disksleep
+      value: '0'
+    desired_value: '0'
+  pmset-standby=0:
+    component: system
+    profile: parametric
+    type: config
+    state_model: parametric
+    display_name: Standby
+    admin_required: true
+    driver:
+      kind: pmset
+      setting: standby
+      value: '0'
+    desired_value: '0'
+  # ── macOS defaults (user-defaults) ───────────────────────────
+  app-nap=disabled:
+    component: system
+    profile: parametric
+    type: config
+    state_model: parametric
+    display_name: App Nap
+    driver:
+      kind: user-defaults
+      domain: NSGlobalDomain
+      key: NSAppSleepDisabled
+      value: 'YES'
+      type: bool
+    desired_value: '1'
+  finder-show-hidden=1:
+    component: system
+    profile: parametric
+    type: config
+    state_model: parametric
+    display_name: Finder hidden files
+    driver:
+      kind: user-defaults
+      domain: com.apple.finder
+      key: AppleShowAllFiles
+      value: 'true'
+      type: bool
+    desired_value: '1'
+  show-all-extensions=1:
+    component: system
+    profile: parametric
+    type: config
+    state_model: parametric
+    display_name: Filename extensions
+    driver:
+      kind: user-defaults
+      domain: NSGlobalDomain
+      key: AppleShowAllExtensions
+      value: 'true'
+      type: bool
+    desired_value: '1'
+  dock-autohide=1:
+    component: system
+    profile: parametric
+    type: config
+    state_model: parametric
+    display_name: Dock auto-hide
+    driver:
+      kind: user-defaults
+      domain: com.apple.dock
+      key: autohide
+      value: 'true'
+      type: bool
+    desired_value: '1'
+  # ── Software Update policy ───────────────────────────────────
+  softwareupdate-schedule=on:
+    component: system
+    profile: parametric
+    type: config
+    state_model: parametric
+    display_name: Software Update schedule
+    admin_required: true
+    driver:
+      kind: softwareupdate-schedule
+    desired_value: 'on'
+  softwareupdate-auto-check=1:
+    component: system
+    profile: parametric
+    type: config
+    state_model: parametric
+    display_name: Automatic update checks
+    admin_required: true
+    driver:
+      kind: softwareupdate-defaults
+      domain: ${softwareupdate_domain}
+      key: AutomaticCheckEnabled
+      value: '1'
+    desired_value: '1'
+  softwareupdate-auto-download=1:
+    component: system
+    profile: parametric
+    type: config
+    state_model: parametric
+    display_name: Automatic update downloads
+    admin_required: true
+    driver:
+      kind: softwareupdate-defaults
+      domain: ${softwareupdate_domain}
+      key: AutomaticDownload
+      value: '1'
+    desired_value: '1'
+  softwareupdate-auto-install-macos=1:
+    component: system
+    profile: parametric
+    type: config
+    state_model: parametric
+    display_name: Automatic macOS updates
+    admin_required: true
+    driver:
+      kind: softwareupdate-defaults
+      domain: ${softwareupdate_domain}
+      key: AutomaticallyInstallMacOSUpdates
+      value: '1'
+    desired_value: '1'
+  softwareupdate-config-data=1:
+    component: system
+    profile: parametric
+    type: config
+    state_model: parametric
+    display_name: Configuration data updates
+    admin_required: true
+    driver:
+      kind: softwareupdate-defaults
+      domain: ${softwareupdate_domain}
+      key: ConfigDataInstall
+      value: '1'
+    desired_value: '1'
+  softwareupdate-critical-updates=1:
+    component: system
+    profile: parametric
+    type: config
+    state_model: parametric
+    display_name: Security updates
+    admin_required: true
+    driver:
+      kind: softwareupdate-defaults
+      domain: ${softwareupdate_domain}
+      key: CriticalUpdateInstall
+      value: '1'
+    desired_value: '1'
+  # ── System composition (OS-level targets only) ───────────────
   system-composition:
     component: system
     profile: parametric
@@ -38,29 +199,21 @@ targets:
     state_model: parametric
     display_name: System composition
     depends_on:
-    - homebrew
-    - git
-    - docker-desktop
-    - python
-    - ollama
-    - open-webui-runtime
-    - flowise-runtime
-    - openhands-runtime
-    - n8n-runtime
-    - qdrant-runtime
-    - ariaflow
-    - ariaflow-web
-    - unsloth-studio
-    - git-global-config
+    - sudo-available
+    - pmset-ac-sleep=0
+    - pmset-disksleep=0
+    - pmset-standby=0
+    - app-nap=disabled
+    - finder-show-hidden=1
+    - show-all-extensions=1
+    - dock-autohide=1
     - softwareupdate-schedule=on
     - softwareupdate-auto-check=1
     - softwareupdate-auto-download=1
     - softwareupdate-auto-install-macos=1
     - softwareupdate-config-data=1
     - softwareupdate-critical-updates=1
-    - pmset-ac-sleep=0
-    - finder-show-hidden=1
     driver:
       kind: custom
     evidence:
-      kind: echo_var "${system_kind}"
+      kind: echo_var "os-config"

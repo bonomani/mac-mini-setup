@@ -13,8 +13,6 @@ components:
     mode: enabled
   - name: ai-apps
     mode: enabled
-  - name: macos-config
-    mode: enabled
   - name: system
     mode: enabled
   - name: verify

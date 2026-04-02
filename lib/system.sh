@@ -1,101 +1,112 @@
 #!/usr/bin/env bash
-# lib/system.sh — System-level composition target
+# lib/system.sh — System component: OS-level config + composition
 
 # Usage: run_system_from_yaml <cfg_dir> <yaml_path>
 run_system_from_yaml() {
   local cfg_dir="$1" yaml="$2"
-  local system_kind="host-composition" system_signature expected_count
-  local SYSTEM_DEPENDENCIES=()
-  local dep
+  local query_script manifest_dir ordered target
+  query_script="${UCC_TARGETS_QUERY_SCRIPT:-$cfg_dir/tools/validate_targets_manifest.py}"
+  manifest_dir="${UCC_TARGETS_MANIFEST:-$cfg_dir/ucc}"
+  ordered="$(python3 "$query_script" --ordered-targets system "$manifest_dir" 2>/dev/null || true)"
 
-  while IFS=$'\t' read -r -d '' key value; do
-    case "$key" in
-      system.kind) [[ -n "$value" ]] && system_kind="$value" ;;
-    esac
-  done < <(yaml_get_many "$cfg_dir" "$yaml" system.kind)
-  while IFS= read -r dep; do
-    [[ -n "$dep" ]] && SYSTEM_DEPENDENCIES+=("$dep")
-  done < <(yaml_list "$cfg_dir" "$yaml" system.depends_on)
+  # Probe sudo capability
+  local _sudo_ok=0
+  sudo_is_available && _sudo_ok=1
 
-  expected_count="${#SYSTEM_DEPENDENCIES[@]}"
-  system_signature="$(printf '%s\n' "${SYSTEM_DEPENDENCIES[@]}" | LC_ALL=C sort | paste -sd, -)"
+  while IFS= read -r target; do
+    [[ -n "$target" ]] || continue
 
-  _system_status_for() {
-    local target="$1"
-    awk -F'|' -v dep="$target" '$1==dep {val=$2} END {print val}' "${UCC_TARGET_STATUS_FILE:-}" 2>/dev/null || true
-  }
+    # system-composition is handled separately at the end
+    [[ "$target" == "system-composition" ]] && continue
 
-  _system_desired_state() {
-    ucc_asm_state --installation Configured --runtime Running \
-      --health Healthy --admin Enabled --dependencies DepsReady \
-      --config-value "kind=${system_kind} targets=${system_signature}"
-  }
-
-  _observe_system_composition() {
-    local total=0 ok=0 failed=() unknown=() status target
-
-    if [[ -z "${UCC_TARGET_STATUS_FILE:-}" || ! -f "${UCC_TARGET_STATUS_FILE:-}" ]]; then
-      ucc_asm_state --installation Installed --runtime Stopped \
-        --health Unknown --admin Enabled --dependencies DepsUnknown \
-        --config-value "kind=${system_kind} targets=${system_signature}"
-      return
+    # sudo-available capability
+    if [[ "$target" == "sudo-available" ]]; then
+      ucc_yaml_capability_target "$cfg_dir" "$yaml" "sudo-available"
+      continue
     fi
 
-    for target in "${SYSTEM_DEPENDENCIES[@]}"; do
-      total=$((total + 1))
-      status="$(_system_status_for "$target")"
-      case "$status" in
-        ok) ok=$((ok + 1)) ;;
-        failed) failed+=("$target") ;;
-        ""|unknown|unchanged) unknown+=("$target") ;;
-        *) unknown+=("$target") ;;
+    # Skip admin targets when sudo is not available
+    if [[ $_sudo_ok -eq 0 ]]; then
+      _admin="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "admin_required" 2>/dev/null)"
+      if [[ "$_admin" == "true" ]]; then
+        ucc_skip_target "$target" "sudo not available"
+        continue
+      fi
+    fi
+
+    ucc_yaml_parametric_target "$cfg_dir" "$yaml" "$target"
+  done <<< "$ordered"
+
+  # Restart UI processes if any defaults changed
+  if [[ "$UCC_DRY_RUN" != "1" && ${_UCC_CHANGED:-0} -gt 0 ]]; then
+    while IFS= read -r _proc; do
+      [[ -n "$_proc" ]] && { killall "$_proc" 2>/dev/null || true; }
+    done < <(yaml_list "$cfg_dir" "$yaml" restart_processes)
+    log_info "UI processes restarted"
+  fi
+
+  # System composition — derives state from OS-level targets
+  _system_observe() {
+    local _total=0 _ok=0 _failed=0 _status
+    while IFS= read -r _t; do
+      [[ -n "$_t" && "$_t" != "system-composition" ]] || continue
+      _total=$((_total + 1))
+      _status="$(awk -F'|' -v dep="$_t" '$1==dep {val=$2} END {print val}' "${UCC_TARGET_STATUS_FILE:-}" 2>/dev/null || true)"
+      case "$_status" in
+        ok) _ok=$((_ok + 1)) ;;
+        failed) _failed=$((_failed + 1)) ;;
       esac
-    done
-
-    if [[ "$ok" -eq "$expected_count" ]]; then
-      _system_desired_state
-      return
-    fi
-
-    if [[ ${#failed[@]} -gt 0 ]]; then
+    done <<< "$ordered"
+    if [[ "$_ok" -eq "$_total" && "$_total" -gt 0 ]]; then
+      ucc_asm_state --installation Configured --runtime Running \
+        --health Healthy --admin Enabled --dependencies DepsReady \
+        --config-value "kind=os-config ok=${_ok}/${_total}"
+    elif [[ "$_failed" -gt 0 ]]; then
       ucc_asm_state --installation Installed --runtime Stopped \
         --health Unhealthy --admin Enabled --dependencies DepsFailed \
-        --config-value "kind=${system_kind} ok=${ok}/${total} failed=$(IFS=,; echo "${failed[*]}")"
-      return
+        --config-value "kind=os-config ok=${_ok}/${_total} failed=${_failed}"
+    else
+      ucc_asm_state --installation Installed --runtime Stopped \
+        --health Degraded --admin Enabled --dependencies DepsDegraded \
+        --config-value "kind=os-config ok=${_ok}/${_total}"
     fi
-
-    ucc_asm_state --installation Installed --runtime Stopped \
-      --health Degraded --admin Enabled --dependencies DepsDegraded \
-      --config-value "kind=${system_kind} ok=${ok}/${total} pending=$(IFS=,; echo "${unknown[*]}")"
   }
 
-  _evidence_system_composition() {
-    local target status total=0 ok=0 failed=0 pending=0
-    for target in "${SYSTEM_DEPENDENCIES[@]}"; do
-      total=$((total + 1))
-      status="$(_system_status_for "$target")"
-      case "$status" in
-        ok) ok=$((ok + 1)) ;;
-        failed) failed=$((failed + 1)) ;;
-        *) pending=$((pending + 1)) ;;
-      esac
-    done
-    printf 'kind=%s  required=%s  ready=%s/%s' "$system_kind" "$expected_count" "$ok" "$total"
-    [[ "$failed" -gt 0 ]] && printf '  failed=%s' "$failed"
-    [[ "$pending" -gt 0 ]] && printf '  pending=%s' "$pending"
+  _system_evidence() {
+    local _total=0 _ok=0 _failed=0 _pending=0 _status
+    while IFS= read -r _t; do
+      [[ -n "$_t" && "$_t" != "system-composition" ]] || continue
+      _total=$((_total + 1))
+      _status="$(awk -F'|' -v dep="$_t" '$1==dep {val=$2} END {print val}' "${UCC_TARGET_STATUS_FILE:-}" 2>/dev/null || true)"
+      case "$_status" in ok) _ok=$((_ok + 1)) ;; failed) _failed=$((_failed + 1)) ;; *) _pending=$((_pending + 1)) ;; esac
+    done <<< "$ordered"
+    printf 'kind=os-config  ready=%s/%s' "$_ok" "$_total"
+    [[ "$_failed" -gt 0 ]] && printf '  failed=%s' "$_failed"
+    [[ "$_pending" -gt 0 ]] && printf '  pending=%s' "$_pending"
   }
 
-  _reconcile_system_composition() {
-    log_info "system-composition is derived from subsystem convergence; no direct mutation is applied"
+  _system_desired() {
+    local _total=0
+    while IFS= read -r _t; do
+      [[ -n "$_t" && "$_t" != "system-composition" ]] || continue
+      _total=$((_total + 1))
+    done <<< "$ordered"
+    ucc_asm_state --installation Configured --runtime Running \
+      --health Healthy --admin Enabled --dependencies DepsReady \
+      --config-value "kind=os-config ok=${_total}/${_total}"
+  }
+
+  _system_noop() {
+    log_info "system-composition is derived — no direct mutation"
     return 0
   }
 
   ucc_target \
     --name "system-composition" \
     --profile parametric \
-    --observe _observe_system_composition \
-    --evidence _evidence_system_composition \
-    --desired "$(_system_desired_state)" \
-    --install _reconcile_system_composition \
-    --update _reconcile_system_composition
+    --observe _system_observe \
+    --evidence _system_evidence \
+    --desired "$(_system_desired)" \
+    --install _system_noop \
+    --update _system_noop
 }
