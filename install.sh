@@ -438,18 +438,26 @@ if [[ "${UCC_INTERACTIVE:-0}" == "1" && -c /dev/tty && -z "$UCC_TARGET_SET" ]]; 
   echo "  ── Selection ─────────────────────────────────────────"
   echo "  What would you like to install?"
   echo ""
-  # Pre-load component target lists
-  declare -A _COMP_TARGETS
+  # Pre-load component target lists (parallel arrays — bash 3 compatible)
+  _COMP_TARGETS_DATA=()
   for _c in "${COMPONENTS[@]}"; do
-    _COMP_TARGETS["$_c"]="$(python3 "$_QUERY_SCRIPT" --ordered-targets "$_c" "$_MANIFEST_DIR" 2>/dev/null)"
+    _COMP_TARGETS_DATA+=("$(python3 "$_QUERY_SCRIPT" --ordered-targets "$_c" "$_MANIFEST_DIR" 2>/dev/null)")
   done
+
+  _get_comp_targets() {
+    local _idx=0
+    for _cc in "${COMPONENTS[@]}"; do
+      [[ "$_cc" == "$1" ]] && { echo "${_COMP_TARGETS_DATA[$_idx]}"; return; }
+      _idx=$((_idx + 1))
+    done
+  }
 
   _show_menu() {
     echo ""
     echo "    a) All"
     local _idx=1
     for _c in "${COMPONENTS[@]}"; do
-      local _tcount; _tcount=$(echo "${_COMP_TARGETS[$_c]}" | grep -c . || echo 0)
+      local _tcount; _tcount=$(echo "${_COMP_TARGETS_DATA[$((_idx - 1))]}" | grep -c . || echo 0)
       printf '    %d) %-20s (%s targets)\n' "$_idx" "$_c" "$_tcount"
       _idx=$((_idx + 1))
     done
@@ -479,7 +487,7 @@ if [[ "${UCC_INTERACTIVE:-0}" == "1" && -c /dev/tty && -z "$UCC_TARGET_SET" ]]; 
       while IFS= read -r _t; do
         [[ -n "$_t" ]] && printf '      %d) %s\n' "$_tidx" "$_t"
         _tidx=$((_tidx + 1))
-      done <<< "${_COMP_TARGETS[$_sel_comp]}"
+      done <<< "$(_get_comp_targets "$_sel_comp")"
       echo ""
       printf '  Select: a=all %s targets, numbers comma-separated, b=back → ' "$_sel_comp"
       read -r _sub_input < /dev/tty
@@ -495,7 +503,7 @@ if [[ "${UCC_INTERACTIVE:-0}" == "1" && -c /dev/tty && -z "$UCC_TARGET_SET" ]]; 
         local _targets_arr=()
         while IFS= read -r _t; do
           [[ -n "$_t" ]] && _targets_arr+=("$_t")
-        done <<< "${_COMP_TARGETS[$_sel_comp]}"
+        done <<< "$(_get_comp_targets "$_sel_comp")"
         for _sp in "${_sub_picks[@]}"; do
           _sp="${_sp// /}"
           if [[ "$_sp" =~ ^[0-9]+$ && "$_sp" -ge 1 && "$_sp" -le "${#_targets_arr[@]}" ]]; then
