@@ -397,10 +397,11 @@ PY
   ucc_yaml_runtime_target "$cfg_dir" "$yaml" "ollama" _start_ollama _update_ollama
 
   # ---- Ollama API health check (guard before model pulls) ----
-  if [[ "$UCC_DRY_RUN" != "1" ]]; then
+  # Skip if ollama targets are not in the selection
+  if [[ "${UCC_TARGET_SET:-}" == *"ollama|"* && "$UCC_DRY_RUN" != "1" ]]; then
     if ! curl -fsS "$_OLLAMA_API_URL" >/dev/null 2>&1; then
       log_warn "Ollama API not responding at $_OLLAMA_API_URL — models will not be pulled"
-      return 1
+      return 0
     fi
   fi
 
