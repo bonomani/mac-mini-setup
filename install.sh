@@ -439,25 +439,29 @@ if [[ "${UCC_INTERACTIVE:-0}" == "1" && -c /dev/tty && -z "$UCC_TARGET_SET" ]]; 
   echo "  What would you like to install?"
   echo ""
   # Pre-load component target lists (parallel arrays — bash 3 compatible)
+  # Pre-load component target lists (skip verify — no browsable targets)
+  _BROWSE_COMPS=()
   _COMP_TARGETS_DATA=()
   for _c in "${COMPONENTS[@]}"; do
+    [[ "$_c" == "verify" ]] && continue
+    _BROWSE_COMPS+=("$_c")
     _COMP_TARGETS_DATA+=("$(python3 "$_QUERY_SCRIPT" --ordered-targets "$_c" "$_MANIFEST_DIR" 2>/dev/null)")
   done
 
   _get_comp_targets() {
     local _idx=0
-    for _cc in "${COMPONENTS[@]}"; do
+    for _cc in "${_BROWSE_COMPS[@]}"; do
       [[ "$_cc" == "$1" ]] && { echo "${_COMP_TARGETS_DATA[$_idx]}"; return; }
       _idx=$((_idx + 1))
     done
   }
 
   _show_menu() {
+    local _idx=1 _tcount
     echo ""
     echo "    a) All"
-    local _idx=1
-    for _c in "${COMPONENTS[@]}"; do
-      local _tcount; _tcount=$(echo "${_COMP_TARGETS_DATA[$((_idx - 1))]}" | grep -c . || echo 0)
+    for _c in "${_BROWSE_COMPS[@]}"; do
+      _tcount=$(echo "${_COMP_TARGETS_DATA[$((_idx - 1))]}" | grep -c . || echo 0)
       printf '    %d) %-20s (%s targets)\n' "$_idx" "$_c" "$_tcount"
       _idx=$((_idx + 1))
     done
@@ -469,7 +473,7 @@ if [[ "${UCC_INTERACTIVE:-0}" == "1" && -c /dev/tty && -z "$UCC_TARGET_SET" ]]; 
   while true; do
     printf '  → '
     read -r _input < /dev/tty
-    [[ -z "$_input" ]] && break  # Enter with no input = done
+    [[ -z "$_input" ]] && break
 
     if [[ "$_input" == "a" || "$_input" == "all" ]]; then
       _resolved=()
@@ -479,17 +483,17 @@ if [[ "${UCC_INTERACTIVE:-0}" == "1" && -c /dev/tty && -z "$UCC_TARGET_SET" ]]; 
       break
     elif [[ "$_input" == "q" || "$_input" == "done" ]]; then
       break
-    elif [[ "$_input" =~ ^[0-9]+$ && "$_input" -ge 1 && "$_input" -le "${#COMPONENTS[@]}" ]]; then
-      local _sel_comp="${COMPONENTS[$((_input - 1))]}"
+    elif [[ "$_input" =~ ^[0-9]+$ && "$_input" -ge 1 && "$_input" -le "${#_BROWSE_COMPS[@]}" ]]; then
+      _sel_comp="${_BROWSE_COMPS[$((_input - 1))]}"
       echo ""
       echo "  ── ${_sel_comp} ──"
-      local _tidx=1
+      _tidx=1
       while IFS= read -r _t; do
         [[ -n "$_t" ]] && printf '      %d) %s\n' "$_tidx" "$_t"
         _tidx=$((_tidx + 1))
       done <<< "$(_get_comp_targets "$_sel_comp")"
       echo ""
-      printf '  Select: a=all %s targets, numbers comma-separated, b=back → ' "$_sel_comp"
+      printf '  Select: a=all %s, numbers comma-separated, b=back → ' "$_sel_comp"
       read -r _sub_input < /dev/tty
 
       if [[ "$_sub_input" == "b" || -z "$_sub_input" ]]; then
@@ -497,10 +501,10 @@ if [[ "${UCC_INTERACTIVE:-0}" == "1" && -c /dev/tty && -z "$UCC_TARGET_SET" ]]; 
         continue
       elif [[ "$_sub_input" == "a" ]]; then
         _resolve_component "$_sel_comp"
-        echo "  Added: all ${_sel_comp} targets"
+        echo "  Added: all ${_sel_comp}"
       else
         IFS=',' read -ra _sub_picks <<< "$_sub_input"
-        local _targets_arr=()
+        _targets_arr=()
         while IFS= read -r _t; do
           [[ -n "$_t" ]] && _targets_arr+=("$_t")
         done <<< "$(_get_comp_targets "$_sel_comp")"
@@ -514,7 +518,6 @@ if [[ "${UCC_INTERACTIVE:-0}" == "1" && -c /dev/tty && -z "$UCC_TARGET_SET" ]]; 
       fi
       _show_menu
     else
-      # Try as target name
       if python3 "$_QUERY_SCRIPT" --find-target "$_input" "$_MANIFEST_DIR" >/dev/null 2>&1; then
         _resolve_target "$_input"
         echo "  Added: $_input"
