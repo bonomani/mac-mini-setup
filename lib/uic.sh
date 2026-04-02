@@ -162,9 +162,16 @@ uic_preference() {
       _opts_inline="${_opts_inline:+$_opts_inline, }${_marker}${_i})${_o}"
       _i=$((_i + 1))
     done < <(echo "$options" | tr '|' '\n')
+    echo ""
     printf '  [?] %s\n' "$name"
-    printf '      %s\n' "$rationale"
-    printf '      Options: %s  →  ' "$_opts_inline"
+    local _oi=1
+    for _o in "${_opts_arr[@]}"; do
+      local _def=""
+      [[ "$_o" == "$default" ]] && _def=" (default)"
+      printf '      %d) %s%s\n' "$_oi" "$_o" "$_def"
+      _oi=$((_oi + 1))
+    done
+    printf '      → '
     read -r _choice < /dev/tty
     if [[ -n "$_choice" && "$_choice" =~ ^[0-9]+$ && "$_choice" -ge 1 && "$_choice" -le "${#_opts_arr[@]}" ]]; then
       resolved="${_opts_arr[$((_choice - 1))]}"
