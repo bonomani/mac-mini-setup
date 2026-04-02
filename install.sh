@@ -231,6 +231,7 @@ Pass a target name (not a component) to run only that target.
 Options:
   --mode install    Install missing components (default)
   --mode update     Update already-installed components
+  --all             Select all components and targets
   --mode check      Observe current state without changing anything (drift detection)
   --dry-run         Show what would change without applying it
   --interactive     Prompt for preferences and confirm each change
@@ -271,6 +272,7 @@ while [[ $# -gt 0 ]]; do
     --dry-run)       export UCC_DRY_RUN=1;     shift ;;
     --mode)          export UCC_MODE="$2";    shift 2 ;;
     --interactive)   export UCC_INTERACTIVE=1; shift ;;
+    --all)           export UCC_RUN_ALL=1;    shift ;;
     --debug)         export UCC_DEBUG=1;      shift ;;
     --preflight)     export UIC_PREFLIGHT=1;  shift ;;
     --pref)
@@ -306,20 +308,15 @@ _resolve_component() {
   done < <(python3 "$_QUERY_SCRIPT" --ordered-targets "$name" "$_MANIFEST_DIR" 2>/dev/null || true)
 }
 
-_resolved=()
-if [[ ${#TO_RUN[@]} -eq 0 ]]; then
-  # No args → select all
-  for _c in "${COMPONENTS[@]}"; do
-    _resolve_component "$_c"
-  done
-else
-  for _arg in "${TO_RUN[@]}"; do
-    # Strip explicit prefix if present
+_UCC_SELECTION_FILE="${UIC_PREF_FILE%/*}/selection.env"
+
+# Resolve a list of component/target names into _resolved + UCC_TARGET_SET
+_resolve_selection() {
+  for _arg in "$@"; do
     case "$_arg" in
       component:*) _arg="${_arg#component:}" ;;
       target:*)    _resolve_target "${_arg#target:}"; continue ;;
     esac
-    # Try component first, then target
     if printf '%s\n' "${COMPONENTS[@]}" | grep -qx "$_arg"; then
       _resolve_component "$_arg"
     else
@@ -328,7 +325,37 @@ else
       _resolve_target "$_arg"
     fi
   done
+}
+
+_resolved=()
+if [[ "${UCC_RUN_ALL:-0}" == "1" ]]; then
+  # --all: select everything
+  for _c in "${COMPONENTS[@]}"; do _resolve_component "$_c"; done
+elif [[ ${#TO_RUN[@]} -gt 0 ]]; then
+  # Explicit args: resolve those
+  _resolve_selection "${TO_RUN[@]}"
+elif [[ -f "$_UCC_SELECTION_FILE" ]]; then
+  # No args: load saved selection
+  _saved_items=()
+  while IFS= read -r _line; do
+    [[ -n "$_line" && "$_line" != \#* ]] && _saved_items+=("$_line")
+  done < "$_UCC_SELECTION_FILE"
+  if [[ ${#_saved_items[@]} -gt 0 ]]; then
+    log_info "Loaded selection from $_UCC_SELECTION_FILE"
+    _resolve_selection "${_saved_items[@]}"
+  fi
+  # else: empty file → nothing selected
+else
+  # No args, no saved selection → nothing selected
+  # All components still run but every target shows as [skip]
+  :
 fi
+
+# Ensure all components are in TO_RUN so runners execute (targets filter via UCC_TARGET_SET)
+# Components not in _resolved are added so their targets show as [skip]
+for _c in "${COMPONENTS[@]}"; do
+  _resolved+=("$_c")
+done
 
 # Deduplicate components while preserving order
 _deduped=(); _seen_comps=""
@@ -420,27 +447,69 @@ if [[ "${UCC_INTERACTIVE:-0}" == "1" && -t 0 ]]; then
   fi
 fi
 
-# --- Interactive: component selection ------------------------
-if [[ "${UCC_INTERACTIVE:-0}" == "1" && -t 0 && ${#TO_RUN[@]} -gt 3 ]]; then
+# --- Interactive: component/target selection + save -----------
+if [[ "${UCC_INTERACTIVE:-0}" == "1" && -t 0 && -z "$UCC_TARGET_SET" ]]; then
   echo ""
-  echo "  Components to run:"
+  echo "  ── Selection ─────────────────────────────────────────"
+  echo "  What would you like to install?"
+  echo ""
+  echo "    a) All components"
   _comp_idx=1
-  for _c in "${TO_RUN[@]}"; do
-    printf '    %d) %s\n' "$_comp_idx" "$_c"
+  for _c in "${COMPONENTS[@]}"; do
+    printf '    %d) component: %s\n' "$_comp_idx" "$_c"
     _comp_idx=$((_comp_idx + 1))
   done
-  printf '  Enter numbers to run (comma-separated), or Enter for all: '
-  read -r _comp_choice
-  if [[ -n "$_comp_choice" ]]; then
-    _selected=()
-    IFS=',' read -ra _picks <<< "$_comp_choice"
+  echo ""
+  printf '  Choose [a=all, numbers comma-separated, or target names]: '
+  read -r _selection
+  if [[ "$_selection" == "a" || "$_selection" == "all" ]]; then
+    _resolved=()
+    UCC_TARGET_SET=""
+    for _c in "${COMPONENTS[@]}"; do _resolve_component "$_c"; done
+  elif [[ -n "$_selection" ]]; then
+    _resolved=()
+    UCC_TARGET_SET=""
+    IFS=',' read -ra _picks <<< "$_selection"
     for _p in "${_picks[@]}"; do
       _p="${_p// /}"  # trim spaces
-      if [[ "$_p" =~ ^[0-9]+$ && "$_p" -ge 1 && "$_p" -le "${#TO_RUN[@]}" ]]; then
-        _selected+=("${TO_RUN[$((_p - 1))]}")
+      if [[ "$_p" =~ ^[0-9]+$ && "$_p" -ge 1 && "$_p" -le "${#COMPONENTS[@]}" ]]; then
+        _resolve_component "${COMPONENTS[$((_p - 1))]}"
+      else
+        # Treat as target name
+        if python3 "$_QUERY_SCRIPT" --find-target "$_p" "$_MANIFEST_DIR" >/dev/null 2>&1; then
+          _resolve_target "$_p"
+        else
+          log_warn "Unknown: '$_p' — skipping"
+        fi
       fi
     done
-    [[ ${#_selected[@]} -gt 0 ]] && TO_RUN=("${_selected[@]}")
+    # Re-add all components so unselected ones show [skip]
+    for _c in "${COMPONENTS[@]}"; do _resolved+=("$_c"); done
+  fi
+  export UCC_TARGET_SET
+  # Save selection
+  printf '\n  Save this selection to %s? [Y/n] ' "$_UCC_SELECTION_FILE"
+  read -r _save_sel
+  if [[ ! "$_save_sel" =~ ^[Nn] ]]; then
+    mkdir -p "$(dirname "$_UCC_SELECTION_FILE")"
+    printf '# Saved component/target selection\n' > "$_UCC_SELECTION_FILE"
+    printf '# Edit to change what runs by default\n' >> "$_UCC_SELECTION_FILE"
+    printf '# Use component names or target names, one per line\n' >> "$_UCC_SELECTION_FILE"
+    # Reconstruct what was selected
+    if [[ "$_selection" == "a" || "$_selection" == "all" ]]; then
+      for _c in "${COMPONENTS[@]}"; do echo "$_c" >> "$_UCC_SELECTION_FILE"; done
+    elif [[ -n "$_selection" ]]; then
+      IFS=',' read -ra _picks <<< "$_selection"
+      for _p in "${_picks[@]}"; do
+        _p="${_p// /}"
+        if [[ "$_p" =~ ^[0-9]+$ && "$_p" -ge 1 && "$_p" -le "${#COMPONENTS[@]}" ]]; then
+          echo "${COMPONENTS[$((_p - 1))]}" >> "$_UCC_SELECTION_FILE"
+        else
+          echo "$_p" >> "$_UCC_SELECTION_FILE"
+        fi
+      done
+    fi
+    log_info "Selection saved to $_UCC_SELECTION_FILE"
   fi
 fi
 
