@@ -69,13 +69,8 @@ targets:
     display_name: Homebrew
     depends_on:
     - network-available
-    depends_on_by_platform:
-      macos:
-      - xcode-command-line-tools
-      linux:
-      - build-deps
-      wsl2:
-      - build-deps
+    - xcode-command-line-tools?macos
+    - build-deps?!brew
     provided_by_tool: brew-installer
     driver:
       kind: custom

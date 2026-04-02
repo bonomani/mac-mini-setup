@@ -410,6 +410,41 @@ def _validate_generated_target_collection(
             )
 
 
+def _host_match_values():
+    """Return the set of values that a conditional dep can match against."""
+    vals = set()
+    for var in ["HOST_PLATFORM", "HOST_PLATFORM_VARIANT", "HOST_ARCH",
+                "HOST_OS_ID", "HOST_PACKAGE_MANAGER"]:
+        v = (os.environ.get(var) or "").strip()
+        if v:
+            vals.add(v)
+    # Also add fingerprint segments
+    fp = (os.environ.get("HOST_FINGERPRINT") or "").strip()
+    for seg in fp.split("/"):
+        if seg:
+            vals.add(seg)
+    return vals
+
+
+def _resolve_conditional_dep(entry, host_values=None):
+    """Parse 'target?condition' → (target_name, included).
+    No '?' → always included.
+    '?value' → included if value in host_values.
+    '?!value' → included if value NOT in host_values.
+    Returns (target_name_without_condition, True/False).
+    For union mode (all possible deps), returns (target_name, True) always.
+    """
+    if "?" not in entry:
+        return entry, True
+    target, condition = entry.split("?", 1)
+    if host_values is None:
+        # Union mode — include all possible deps regardless of condition
+        return target, True
+    if condition.startswith("!"):
+        return target, condition[1:] not in host_values
+    return target, condition in host_values
+
+
 def _driver_implicit_dep(data):
     """Return the implicit depends_on target for this target's driver, or None."""
     driver = data.get("driver") or {}
@@ -427,17 +462,23 @@ def _driver_provided_by(data):
 
 
 def _target_dep_union(data):
-    deps = list(data.get("depends_on", []) or [])
+    """All possible deps (union of all conditions) — for validation and ordering."""
+    resolved = []
+    for entry in (data.get("depends_on", []) or []):
+        if isinstance(entry, str):
+            target, _ = _resolve_conditional_dep(entry, host_values=None)  # union mode
+            resolved.append(target)
     # Inject implicit driver dependency
     implicit = _driver_implicit_dep(data)
-    if implicit and implicit not in deps:
-        deps.insert(0, implicit)
+    if implicit and implicit not in resolved:
+        resolved.insert(0, implicit)
+    # Legacy: depends_on_by_platform (backward compat until fully migrated)
     platform_deps = data.get("depends_on_by_platform") or {}
     if isinstance(platform_deps, dict):
         for items in platform_deps.values():
             if isinstance(items, list):
-                deps.extend(items)
-    return deps
+                resolved.extend(items)
+    return resolved
 
 
 def _target_soft_dep_targets(data):
@@ -453,11 +494,19 @@ def _target_order_union(data):
 
 
 def _effective_target_deps(data):
-    deps = list(data.get("depends_on", []) or [])
+    """Deps resolved for the current host — conditional deps evaluated."""
+    host_values = _host_match_values()
+    resolved = []
+    for entry in (data.get("depends_on", []) or []):
+        if isinstance(entry, str):
+            target, included = _resolve_conditional_dep(entry, host_values)
+            if included and target not in resolved:
+                resolved.append(target)
     # Inject implicit driver dependency
     implicit = _driver_implicit_dep(data)
-    if implicit and implicit not in deps:
-        deps.insert(0, implicit)
+    if implicit and implicit not in resolved:
+        resolved.insert(0, implicit)
+    # Legacy: depends_on_by_platform (backward compat)
     platform = (os.environ.get("HOST_PLATFORM_VARIANT") or "").strip()
     family = (os.environ.get("HOST_PLATFORM") or "").strip()
     candidates = []
@@ -473,8 +522,8 @@ def _effective_target_deps(data):
         for candidate in candidates:
             items = platform_deps.get(candidate) or []
             if isinstance(items, list):
-                deps.extend(items)
-    return deps
+                resolved.extend(items)
+    return resolved
 
 
 def validate(manifest, known_gates):
@@ -821,8 +870,10 @@ def validate(manifest, known_gates):
             if not isinstance(dep, str) or not dep.strip():
                 errors.append(f"target '{name}' depends_on entries must be non-empty strings")
                 continue
-            if dep not in targets:
-                errors.append(f"target '{name}' depends_on unknown target '{dep}'")
+            # Strip ?condition for target existence check
+            dep_target = dep.split("?")[0] if "?" in dep else dep
+            if dep_target not in targets:
+                errors.append(f"target '{name}' depends_on unknown target '{dep_target}'")
 
         platform_deps = data.get("depends_on_by_platform") or {}
         if platform_deps:
