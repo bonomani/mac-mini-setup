@@ -21,6 +21,7 @@ for p in pkgs:
 }
 
 # Return 0 if a pip package is installed at or above the given minimum version.
+# Overrides the standalone version in utils.sh with cached lookup.
 # Usage: pip_package_min_version <pkg> <min_version>
 pip_package_min_version() {
   local ver; ver="$(_pip_cached_version "$1")"

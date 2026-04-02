@@ -1,17 +1,7 @@
 #!/usr/bin/env bash
 # lib/unsloth_studio.sh — Unsloth Studio runtime targets (macOS launchd + Linux systemd)
 # Sourced by components/ai-python-stack.sh
-
-# Return 0 if PyTorch Metal MPS is available on this host.
-torch_mps_available() {
-  python3 -c "import torch; raise SystemExit(0 if torch.backends.mps.is_available() else 1)" 2>/dev/null
-}
-
-# Print 'available' or 'unavailable (CPU only)' depending on MPS support.
-torch_mps_status() {
-  python3 -c "import torch; print('available' if torch.backends.mps.is_available() else 'unavailable (CPU only)')" \
-    2>/dev/null || printf 'unavailable (CPU only)'
-}
+# torch_mps_available / torch_mps_status are defined in lib/utils.sh (globally available)
 
 # Resolve absolute path to the unsloth binary — fails fast if not found.
 # launchd/systemd do not load pyenv shims so we must bake in the absolute path.

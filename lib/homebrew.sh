@@ -82,7 +82,7 @@ xcode_clt_update() {
   if ucc_run softwareupdate --install "$label"; then
     return 0
   fi
-  if sudo -n true >/dev/null 2>&1; then
+  if sudo_is_available; then
     ucc_run sudo softwareupdate --install "$label"
     return $?
   fi

@@ -220,7 +220,7 @@ desktop_app_handle_unmanaged_cask() {
       return 124
       ;;
     migrate)
-      sudo -n true >/dev/null 2>&1 || { log_warn "Migrating ${display_name} requires admin; run: sudo -v"; return 125; }
+      sudo_is_available || { log_warn "Migrating ${display_name} requires admin; run: sudo -v"; return 125; }
       brew_cask_migrate_install "$cask_id" || return 1
       ;;
     *)
@@ -391,7 +391,7 @@ brew_cask_install() {
   NONINTERACTIVE=1 ucc_run brew install --cask "$@"; rc=$?
   if [[ $rc -ne 0 ]]; then
     # If no sudo ticket and brew failed, surface a clear policy message
-    if ! sudo -n true >/dev/null 2>&1; then
+    if sudo_not_available; then
       log_warn "Installing cask '$1' may require admin privileges; run: sudo -v and retry"
       return 125
     fi
@@ -409,7 +409,7 @@ brew_cask_upgrade() {
     NONINTERACTIVE=1 ucc_run brew upgrade --cask "$pkg"; rc=$?
   fi
   if [[ $rc -ne 0 ]]; then
-    if ! sudo -n true >/dev/null 2>&1; then
+    if sudo_not_available; then
       log_warn "Upgrading cask '$pkg' may require admin privileges; run: sudo -v and retry"
       return 125
     fi

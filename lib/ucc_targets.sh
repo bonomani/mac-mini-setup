@@ -338,7 +338,7 @@ _ucc_run_yaml_action() {
   esac
   [[ -n "$cmd" ]] || return 1
   if _ucc_yaml_target_admin_required "$cfg_dir" "$yaml" "$target" "$action_key"; then
-    if ! sudo -n true >/dev/null 2>&1; then
+    if sudo_not_available; then
       log_warn "Target '$target' requires admin privileges; acquire a sudo ticket first with: sudo -v"
       return 125
     fi
