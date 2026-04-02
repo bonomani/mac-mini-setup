@@ -457,12 +457,21 @@ if [[ "${UCC_INTERACTIVE:-0}" == "1" && -c /dev/tty && -z "$UCC_TARGET_SET" ]]; 
   }
 
   _show_menu() {
-    local _idx=1 _tcount
+    local _idx=1 _tcount _selected _t
     echo ""
     echo "    a) All"
     for _c in "${_BROWSE_COMPS[@]}"; do
       _tcount=$(echo "${_COMP_TARGETS_DATA[$((_idx - 1))]}" | grep -c . || echo 0)
-      printf '    %d) %-20s (%s targets)\n' "$_idx" "$_c" "$_tcount"
+      # Count how many targets from this component are in the set
+      _selected=0
+      while IFS= read -r _t; do
+        [[ -n "$_t" && "${UCC_TARGET_SET}" == *"${_t}|"* ]] && _selected=$((_selected + 1))
+      done <<< "${_COMP_TARGETS_DATA[$((_idx - 1))]}"
+      if [[ $_selected -gt 0 ]]; then
+        printf '    %d) %-20s (%d/%d selected)\n' "$_idx" "$_c" "$_selected" "$_tcount"
+      else
+        printf '    %d) %-20s (%d targets)\n' "$_idx" "$_c" "$_tcount"
+      fi
       _idx=$((_idx + 1))
     done
     echo ""
