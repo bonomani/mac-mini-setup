@@ -1,6 +1,6 @@
 component: system
 primary_profile: parametric
-libs: macos_config system
+libs: system
 runner: run_system_from_yaml
 on_fail: ignore
 platforms:
