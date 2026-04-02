@@ -119,8 +119,8 @@ print_services_summary() {
   [[ -n "$rows" ]] || return 0
   local _printed=0
   while IFS=$'\t' read -r _target name url note; do
-    # Filter to current target set when active
-    if [[ -n "${UCC_TARGET_SET:-}" && "${UCC_TARGET_SET}" != *"${_target}|"* ]]; then
+    # Filter to current target set (empty set = nothing selected)
+    if [[ "${UCC_TARGET_SET:-}" != *"${_target}|"* ]]; then
       continue
     fi
     if [[ $_printed -eq 0 ]]; then

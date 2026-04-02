@@ -798,6 +798,11 @@ _run_layer() {
     eval "${comps_ref}+=(\"\$comp\")"
     _print_component_header "$comp"
     if [[ "$filter" == "tic" ]]; then
+      # Skip verification when nothing was selected
+      if [[ -z "${UCC_TARGET_SET:-}" ]]; then
+        log_info "Skipping $(_display_component_name "$comp") (no targets selected)"
+        continue
+      fi
       if uic_component_blocked "$comp"; then
         log_warn "Component $comp blocked by UIC hard gate"
         FAILED_COMPONENTS+=("$comp"); continue
