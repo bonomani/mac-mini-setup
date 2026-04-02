@@ -147,19 +147,21 @@ uic_preference() {
     fi
   elif [[ "${UCC_INTERACTIVE:-0}" == "1" && -t 0 ]]; then
     # Interactive mode: prompt user to choose
-    local _opts_arr=() _i=1 _choice
+    # Print header once before first interactive preference
+    if [[ -z "${_UIC_INTERACTIVE_HEADER_SHOWN:-}" ]]; then
+      echo ""
+      echo "  ── Preference Selection ──────────────────────────────"
+      _UIC_INTERACTIVE_HEADER_SHOWN=1
+    fi
+    local _opts_arr=() _i=1 _choice _opts_inline=""
     while IFS= read -r _o; do
       _opts_arr+=("$_o")
-    done < <(echo "$options" | tr '|' '\n')
-    printf '\n  [?] %s\n' "$name"
-    printf '      %s\n' "$rationale"
-    for _o in "${_opts_arr[@]}"; do
-      local _marker="  "
-      [[ "$_o" == "$default" ]] && _marker="* "
-      printf '      %s%d) %s\n' "$_marker" "$_i" "$_o"
+      local _marker=""
+      [[ "$_o" == "$default" ]] && _marker="*"
+      _opts_inline="${_opts_inline:+$_opts_inline, }${_marker}${_i})${_o}"
       _i=$((_i + 1))
-    done
-    printf '      Choose [1-%d, default=%s]: ' "${#_opts_arr[@]}" "$default"
+    done < <(echo "$options" | tr '|' '\n')
+    printf '  [?] %-28s [%s] ' "$name" "$_opts_inline"
     read -r _choice
     if [[ -n "$_choice" && "$_choice" =~ ^[0-9]+$ && "$_choice" -ge 1 && "$_choice" -le "${#_opts_arr[@]}" ]]; then
       resolved="${_opts_arr[$((_choice - 1))]}"
