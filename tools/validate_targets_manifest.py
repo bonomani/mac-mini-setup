@@ -961,7 +961,12 @@ def main():
     target_name = None
     find_target_mode = False
     dep_components_mode = False
-    if len(args) >= 2 and args[0] == "--dep-components":
+    dep_targets_mode = False
+    if len(args) >= 2 and args[0] == "--dep-targets":
+        dep_targets_mode = True
+        target_name = args[1]
+        args = args[2:]
+    elif len(args) >= 2 and args[0] == "--dep-components":
         dep_components_mode = True
         target_name = args[1]
         args = args[2:]
@@ -1136,6 +1141,27 @@ def main():
         for comp_name in component_order(manifest, ordered):
             if comp_name in components:
                 print(comp_name)
+        return 0
+
+    if dep_targets_mode:
+        # Return the full transitive target closure in topological order
+        visited = set()
+        queue = [target_name]
+        while queue:
+            t = queue.pop(0)
+            if t in visited:
+                continue
+            visited.add(t)
+            data = manifest["targets"].get(t)
+            if data is None:
+                continue
+            for dep in _effective_target_deps(data or {}):
+                if dep not in visited:
+                    queue.append(dep)
+        # Print in topological order
+        for t in ordered:
+            if t in visited:
+                print(t)
         return 0
 
     if find_target_mode:
