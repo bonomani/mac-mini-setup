@@ -1454,6 +1454,14 @@ ucc_flush_registered_targets() {
 }
 
 ucc_target() {
+  # Extract --name for filter check
+  local _tgt_name="" _a _prev=0
+  for _a in "$@"; do
+    if [[ $_prev -eq 1 ]]; then _tgt_name="$_a"; break; fi
+    [[ "$_a" == "--name" ]] && _prev=1
+  done
+  [[ -n "$_tgt_name" ]] && _ucc_target_filtered_out "$_tgt_name" && return 0
+
   if [[ "${UCC_TARGET_DEFER:-0}" == "1" ]]; then
     _ucc_register_target "$@"
   else
