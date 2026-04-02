@@ -337,16 +337,21 @@ for _c in "${_resolved[@]+"${_resolved[@]}"}"; do
 done
 TO_RUN=("${_deduped[@]+"${_deduped[@]}"}")
 
-# No args = run all targets
-# Explicit args = run those targets/components + deps (rest show as skip)
-if [[ ${#TO_RUN[@]} -eq 0 ]]; then
-  TO_RUN=("${COMPONENTS[@]}")
-  # Build full target set from all components
-  for _c in "${TO_RUN[@]}"; do
+# Unified target resolution:
+# - No args → all targets selected (full run)
+# - Explicit args → those targets/components + transitive deps
+# Both paths build UCC_TARGET_SET via --dep-targets and derive TO_RUN
+if [[ ${#TO_RUN[@]} -eq 0 && -z "$UCC_TARGET_SET" ]]; then
+  # No explicit selection → select every target
+  for _c in "${COMPONENTS[@]}"; do
     while IFS= read -r _t; do
       [[ -n "$_t" ]] && UCC_TARGET_SET="${UCC_TARGET_SET}${_t}|"
     done < <(python3 "$_QUERY_SCRIPT" --ordered-targets "$_c" "$_MANIFEST_DIR" 2>/dev/null || true)
   done
+  TO_RUN=("${COMPONENTS[@]}")
+elif [[ ${#TO_RUN[@]} -eq 0 ]]; then
+  # Target set populated by arg loop but TO_RUN not yet derived
+  TO_RUN=("${COMPONENTS[@]}")
 fi
 export UCC_TARGET_SET
 
