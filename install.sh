@@ -453,39 +453,42 @@ if [[ "${UCC_INTERACTIVE:-0}" == "1" ]] && [[ -c /dev/tty ]]; then
     [[ "${_UIC_PREF_VALUES[$_i]}" != "${_UIC_PREF_DEFAULTS[$_i]}" ]] && _changed=$((_changed + 1))
   done
 
-  # Show non-default selections
-  _changed=0
+  # Show current selections
   echo ""
+  echo "  Current preferences:"
   for _i in "${!_UIC_PREF_NAMES[@]}"; do
-    if [[ "${_UIC_PREF_VALUES[$_i]}" != "${_UIC_PREF_DEFAULTS[$_i]}" ]]; then
-      [[ $_changed -eq 0 ]] && echo "  Non-default preferences:"
-      printf '    %s = %s (default: %s)\n' "${_UIC_PREF_NAMES[$_i]}" "${_UIC_PREF_VALUES[$_i]}" "${_UIC_PREF_DEFAULTS[$_i]}"
-      _changed=$((_changed + 1))
-    fi
+    local _marker="  "
+    [[ "${_UIC_PREF_VALUES[$_i]}" != "${_UIC_PREF_DEFAULTS[$_i]}" ]] && _marker="* "
+    printf '    %s%-28s = %s\n' "$_marker" "${_UIC_PREF_NAMES[$_i]}" "${_UIC_PREF_VALUES[$_i]}"
   done
-  # Include interactive-mode as a saveable preference
-  [[ "${UCC_INTERACTIVE:-1}" == "0" ]] && {
-    [[ $_changed -eq 0 ]] && echo "  Non-default preferences:"
-    printf '    interactive = no (default: yes)\n'
-    _changed=$((_changed + 1))
-  }
-  [[ $_changed -eq 0 ]] && echo "  All preferences at default values."
+  echo "    (* = differs from default)"
 
-  # Ask to save
-  printf '\n  [?] %-28s [1)yes, *2)no] ' "save-as-user-preferences"
-  read -r _save_prefs < /dev/tty
-  if [[ "$_save_prefs" == "1" ]]; then
+  # Save non-defaults (always — these are explicit user choices)
+  _changed=0
+  for _i in "${!_UIC_PREF_NAMES[@]}"; do
+    [[ "${_UIC_PREF_VALUES[$_i]}" != "${_UIC_PREF_DEFAULTS[$_i]}" ]] && _changed=$((_changed + 1))
+  done
+  if [[ $_changed -gt 0 ]]; then
     mkdir -p "$(dirname "$_pref_file")"
-    printf '# User preferences\n' > "$_pref_file"
-    printf '# Defaults in policy/preferences.yaml + component YAMLs\n' >> "$_pref_file"
-    printf '# Delete a line to revert to default\n' >> "$_pref_file"
+    printf '# User preference overrides\n' > "$_pref_file"
     for _i in "${!_UIC_PREF_NAMES[@]}"; do
-      if [[ "${_UIC_PREF_VALUES[$_i]}" != "${_UIC_PREF_DEFAULTS[$_i]}" ]]; then
+      [[ "${_UIC_PREF_VALUES[$_i]}" != "${_UIC_PREF_DEFAULTS[$_i]}" ]] && \
         printf '%s=%s\n' "${_UIC_PREF_NAMES[$_i]}" "${_UIC_PREF_VALUES[$_i]}" >> "$_pref_file"
-      fi
+    done
+    log_info "Saved $_changed non-default preference(s) to $_pref_file"
+  fi
+
+  # Ask about saving defaults too (locks them against future project changes)
+  printf '\n  [?] %-28s [1)yes, *2)no] ' "save-defaults-as-user-prefs"
+  read -r _save_defaults < /dev/tty
+  if [[ "$_save_defaults" == "1" ]]; then
+    mkdir -p "$(dirname "$_pref_file")"
+    printf '# User preferences (including defaults)\n' > "$_pref_file"
+    for _i in "${!_UIC_PREF_NAMES[@]}"; do
+      printf '%s=%s\n' "${_UIC_PREF_NAMES[$_i]}" "${_UIC_PREF_VALUES[$_i]}" >> "$_pref_file"
     done
     [[ "${UCC_INTERACTIVE:-1}" == "0" ]] && printf 'interactive=no\n' >> "$_pref_file"
-    log_info "Preferences saved to $_pref_file"
+    log_info "All preferences saved to $_pref_file"
   fi
 fi
 
