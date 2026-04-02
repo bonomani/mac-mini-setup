@@ -337,7 +337,17 @@ for _c in "${_resolved[@]+"${_resolved[@]}"}"; do
 done
 TO_RUN=("${_deduped[@]+"${_deduped[@]}"}")
 
-[[ ${#TO_RUN[@]} -eq 0 ]] && TO_RUN=("${COMPONENTS[@]}")
+# If no args, run all components with all targets
+if [[ ${#TO_RUN[@]} -eq 0 ]]; then
+  TO_RUN=("${COMPONENTS[@]}")
+  # Build full target set from all components' ordered targets
+  for _c in "${TO_RUN[@]}"; do
+    while IFS= read -r _t; do
+      [[ -n "$_t" ]] && UCC_TARGET_SET="${UCC_TARGET_SET}${_t}|"
+    done < <(python3 "$_QUERY_SCRIPT" --ordered-targets "$_c" "$_MANIFEST_DIR" 2>/dev/null || true)
+  done
+fi
+export UCC_TARGET_SET
 
 # Validate mode
 [[ "$UCC_MODE" =~ ^(install|update|check)$ ]] || log_error "Invalid --mode: $UCC_MODE (must be install, update, or check)"
