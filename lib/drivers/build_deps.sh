@@ -22,10 +22,10 @@ _build_deps_distro_family() {
 _build_deps_install_cmd() {
   local family="$1"
   case "$family" in
-    debian) printf 'sudo apt-get install -y' ;;
-    fedora) printf 'sudo dnf install -y' ;;
-    arch)   printf 'sudo pacman -S --noconfirm' ;;
-    suse)   printf 'sudo zypper install -y' ;;
+    debian) printf 'run_elevated apt-get install -y' ;;
+    fedora) printf 'run_elevated dnf install -y' ;;
+    arch)   printf 'run_elevated pacman -S --noconfirm' ;;
+    suse)   printf 'run_elevated zypper install -y' ;;
     *)      return 1 ;;
   esac
 }

@@ -138,11 +138,21 @@ _tic_not_macos() {
   [[ "${HOST_PLATFORM:-unknown}" != "macos" ]]
 }
 
-# Return 0 if passwordless sudo is available.
-sudo_is_available() { sudo -n true 2>/dev/null; }
+# Return 0 if elevated privileges are available (root or cached sudo ticket).
+sudo_is_available() { [[ $EUID -eq 0 ]] || sudo -n true 2>/dev/null; }
 
-# Return 0 if passwordless sudo is NOT available.
-sudo_not_available() { ! sudo -n true 2>/dev/null; }
+# Return 0 if elevated privileges are NOT available.
+sudo_not_available() { [[ $EUID -ne 0 ]] && ! sudo -n true 2>/dev/null; }
+
+# Run a command with elevated privileges (sudo when not root, direct when root).
+# Usage: run_elevated <cmd> [args...]
+run_elevated() {
+  if [[ $EUID -eq 0 ]]; then
+    "$@"
+  else
+    sudo "$@"
+  fi
+}
 
 # Return 0 if the networkQuality command exists (macOS only).
 networkquality_is_available() { command -v networkQuality >/dev/null 2>&1; }

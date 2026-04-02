@@ -67,7 +67,7 @@ _ucc_driver_pmset_apply() {
   value="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.value")"
   [[ -n "$setting" && -n "$value" ]] || return 1
   sudo_is_available || { log_warn "pmset requires sudo"; return 1; }
-  ucc_run sudo pmset -c "$setting" "$value"
+  ucc_run run_elevated pmset -c "$setting" "$value"
 }
 
 _ucc_driver_pmset_evidence() {

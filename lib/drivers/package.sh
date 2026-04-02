@@ -113,10 +113,10 @@ _pkg_native_install() {
     return 1
   fi
   case "$backend" in
-    apt)    ucc_run sudo apt-get install -y "$pkg" ;;
-    dnf)    ucc_run sudo dnf install -y "$pkg" ;;
-    pacman) ucc_run sudo pacman -S --noconfirm "$pkg" ;;
-    zypper) ucc_run sudo zypper install -y "$pkg" ;;
+    apt)    ucc_run run_elevated apt-get install -y "$pkg" ;;
+    dnf)    ucc_run run_elevated dnf install -y "$pkg" ;;
+    pacman) ucc_run run_elevated pacman -S --noconfirm "$pkg" ;;
+    zypper) ucc_run run_elevated zypper install -y "$pkg" ;;
     *)      log_warn "Unknown package backend '$backend'"; return 1 ;;
   esac
 }
@@ -128,10 +128,10 @@ _pkg_native_upgrade() {
     return 1
   fi
   case "$backend" in
-    apt)    ucc_run sudo apt-get install --only-upgrade -y "$pkg" ;;
-    dnf)    ucc_run sudo dnf upgrade -y "$pkg" ;;
-    pacman) ucc_run sudo pacman -S --noconfirm "$pkg" ;;
-    zypper) ucc_run sudo zypper update -y "$pkg" ;;
+    apt)    ucc_run run_elevated apt-get install --only-upgrade -y "$pkg" ;;
+    dnf)    ucc_run run_elevated dnf upgrade -y "$pkg" ;;
+    pacman) ucc_run run_elevated pacman -S --noconfirm "$pkg" ;;
+    zypper) ucc_run run_elevated zypper update -y "$pkg" ;;
     *)      log_warn "Unknown package backend '$backend'"; return 1 ;;
   esac
 }
