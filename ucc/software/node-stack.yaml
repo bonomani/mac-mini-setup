@@ -91,6 +91,7 @@ targets:
     display_name: Ariaflow
     depends_on:
     - networkquality-available
+    - cli-aria2
     driver:
       kind: brew-service
       ref: ariaflow
