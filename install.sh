@@ -258,6 +258,7 @@ EOF
 
 # --- Parse arguments ----------------------------------------
 TO_RUN=()
+export UCC_TARGET_SET=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --dry-run)       export UCC_DRY_RUN=1;     shift ;;
@@ -297,6 +298,8 @@ for _arg in ${TO_RUN[@]+"${TO_RUN[@]}"}; do
       _comp=$(python3 "$_QUERY_SCRIPT" --find-target "$_name" "$_MANIFEST_DIR" 2>/dev/null || true)
       [[ -n "$_comp" ]] || log_error "Unknown target: '$_name'"
       log_info "Resolved target '$_name' → component '$_comp'"
+      # Build target closure and derive components
+      UCC_TARGET_SET="${UCC_TARGET_SET}$(python3 "$_QUERY_SCRIPT" --dep-targets "$_name" "$_MANIFEST_DIR" 2>/dev/null | tr '\n' '|')"
       while IFS= read -r _dep_comp; do
         [[ -n "$_dep_comp" ]] && _resolved+=("$_dep_comp")
       done < <(python3 "$_QUERY_SCRIPT" --dep-components "$_name" "$_MANIFEST_DIR" 2>/dev/null || true)
@@ -308,6 +311,8 @@ for _arg in ${TO_RUN[@]+"${TO_RUN[@]}"}; do
         _comp=$(python3 "$_QUERY_SCRIPT" --find-target "$_arg" "$_MANIFEST_DIR" 2>/dev/null || true)
         [[ -n "$_comp" ]] || log_error "Unknown component or target: '$_arg'"
         log_info "Resolved target '$_arg' → component '$_comp'"
+        # Build target closure and derive components
+        UCC_TARGET_SET="${UCC_TARGET_SET}$(python3 "$_QUERY_SCRIPT" --dep-targets "$_arg" "$_MANIFEST_DIR" 2>/dev/null | tr '\n' '|')"
         while IFS= read -r _dep_comp; do
           [[ -n "$_dep_comp" ]] && _resolved+=("$_dep_comp")
         done < <(python3 "$_QUERY_SCRIPT" --dep-components "$_arg" "$_MANIFEST_DIR" 2>/dev/null || true)

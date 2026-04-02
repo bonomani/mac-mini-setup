@@ -346,8 +346,15 @@ _ucc_run_yaml_action() {
   _ucc_eval_yaml_expr "$cfg_dir" "$yaml" "$target" "$cmd"
 }
 
+# Return 0 if target should be skipped due to UCC_TARGET_SET filter.
+_ucc_target_filtered_out() {
+  local target="$1"
+  [[ -n "${UCC_TARGET_SET:-}" && "${UCC_TARGET_SET}" != *"${target}|"* ]]
+}
+
 ucc_yaml_simple_target() {
   local cfg_dir="$1" yaml="$2" target="$3"
+  _ucc_target_filtered_out "$target" && return 0
   local fn profile install_cmd update_cmd externally_managed_updates driver_kind
   local obs_type="" obs_oracle="" obs_cmd="" obs_model="" obs_success="" obs_failure=""
   local _ev_b64=""
@@ -423,6 +430,7 @@ _ucc_observe_yaml_capability_target() {
 
 ucc_yaml_capability_target() {
   local cfg_dir="$1" yaml="$2" target="$3"
+  _ucc_target_filtered_out "$target" && return 0
   local fn runtime_cmd=""
   local _ev_b64=""
   fn="${target//[^a-zA-Z0-9]/_}"
@@ -560,6 +568,7 @@ _ucc_yaml_parametric_desired_value() {
 
 ucc_yaml_parametric_target() {
   local cfg_dir="$1" yaml="$2" target="$3"
+  _ucc_target_filtered_out "$target" && return 0
   local fn install_cmd update_cmd desired gate dep_state driver_kind
   local obs_cmd="" obs_gate="" desired_cmd="" desired_value_raw=""
   local _ev_b64=""
@@ -798,6 +807,7 @@ _ucc_observe_yaml_docker_compose_runtime_target() {
 
 ucc_yaml_runtime_target() {
   local cfg_dir="$1" yaml="$2" target="$3" install_fn="${4:-}" update_fn="${5:-}"
+  _ucc_target_filtered_out "$target" && return 0
   local fn install_cmd update_cmd
   local obs_configured="" obs_runtime="" obs_driver="" obs_service="" obs_pkg="" obs_app="" obs_greedy=""
   local obs_stopped_inst="" obs_stopped_rt="" obs_stopped_health="" obs_stopped_deps=""
@@ -980,6 +990,7 @@ _ucc_wait_for_yaml_runtime_probe() {
 # runtime probe are governed as one runtime-profile target.
 ucc_brew_runtime_formula_target() {
   local tname="$1" pkg="$2" brew_ref="${3:-$2}" cfg_dir="${4:-}" yaml="${5:-}" service_name="${6:-$2}"
+  _ucc_target_filtered_out "$tname" && return 0
   local fn; fn="${tname//[^a-zA-Z0-9]/_}"
   eval "_ubrt_obs_${fn}() {
     local runtime_cmd configured_cmd
@@ -1410,8 +1421,7 @@ ucc_flush_registered_targets() {
   for target in "${declared[@]}"; do
     idx="$(_ucc_registered_index "$target" || true)"
     [[ -n "$idx" ]] || continue
-    # No target-level filtering — component selection handles scoping.
-    # All targets in selected components run fully.
+    # Target set filter applied at entry points (ucc_yaml_*_target functions)
     _ucc_require_declared_dependencies_resolved "$target" || return 1
     UCC_EXEC_SNAPSHOT="${_UCC_REGISTERED_ENV[$idx]}" eval "_ucc_execute_target ${_UCC_REGISTERED_ARGS[$idx]}" || return 1
   done
@@ -1458,6 +1468,7 @@ ucc_target_nonruntime() { _ucc_target_with_default_profile configured "$@"; }
 ucc_target_service()    { _ucc_target_with_default_profile runtime    "$@"; }
 
 ucc_skip_target() {
+  _ucc_target_filtered_out "$1" && return 0
   local name="$1" reason="$2"
   local display_name
   display_name="$(_ucc_display_name "$name")"
