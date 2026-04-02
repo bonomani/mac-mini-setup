@@ -6,6 +6,15 @@ platforms:
 - macos
 - linux
 - wsl2
+preferences:
+- name: python-version
+  default: 3.12.3
+  options: 3.11.9|3.12.3|3.13.0
+  rationale: 3.12.3 is the tested stable release with best ML library support; 3.13 is newer but less tested with PyTorch/HF
+- name: pytorch-device
+  default: mps
+  options: mps|cpu
+  rationale: mps uses Apple Silicon Metal GPU for ML acceleration; cpu works everywhere but is significantly slower
 unsloth_label: ai.unsloth.studio
 unsloth_plist_marker: <!-- ai.unsloth.studio v2 -->
 unsloth_plist_relpath: Library/LaunchAgents/ai.unsloth.studio.plist

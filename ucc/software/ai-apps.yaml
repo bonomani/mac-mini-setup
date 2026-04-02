@@ -7,6 +7,15 @@ platforms:
 - macos
 - linux
 - wsl2
+preferences:
+- name: ollama-model-autopull
+  default: none
+  options: none|small|medium|large
+  rationale: none prevents automatic multi-GB downloads; pull models manually when ready. small=≤3B, medium=≤8B, large=all
+- name: ai-apps-image-policy
+  default: reuse-local
+  options: reuse-local|always-pull
+  rationale: reuse-local starts the compose stack from locally available images for faster runs; always-pull refreshes images before stack startup and updates
 ollama_installer_url: https://ollama.com/install.sh
 brew_service_name: ollama
 api_host: 127.0.0.1

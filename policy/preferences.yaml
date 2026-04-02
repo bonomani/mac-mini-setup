@@ -1,61 +1,17 @@
 preferences:
-  - name: python-version
-    default: 3.12.3
-    options: 3.11.9|3.12.3|3.13.0
-    scope: component:ai-python-stack
-    rationale: 3.12.3 is the tested stable release with best ML library support; 3.13 is newer but less tested with PyTorch/HF
-  - name: docker-memory-gb
-    default: 48
-    options: 16|32|48|56
-    scope: component:docker
-    rationale: 48 GB leaves 16 GB for macOS and native processes on a 64 GB machine; 56 risks host instability under load
-  - name: docker-cpu-count
-    default: 10
-    options: 4|6|8|10|12
-    scope: component:docker
-    rationale: 10 cores leaves 2 for macOS scheduler; 12 (all) risks UI unresponsiveness during heavy container workloads
-  - name: docker-swap-mib
-    default: 4096
-    options: 1024|2048|4096|8192
-    scope: component:docker
-    rationale: 4096 MiB swap is adequate for most AI workloads; increase if you see out-of-memory errors under heavy load
-  - name: docker-disk-mib
-    default: 204800
-    options: 102400|204800|307200|512000
-    scope: component:docker
-    rationale: 200 GB (204800 MiB) covers large AI models and containers; increase for multi-model or large-dataset setups
-  - name: ollama-model-autopull
-    default: none
-    options: none|small|medium|large
-    scope: component:ai-apps
-    rationale: none prevents automatic multi-GB downloads; pull models manually when ready. small=≤3B, medium=≤8B, large=all
-  - name: pytorch-device
-    default: mps
-    options: mps|cpu
-    scope: component:ai-python-stack
-    rationale: mps uses Apple Silicon Metal GPU for ML acceleration; cpu works everywhere but is significantly slower
-  - name: ai-apps-image-policy
-    default: reuse-local
-    options: reuse-local|always-pull
-    scope: component:ai-apps
-    rationale: reuse-local starts the compose stack from locally available images for faster runs; always-pull refreshes images before stack startup and updates
   - name: destructive-updates
-    default: off
+    default: 'off'
     options: on|off
-    scope: global
     rationale: off prevents destructive container/package replacement without explicit operator intent; on allows full reimaging on update
   - name: service-policy
     default: autostart
     options: manual|autostart
-    scope: global
     rationale: 'autostart: script starts required services (Docker, Ollama) when not running; manual: operator starts services before running the script'
   - name: package-update-policy
     default: always-upgrade
     options: install-only|always-upgrade
-    scope: global
     rationale: 'always-upgrade: upgrade outdated packages on each run; install-only: skip already-installed packages (use to speed up runs when upgrades are not needed)'
   - name: preferred-driver-policy
     default: warn
     options: ignore|warn|migrate
-    scope: global
-    rationale: 'ignore accepts software found outside the preferred install driver; warn reports drift without changing it; migrate allows supported targets to converge to the preferred driver'
+    rationale: 'ignore accepts software found outside the preferred install driver; warn reports drift without changing it; migrate allows supported targets to converve to the preferred driver'

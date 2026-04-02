@@ -258,30 +258,6 @@ EOF
   exit 0
 }
 
-# --- Interactive mode resolution ---
-# Priority: --interactive/--no-interactive flag > saved pref > TTY prompt
-if [[ -z "${UCC_INTERACTIVE:-}" ]]; then
-  _saved_interactive=""
-  _pf="${UIC_PREF_FILE:-$HOME/.ai-stack/preferences.env}"
-  [[ -f "$_pf" ]] && _saved_interactive="$(grep -E '^interactive=' "$_pf" 2>/dev/null | head -1 | cut -d= -f2-)"
-  if [[ "$_saved_interactive" == "no" ]]; then
-    export UCC_INTERACTIVE=0
-  elif [[ "$_saved_interactive" == "yes" ]]; then
-    export UCC_INTERACTIVE=1
-  elif [[ -c /dev/tty ]]; then
-    # No flag, no saved pref — prompt
-    printf '\n  [?] %-28s [*1)yes, 2)no] ' "interactive-mode"
-    read -r _im_choice < /dev/tty
-    if [[ "$_im_choice" == "2" ]]; then
-      export UCC_INTERACTIVE=0
-    else
-      export UCC_INTERACTIVE=1
-    fi
-  else
-    export UCC_INTERACTIVE=0
-  fi
-fi
-
 # --- Parse arguments ----------------------------------------
 TO_RUN=()
 export UCC_TARGET_SET=""
@@ -306,6 +282,24 @@ while [[ $# -gt 0 ]]; do
     *)               TO_RUN+=("$1"); shift ;;
   esac
 done
+
+# --- Interactive mode resolution (after arg parsing so --no-interactive works) ---
+if [[ -z "${UCC_INTERACTIVE:-}" ]]; then
+  _saved_interactive=""
+  _pf="${UIC_PREF_FILE:-$HOME/.ai-stack/preferences.env}"
+  [[ -f "$_pf" ]] && _saved_interactive="$(grep -E '^interactive=' "$_pf" 2>/dev/null | head -1 | cut -d= -f2-)"
+  if [[ "$_saved_interactive" == "no" ]]; then
+    export UCC_INTERACTIVE=0
+  elif [[ "$_saved_interactive" == "yes" ]]; then
+    export UCC_INTERACTIVE=1
+  elif [[ -c /dev/tty ]]; then
+    printf '\n  [?] %-28s [*1)yes, 2)no] ' "interactive-mode"
+    read -r _im_choice < /dev/tty
+    [[ "$_im_choice" == "2" ]] && export UCC_INTERACTIVE=0 || export UCC_INTERACTIVE=1
+  else
+    export UCC_INTERACTIVE=0
+  fi
+fi
 
 # ── Resolve positional args into a target set and component list ──
 # One path: each arg adds targets to UCC_TARGET_SET and components to _resolved.
@@ -370,8 +364,13 @@ else
   :
 fi
 
-# Ensure all components are in TO_RUN so runners execute (targets filter via UCC_TARGET_SET)
-# Components not in _resolved are added so their targets show as [skip]
+# Save selected components for preference scoping
+export UCC_SELECTED_COMPS=""
+for _c in "${_resolved[@]+"${_resolved[@]}"}"; do
+  UCC_SELECTED_COMPS="${UCC_SELECTED_COMPS}${_c}|"
+done
+
+# Add all components so runners execute (targets filter via UCC_TARGET_SET)
 for _c in "${COMPONENTS[@]}"; do
   _resolved+=("$_c")
 done

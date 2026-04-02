@@ -146,19 +146,6 @@ uic_preference() {
       log_warn "UIC: preference '$name' — env var value '$env_val' not in options ($options); using safe default '$default'"
     fi
   elif [[ "${UCC_INTERACTIVE:-0}" == "1" ]] && [[ -c /dev/tty ]]; then
-    # Skip prompt for component-scoped prefs when that component is not selected
-    local _should_prompt=1
-    if [[ "$scope" == component:* ]]; then
-      local _pc="${scope#component:}"
-      _should_prompt=0
-      for _rc in ${TO_RUN[@]+"${TO_RUN[@]}"}; do
-        [[ "$_rc" == "$_pc" ]] && { _should_prompt=1; break; }
-      done
-    fi
-    if [[ $_should_prompt -eq 0 ]]; then
-      log_debug "uic_preference: skipping '$name' (component '${scope#component:}' not selected)"
-      resolved="$default"
-    else
     log_debug "uic_preference: interactive prompt for '$name'"
     # Interactive mode: prompt user to choose
     # Print header once before first interactive preference
@@ -180,7 +167,6 @@ uic_preference() {
     if [[ -n "$_choice" && "$_choice" =~ ^[0-9]+$ && "$_choice" -ge 1 && "$_choice" -le "${#_opts_arr[@]}" ]]; then
       resolved="${_opts_arr[$((_choice - 1))]}"
     fi
-    fi  # end _should_prompt
   else
     file_val="$(_uic_file_val "$name")"
     if [[ -n "$file_val" ]]; then
@@ -318,7 +304,7 @@ uic_resolve() {
     fi
   done
 
-  # Steps 3+4: Preferences — show only those relevant to the selection
+  # Steps 3+4: Preferences — all loaded prefs are relevant (filtered at load time)
   echo ""
   for i in "${!_UIC_PREF_NAMES[@]}"; do
     local name="${_UIC_PREF_NAMES[$i]}"
@@ -327,14 +313,6 @@ uic_resolve() {
     local opts="${_UIC_PREF_OPTIONS[$i]}"
     local rationale="${_UIC_PREF_RATIONALES[$i]}"
     local scope="${_UIC_PREF_SCOPES[$i]}"
-    # Skip component-scoped prefs when that component is not selected
-    if [[ "$scope" == component:* ]]; then
-      local _pc="${scope#component:}" _in_run=0
-      for _rc in ${TO_RUN[@]+"${TO_RUN[@]}"}; do
-        [[ "$_rc" == "$_pc" ]] && { _in_run=1; break; }
-      done
-      [[ $_in_run -eq 0 ]] && continue
-    fi
     local scope_short="${scope/component:/}"
     if [[ "$val" != "$default" ]]; then
       printf '[PREF]  %-30s %-18s →%-20s options: %s\n' "$name" "${val} *" "$scope_short" "$opts"
@@ -454,44 +432,57 @@ _uic_unquote_scalar() {
   printf '%s' "$value"
 }
 
+# Parse preferences from a YAML file's preferences: section using Python.
+# Outputs tab-separated: name\tdefault\toptions\trationale
+_uic_parse_prefs_from_yaml() {
+  local yaml_file="$1"
+  [[ -f "$yaml_file" ]] || return 0
+  python3 -c "
+import yaml, sys
+with open(sys.argv[1]) as f:
+    data = yaml.safe_load(f) or {}
+for p in data.get('preferences', []):
+    if not isinstance(p, dict): continue
+    d = p.get('default','')
+    if isinstance(d, bool): d = str(d).lower()
+    print('{}\t{}\t{}\t{}'.format(
+        p.get('name',''), d, p.get('options',''), p.get('rationale','')))
+" "$yaml_file" 2>/dev/null || true
+}
+
 load_uic_preferences() {
   local dir="$1"
-  local pref_file="$dir/policy/preferences.yaml"
-  local name="" default="" options="" scope="" rationale=""
-  [[ -f "$pref_file" ]] || return 0
-  # Read YAML via fd 3 to keep stdin free for interactive prompts
-  # Collect pref declarations first (arrays), then call uic_preference outside the read loop
-  local _pref_names=() _pref_defaults=() _pref_options=() _pref_rationales=() _pref_scopes=()
-  while IFS= read -r _line; do
-    case "$_line" in
-      "  - name: "*)
-        if [[ -n "$name" ]]; then
-          _pref_names+=("$name")
-          _pref_defaults+=("$default")
-          _pref_options+=("$options")
-          _pref_rationales+=("$rationale")
-          _pref_scopes+=("${scope:-global}")
-        fi
-        name="${_line#  - name: }"; default=""; options=""
-        scope="global"; rationale="" ;;
-      "    default: "*)   default="$(_uic_unquote_scalar "${_line#    default: }")" ;;
-      "    options: "*)   options="$(_uic_unquote_scalar "${_line#    options: }")" ;;
-      "    scope: "*)     scope="$(_uic_unquote_scalar "${_line#    scope: }")" ;;
-      "    rationale: "*) rationale="$(_uic_unquote_scalar "${_line#    rationale: }")" ;;
-    esac
-  done < "$pref_file"
-  if [[ -n "$name" ]]; then
-    _pref_names+=("$name")
-    _pref_defaults+=("$default")
-    _pref_options+=("$options")
-    _pref_rationales+=("$rationale")
-    _pref_scopes+=("${scope:-global}")
-  fi
-  # Call uic_preference with stdin free (not redirected from YAML file)
+  local _pref_names=() _pref_defaults=() _pref_options=() _pref_rationales=()
+
+  # 1. Global preferences from policy
+  while IFS=$'\t' read -r _n _d _o _r; do
+    [[ -n "$_n" ]] || continue
+    _pref_names+=("$_n"); _pref_defaults+=("$_d")
+    _pref_options+=("$_o"); _pref_rationales+=("$_r")
+  done < <(_uic_parse_prefs_from_yaml "$dir/policy/preferences.yaml")
+
+  # 2. Component preferences from selected component YAMLs
+  local _sel_comps="${UCC_SELECTED_COMPS:-}"
+  for _comp in ${TO_RUN[@]+"${TO_RUN[@]}"}; do
+    [[ "${_sel_comps}" == *"${_comp}|"* ]] || continue
+    for _yaml in "$dir"/ucc/software/*.yaml "$dir"/ucc/system/*.yaml; do
+      [[ -f "$_yaml" ]] || continue
+      local _ycomp; _ycomp="$(head -1 "$_yaml" | sed 's/^component: //')"
+      [[ "$_ycomp" == "$_comp" ]] || continue
+      while IFS=$'\t' read -r _n _d _o _r; do
+        [[ -n "$_n" ]] || continue
+        _pref_names+=("$_n"); _pref_defaults+=("$_d")
+        _pref_options+=("$_o"); _pref_rationales+=("$_r")
+      done < <(_uic_parse_prefs_from_yaml "$_yaml")
+      break
+    done
+  done
+
+  # 3. Call uic_preference with stdin free
   for _i in "${!_pref_names[@]}"; do
     uic_preference --name "${_pref_names[$_i]}" --default "${_pref_defaults[$_i]}" \
       --options "${_pref_options[$_i]}" --rationale "${_pref_rationales[$_i]}" \
-      --scope "${_pref_scopes[$_i]}"
+      --scope "global"
   done
 }
 
