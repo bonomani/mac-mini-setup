@@ -453,8 +453,26 @@ if [[ "${UCC_INTERACTIVE:-0}" == "1" ]] && [[ -c /dev/tty ]]; then
     [[ "${_UIC_PREF_VALUES[$_i]}" != "${_UIC_PREF_DEFAULTS[$_i]}" ]] && _changed=$((_changed + 1))
   done
 
-  # Ask to save preferences (defaults to no — don't save unless user wants to)
-  printf '\n  [?] %-28s [1)yes, *2)no] ' "save-preferences"
+  # Show non-default selections
+  _changed=0
+  echo ""
+  for _i in "${!_UIC_PREF_NAMES[@]}"; do
+    if [[ "${_UIC_PREF_VALUES[$_i]}" != "${_UIC_PREF_DEFAULTS[$_i]}" ]]; then
+      [[ $_changed -eq 0 ]] && echo "  Non-default preferences:"
+      printf '    %s = %s (default: %s)\n' "${_UIC_PREF_NAMES[$_i]}" "${_UIC_PREF_VALUES[$_i]}" "${_UIC_PREF_DEFAULTS[$_i]}"
+      _changed=$((_changed + 1))
+    fi
+  done
+  # Include interactive-mode as a saveable preference
+  [[ "${UCC_INTERACTIVE:-1}" == "0" ]] && {
+    [[ $_changed -eq 0 ]] && echo "  Non-default preferences:"
+    printf '    interactive = no (default: yes)\n'
+    _changed=$((_changed + 1))
+  }
+  [[ $_changed -eq 0 ]] && echo "  All preferences at default values."
+
+  # Ask to save
+  printf '\n  [?] %-28s [1)yes, *2)no] ' "save-as-user-preferences"
   read -r _save_prefs < /dev/tty
   if [[ "$_save_prefs" == "1" ]]; then
     mkdir -p "$(dirname "$_pref_file")"
@@ -466,24 +484,8 @@ if [[ "${UCC_INTERACTIVE:-0}" == "1" ]] && [[ -c /dev/tty ]]; then
         printf '%s=%s\n' "${_UIC_PREF_NAMES[$_i]}" "${_UIC_PREF_VALUES[$_i]}" >> "$_pref_file"
       fi
     done
+    [[ "${UCC_INTERACTIVE:-1}" == "0" ]] && printf 'interactive=no\n' >> "$_pref_file"
     log_info "Preferences saved to $_pref_file"
-  fi
-
-  # Ask about disabling interactive mode for future runs
-  printf '  [?] %-28s [1)yes, *2)no] ' "disable-interactive-mode"
-  read -r _save_im < /dev/tty
-  if [[ "$_save_im" == "1" ]]; then
-    mkdir -p "$(dirname "$_pref_file")"
-    if grep -q '^interactive=' "$_pref_file" 2>/dev/null; then
-      if [[ "$(uname)" == "Darwin" ]]; then
-        sed -i '' "s/^interactive=.*/interactive=no/" "$_pref_file"
-      else
-        sed -i "s/^interactive=.*/interactive=no/" "$_pref_file"
-      fi
-    else
-      printf 'interactive=no\n' >> "$_pref_file"
-    fi
-    log_info "Interactive mode disabled for future runs (re-enable with --interactive)"
   fi
 fi
 
