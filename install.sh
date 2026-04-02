@@ -286,73 +286,58 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# Resolve each positional arg:
-#   component:<name>  → explicit component
-#   target:<name>     → explicit target, auto-resolve component
-#   <name>            → try component first, then target (ambiguous names: component wins)
+# ── Resolve positional args into a target set and component list ──
+# One path: each arg adds targets to UCC_TARGET_SET and components to _resolved.
+# No args = select all targets from all components.
+_resolve_target() {
+  local name="$1"
+  log_info "Resolved target '$name' → component '$(python3 "$_QUERY_SCRIPT" --find-target "$name" "$_MANIFEST_DIR" 2>/dev/null)'"
+  UCC_TARGET_SET="${UCC_TARGET_SET}$(python3 "$_QUERY_SCRIPT" --dep-targets "$name" "$_MANIFEST_DIR" 2>/dev/null | tr '\n' '|')"
+  while IFS= read -r _dep_comp; do
+    [[ -n "$_dep_comp" ]] && _resolved+=("$_dep_comp")
+  done < <(python3 "$_QUERY_SCRIPT" --dep-components "$name" "$_MANIFEST_DIR" 2>/dev/null || true)
+}
+
+_resolve_component() {
+  local name="$1"
+  _resolved+=("$name")
+  while IFS= read -r _t; do
+    [[ -n "$_t" ]] && UCC_TARGET_SET="${UCC_TARGET_SET}${_t}|"
+  done < <(python3 "$_QUERY_SCRIPT" --ordered-targets "$name" "$_MANIFEST_DIR" 2>/dev/null || true)
+}
+
 _resolved=()
-for _arg in ${TO_RUN[@]+"${TO_RUN[@]}"}; do
-  case "$_arg" in
-    component:*)
-      _name="${_arg#component:}"
-      if ! printf '%s\n' "${COMPONENTS[@]}" | grep -qx "$_name"; then
-        log_error "Unknown component: '$_name'"
-      fi
-      _resolved+=("$_name")
-      ;;
-    target:*)
-      _name="${_arg#target:}"
-      _comp=$(python3 "$_QUERY_SCRIPT" --find-target "$_name" "$_MANIFEST_DIR" 2>/dev/null || true)
-      [[ -n "$_comp" ]] || log_error "Unknown target: '$_name'"
-      log_info "Resolved target '$_name' → component '$_comp'"
-      # Build target closure and derive components
-      UCC_TARGET_SET="${UCC_TARGET_SET}$(python3 "$_QUERY_SCRIPT" --dep-targets "$_name" "$_MANIFEST_DIR" 2>/dev/null | tr '\n' '|')"
-      while IFS= read -r _dep_comp; do
-        [[ -n "$_dep_comp" ]] && _resolved+=("$_dep_comp")
-      done < <(python3 "$_QUERY_SCRIPT" --dep-components "$_name" "$_MANIFEST_DIR" 2>/dev/null || true)
-      ;;
-    *)
-      if printf '%s\n' "${COMPONENTS[@]}" | grep -qx "$_arg"; then
-        _resolved+=("$_arg")
-      else
-        _comp=$(python3 "$_QUERY_SCRIPT" --find-target "$_arg" "$_MANIFEST_DIR" 2>/dev/null || true)
-        [[ -n "$_comp" ]] || log_error "Unknown component or target: '$_arg'"
-        log_info "Resolved target '$_arg' → component '$_comp'"
-        # Build target closure and derive components
-        UCC_TARGET_SET="${UCC_TARGET_SET}$(python3 "$_QUERY_SCRIPT" --dep-targets "$_arg" "$_MANIFEST_DIR" 2>/dev/null | tr '\n' '|')"
-        while IFS= read -r _dep_comp; do
-          [[ -n "$_dep_comp" ]] && _resolved+=("$_dep_comp")
-        done < <(python3 "$_QUERY_SCRIPT" --dep-components "$_arg" "$_MANIFEST_DIR" 2>/dev/null || true)
-      fi
-      ;;
-  esac
-done
-# Deduplicate while preserving order
-_deduped=()
-_seen_comps=""
+if [[ ${#TO_RUN[@]} -eq 0 ]]; then
+  # No args → select all
+  for _c in "${COMPONENTS[@]}"; do
+    _resolve_component "$_c"
+  done
+else
+  for _arg in "${TO_RUN[@]}"; do
+    # Strip explicit prefix if present
+    case "$_arg" in
+      component:*) _arg="${_arg#component:}" ;;
+      target:*)    _resolve_target "${_arg#target:}"; continue ;;
+    esac
+    # Try component first, then target
+    if printf '%s\n' "${COMPONENTS[@]}" | grep -qx "$_arg"; then
+      _resolve_component "$_arg"
+    else
+      python3 "$_QUERY_SCRIPT" --find-target "$_arg" "$_MANIFEST_DIR" >/dev/null 2>&1 \
+        || log_error "Unknown component or target: '$_arg'"
+      _resolve_target "$_arg"
+    fi
+  done
+fi
+
+# Deduplicate components while preserving order
+_deduped=(); _seen_comps=""
 for _c in "${_resolved[@]+"${_resolved[@]}"}"; do
   [[ "$_seen_comps" == *"|${_c}|"* ]] && continue
   _seen_comps="${_seen_comps}|${_c}|"
   _deduped+=("$_c")
 done
 TO_RUN=("${_deduped[@]+"${_deduped[@]}"}")
-
-# Unified target resolution:
-# - No args → all targets selected (full run)
-# - Explicit args → those targets/components + transitive deps
-# Both paths build UCC_TARGET_SET via --dep-targets and derive TO_RUN
-if [[ ${#TO_RUN[@]} -eq 0 && -z "$UCC_TARGET_SET" ]]; then
-  # No explicit selection → select every target
-  for _c in "${COMPONENTS[@]}"; do
-    while IFS= read -r _t; do
-      [[ -n "$_t" ]] && UCC_TARGET_SET="${UCC_TARGET_SET}${_t}|"
-    done < <(python3 "$_QUERY_SCRIPT" --ordered-targets "$_c" "$_MANIFEST_DIR" 2>/dev/null || true)
-  done
-  TO_RUN=("${COMPONENTS[@]}")
-elif [[ ${#TO_RUN[@]} -eq 0 ]]; then
-  # Target set populated by arg loop but TO_RUN not yet derived
-  TO_RUN=("${COMPONENTS[@]}")
-fi
 export UCC_TARGET_SET
 
 # Validate mode
