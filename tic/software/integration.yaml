@@ -8,7 +8,7 @@ tests:
     intent: "Ollama must be able to load a model for inference"
     oracle: 'ollama_model_loadable'
     trace: "component:ai-apps / integration:ollama-inference"
-    skip_when: 'is_not_installed ollama'
+    skip_when: '_tic_ollama_not_running'
 
   # ── Docker inter-service communication ────────────────────────
   - name: docker-compose-services-healthy
@@ -16,15 +16,15 @@ tests:
     intent: "Docker Compose services must report healthy status"
     oracle: 'docker_compose_services_healthy'
     trace: "component:ai-apps / integration:docker-compose"
-    skip_when: 'is_not_installed docker'
+    skip_when: '_tic_no_running_compose_services'
 
-  # ── PyTorch MPS acceleration ──────────────────────────────────
+  # ── PyTorch MPS acceleration (macOS only) ─────────────────────
   - name: pytorch-mps-usable
     component: ai-python-stack
     intent: "PyTorch MPS backend must be usable for GPU acceleration"
     oracle: 'torch_mps_available'
     trace: "component:ai-python-stack / integration:mps"
-    skip_when: 'is_not_installed python3'
+    skip_when: '_tic_not_macos'
 
   # ── VS Code extension interop ─────────────────────────────────
   - name: vscode-python-extension-active
@@ -38,7 +38,7 @@ tests:
   - name: node-via-nvm
     component: dev-tools
     intent: "Node.js must be managed by nvm, not Homebrew"
-    oracle: 'node_not_from_homebrew_check'
+    oracle: 'node_via_nvm_check'
     trace: "component:dev-tools / integration:nvm-node"
     skip_when: 'is_not_installed node'
 

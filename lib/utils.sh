@@ -38,6 +38,17 @@ python3_module_importable() { python3 -c "import $1" 2>/dev/null; }
 
 # ── Capability probes ──────────────────────────────────────────────────────────
 
+# Return 0 if PyTorch Metal MPS is available on this host.
+torch_mps_available() {
+  python3 -c "import torch; raise SystemExit(0 if torch.backends.mps.is_available() else 1)" 2>/dev/null
+}
+
+# Print 'available' or 'unavailable (CPU only)' depending on MPS support.
+torch_mps_status() {
+  python3 -c "import torch; print('available' if torch.backends.mps.is_available() else 'unavailable (CPU only)')" \
+    2>/dev/null || printf 'unavailable (CPU only)'
+}
+
 # Return 0 if NVIDIA CUDA is available via PyTorch.
 torch_cuda_available() {
   python3 -c "import torch; raise SystemExit(0 if torch.cuda.is_available() else 1)" 2>/dev/null
@@ -110,10 +121,26 @@ for line in lines.splitlines():
 # Usage: vscode_extension_installed <extension_id>
 vscode_extension_installed() { code --list-extensions 2>/dev/null | grep -qi "^${1}$"; }
 
-# Return 0 if node is NOT from Homebrew (nvm manages it).
-node_not_from_homebrew_check() {
+# Return 0 if node is managed by nvm (resolves under $NVM_DIR or ~/.nvm).
+node_via_nvm_check() {
   local np; np="$(command -v node 2>/dev/null || true)"
-  [[ -n "$np" ]] && [[ "$np" != *opt/homebrew* ]]
+  [[ -n "$np" ]] && [[ "$np" == *nvm* || "$np" == *".nvm"* ]]
+}
+
+# Return 0 if no Docker Compose services are currently running.
+_tic_no_running_compose_services() {
+  local count; count="$(docker compose ps -q 2>/dev/null | wc -l)"
+  [[ "${count:-0}" -eq 0 ]]
+}
+
+# Return 0 if the current platform is NOT macOS.
+_tic_not_macos() {
+  [[ "${HOST_PLATFORM:-unknown}" != "macos" ]]
+}
+
+# Return 0 if the Ollama process is NOT running.
+_tic_ollama_not_running() {
+  ! pgrep -f 'ollama' >/dev/null 2>&1
 }
 
 # Return 0 if an HTTP server is responding on localhost at the given port.

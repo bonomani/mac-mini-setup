@@ -44,4 +44,4 @@ tests:
     intent: "Ollama API must be reachable for local LLM inference"
     oracle: 'http_probe_localhost 11434'
     trace: "component:system / verification:ollama-api"
-    skip_when: 'is_not_installed ollama'
+    skip_when: '_tic_ollama_not_running'
