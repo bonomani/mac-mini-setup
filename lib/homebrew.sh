@@ -150,6 +150,9 @@ run_homebrew_from_yaml() {
     esac
   done < <(yaml_get_many "$cfg_dir" "$yaml" shell_config_file)
 
+  # ---- Network connectivity check ----
+  ucc_yaml_runtime_target "$cfg_dir" "$yaml" "network-available"
+
   # ---- Step 0: Platform-specific build prerequisites ----
   if [[ "${HOST_PLATFORM:-macos}" == "macos" ]]; then
     ucc_skip_target "build-deps" "not applicable on macOS (xcode-clt provides build tools)"

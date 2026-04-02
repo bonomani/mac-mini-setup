@@ -61,7 +61,11 @@ run_ai_python_stack_from_yaml() {
       ;;
   esac
 
+  # ---- GPU capability probes ----
   if [[ "$UCC_DRY_RUN" != "1" ]] && is_installed python3; then
-    ucc_yaml_capability_target "$cfg_dir" "$yaml" "mps-available"
+    case "${HOST_PLATFORM:-}" in
+      macos) ucc_yaml_capability_target "$cfg_dir" "$yaml" "mps-available" ;;
+    esac
+    ucc_yaml_capability_target "$cfg_dir" "$yaml" "cuda-available"
   fi
 }

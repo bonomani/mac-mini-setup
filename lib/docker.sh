@@ -18,11 +18,6 @@ docker_desired_resources() {
   printf 'mem=%sGB cpu=%s' "$1" "$2"
 }
 
-# Return 0 if the Docker daemon is reachable (docker info succeeds).
-docker_daemon_is_running() {
-  docker info >/dev/null 2>&1
-}
-
 # Print the install source of Docker Desktop if it is not absent/brew-cask.
 # Uses implicit $CFG_DIR/$YAML_PATH context.
 docker_install_source_observe() {
@@ -55,6 +50,9 @@ run_docker_from_yaml() {
 
   # ---- Phase 1-3: install + runtime ----
   ucc_yaml_runtime_target "$cfg_dir" "$yaml" "docker-desktop"
+
+  # ---- Capability: docker daemon reachable ----
+  ucc_yaml_runtime_target "$cfg_dir" "$yaml" "docker-available"
 
   # ---- Phase 4: post-runtime config (resources) ----
   local settings_relpath memory_gb cpu_count swap_mib disk_mib

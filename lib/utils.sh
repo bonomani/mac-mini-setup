@@ -36,6 +36,57 @@ http_probe_endpoint() {
 # Usage: python3_module_importable <module>
 python3_module_importable() { python3 -c "import $1" 2>/dev/null; }
 
+# ── Capability probes ──────────────────────────────────────────────────────────
+
+# Return 0 if NVIDIA CUDA is available via PyTorch.
+torch_cuda_available() {
+  python3 -c "import torch; raise SystemExit(0 if torch.cuda.is_available() else 1)" 2>/dev/null
+}
+
+# Print CUDA status string.
+torch_cuda_status() {
+  python3 -c "
+import torch
+if torch.cuda.is_available():
+    print(f'available ({torch.cuda.get_device_name(0)})')
+else:
+    print('unavailable (CPU only)')
+" 2>/dev/null || printf 'unavailable (no PyTorch)'
+}
+
+# Print CUDA device name or 'none'.
+torch_cuda_device_name() {
+  python3 -c "import torch; print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'none')" 2>/dev/null || printf 'none'
+}
+
+# Return 0 if the Docker daemon is reachable.
+docker_daemon_is_running() {
+  docker info >/dev/null 2>&1
+}
+
+# Print Docker daemon status string.
+docker_daemon_status() {
+  if docker info >/dev/null 2>&1; then
+    printf 'running'
+  else
+    printf 'stopped'
+  fi
+}
+
+# Return 0 if the network is reachable (can resolve + connect to a public host).
+network_is_available() {
+  curl -fsS --connect-timeout 5 --max-time 10 https://github.com >/dev/null 2>&1
+}
+
+# Print network connectivity status.
+network_status() {
+  if network_is_available; then
+    printf 'connected'
+  else
+    printf 'offline'
+  fi
+}
+
 # Return 0 if Ollama can load at least one model (list is non-empty).
 ollama_model_loadable() {
   local tags; tags="$(curl -fsS --max-time 10 http://127.0.0.1:11434/api/tags 2>/dev/null)"

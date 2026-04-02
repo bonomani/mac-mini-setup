@@ -59,3 +59,18 @@ targets:
       kind: docker-settings
     desired_cmd: docker_desired_resources "${DOCKER_MEM_GB}" "${DOCKER_CPU_COUNT}"
     dependency_gate: docker-settings-file
+  docker-available:
+    component: docker
+    profile: capability
+    type: capability
+    display_name: Docker daemon
+    depends_on:
+    - docker-desktop
+    driver:
+      kind: custom
+    runtime_manager: capability
+    probe_kind: command
+    oracle:
+      runtime: docker_daemon_is_running
+    evidence:
+      status: docker_daemon_status
