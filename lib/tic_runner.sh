@@ -170,10 +170,14 @@ run_verify() {
   done < <(yaml_get_many "$cfg_dir" "$cfg_dir/ucc/software/dev-tools.yaml" node_version)
   _tic_load_component_policies "$cfg_dir"
 
-  # Ensure pyenv and node are in PATH so oracle commands resolve correctly
+  # Ensure pyenv and nvm-managed node are in PATH so oracle commands resolve correctly
   export PYENV_ROOT="$HOME/.pyenv"
   export PATH="$PYENV_ROOT/bin:$PYENV_ROOT/shims:$PATH"
-  if [[ -d "/opt/homebrew/opt/node@${_NODE_VER}/bin" ]]; then
+  export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+  if [[ -s "$NVM_DIR/nvm.sh" ]]; then
+    source "$NVM_DIR/nvm.sh" 2>/dev/null || true
+    nvm use "$_NODE_VER" >/dev/null 2>&1 || true
+  elif [[ -d "/opt/homebrew/opt/node@${_NODE_VER}/bin" ]]; then
     export PATH="/opt/homebrew/opt/node@${_NODE_VER}/bin:$PATH"
   elif [[ -d "/usr/local/opt/node@${_NODE_VER}/bin" ]]; then
     export PATH="/usr/local/opt/node@${_NODE_VER}/bin:$PATH"
