@@ -432,10 +432,56 @@ while IFS= read -r _cache_line; do
 done < <(python3 "$_QUERY_SCRIPT" --all-caches "$_MANIFEST_DIR" 2>/dev/null || true)
 unset _current_section _cache_line
 
+# --- Interactive: component/target selection (before prefs) ----
+if [[ "${UCC_INTERACTIVE:-0}" == "1" && -c /dev/tty && -z "$UCC_TARGET_SET" ]]; then
+  echo ""
+  echo "  ── Selection ─────────────────────────────────────────"
+  echo "  What would you like to install?"
+  echo ""
+  echo "    a) All components"
+  _comp_idx=1
+  for _c in "${COMPONENTS[@]}"; do
+    printf '    %d) %s\n' "$_comp_idx" "$_c"
+    _comp_idx=$((_comp_idx + 1))
+  done
+  echo ""
+  printf '  Choose [a=all, numbers comma-separated, or target names]: '
+  read -r _selection < /dev/tty
+  if [[ "$_selection" == "a" || "$_selection" == "all" ]]; then
+    _resolved=()
+    UCC_TARGET_SET=""
+    for _c in "${COMPONENTS[@]}"; do _resolve_component "$_c"; done
+  elif [[ -n "$_selection" ]]; then
+    _resolved=()
+    UCC_TARGET_SET=""
+    IFS=',' read -ra _picks <<< "$_selection"
+    for _p in "${_picks[@]}"; do
+      _p="${_p// /}"
+      if [[ "$_p" =~ ^[0-9]+$ && "$_p" -ge 1 && "$_p" -le "${#COMPONENTS[@]}" ]]; then
+        _resolve_component "${COMPONENTS[$((_p - 1))]}"
+      else
+        if python3 "$_QUERY_SCRIPT" --find-target "$_p" "$_MANIFEST_DIR" >/dev/null 2>&1; then
+          _resolve_target "$_p"
+        else
+          log_warn "Unknown: '$_p' — skipping"
+        fi
+      fi
+    done
+    for _c in "${COMPONENTS[@]}"; do _resolved+=("$_c"); done
+  fi
+  export UCC_TARGET_SET
+  # Update selected components for preference scoping
+  UCC_SELECTED_COMPS=""
+  for _c in "${_resolved[@]+"${_resolved[@]}"}"; do
+    UCC_SELECTED_COMPS="${UCC_SELECTED_COMPS}${_c}|"
+  done
+  export UCC_SELECTED_COMPS
+fi
+
 # --- Gates --------------------------------------------------
 load_uic_gates "$DIR"
 
-# --- Preferences (safe defaults = most conservative choice) -
+# --- Preferences (only for selected components) ---------------
 load_uic_preferences "$DIR"
 
 # --- Resolve (evaluate gates, report preferences) -----------
@@ -491,50 +537,12 @@ if [[ "${UCC_INTERACTIVE:-0}" == "1" ]] && [[ -c /dev/tty ]]; then
   fi
 fi
 
-# --- Interactive: component/target selection + save -----------
-if [[ "${UCC_INTERACTIVE:-0}" == "1" && -t 0 && -z "$UCC_TARGET_SET" ]]; then
-  echo ""
-  echo "  ── Selection ─────────────────────────────────────────"
-  echo "  What would you like to install?"
-  echo ""
-  echo "    a) All components"
-  _comp_idx=1
-  for _c in "${COMPONENTS[@]}"; do
-    printf '    %d) component: %s\n' "$_comp_idx" "$_c"
-    _comp_idx=$((_comp_idx + 1))
-  done
-  echo ""
-  printf '  Choose [a=all, numbers comma-separated, or target names]: '
-  read -r _selection
-  if [[ "$_selection" == "a" || "$_selection" == "all" ]]; then
-    _resolved=()
-    UCC_TARGET_SET=""
-    for _c in "${COMPONENTS[@]}"; do _resolve_component "$_c"; done
-  elif [[ -n "$_selection" ]]; then
-    _resolved=()
-    UCC_TARGET_SET=""
-    IFS=',' read -ra _picks <<< "$_selection"
-    for _p in "${_picks[@]}"; do
-      _p="${_p// /}"  # trim spaces
-      if [[ "$_p" =~ ^[0-9]+$ && "$_p" -ge 1 && "$_p" -le "${#COMPONENTS[@]}" ]]; then
-        _resolve_component "${COMPONENTS[$((_p - 1))]}"
-      else
-        # Treat as target name
-        if python3 "$_QUERY_SCRIPT" --find-target "$_p" "$_MANIFEST_DIR" >/dev/null 2>&1; then
-          _resolve_target "$_p"
-        else
-          log_warn "Unknown: '$_p' — skipping"
-        fi
-      fi
-    done
-    # Re-add all components so unselected ones show [skip]
-    for _c in "${COMPONENTS[@]}"; do _resolved+=("$_c"); done
-  fi
-  export UCC_TARGET_SET
-  # Save selection
-  printf '\n  Save this selection to %s? [Y/n] ' "$_UCC_SELECTION_FILE"
-  read -r _save_sel
-  if [[ ! "$_save_sel" =~ ^[Nn] ]]; then
+# --- Interactive: save selection --------------------------------
+if [[ "${UCC_INTERACTIVE:-0}" == "1" && -c /dev/tty && -n "${_selection:-}" ]]; then
+  printf '\n  [?] Save this selection for future runs?\n'
+  printf '      Options: 1=yes, *2=no  →  '
+  read -r _save_sel < /dev/tty
+  if [[ "$_save_sel" == "1" ]]; then
     mkdir -p "$(dirname "$_UCC_SELECTION_FILE")"
     printf '# Saved component/target selection\n' > "$_UCC_SELECTION_FILE"
     printf '# Edit to change what runs by default\n' >> "$_UCC_SELECTION_FILE"
