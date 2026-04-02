@@ -235,6 +235,7 @@ Options:
   --mode check      Observe current state without changing anything (drift detection)
   --dry-run         Show what would change without applying it
   --interactive     Prompt for preferences and confirm each change
+  --no-interactive  Skip all prompts (CI/automation mode)
   --preflight       Evaluate UIC gates and preferences; do NOT converge
   --pref key=value  Set a UIC preference for this run only (repeatable)
   --debug           Show DEBUG-level output
@@ -257,16 +258,21 @@ EOF
   exit 0
 }
 
-# --- Ask for interactive mode if TTY and no targets/components given ---
-# Flags like --debug, --dry-run, --mode are orthogonal — don't suppress the prompt
-_has_positional=0
-for _a in "$@"; do
-  case "$_a" in --*) ;; *) _has_positional=1; break ;; esac
-done
-if [[ -t 0 && $_has_positional -eq 0 && "${UCC_INTERACTIVE:-}" != "1" ]]; then
-  printf '\n  Run in interactive mode? (prompts for preferences and confirms changes) [y/N] '
-  read -r _interactive_answer
-  [[ "$_interactive_answer" =~ ^[Yy] ]] && export UCC_INTERACTIVE=1
+# --- Interactive mode: on by default for TTY, off for pipes/CI ---
+# --no-interactive explicitly disables; --interactive explicitly enables
+# Can also be saved as a preference in ~/.ai-stack/preferences.env
+if [[ -z "${UCC_INTERACTIVE:-}" ]]; then
+  # Check saved preference
+  _saved_interactive=""
+  _pf="${UIC_PREF_FILE:-$HOME/.ai-stack/preferences.env}"
+  [[ -f "$_pf" ]] && _saved_interactive="$(grep -E '^interactive=' "$_pf" 2>/dev/null | head -1 | cut -d= -f2-)"
+  if [[ "$_saved_interactive" == "no" ]]; then
+    export UCC_INTERACTIVE=0
+  elif [[ -t 0 ]]; then
+    export UCC_INTERACTIVE=1
+  else
+    export UCC_INTERACTIVE=0
+  fi
 fi
 
 # --- Parse arguments ----------------------------------------
@@ -277,6 +283,7 @@ while [[ $# -gt 0 ]]; do
     --dry-run)       export UCC_DRY_RUN=1;     shift ;;
     --mode)          export UCC_MODE="$2";    shift 2 ;;
     --interactive)   export UCC_INTERACTIVE=1; shift ;;
+    --no-interactive) export UCC_INTERACTIVE=0; shift ;;
     --all)           export UCC_RUN_ALL=1;    shift ;;
     --debug)         export UCC_DEBUG=1;      shift ;;
     --preflight)     export UIC_PREFLIGHT=1;  shift ;;
@@ -449,6 +456,20 @@ if [[ "${UCC_INTERACTIVE:-0}" == "1" && -t 0 ]]; then
       fi
     done
     log_info "Preferences saved to $_pref_file"
+  fi
+  # Ask if interactive should remain the default
+  printf '  Disable interactive mode for future runs? [y/N] '
+  read -r _disable_interactive
+  if [[ "$_disable_interactive" =~ ^[Yy] ]]; then
+    mkdir -p "$(dirname "$_pref_file")"
+    # Append or update interactive setting
+    if grep -q '^interactive=' "$_pref_file" 2>/dev/null; then
+      sed -i '' "s/^interactive=.*/interactive=no/" "$_pref_file" 2>/dev/null || \
+        sed -i "s/^interactive=.*/interactive=no/" "$_pref_file"
+    else
+      printf 'interactive=no\n' >> "$_pref_file"
+    fi
+    log_info "Interactive mode disabled for future runs (re-enable with --interactive)"
   fi
 fi
 
