@@ -162,16 +162,21 @@ run_tic_tests_from_yaml() {
 run_verify() {
   local cfg_dir="$1"
 
-  local _NODE_VER="24"
+  local _NODE_VER="24" _PYENV_DIR=".pyenv"
   while IFS=$'\t' read -r -d '' key value; do
     case "$key" in
       node_version) [[ -n "$value" ]] && _NODE_VER="$value" ;;
     esac
   done < <(yaml_get_many "$cfg_dir" "$cfg_dir/ucc/software/dev-tools.yaml" node_version)
+  while IFS=$'\t' read -r -d '' key value; do
+    case "$key" in
+      pyenv_dir) [[ -n "$value" ]] && _PYENV_DIR="$value" ;;
+    esac
+  done < <(yaml_get_many "$cfg_dir" "$cfg_dir/ucc/software/ai-python-stack.yaml" pyenv_dir)
   _tic_load_component_policies "$cfg_dir"
 
   # Ensure pyenv and nvm-managed node are in PATH so oracle commands resolve correctly
-  export PYENV_ROOT="$HOME/.pyenv"
+  export PYENV_ROOT="$HOME/$_PYENV_DIR"
   export PATH="$PYENV_ROOT/bin:$PYENV_ROOT/shims:$PATH"
   export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
   if [[ -s "$NVM_DIR/nvm.sh" ]]; then

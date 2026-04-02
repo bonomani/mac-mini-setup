@@ -16,7 +16,56 @@ unsloth_port: 8888
 unsloth_studio_dir: .unsloth/studio
 systemd_user_dir: .config/systemd/user
 gpu_backend: Metal
+python_version: 3.12.3
+pyenv_dir: .pyenv
+zsh_config: .zshrc
+pyenv_packages:
+- pyenv
+- pyenv-virtualenv
+pip_bootstrap:
+- pip
+- setuptools
+- wheel
 targets:
+  # ── Python lifecycle (pyenv → python → pip) ─────────────────
+  pyenv:
+    component: ai-python-stack
+    profile: configured
+    type: package
+    state_model: package
+    display_name: pyenv
+    driver:
+      kind: pyenv-brew
+  xz:
+    component: ai-python-stack
+    profile: configured
+    type: package
+    state_model: package
+    display_name: XZ Utils
+    driver:
+      kind: package
+      ref: xz
+      apt_ref: xz-utils
+  python:
+    component: ai-python-stack
+    profile: configured
+    type: package
+    state_model: package
+    display_name: Python
+    depends_on:
+    - xz
+    driver:
+      kind: pyenv-version
+      version: ${python_version}
+  pip-latest:
+    component: ai-python-stack
+    profile: configured
+    type: config
+    state_model: config
+    display_name: pip
+    driver:
+      kind: pip-bootstrap
+  # ── Pip packages ─────────────────────────────────────────────
   unsloth:
     component: ai-python-stack
     profile: configured
