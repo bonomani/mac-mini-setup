@@ -105,6 +105,61 @@ _detect_host_platform_variant() {
 
 export HOST_PLATFORM="$(_detect_host_platform)"
 export HOST_PLATFORM_VARIANT="$(_detect_host_platform_variant)"
+
+_detect_host_arch() { uname -m; }
+
+_detect_host_os_id() {
+  case "$(uname)" in
+    Darwin) printf 'macos-%s' "$(sw_vers -productVersion 2>/dev/null || echo unknown)" ;;
+    Linux)
+      if [[ -f /etc/os-release ]]; then
+        . /etc/os-release
+        printf '%s-%s' "${ID:-unknown}" "${VERSION_ID:-unknown}"
+      else
+        printf 'linux-unknown'
+      fi
+      ;;
+    *) printf 'unknown' ;;
+  esac
+}
+
+_detect_host_package_manager() {
+  if command -v brew >/dev/null 2>&1; then printf 'brew'
+  elif command -v apt-get >/dev/null 2>&1; then printf 'apt'
+  elif command -v dnf >/dev/null 2>&1; then printf 'dnf'
+  elif command -v pacman >/dev/null 2>&1; then printf 'pacman'
+  elif command -v zypper >/dev/null 2>&1; then printf 'zypper'
+  else printf 'unknown'
+  fi
+}
+
+_detect_host_os() {
+  case "$HOST_PLATFORM" in
+    wsl)
+      # WSL runs on Windows — detect host OS
+      local _winver
+      _winver="$(cmd.exe /c ver 2>/dev/null | tr -d '\r' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || true)"
+      if [[ -n "$_winver" ]]; then
+        # Build 22000+ = Windows 11, else Windows 10
+        local _build; _build="$(echo "$_winver" | cut -d. -f3)"
+        if [[ "${_build:-0}" -ge 22000 ]]; then
+          printf 'windows-11-%s' "$_build"
+        else
+          printf 'windows-10-%s' "$_build"
+        fi
+      else
+        printf 'windows-unknown'
+      fi
+      ;;
+    *) printf '%s' "$HOST_OS_ID" ;;  # non-WSL: host OS = guest OS
+  esac
+}
+
+export HOST_ARCH="$(_detect_host_arch)"
+export HOST_OS_ID="$(_detect_host_os_id)"
+export HOST_PACKAGE_MANAGER="$(_detect_host_package_manager)"
+export HOST_OS="$(_detect_host_os)"
+export HOST_FINGERPRINT="${HOST_PLATFORM}/${HOST_ARCH}/${HOST_OS_ID}/${HOST_PACKAGE_MANAGER}/${HOST_PLATFORM_VARIANT}/${HOST_OS}"
 source "$DIR/lib/ucc.sh"
 source "$DIR/lib/uic.sh"
 source "$DIR/lib/tic.sh"
