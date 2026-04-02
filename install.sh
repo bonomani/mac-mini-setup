@@ -443,35 +443,43 @@ _UIC_RC=0
 uic_resolve || _UIC_RC=$?
 uic_export
 
-# --- Interactive: save preferences to file -------------------
-if [[ "${UCC_INTERACTIVE:-0}" == "1" && -t 0 ]]; then
+# --- Interactive: save preferences + interactive mode to file ---
+if [[ "${UCC_INTERACTIVE:-0}" == "1" ]] && [[ -c /dev/tty ]]; then
   _pref_file="${UIC_PREF_FILE:-$HOME/.ai-stack/preferences.env}"
-  printf '\n  Save non-default preferences to %s? [Y/n] ' "$_pref_file"
-  read -r _save_prefs
-  if [[ ! "$_save_prefs" =~ ^[Nn] ]]; then
-    mkdir -p "$(dirname "$_pref_file")"
-    printf '# User preference overrides (non-default values only)\n' > "$_pref_file"
-    printf '# Defaults are in policy/preferences.yaml\n' >> "$_pref_file"
-    printf '# Delete a line to revert to default\n' >> "$_pref_file"
-    local _saved=0
-    for _i in "${!_UIC_PREF_NAMES[@]}"; do
-      # Only save values that differ from defaults
-      if [[ "${_UIC_PREF_VALUES[$_i]}" != "${_UIC_PREF_DEFAULTS[$_i]}" ]]; then
-        printf '%s=%s\n' "${_UIC_PREF_NAMES[$_i]}" "${_UIC_PREF_VALUES[$_i]}" >> "$_pref_file"
-        _saved=$((_saved + 1))
-      fi
-    done
-    log_info "Preferences saved to $_pref_file"
+
+  # Count non-default values
+  _changed=0
+  for _i in "${!_UIC_PREF_NAMES[@]}"; do
+    [[ "${_UIC_PREF_VALUES[$_i]}" != "${_UIC_PREF_DEFAULTS[$_i]}" ]] && _changed=$((_changed + 1))
+  done
+
+  if [[ $_changed -gt 0 ]]; then
+    printf '\n  Save %d changed preference(s) to %s? [Y/n] ' "$_changed" "$_pref_file"
+    read -r _save_prefs < /dev/tty
+    if [[ ! "$_save_prefs" =~ ^[Nn] ]]; then
+      mkdir -p "$(dirname "$_pref_file")"
+      printf '# User preference overrides (non-default values only)\n' > "$_pref_file"
+      printf '# Defaults in policy/preferences.yaml + component YAMLs\n' >> "$_pref_file"
+      printf '# Delete a line to revert to default\n' >> "$_pref_file"
+      for _i in "${!_UIC_PREF_NAMES[@]}"; do
+        [[ "${_UIC_PREF_VALUES[$_i]}" != "${_UIC_PREF_DEFAULTS[$_i]}" ]] && \
+          printf '%s=%s\n' "${_UIC_PREF_NAMES[$_i]}" "${_UIC_PREF_VALUES[$_i]}" >> "$_pref_file"
+      done
+      log_info "Preferences saved to $_pref_file"
+    fi
   fi
-  # Ask if interactive should remain the default
-  printf '  Disable interactive mode for future runs? [y/N] '
-  read -r _disable_interactive
-  if [[ "$_disable_interactive" =~ ^[Yy] ]]; then
+
+  # Ask about interactive mode for future runs
+  printf '  [?] %-28s [*1)yes, 2)no] ' "save-interactive-mode"
+  read -r _save_im < /dev/tty
+  if [[ "$_save_im" == "2" ]]; then
     mkdir -p "$(dirname "$_pref_file")"
-    # Append or update interactive setting
     if grep -q '^interactive=' "$_pref_file" 2>/dev/null; then
-      sed -i '' "s/^interactive=.*/interactive=no/" "$_pref_file" 2>/dev/null || \
+      if [[ "$(uname)" == "Darwin" ]]; then
+        sed -i '' "s/^interactive=.*/interactive=no/" "$_pref_file"
+      else
         sed -i "s/^interactive=.*/interactive=no/" "$_pref_file"
+      fi
     else
       printf 'interactive=no\n' >> "$_pref_file"
     fi
