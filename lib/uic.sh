@@ -146,7 +146,20 @@ uic_preference() {
       log_warn "UIC: preference '$name' — env var value '$env_val' not in options ($options); using safe default '$default'"
     fi
   elif [[ "${UCC_INTERACTIVE:-0}" == "1" ]] && [[ -c /dev/tty ]]; then
-    log_debug "uic_preference: interactive prompt for '$name' (env_val='$env_val')"
+    # Skip prompt for component-scoped prefs when that component is not selected
+    local _should_prompt=1
+    if [[ "$scope" == component:* ]]; then
+      local _pc="${scope#component:}"
+      _should_prompt=0
+      for _rc in ${TO_RUN[@]+"${TO_RUN[@]}"}; do
+        [[ "$_rc" == "$_pc" ]] && { _should_prompt=1; break; }
+      done
+    fi
+    if [[ $_should_prompt -eq 0 ]]; then
+      log_debug "uic_preference: skipping '$name' (component '${scope#component:}' not selected)"
+      resolved="$default"
+    else
+    log_debug "uic_preference: interactive prompt for '$name'"
     # Interactive mode: prompt user to choose
     # Print header once before first interactive preference
     if [[ -z "${_UIC_INTERACTIVE_HEADER_SHOWN:-}" ]]; then
@@ -167,6 +180,7 @@ uic_preference() {
     if [[ -n "$_choice" && "$_choice" =~ ^[0-9]+$ && "$_choice" -ge 1 && "$_choice" -le "${#_opts_arr[@]}" ]]; then
       resolved="${_opts_arr[$((_choice - 1))]}"
     fi
+    fi  # end _should_prompt
   else
     file_val="$(_uic_file_val "$name")"
     if [[ -n "$file_val" ]]; then

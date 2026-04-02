@@ -2,7 +2,7 @@ preferences:
   - name: python-version
     default: 3.12.3
     options: 3.11.9|3.12.3|3.13.0
-    scope: component:python
+    scope: component:ai-python-stack
     rationale: 3.12.3 is the tested stable release with best ML library support; 3.13 is newer but less tested with PyTorch/HF
   - name: docker-memory-gb
     default: 48
@@ -27,7 +27,7 @@ preferences:
   - name: ollama-model-autopull
     default: none
     options: none|small|medium|large
-    scope: component:ollama
+    scope: component:ai-apps
     rationale: none prevents automatic multi-GB downloads; pull models manually when ready. small=≤3B, medium=≤8B, large=all
   - name: pytorch-device
     default: mps
