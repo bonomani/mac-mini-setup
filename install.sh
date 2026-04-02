@@ -457,7 +457,7 @@ if [[ "${UCC_INTERACTIVE:-0}" == "1" ]] && [[ -c /dev/tty ]]; then
   echo ""
   echo "  Current preferences:"
   for _i in "${!_UIC_PREF_NAMES[@]}"; do
-    local _marker="  "
+    _marker="  "
     [[ "${_UIC_PREF_VALUES[$_i]}" != "${_UIC_PREF_DEFAULTS[$_i]}" ]] && _marker="* "
     printf '    %s%-28s = %s\n' "$_marker" "${_UIC_PREF_NAMES[$_i]}" "${_UIC_PREF_VALUES[$_i]}"
   done
