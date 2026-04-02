@@ -453,20 +453,20 @@ if [[ "${UCC_INTERACTIVE:-0}" == "1" ]] && [[ -c /dev/tty ]]; then
     [[ "${_UIC_PREF_VALUES[$_i]}" != "${_UIC_PREF_DEFAULTS[$_i]}" ]] && _changed=$((_changed + 1))
   done
 
-  if [[ $_changed -gt 0 ]]; then
-    printf '\n  Save %d changed preference(s) to %s? [Y/n] ' "$_changed" "$_pref_file"
-    read -r _save_prefs < /dev/tty
-    if [[ ! "$_save_prefs" =~ ^[Nn] ]]; then
-      mkdir -p "$(dirname "$_pref_file")"
-      printf '# User preference overrides (non-default values only)\n' > "$_pref_file"
-      printf '# Defaults in policy/preferences.yaml + component YAMLs\n' >> "$_pref_file"
-      printf '# Delete a line to revert to default\n' >> "$_pref_file"
-      for _i in "${!_UIC_PREF_NAMES[@]}"; do
-        [[ "${_UIC_PREF_VALUES[$_i]}" != "${_UIC_PREF_DEFAULTS[$_i]}" ]] && \
-          printf '%s=%s\n' "${_UIC_PREF_NAMES[$_i]}" "${_UIC_PREF_VALUES[$_i]}" >> "$_pref_file"
-      done
-      log_info "Preferences saved to $_pref_file"
-    fi
+  # Ask to save preferences (defaults to no — don't save unless user wants to)
+  printf '\n  [?] %-28s [1)yes, *2)no] ' "save-preferences"
+  read -r _save_prefs < /dev/tty
+  if [[ "$_save_prefs" == "1" ]]; then
+    mkdir -p "$(dirname "$_pref_file")"
+    printf '# User preferences\n' > "$_pref_file"
+    printf '# Defaults in policy/preferences.yaml + component YAMLs\n' >> "$_pref_file"
+    printf '# Delete a line to revert to default\n' >> "$_pref_file"
+    for _i in "${!_UIC_PREF_NAMES[@]}"; do
+      if [[ "${_UIC_PREF_VALUES[$_i]}" != "${_UIC_PREF_DEFAULTS[$_i]}" ]]; then
+        printf '%s=%s\n' "${_UIC_PREF_NAMES[$_i]}" "${_UIC_PREF_VALUES[$_i]}" >> "$_pref_file"
+      fi
+    done
+    log_info "Preferences saved to $_pref_file"
   fi
 
   # Ask about disabling interactive mode for future runs
