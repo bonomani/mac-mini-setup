@@ -351,12 +351,9 @@ _ucc_run_yaml_action() {
 # UCC_TARGET_SET is always set:
 #   - empty = nothing selected (skip all)
 #   - populated = only targets in the set run
-export _UCC_EMITTED_TARGETS=""
-
 _ucc_target_filtered_out() {
   local target="$1" cfg_dir="${2:-}" yaml="${3:-}"
   if [[ "${UCC_TARGET_SET:-}" != *"${target}|"* ]]; then
-    _UCC_EMITTED_TARGETS="${_UCC_EMITTED_TARGETS}|${target}|"
     local display_name state=""
     display_name="$(_ucc_display_name "$target")"
     # Try to observe current state via driver (read-only, best-effort)
@@ -1462,21 +1459,6 @@ ucc_flush_registered_targets() {
   for idx in "${undeclared[@]}"; do
     UCC_EXEC_SNAPSHOT="${_UCC_REGISTERED_ENV[$idx]}" eval "_ucc_execute_target ${_UCC_REGISTERED_ARGS[$idx]}" || return 1
   done
-
-  # Emit [skip] for targets in the component that the runner never processed
-  for target in "${declared[@]}"; do
-    # Check if target was registered (runner called ucc_yaml_*_target for it)
-    _was_processed=0
-    for _rn in "${_UCC_REGISTERED_NAMES[@]+"${_UCC_REGISTERED_NAMES[@]}"}"; do
-      [[ "$_rn" == "$target" ]] && { _was_processed=1; break; }
-    done
-    # Check if target was already handled by _ucc_target_filtered_out
-    [[ "${_UCC_EMITTED_TARGETS:-}" == *"|${target}|"* ]] && _was_processed=1
-    if [[ $_was_processed -eq 0 ]]; then
-      local _dn; _dn="$(_ucc_display_name "$target")"
-      printf '      [%-8s] %-30s %s\n' "skip" "$_dn" "not applicable on ${HOST_PLATFORM:-unknown}"
-    fi
-  done
 }
 
 ucc_target() {
@@ -1518,7 +1500,6 @@ ucc_skip_target() {
   display_name="$(_ucc_display_name "$name")"
   printf '      [%-8s] %-30s %s\n' "skip" "$display_name" "$reason"
   _UCC_SKIPPED=$(( ${_UCC_SKIPPED:-0} + 1 ))
-  _UCC_EMITTED_TARGETS="${_UCC_EMITTED_TARGETS}|${name}|"
 }
 
 # ── ucc_summary — write per-component counts to summary file ──────────────────
