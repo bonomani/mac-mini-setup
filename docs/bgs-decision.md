@@ -12,7 +12,7 @@ declared_scope: >
   docker, ai-python-stack, ai-apps;
   system layer (ucc/system/): macos-config, system;
   verification (tic/): verify + integration.
-  Covers install, check (drift detection), and update modes.
+  Covers install, check (drift detection), update, and interactive modes.
 
 bgs_version_ref: bgs@6d9b3d8
 
@@ -31,7 +31,11 @@ external_controls:
   # macOS user permissions and brew/npm/Docker Hub auth are handled by
   # the upstream toolchain. Targets requiring sudo use a capability
   # target (sudo-available) and admin_required metadata; operators
-  # may pre-acquire a sudo ticket with `sudo -v`.
+  # may pre-acquire a sudo ticket with `sudo -v` or run as root.
+  # Privilege elevation uses `run_elevated` helper which skips sudo
+  # when EUID=0 (already root) and uses `sudo` otherwise.
+  # `sudo_is_available` checks EUID=0 OR cached sudo ticket.
+  # All sudo calls are guarded — no interactive password prompt.
   sandboxing or runtime isolation: implemented
   # AI app services run in Docker containers (ai-apps).
   # Unsloth Studio runs in an isolated Python venv via launchd/systemd.

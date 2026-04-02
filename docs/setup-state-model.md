@@ -16,9 +16,9 @@ Scope:
 
   Software layer (`ucc/software/`) — software convergence:
   - `software-bootstrap` (Xcode CLT, build-deps, Homebrew)
-  - `dev-tools` (Git, Python, Node, CLI tools, VS Code, Oh My Zsh)
+  - `dev-tools` (Git, Node, CLI tools, VS Code, Oh My Zsh)
   - `docker` (Docker Desktop + resources + capabilities)
-  - `ai-python-stack` (PyTorch, HF, LangChain, pip groups, GPU probes)
+  - `ai-python-stack` (pyenv, Python, pip, PyTorch, HF, LangChain, pip groups, GPU probes)
   - `ai-apps` (Ollama + models + Docker Compose services)
 
   System layer (`ucc/system/`) — value convergence:

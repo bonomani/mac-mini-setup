@@ -68,6 +68,7 @@ docker-available, mps-available, cuda-available.
 ./install.sh --dry-run          # Preview changes
 ./install.sh --mode check       # Drift detection (observe only)
 ./install.sh --mode update      # Update all
+./install.sh --interactive      # Prompt for prefs + confirm each change
 ./install.sh --preflight        # Check gates/prefs only
 ./install.sh ai-apps            # Single component
 ./install.sh ollama             # Single target
