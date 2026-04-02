@@ -141,6 +141,9 @@ _tic_not_macos() {
 # Return 0 if passwordless sudo is available.
 sudo_is_available() { sudo -n true 2>/dev/null; }
 
+# Return 0 if passwordless sudo is NOT available.
+sudo_not_available() { ! sudo -n true 2>/dev/null; }
+
 # Return 0 if the networkQuality command exists (macOS only).
 networkquality_is_available() { command -v networkQuality >/dev/null 2>&1; }
 

@@ -11,10 +11,20 @@ run_macos_config_from_yaml() {
 
   # Probe sudo capability first
   ucc_yaml_capability_target "$cfg_dir" "$yaml" "sudo-available"
+  local _sudo_ok=0
+  sudo_is_available && _sudo_ok=1
 
   while IFS= read -r target; do
-    [[ -n "$target" || "$target" == "sudo-available" ]] || continue
-    [[ "$target" == "sudo-available" ]] && continue  # already probed
+    [[ -n "$target" ]] || continue
+    [[ "$target" == "sudo-available" ]] && continue  # already probed above
+    # Skip admin targets when sudo is not available
+    if [[ $_sudo_ok -eq 0 ]]; then
+      local _admin; _admin="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "admin_required" 2>/dev/null)"
+      if [[ "$_admin" == "true" ]]; then
+        ucc_skip_target "$target" "sudo not available"
+        continue
+      fi
+    fi
     ucc_yaml_parametric_target "$cfg_dir" "$yaml" "$target"
   done <<< "$ordered"
 

@@ -30,8 +30,6 @@ targets:
     type: config
     state_model: parametric
     display_name: AC sleep
-    depends_on:
-    - sudo-available
     admin_required: true
     driver:
       kind: pmset
@@ -44,8 +42,6 @@ targets:
     type: config
     state_model: parametric
     display_name: Disk sleep
-    depends_on:
-    - sudo-available
     admin_required: true
     driver:
       kind: pmset
@@ -58,8 +54,6 @@ targets:
     type: config
     state_model: parametric
     display_name: Standby
-    depends_on:
-    - sudo-available
     admin_required: true
     driver:
       kind: pmset
@@ -125,8 +119,6 @@ targets:
     type: config
     state_model: parametric
     display_name: Software Update schedule
-    depends_on:
-    - sudo-available
     admin_required: true
     driver:
       kind: softwareupdate-schedule
@@ -137,8 +129,6 @@ targets:
     type: config
     state_model: parametric
     display_name: Automatic update checks
-    depends_on:
-    - sudo-available
     admin_required: true
     driver:
       kind: softwareupdate-defaults
@@ -152,8 +142,6 @@ targets:
     type: config
     state_model: parametric
     display_name: Automatic update downloads
-    depends_on:
-    - sudo-available
     admin_required: true
     driver:
       kind: softwareupdate-defaults
@@ -167,8 +155,6 @@ targets:
     type: config
     state_model: parametric
     display_name: Automatic macOS updates
-    depends_on:
-    - sudo-available
     admin_required: true
     driver:
       kind: softwareupdate-defaults
@@ -182,8 +168,6 @@ targets:
     type: config
     state_model: parametric
     display_name: Configuration data updates
-    depends_on:
-    - sudo-available
     admin_required: true
     driver:
       kind: softwareupdate-defaults
@@ -197,8 +181,6 @@ targets:
     type: config
     state_model: parametric
     display_name: Security updates
-    depends_on:
-    - sudo-available
     admin_required: true
     driver:
       kind: softwareupdate-defaults
