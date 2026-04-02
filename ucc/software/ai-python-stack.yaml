@@ -202,6 +202,17 @@ targets:
       probe_pkg: optimum
       install_packages: optimum
       min_version: ''
+  pip-group-web-testing:
+    component: ai-python-stack
+    profile: configured
+    type: package
+    state_model: package
+    display_name: Web testing packages
+    driver:
+      kind: pip
+      probe_pkg: pytest
+      install_packages: pytest beautifulsoup4 playwright mypy coverage
+      min_version: ''
   mps-available:
     component: ai-python-stack
     profile: capability
@@ -247,3 +258,4 @@ pip_groups:
 - pip-group-utilities
 - pip-group-dev-tools
 - pip-group-optimum
+- pip-group-web-testing
