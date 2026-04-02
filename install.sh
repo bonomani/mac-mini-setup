@@ -256,6 +256,13 @@ EOF
   exit 0
 }
 
+# --- Ask for interactive mode if TTY and no flags given ------
+if [[ -t 0 && $# -eq 0 ]]; then
+  printf '\n  Run in interactive mode? (prompts for preferences and confirms changes) [y/N] '
+  read -r _interactive_answer
+  [[ "$_interactive_answer" =~ ^[Yy] ]] && export UCC_INTERACTIVE=1
+fi
+
 # --- Parse arguments ----------------------------------------
 TO_RUN=()
 export UCC_TARGET_SET=""
@@ -389,6 +396,56 @@ load_uic_preferences "$DIR"
 _UIC_RC=0
 uic_resolve || _UIC_RC=$?
 uic_export
+
+# --- Interactive: save preferences to file -------------------
+if [[ "${UCC_INTERACTIVE:-0}" == "1" && -t 0 ]]; then
+  _pref_file="${UIC_PREF_FILE:-$HOME/.ai-stack/preferences.env}"
+  printf '\n  Save these preferences to %s? [Y/n] ' "$_pref_file"
+  read -r _save_prefs
+  if [[ ! "$_save_prefs" =~ ^[Nn] ]]; then
+    mkdir -p "$(dirname "$_pref_file")"
+    : > "$_pref_file"
+    for _i in "${!_UIC_PREF_NAMES[@]}"; do
+      printf '%s=%s\n' "${_UIC_PREF_NAMES[$_i]}" "${_UIC_PREF_VALUES[$_i]}" >> "$_pref_file"
+    done
+    log_info "Preferences saved to $_pref_file"
+  fi
+fi
+
+# --- Interactive: component selection ------------------------
+if [[ "${UCC_INTERACTIVE:-0}" == "1" && -t 0 && ${#TO_RUN[@]} -gt 3 ]]; then
+  echo ""
+  echo "  Components to run:"
+  _comp_idx=1
+  for _c in "${TO_RUN[@]}"; do
+    printf '    %d) %s\n' "$_comp_idx" "$_c"
+    _comp_idx=$((_comp_idx + 1))
+  done
+  printf '  Enter numbers to run (comma-separated), or Enter for all: '
+  read -r _comp_choice
+  if [[ -n "$_comp_choice" ]]; then
+    _selected=()
+    IFS=',' read -ra _picks <<< "$_comp_choice"
+    for _p in "${_picks[@]}"; do
+      _p="${_p// /}"  # trim spaces
+      if [[ "$_p" =~ ^[0-9]+$ && "$_p" -ge 1 && "$_p" -le "${#TO_RUN[@]}" ]]; then
+        _selected+=("${TO_RUN[$((_p - 1))]}")
+      fi
+    done
+    [[ ${#_selected[@]} -gt 0 ]] && TO_RUN=("${_selected[@]}")
+  fi
+fi
+
+# --- Interactive: sudo acquisition ---------------------------
+if [[ "${UCC_INTERACTIVE:-0}" == "1" && -t 0 ]]; then
+  if sudo_not_available; then
+    printf '\n  Some targets require admin privileges. Acquire sudo now? [y/N] '
+    read -r _sudo_answer
+    if [[ "$_sudo_answer" =~ ^[Yy] ]]; then
+      sudo -v
+    fi
+  fi
+fi
 
 # Warm Brew caches before any component runs. Version caches are needed in all
 # modes; outdated caches are only useful when upgrades are enabled.
