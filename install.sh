@@ -257,8 +257,13 @@ EOF
   exit 0
 }
 
-# --- Ask for interactive mode if TTY and no flags given ------
-if [[ -t 0 && $# -eq 0 ]]; then
+# --- Ask for interactive mode if TTY and no targets/components given ---
+# Flags like --debug, --dry-run, --mode are orthogonal — don't suppress the prompt
+_has_positional=0
+for _a in "$@"; do
+  case "$_a" in --*) ;; *) _has_positional=1; break ;; esac
+done
+if [[ -t 0 && $_has_positional -eq 0 && "${UCC_INTERACTIVE:-}" != "1" ]]; then
   printf '\n  Run in interactive mode? (prompts for preferences and confirms changes) [y/N] '
   read -r _interactive_answer
   [[ "$_interactive_answer" =~ ^[Yy] ]] && export UCC_INTERACTIVE=1
