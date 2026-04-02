@@ -1407,12 +1407,27 @@ ucc_flush_registered_targets() {
     declared+=("$target")
   done <<< "$ordered"
 
+  # Build the set of targets to run when filtering within the target's own component
+  local _filter_set=""
+  if [[ -n "${UCC_TARGET_FILTER:-}" && -n "${UCC_TARGET_FILTER_COMP:-}" && "$component" == "$UCC_TARGET_FILTER_COMP" ]]; then
+    # Include the target itself + all its transitive intra-component deps
+    local _queue=("$UCC_TARGET_FILTER") _visited="" _dep
+    while [[ ${#_queue[@]} -gt 0 ]]; do
+      local _cur="${_queue[0]}"; _queue=("${_queue[@]:1}")
+      [[ "$_visited" == *"|${_cur}|"* ]] && continue
+      _visited="${_visited}|${_cur}|"
+      _filter_set="${_filter_set}|${_cur}|"
+      while IFS= read -r _dep; do
+        [[ -n "$_dep" && "$_visited" != *"|${_dep}|"* ]] && _queue+=("$_dep")
+      done < <(_ucc_target_direct_deps "$_cur" 2>/dev/null)
+    done
+  fi
+
   for target in "${declared[@]}"; do
     idx="$(_ucc_registered_index "$target" || true)"
     [[ -n "$idx" ]] || continue
-    if [[ -n "${UCC_TARGET_FILTER:-}" && "$target" != "$UCC_TARGET_FILTER" ]]; then
-      # Only filter within the target's own component; prerequisite components run all targets
-      [[ -n "${UCC_TARGET_FILTER_COMP:-}" && "$component" == "$UCC_TARGET_FILTER_COMP" ]] && continue
+    if [[ -n "$_filter_set" && "$_filter_set" != *"|${target}|"* ]]; then
+      continue
     fi
     _ucc_require_declared_dependencies_resolved "$target" || return 1
     UCC_EXEC_SNAPSHOT="${_UCC_REGISTERED_ENV[$idx]}" eval "_ucc_execute_target ${_UCC_REGISTERED_ARGS[$idx]}" || return 1
