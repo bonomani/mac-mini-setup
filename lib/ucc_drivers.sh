@@ -29,6 +29,7 @@ for _ucc_drv_file in \
   "$_UCC_DRIVERS_DIR/custom_daemon.sh" \
   "$_UCC_DRIVERS_DIR/compose_file.sh" \
   "$_UCC_DRIVERS_DIR/docker_compose_service.sh" \
+  "$_UCC_DRIVERS_DIR/package.sh" \
   "$_UCC_DRIVERS_DIR/build_deps.sh" \
   "$_UCC_DRIVERS_DIR/swupdate_schedule.sh" \
   "$_UCC_DRIVERS_DIR/pyenv_brew.sh" \
@@ -115,6 +116,20 @@ _ucc_driver_provided_by() {
 # ── Driver meta declarations ──────────────────────────────────────────────────
 # Each driver declares its implicit dependency target and tool name.
 # Only drivers with a non-trivial prerequisite need these.
+
+# package (platform-aware meta-driver)
+_ucc_driver_package_depends_on() {
+  case "${HOST_PLATFORM:-macos}" in
+    macos) printf 'homebrew' ;;
+    *)     printf 'build-deps' ;;
+  esac
+}
+_ucc_driver_package_provided_by() {
+  case "${HOST_PLATFORM:-macos}" in
+    macos) printf 'brew' ;;
+    *)     printf 'native-package-manager' ;;
+  esac
+}
 
 _ucc_driver_brew_depends_on()              { printf 'homebrew'; }
 _ucc_driver_brew_provided_by()             { printf 'brew'; }

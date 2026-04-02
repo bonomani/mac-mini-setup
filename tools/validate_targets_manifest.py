@@ -21,7 +21,8 @@ KNOWN_PLATFORMS = {"macos", "linux", "wsl", "wsl1", "wsl2"}
 
 # Maps driver.kind → (implicit depends_on target, provided_by_tool)
 # Drivers not listed here have no implicit dependency.
-DRIVER_META = {
+# "package" is platform-aware — resolved at runtime by _resolve_driver_meta().
+_DRIVER_META_STATIC = {
     "brew":                  ("homebrew",       "brew"),
     "app-bundle":            ("homebrew",       "brew-cask"),
     "pip":                   ("pip-latest",     "pip"),
@@ -36,6 +37,28 @@ DRIVER_META = {
     "brew-service":          ("homebrew",       "brew"),
     "docker-compose-service":("docker-desktop", "docker-compose"),
 }
+
+# Platform-aware driver meta for "package" driver
+_PACKAGE_DRIVER_META = {
+    "macos": ("homebrew", "brew"),
+    "linux": ("build-deps", "native-package-manager"),
+    "wsl":   ("build-deps", "native-package-manager"),
+    "wsl2":  ("build-deps", "native-package-manager"),
+}
+
+def _resolve_driver_meta():
+    """Build the effective DRIVER_META dict, resolving platform-aware entries."""
+    meta = dict(_DRIVER_META_STATIC)
+    platform = (os.environ.get("HOST_PLATFORM") or "").strip()
+    variant = (os.environ.get("HOST_PLATFORM_VARIANT") or "").strip()
+    # Try variant first (wsl2), then family (wsl/linux), then default (macos)
+    for candidate in [variant, platform, "macos"]:
+        if candidate in _PACKAGE_DRIVER_META:
+            meta["package"] = _PACKAGE_DRIVER_META[candidate]
+            break
+    return meta
+
+DRIVER_META = _resolve_driver_meta()
 # Maps driver.kind → { required: [keys], optional: [keys] }
 # Drivers not listed here accept any keys (custom, etc.)
 DRIVER_SCHEMA = {
@@ -70,11 +93,13 @@ DRIVER_SCHEMA = {
     "bin-script":             {"required": ["script_name", "bin_dir"], "optional": []},
     "git-global":             {"required": [], "optional": []},
     "build-deps":             {"required": [], "optional": []},
+    "package":                {"required": ["ref"], "optional": ["cask", "greedy_auto_updates", "previous_ref", "apt_ref", "dnf_ref", "pacman_ref"]},
 }
 
 KNOWN_PACKAGE_DRIVERS = {
     "build-deps",
     "brew-bootstrap",
+    "package",
     "custom",
     "brew",
     "macos-clt",
@@ -487,9 +512,9 @@ def validate(manifest, known_gates):
 
         _validate_generated_target_collection(manifest_data, "vscode_extensions", errors, required_dep="vscode-code-cmd")
         _validate_generated_target_collection(manifest_data, "pip_groups", errors, required_dep="pip-latest")
-        _validate_generated_target_collection(manifest_data, "cli_tools", errors, required_dep="homebrew")
+        _validate_generated_target_collection(manifest_data, "cli_tools", errors)
         _validate_generated_target_collection(manifest_data, "npm_packages", errors, required_dep="node-lts")
-        _validate_generated_target_collection(manifest_data, "casks", errors, required_dep="homebrew")
+        _validate_generated_target_collection(manifest_data, "casks", errors)
         for section_name in ("small", "medium", "large"):
             _validate_generated_target_collection(manifest_data, section_name, errors, required_dep="ollama")
 

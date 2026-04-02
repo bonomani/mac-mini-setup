@@ -84,22 +84,23 @@ run_dev_tools_from_yaml() {
     [[ -n "$_target" ]] && ucc_yaml_simple_target "$cfg_dir" "$yaml" "$_target"
   done < <(yaml_list "$cfg_dir" "$yaml" cli_tools)
 
-  # ---- VSCode ----
-  ucc_yaml_simple_target "$cfg_dir" "$yaml" "vscode"
+  # ---- VSCode (macOS only — cask + extensions) ----
+  if [[ "${HOST_PLATFORM:-macos}" == "macos" ]]; then
+    ucc_yaml_simple_target "$cfg_dir" "$yaml" "vscode"
+    ucc_yaml_simple_target "$cfg_dir" "$yaml" "vscode-code-cmd"
+    load_vscode_extensions_from_yaml "$cfg_dir" "$yaml"
+    ucc_yaml_simple_target "$cfg_dir" "$yaml" "vscode-settings"
 
-  # ---- code CLI symlink ----
-  ucc_yaml_simple_target "$cfg_dir" "$yaml" "vscode-code-cmd"
-
-  # ---- VSCode extensions ----
-  load_vscode_extensions_from_yaml "$cfg_dir" "$yaml"
-
-  # ---- VSCode settings.json (merge, not overwrite) ----
-  ucc_yaml_simple_target "$cfg_dir" "$yaml" "vscode-settings"
-
-  # ---- GUI tools (brew cask) ----
-  while IFS= read -r _target; do
-    [[ -n "$_target" ]] && ucc_yaml_simple_target "$cfg_dir" "$yaml" "$_target"
-  done < <(yaml_list "$cfg_dir" "$yaml" casks)
+    # ---- GUI tools (brew cask, macOS only) ----
+    while IFS= read -r _target; do
+      [[ -n "$_target" ]] && ucc_yaml_simple_target "$cfg_dir" "$yaml" "$_target"
+    done < <(yaml_list "$cfg_dir" "$yaml" casks)
+  else
+    for _skip in vscode vscode-code-cmd vscode-settings; do
+      ucc_skip_target "$_skip" "macOS only"
+    done
+    load_vscode_extensions_from_yaml "$cfg_dir" "$yaml" 2>/dev/null || true
+  fi
 
   # ---- nvm + Node.js LTS ----
   ucc_yaml_simple_target "$cfg_dir" "$yaml" "nvm"
@@ -110,8 +111,12 @@ run_dev_tools_from_yaml() {
   # Activate the installed version for subsequent targets
   [[ -s "$NVM_DIR/nvm.sh" ]] && nvm use "$_NODE_VER" >/dev/null 2>&1 || true
 
-  # ---- Ensure brew's node is never on PATH (nvm owns node) ----
-  ucc_yaml_simple_target "$cfg_dir" "$yaml" "brew-node-unlinked"
+  # ---- Ensure brew's node is never on PATH (nvm owns node, macOS only) ----
+  if [[ "${HOST_PLATFORM:-macos}" == "macos" ]]; then
+    ucc_yaml_simple_target "$cfg_dir" "$yaml" "brew-node-unlinked"
+  else
+    ucc_skip_target "brew-node-unlinked" "macOS only (brew node not applicable)"
+  fi
 
   # ---- npm global packages ----
   npm_global_cache_versions
@@ -125,6 +130,12 @@ run_dev_tools_from_yaml() {
   ucc_yaml_simple_target "$cfg_dir" "$yaml" "home-bin-in-path"
   ucc_yaml_simple_target "$cfg_dir" "$yaml" "ai-healthcheck"
 
-  ucc_brew_runtime_formula_target "ariaflow" "ariaflow" "$_ARIAFLOW_FORMULA" "$cfg_dir" "$yaml"
-  ucc_brew_runtime_formula_target "ariaflow-web" "ariaflow-web" "$_ARIAFLOW_WEB_FORMULA" "$cfg_dir" "$yaml"
+  # ---- Ariaflow (macOS only — brew tap service) ----
+  if [[ "${HOST_PLATFORM:-macos}" == "macos" ]]; then
+    ucc_brew_runtime_formula_target "ariaflow" "ariaflow" "$_ARIAFLOW_FORMULA" "$cfg_dir" "$yaml"
+    ucc_brew_runtime_formula_target "ariaflow-web" "ariaflow-web" "$_ARIAFLOW_WEB_FORMULA" "$cfg_dir" "$yaml"
+  else
+    ucc_skip_target "ariaflow" "macOS only (brew tap service)"
+    ucc_skip_target "ariaflow-web" "macOS only (brew tap service)"
+  fi
 }

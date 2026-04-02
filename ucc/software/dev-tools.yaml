@@ -4,6 +4,8 @@ libs: vscode_ext dev_tools
 runner: run_dev_tools_from_yaml
 platforms:
 - macos
+- linux
+- wsl2
 python_version: 3.12.3
 node_version: 24
 nvm_dir: .nvm
@@ -48,8 +50,9 @@ targets:
     state_model: package
     display_name: XZ Utils
     driver:
-      kind: brew
+      kind: package
       ref: xz
+      apt_ref: xz-utils
   python:
     component: dev-tools
     profile: configured
@@ -219,7 +222,7 @@ targets:
     state_model: package
     display_name: jq
     driver:
-      kind: brew
+      kind: package
       ref: jq
   cli-wget:
     component: dev-tools
@@ -228,7 +231,7 @@ targets:
     state_model: package
     display_name: wget
     driver:
-      kind: brew
+      kind: package
       ref: wget
   cli-curl:
     component: dev-tools
@@ -237,7 +240,7 @@ targets:
     state_model: package
     display_name: curl
     driver:
-      kind: brew
+      kind: package
       ref: curl
   cli-htop:
     component: dev-tools
@@ -246,7 +249,7 @@ targets:
     state_model: package
     display_name: htop
     driver:
-      kind: brew
+      kind: package
       ref: htop
   cli-btop:
     component: dev-tools
@@ -255,7 +258,7 @@ targets:
     state_model: package
     display_name: btop
     driver:
-      kind: brew
+      kind: package
       ref: btop
   cli-tmux:
     component: dev-tools
@@ -264,7 +267,7 @@ targets:
     state_model: package
     display_name: tmux
     driver:
-      kind: brew
+      kind: package
       ref: tmux
   cli-fzf:
     component: dev-tools
@@ -273,7 +276,7 @@ targets:
     state_model: package
     display_name: fzf
     driver:
-      kind: brew
+      kind: package
       ref: fzf
   cli-ripgrep:
     component: dev-tools
@@ -282,7 +285,7 @@ targets:
     state_model: package
     display_name: ripgrep
     driver:
-      kind: brew
+      kind: package
       ref: ripgrep
   cli-fd:
     component: dev-tools
@@ -291,8 +294,9 @@ targets:
     state_model: package
     display_name: fd
     driver:
-      kind: brew
+      kind: package
       ref: fd
+      apt_ref: fd-find
   cli-tree:
     component: dev-tools
     profile: configured
@@ -300,7 +304,7 @@ targets:
     state_model: package
     display_name: tree
     driver:
-      kind: brew
+      kind: package
       ref: tree
   cli-uv:
     component: dev-tools
@@ -309,7 +313,7 @@ targets:
     state_model: package
     display_name: uv
     driver:
-      kind: brew
+      kind: package
       ref: uv
   cli-pnpm:
     component: dev-tools
@@ -318,7 +322,7 @@ targets:
     state_model: package
     display_name: pnpm
     driver:
-      kind: brew
+      kind: package
       ref: pnpm
   cli-gcc:
     component: dev-tools
@@ -327,7 +331,7 @@ targets:
     state_model: package
     display_name: GCC
     driver:
-      kind: brew
+      kind: package
       ref: gcc
   cli-gh:
     component: dev-tools
@@ -336,7 +340,7 @@ targets:
     state_model: package
     display_name: GitHub CLI
     driver:
-      kind: brew
+      kind: package
       ref: gh
   cli-llama.cpp:
     component: dev-tools
@@ -345,7 +349,7 @@ targets:
     state_model: package
     display_name: llama.cpp
     driver:
-      kind: brew
+      kind: package
       ref: llama.cpp
   cli-opencode:
     component: dev-tools
@@ -354,7 +358,7 @@ targets:
     state_model: package
     display_name: OpenCode
     driver:
-      kind: brew
+      kind: package
       ref: opencode
   cli-aria2:
     component: dev-tools
@@ -363,7 +367,7 @@ targets:
     state_model: package
     display_name: aria2
     driver:
-      kind: brew
+      kind: package
       ref: aria2
   cli-cmake:
     component: dev-tools
@@ -372,7 +376,7 @@ targets:
     state_model: package
     display_name: CMake
     driver:
-      kind: brew
+      kind: package
       ref: cmake
   vscode-ext-ms-python.python:
     component: dev-tools
@@ -445,7 +449,7 @@ targets:
     display_name: iTerm2
     provided_by_tool: brew-cask
     driver:
-      kind: brew
+      kind: package
       cask: true
       ref: iterm2
       greedy_auto_updates: true
@@ -457,7 +461,7 @@ targets:
     display_name: LM Studio
     provided_by_tool: brew-cask
     driver:
-      kind: brew
+      kind: package
       cask: true
       ref: lm-studio
       greedy_auto_updates: true
@@ -506,7 +510,7 @@ targets:
     state_model: package
     display_name: Git
     driver:
-      kind: brew
+      kind: package
       ref: git
   git-global-config:
     component: dev-tools
