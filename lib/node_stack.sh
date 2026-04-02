@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# lib/dev_tools.sh — npm cache helpers + dev-tools runner
-# Sourced by components/dev-tools.sh
+# lib/node_stack.sh — nvm, Node.js, npm packages, ariaflow runner
 
 # Populate the npm global packages cache (exports _NPM_GLOBAL_VERSIONS_CACHE).
 npm_global_cache_versions() {
@@ -49,8 +48,8 @@ npm_global_observe() {
   printf '%s' "${version:-absent}"
 }
 
-# Usage: run_dev_tools_from_yaml <cfg_dir> <yaml_path>
-run_dev_tools_from_yaml() {
+# Usage: run_node_stack_from_yaml <cfg_dir> <yaml_path>
+run_node_stack_from_yaml() {
   local cfg_dir="$1" yaml="$2"
 
   local _NODE_VER="24" _NVM_DIR=".nvm"
@@ -64,56 +63,15 @@ run_dev_tools_from_yaml() {
   done < <(yaml_get_many "$cfg_dir" "$yaml" node_version ariaflow_tap nvm_dir)
   _ARIAFLOW_FORMULA="${_ARIAFLOW_TAP}/ariaflow"
   _ARIAFLOW_WEB_FORMULA="${_ARIAFLOW_TAP}/ariaflow-web"
-  # ---- Git (install + config) ----
-  ucc_yaml_simple_target "$cfg_dir" "$yaml" "git"
-  ucc_yaml_simple_target "$cfg_dir" "$yaml" "git-global-config"
-
-  # ---- CLI tools (brew) ----
-  local _target
-  while IFS= read -r _target; do
-    [[ -n "$_target" ]] && ucc_yaml_simple_target "$cfg_dir" "$yaml" "$_target"
-  done < <(yaml_list "$cfg_dir" "$yaml" cli_tools)
-
-  # ---- VSCode ----
-  if [[ "${HOST_PLATFORM:-macos}" == "macos" ]]; then
-    ucc_yaml_simple_target "$cfg_dir" "$yaml" "vscode"
-    ucc_yaml_simple_target "$cfg_dir" "$yaml" "vscode-code-cmd"
-  else
-    # On Linux, VS Code is externally managed (apt/snap/remote-wsl)
-    if is_installed code; then
-      ucc_skip_target "vscode" "externally installed"
-      ucc_skip_target "vscode-code-cmd" "code already in PATH"
-    else
-      ucc_skip_target "vscode" "install VS Code manually on Linux"
-      ucc_skip_target "vscode-code-cmd" "code not available"
-    fi
-  fi
-
-  # ---- VSCode extensions (cross-platform if code is available) ----
-  if is_installed code; then
-    load_vscode_extensions_from_yaml "$cfg_dir" "$yaml"
-    ucc_yaml_simple_target "$cfg_dir" "$yaml" "vscode-settings"
-  else
-    ucc_skip_target "vscode-settings" "code not available"
-  fi
-
-  # ---- GUI tools (brew cask, macOS only) ----
-  if [[ "${HOST_PLATFORM:-macos}" == "macos" ]]; then
-    while IFS= read -r _target; do
-      [[ -n "$_target" ]] && ucc_yaml_simple_target "$cfg_dir" "$yaml" "$_target"
-    done < <(yaml_list "$cfg_dir" "$yaml" casks)
-  fi
 
   # ---- nvm + Node.js LTS ----
   ucc_yaml_simple_target "$cfg_dir" "$yaml" "nvm"
-  # Source nvm so node version check and npm targets see the right binary
   export NVM_DIR="$HOME/$_NVM_DIR"
   [[ -s "$NVM_DIR/nvm.sh" ]] && source "$NVM_DIR/nvm.sh" 2>/dev/null || true
   ucc_yaml_simple_target "$cfg_dir" "$yaml" "node-lts"
-  # Activate the installed version for subsequent targets
   [[ -s "$NVM_DIR/nvm.sh" ]] && nvm use "$_NODE_VER" >/dev/null 2>&1 || true
 
-  # ---- Ensure brew's node is never on PATH (nvm owns node, macOS only) ----
+  # ---- Ensure brew's node is never on PATH (macOS only) ----
   if [[ "${HOST_PLATFORM:-macos}" == "macos" ]]; then
     ucc_yaml_simple_target "$cfg_dir" "$yaml" "brew-node-unlinked"
   else
@@ -122,15 +80,10 @@ run_dev_tools_from_yaml() {
 
   # ---- npm global packages ----
   npm_global_cache_versions
+  local _target
   while IFS= read -r _target; do
     [[ -n "$_target" ]] && ucc_yaml_simple_target "$cfg_dir" "$yaml" "$_target"
   done < <(yaml_list "$cfg_dir" "$yaml" npm_packages)
-
-  # ---- YAML-first simple configured targets ----
-  ucc_yaml_simple_target "$cfg_dir" "$yaml" "oh-my-zsh"
-  ucc_yaml_simple_target "$cfg_dir" "$yaml" "omz-theme-agnoster"
-  ucc_yaml_simple_target "$cfg_dir" "$yaml" "home-bin-in-path"
-  ucc_yaml_simple_target "$cfg_dir" "$yaml" "ai-healthcheck"
 
   # ---- Ariaflow (macOS only — brew tap service) ----
   if [[ "${HOST_PLATFORM:-macos}" == "macos" ]]; then

@@ -1,13 +1,17 @@
 components:
   - name: software-bootstrap
     mode: enabled
-  - name: docker
+  - name: cli-tools
     mode: enabled
-  - name: dev-tools
+  - name: node-stack
     mode: enabled
-  - name: ai-apps
+  - name: vscode-stack
     mode: enabled
   - name: ai-python-stack
+    mode: enabled
+  - name: docker
+    mode: enabled
+  - name: ai-apps
     mode: enabled
   - name: macos-config
     mode: enabled

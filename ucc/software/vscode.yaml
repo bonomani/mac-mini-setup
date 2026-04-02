@@ -1,0 +1,127 @@
+component: vscode-stack
+primary_profile: configured
+libs: vscode_ext vscode_runner
+runner: run_vscode_from_yaml
+platforms:
+- macos
+- linux
+- wsl2
+vscode_cli_path: /Applications/Visual Studio Code.app/Contents/Resources/app/bin/code
+vscode_cli_link_relpath: bin/code
+vscode_code_cmd_hint: "Symlink created. If 'code' is still missing in new shells,\
+  \ run: Cmd+Shift+P > Shell Command: Install code command in PATH"
+vscode_settings_relpath: Library/Application Support/Code/User/settings.json
+vscode_settings_patch: ucc/software/vscode-settings.json
+targets:
+  vscode:
+    component: vscode-stack
+    profile: configured
+    type: package
+    state_model: package
+    display_name: Visual Studio Code
+    driver:
+      kind: app-bundle
+      app_path: /Applications/Visual Studio Code.app
+      brew_cask: visual-studio-code
+      update_api: https://update.code.visualstudio.com/api/releases/stable
+      download_url_tpl: https://update.code.visualstudio.com/{version}/darwin-universal/stable
+      package_ext: zip
+  vscode-code-cmd:
+    component: vscode-stack
+    profile: configured
+    type: config
+    state_model: config
+    display_name: VS Code CLI
+    depends_on:
+    - vscode
+    driver:
+      kind: cli-symlink
+      src_path: ${vscode_cli_path}
+      link_relpath: ${vscode_cli_link_relpath}
+      cmd: code
+      hint: ${vscode_code_cmd_hint}
+  vscode-settings:
+    component: vscode-stack
+    profile: configured
+    type: config
+    state_model: config
+    display_name: VS Code settings
+    depends_on:
+    - vscode
+    driver:
+      kind: json-merge
+      settings_relpath: ${vscode_settings_relpath}
+      patch_relpath: ${vscode_settings_patch}
+    evidence:
+      path: home_path "${vscode_settings_relpath}"
+  vscode-ext-ms-python.python:
+    component: vscode-stack
+    profile: configured
+    type: package
+    state_model: package
+    display_name: VS Code Python
+    driver:
+      kind: vscode-marketplace
+      extension_id: ms-python.python
+  vscode-ext-ms-python.vscode-pylance:
+    component: vscode-stack
+    profile: configured
+    type: package
+    state_model: package
+    display_name: VS Code Pylance
+    driver:
+      kind: vscode-marketplace
+      extension_id: ms-python.vscode-pylance
+  vscode-ext-ms-toolsai.jupyter:
+    component: vscode-stack
+    profile: configured
+    type: package
+    state_model: package
+    display_name: VS Code Jupyter
+    driver:
+      kind: vscode-marketplace
+      extension_id: ms-toolsai.jupyter
+  vscode-ext-ms-vscode.cpptools:
+    component: vscode-stack
+    profile: configured
+    type: package
+    state_model: package
+    display_name: VS Code C/C++
+    driver:
+      kind: vscode-marketplace
+      extension_id: ms-vscode.cpptools
+  vscode-ext-continue.continue:
+    component: vscode-stack
+    profile: configured
+    type: package
+    state_model: package
+    display_name: VS Code Continue
+    driver:
+      kind: vscode-marketplace
+      extension_id: continue.continue
+  vscode-ext-eamodio.gitlens:
+    component: vscode-stack
+    profile: configured
+    type: package
+    state_model: package
+    display_name: VS Code GitLens
+    driver:
+      kind: vscode-marketplace
+      extension_id: eamodio.gitlens
+  vscode-ext-ms-vscode-remote.remote-containers:
+    component: vscode-stack
+    profile: configured
+    type: package
+    state_model: package
+    display_name: VS Code Dev Containers
+    driver:
+      kind: vscode-marketplace
+      extension_id: ms-vscode-remote.remote-containers
+vscode_extensions:
+- vscode-ext-ms-python.python
+- vscode-ext-ms-python.vscode-pylance
+- vscode-ext-ms-toolsai.jupyter
+- vscode-ext-ms-vscode.cpptools
+- vscode-ext-continue.continue
+- vscode-ext-eamodio.gitlens
+- vscode-ext-ms-vscode-remote.remote-containers

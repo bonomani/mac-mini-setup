@@ -167,7 +167,7 @@ run_verify() {
     case "$key" in
       node_version) [[ -n "$value" ]] && _NODE_VER="$value" ;;
     esac
-  done < <(yaml_get_many "$cfg_dir" "$cfg_dir/ucc/software/dev-tools.yaml" node_version)
+  done < <(yaml_get_many "$cfg_dir" "$cfg_dir/ucc/software/node-stack.yaml" node_version)
   while IFS=$'\t' read -r -d '' key value; do
     case "$key" in
       pyenv_dir) [[ -n "$value" ]] && _PYENV_DIR="$value" ;;

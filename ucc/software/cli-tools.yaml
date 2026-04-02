@@ -1,0 +1,293 @@
+component: cli-tools
+primary_profile: configured
+libs: cli_tools
+runner: run_cli_tools_from_yaml
+platforms:
+- macos
+- linux
+- wsl2
+omz_theme: agnoster
+omz_installer_url: https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh
+omz_dir: .oh-my-zsh
+shell_profile: .zprofile
+home_bin_dir: bin
+targets:
+  git:
+    component: cli-tools
+    profile: configured
+    type: package
+    state_model: package
+    display_name: Git
+    driver:
+      kind: package
+      ref: git
+  git-global-config:
+    component: cli-tools
+    profile: configured
+    type: config
+    state_model: config
+    display_name: Git global config
+    depends_on:
+    - git
+    driver:
+      kind: git-global
+  cli-jq:
+    component: cli-tools
+    profile: configured
+    type: package
+    state_model: package
+    display_name: jq
+    driver:
+      kind: package
+      ref: jq
+  cli-wget:
+    component: cli-tools
+    profile: configured
+    type: package
+    state_model: package
+    display_name: wget
+    driver:
+      kind: package
+      ref: wget
+  cli-curl:
+    component: cli-tools
+    profile: configured
+    type: package
+    state_model: package
+    display_name: curl
+    driver:
+      kind: package
+      ref: curl
+  cli-htop:
+    component: cli-tools
+    profile: configured
+    type: package
+    state_model: package
+    display_name: htop
+    driver:
+      kind: package
+      ref: htop
+  cli-btop:
+    component: cli-tools
+    profile: configured
+    type: package
+    state_model: package
+    display_name: btop
+    driver:
+      kind: package
+      ref: btop
+  cli-tmux:
+    component: cli-tools
+    profile: configured
+    type: package
+    state_model: package
+    display_name: tmux
+    driver:
+      kind: package
+      ref: tmux
+  cli-fzf:
+    component: cli-tools
+    profile: configured
+    type: package
+    state_model: package
+    display_name: fzf
+    driver:
+      kind: package
+      ref: fzf
+  cli-ripgrep:
+    component: cli-tools
+    profile: configured
+    type: package
+    state_model: package
+    display_name: ripgrep
+    driver:
+      kind: package
+      ref: ripgrep
+  cli-fd:
+    component: cli-tools
+    profile: configured
+    type: package
+    state_model: package
+    display_name: fd
+    driver:
+      kind: package
+      ref: fd
+      apt_ref: fd-find
+  cli-tree:
+    component: cli-tools
+    profile: configured
+    type: package
+    state_model: package
+    display_name: tree
+    driver:
+      kind: package
+      ref: tree
+  cli-uv:
+    component: cli-tools
+    profile: configured
+    type: package
+    state_model: package
+    display_name: uv
+    driver:
+      kind: package
+      ref: uv
+  cli-pnpm:
+    component: cli-tools
+    profile: configured
+    type: package
+    state_model: package
+    display_name: pnpm
+    driver:
+      kind: package
+      ref: pnpm
+  cli-gcc:
+    component: cli-tools
+    profile: configured
+    type: package
+    state_model: package
+    display_name: GCC
+    driver:
+      kind: package
+      ref: gcc
+  cli-gh:
+    component: cli-tools
+    profile: configured
+    type: package
+    state_model: package
+    display_name: GitHub CLI
+    driver:
+      kind: package
+      ref: gh
+  cli-llama.cpp:
+    component: cli-tools
+    profile: configured
+    type: package
+    state_model: package
+    display_name: llama.cpp
+    driver:
+      kind: package
+      ref: llama.cpp
+  cli-opencode:
+    component: cli-tools
+    profile: configured
+    type: package
+    state_model: package
+    display_name: OpenCode
+    driver:
+      kind: package
+      ref: opencode
+  cli-aria2:
+    component: cli-tools
+    profile: configured
+    type: package
+    state_model: package
+    display_name: aria2
+    driver:
+      kind: package
+      ref: aria2
+  cli-cmake:
+    component: cli-tools
+    profile: configured
+    type: package
+    state_model: package
+    display_name: CMake
+    driver:
+      kind: package
+      ref: cmake
+  oh-my-zsh:
+    component: cli-tools
+    profile: configured
+    type: config
+    state_model: config
+    display_name: Oh My Zsh
+    driver:
+      kind: script-installer
+      install_url: ${omz_installer_url}
+      install_dir: ${omz_dir}
+      upgrade_script: tools/upgrade.sh
+  omz-theme-agnoster:
+    component: cli-tools
+    profile: configured
+    type: config
+    state_model: config
+    display_name: Agnoster theme
+    depends_on:
+    - oh-my-zsh
+    driver:
+      kind: zsh-config
+      key: ZSH_THEME
+      value: ${omz_theme}
+      config_file: .zshrc
+  home-bin-in-path:
+    component: cli-tools
+    profile: configured
+    type: config
+    state_model: config
+    display_name: ~/bin in PATH
+    driver:
+      kind: path-export
+      bin_dir: ${home_bin_dir}
+      shell_profile: ${shell_profile}
+  ai-healthcheck:
+    component: cli-tools
+    profile: configured
+    type: config
+    state_model: config
+    display_name: ai-healthcheck
+    depends_on:
+    - home-bin-in-path
+    driver:
+      kind: bin-script
+      script_name: ai-healthcheck
+      bin_dir: ${home_bin_dir}
+  iterm2:
+    component: cli-tools
+    profile: configured
+    type: package
+    state_model: package
+    display_name: iTerm2
+    driver:
+      kind: package
+      cask: true
+      ref: iterm2
+      greedy_auto_updates: true
+  lm-studio:
+    component: cli-tools
+    profile: configured
+    type: package
+    state_model: package
+    display_name: LM Studio
+    driver:
+      kind: package
+      cask: true
+      ref: lm-studio
+      greedy_auto_updates: true
+cli_tools:
+- cli-jq
+- cli-wget
+- cli-curl
+- cli-htop
+- cli-btop
+- cli-tmux
+- cli-fzf
+- cli-ripgrep
+- cli-fd
+- cli-tree
+- cli-uv
+- cli-pnpm
+- cli-gcc
+- cli-gh
+- cli-llama.cpp
+- cli-opencode
+- cli-aria2
+- cli-cmake
+casks:
+- iterm2
+- lm-studio
+global_config:
+- key: init.defaultBranch
+  value: main
+- key: pull.rebase
+  value: 'false'
+- key: core.autocrlf
+  value: input
