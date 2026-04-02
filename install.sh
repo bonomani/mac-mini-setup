@@ -438,41 +438,84 @@ if [[ "${UCC_INTERACTIVE:-0}" == "1" && -c /dev/tty && -z "$UCC_TARGET_SET" ]]; 
   echo "  ── Selection ─────────────────────────────────────────"
   echo "  What would you like to install?"
   echo ""
-  echo "    a) All"
-  _comp_idx=1
+  # Pre-load component target lists
+  declare -A _COMP_TARGETS
   for _c in "${COMPONENTS[@]}"; do
-    # Show component with its target count and key targets
-    _tcount=$(python3 "$_QUERY_SCRIPT" --ordered-targets "$_c" "$_MANIFEST_DIR" 2>/dev/null | wc -l | tr -d ' ')
-    _tlist=$(python3 "$_QUERY_SCRIPT" --ordered-targets "$_c" "$_MANIFEST_DIR" 2>/dev/null | head -5 | paste -sd, - | sed 's/,/, /g')
-    [[ $_tcount -gt 5 ]] && _tlist="${_tlist}, ..."
-    printf '    %d) %-20s (%s targets: %s)\n' "$_comp_idx" "$_c" "$_tcount" "$_tlist"
-    _comp_idx=$((_comp_idx + 1))
+    _COMP_TARGETS["$_c"]="$(python3 "$_QUERY_SCRIPT" --ordered-targets "$_c" "$_MANIFEST_DIR" 2>/dev/null)"
   done
-  echo ""
-  printf '  Choose [a=all, numbers comma-separated, or target names]: '
-  read -r _selection < /dev/tty
-  if [[ "$_selection" == "a" || "$_selection" == "all" ]]; then
-    _resolved=()
-    UCC_TARGET_SET=""
-    for _c in "${COMPONENTS[@]}"; do _resolve_component "$_c"; done
-  elif [[ -n "$_selection" ]]; then
-    _resolved=()
-    UCC_TARGET_SET=""
-    IFS=',' read -ra _picks <<< "$_selection"
-    for _p in "${_picks[@]}"; do
-      _p="${_p// /}"
-      if [[ "$_p" =~ ^[0-9]+$ && "$_p" -ge 1 && "$_p" -le "${#COMPONENTS[@]}" ]]; then
-        _resolve_component "${COMPONENTS[$((_p - 1))]}"
-      else
-        if python3 "$_QUERY_SCRIPT" --find-target "$_p" "$_MANIFEST_DIR" >/dev/null 2>&1; then
-          _resolve_target "$_p"
-        else
-          log_warn "Unknown: '$_p' — skipping"
-        fi
-      fi
+
+  _show_menu() {
+    echo ""
+    echo "    a) All"
+    local _idx=1
+    for _c in "${COMPONENTS[@]}"; do
+      local _tcount; _tcount=$(echo "${_COMP_TARGETS[$_c]}" | grep -c . || echo 0)
+      printf '    %d) %-20s (%s targets)\n' "$_idx" "$_c" "$_tcount"
+      _idx=$((_idx + 1))
     done
-    for _c in "${COMPONENTS[@]}"; do _resolved+=("$_c"); done
-  fi
+    echo ""
+    echo "  Enter: number to browse, a=all, or target name to select"
+  }
+
+  _show_menu
+  while true; do
+    printf '  → '
+    read -r _input < /dev/tty
+    [[ -z "$_input" ]] && break  # Enter with no input = done
+
+    if [[ "$_input" == "a" || "$_input" == "all" ]]; then
+      _resolved=()
+      UCC_TARGET_SET=""
+      for _c in "${COMPONENTS[@]}"; do _resolve_component "$_c"; done
+      echo "  Selected: all components"
+      break
+    elif [[ "$_input" == "q" || "$_input" == "done" ]]; then
+      break
+    elif [[ "$_input" =~ ^[0-9]+$ && "$_input" -ge 1 && "$_input" -le "${#COMPONENTS[@]}" ]]; then
+      local _sel_comp="${COMPONENTS[$((_input - 1))]}"
+      echo ""
+      echo "  ── ${_sel_comp} ──"
+      local _tidx=1
+      while IFS= read -r _t; do
+        [[ -n "$_t" ]] && printf '      %d) %s\n' "$_tidx" "$_t"
+        _tidx=$((_tidx + 1))
+      done <<< "${_COMP_TARGETS[$_sel_comp]}"
+      echo ""
+      printf '  Select: a=all %s targets, numbers comma-separated, b=back → ' "$_sel_comp"
+      read -r _sub_input < /dev/tty
+
+      if [[ "$_sub_input" == "b" || -z "$_sub_input" ]]; then
+        _show_menu
+        continue
+      elif [[ "$_sub_input" == "a" ]]; then
+        _resolve_component "$_sel_comp"
+        echo "  Added: all ${_sel_comp} targets"
+      else
+        IFS=',' read -ra _sub_picks <<< "$_sub_input"
+        local _targets_arr=()
+        while IFS= read -r _t; do
+          [[ -n "$_t" ]] && _targets_arr+=("$_t")
+        done <<< "${_COMP_TARGETS[$_sel_comp]}"
+        for _sp in "${_sub_picks[@]}"; do
+          _sp="${_sp// /}"
+          if [[ "$_sp" =~ ^[0-9]+$ && "$_sp" -ge 1 && "$_sp" -le "${#_targets_arr[@]}" ]]; then
+            _resolve_target "${_targets_arr[$((_sp - 1))]}"
+            echo "  Added: ${_targets_arr[$((_sp - 1))]}"
+          fi
+        done
+      fi
+      _show_menu
+    else
+      # Try as target name
+      if python3 "$_QUERY_SCRIPT" --find-target "$_input" "$_MANIFEST_DIR" >/dev/null 2>&1; then
+        _resolve_target "$_input"
+        echo "  Added: $_input"
+      else
+        echo "  Unknown: '$_input'"
+      fi
+    fi
+  done
+  for _c in "${COMPONENTS[@]}"; do _resolved+=("$_c"); done
   export UCC_TARGET_SET
   # Update selected components for preference scoping
   UCC_SELECTED_COMPS=""
