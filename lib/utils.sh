@@ -226,7 +226,7 @@ desktop_app_handle_unmanaged_cask() {
       return 0
       ;;
     warn)
-      log_warn "${display_name} installed outside brew-cask; set preferred-driver-policy=migrate to adopt it."
+      log_warn "${display_name} installed outside brew. To migrate: brew install --cask ${cask_id}"
       return 124
       ;;
     migrate)
