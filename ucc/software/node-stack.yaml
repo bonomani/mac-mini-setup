@@ -23,6 +23,7 @@ targets:
     driver:
       kind: nvm
       nvm_dir: ${nvm_dir}
+      github_repo: nvm-sh/nvm
   node-lts:
     component: node-stack
     profile: configured

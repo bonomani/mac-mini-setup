@@ -712,7 +712,8 @@ def validate(manifest, known_gates):
                 if dkind in DRIVER_SCHEMA:
                     schema = DRIVER_SCHEMA[dkind]
                     driver_keys = {k for k in driver if k != "kind"}
-                    allowed = set(schema["required"]) | set(schema["optional"])
+                    # github_repo is universally allowed on any driver
+                    allowed = set(schema["required"]) | set(schema["optional"]) | {"github_repo"}
                     for req in schema["required"]:
                         if req not in driver_keys:
                             errors.append(f"target '{name}' driver.kind '{dkind}' requires driver.{req}")

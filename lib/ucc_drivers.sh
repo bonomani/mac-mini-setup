@@ -94,6 +94,20 @@ _ucc_driver_evidence() {
   local fn="_ucc_driver_${kind//-/_}_evidence"
   declare -f "$fn" >/dev/null 2>&1 || return 1
   "$fn" "$cfg_dir" "$yaml" "$target"
+  # Generic: append latest version from GitHub if driver.github_repo is set
+  _ucc_driver_github_latest "$cfg_dir" "$yaml" "$target"
+}
+
+# Check GitHub releases for latest version (generic, works with any driver).
+# Reads driver.github_repo. Appends "  latest=X.Y.Z" to evidence output.
+_ucc_driver_github_latest() {
+  local cfg_dir="$1" yaml="$2" target="$3"
+  local repo; repo="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.github_repo" 2>/dev/null || true)"
+  [[ -n "$repo" ]] || return 0
+  local latest; latest="$(curl -fsS --max-time 5 "https://api.github.com/repos/${repo}/releases/latest" 2>/dev/null \
+    | awk -F'"' '/"tag_name"/{print $4}' | sed 's/^v//')"
+  [[ -n "$latest" ]] && printf '  latest=%s' "$latest"
+  return 0
 }
 
 # _ucc_driver_depends_on <kind>
