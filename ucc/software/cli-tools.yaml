@@ -246,6 +246,7 @@ targets:
     type: package
     state_model: package
     display_name: iTerm2
+    requires: macos
     driver:
       kind: package
       cask: true
@@ -257,6 +258,7 @@ targets:
     type: package
     state_model: package
     display_name: LM Studio
+    requires: macos
     driver:
       kind: package
       cask: true

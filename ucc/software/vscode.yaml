@@ -19,6 +19,7 @@ targets:
     type: package
     state_model: package
     display_name: Visual Studio Code
+    requires: macos
     driver:
       kind: app-bundle
       app_path: /Applications/Visual Studio Code.app
@@ -32,6 +33,7 @@ targets:
     type: config
     state_model: config
     display_name: VS Code CLI
+    requires: macos
     depends_on:
     - vscode
     driver:

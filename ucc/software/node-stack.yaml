@@ -76,6 +76,7 @@ targets:
     profile: capability
     type: capability
     display_name: networkQuality
+    requires: macos
     driver:
       kind: custom
     runtime_manager: capability

@@ -91,6 +91,7 @@ targets:
     profile: runtime
     type: runtime
     display_name: Unsloth Studio
+    requires: macos
     depends_on:
     - unsloth
     driver:
@@ -111,6 +112,7 @@ targets:
     profile: runtime
     type: runtime
     display_name: Unsloth Studio
+    requires: linux,wsl2
     depends_on:
     - unsloth
     driver:
@@ -276,6 +278,7 @@ targets:
     profile: capability
     type: capability
     display_name: Metal MPS
+    requires: macos
     depends_on:
     - pip-group-pytorch
     driver:
@@ -292,6 +295,7 @@ targets:
     profile: capability
     type: capability
     display_name: NVIDIA CUDA
+    requires: linux,wsl2
     depends_on:
     - pip-group-pytorch
     driver:

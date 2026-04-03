@@ -39,6 +39,7 @@ targets:
     type: package
     state_model: package
     display_name: Build dependencies
+    requires: linux,wsl2
     provided_by_tool: native-package-manager
     driver:
       kind: build-deps
@@ -48,6 +49,7 @@ targets:
     type: package
     state_model: package
     display_name: Xcode Command Line Tools
+    requires: macos
     provided_by_tool: macos-installer
     driver:
       kind: custom
