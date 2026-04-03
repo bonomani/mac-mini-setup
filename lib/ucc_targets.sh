@@ -691,6 +691,22 @@ _ucc_observe_yaml_runtime_target() {
   else
     runtime_driver="$(_ucc_yaml_target_driver_get "$cfg_dir" "$yaml" "$target" "kind")"
   fi
+  # Try driver dispatch first — drivers like custom-daemon have their own observe
+  local _driver_state
+  if _driver_state="$(_ucc_driver_observe "$cfg_dir" "$yaml" "$target" 2>/dev/null)"; then
+    # Map driver raw state to ASM
+    case "$_driver_state" in
+      absent)  ucc_asm_state --installation Absent --runtime NeverStarted --health Unavailable --admin Enabled --dependencies DepsUnknown ;;
+      running) ucc_asm_runtime_desired ;;
+      stopped)
+        local _sh _sd _v
+        _v="_UCC_RT_STOPPED_HEALTH_${fn}"; _sh="${!_v:-Degraded}"
+        _v="_UCC_RT_STOPPED_DEPS_${fn}"; _sd="${!_v:-DepsDegraded}"
+        ucc_asm_state --installation Configured --runtime Stopped --health "$_sh" --admin Enabled --dependencies "$_sd" ;;
+      *)       ucc_asm_state --installation Configured --runtime Stopped --health Degraded --admin Enabled --dependencies DepsReady ;;
+    esac
+    return
+  fi
   case "$runtime_driver" in
     desktop-app)
       _ucc_observe_yaml_desktop_app_runtime_target "$cfg_dir" "$yaml" "$target"
