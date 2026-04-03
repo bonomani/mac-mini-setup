@@ -30,6 +30,7 @@ for _ucc_drv_file in \
   "$_UCC_DRIVERS_DIR/compose_file.sh" \
   "$_UCC_DRIVERS_DIR/docker_compose_service.sh" \
   "$_UCC_DRIVERS_DIR/package.sh" \
+  "$_UCC_DRIVERS_DIR/curl_installer.sh" \
   "$_UCC_DRIVERS_DIR/build_deps.sh" \
   "$_UCC_DRIVERS_DIR/swupdate_schedule.sh" \
   "$_UCC_DRIVERS_DIR/pyenv_brew.sh" \

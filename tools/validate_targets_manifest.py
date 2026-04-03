@@ -93,12 +93,14 @@ DRIVER_SCHEMA = {
     "bin-script":             {"required": ["script_name", "bin_dir"], "optional": []},
     "git-global":             {"required": [], "optional": []},
     "build-deps":             {"required": [], "optional": []},
+    "curl-installer":         {"required": ["install_url", "bin"], "optional": ["version_cmd", "install_args"]},
     "package":                {"required": ["ref"], "optional": ["cask", "greedy_auto_updates", "previous_ref", "apt_ref", "dnf_ref", "pacman_ref"]},
 }
 
 KNOWN_PACKAGE_DRIVERS = {
     "build-deps",
     "brew-bootstrap",
+    "curl-installer",
     "package",
     "custom",
     "brew",

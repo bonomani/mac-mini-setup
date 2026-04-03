@@ -973,7 +973,8 @@ _UCC_YAML_BATCH_KEYS="profile actions.install actions.update \
   driver.install_url driver.install_dir driver.install_args driver.upgrade_script \
   driver.config_file driver.bin_dir driver.shell_profile \
   driver.script_name driver.formula driver.launchd_dir driver.nvm_dir \
-  driver.apt_ref driver.dnf_ref driver.pacman_ref"
+  driver.apt_ref driver.dnf_ref driver.pacman_ref \
+  driver.version_cmd"
 _seen_yaml_files=()
 for _i in "${!_DISP_COMPS[@]}"; do
   _yaml_file="${_DISP_CONFIGS[$_i]}"
