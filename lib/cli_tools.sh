@@ -4,27 +4,13 @@
 # Usage: run_cli_tools_from_yaml <cfg_dir> <yaml_path>
 run_cli_tools_from_yaml() {
   local cfg_dir="$1" yaml="$2"
+  local query_script manifest_dir ordered target
+  query_script="${UCC_TARGETS_QUERY_SCRIPT:-$cfg_dir/tools/validate_targets_manifest.py}"
+  manifest_dir="${UCC_TARGETS_MANIFEST:-$cfg_dir/ucc}"
+  ordered="$(python3 "$query_script" --ordered-targets cli-tools "$manifest_dir" 2>/dev/null || true)"
 
-  # ---- Git (install + config) ----
-  ucc_yaml_simple_target "$cfg_dir" "$yaml" "git"
-  ucc_yaml_simple_target "$cfg_dir" "$yaml" "git-global-config"
-
-  # ---- CLI tools ----
-  local _target
-  while IFS= read -r _target; do
-    [[ -n "$_target" ]] && ucc_yaml_simple_target "$cfg_dir" "$yaml" "$_target"
-  done < <(yaml_list "$cfg_dir" "$yaml" cli_tools)
-
-  # ---- Shell config ----
-  ucc_yaml_simple_target "$cfg_dir" "$yaml" "oh-my-zsh"
-  ucc_yaml_simple_target "$cfg_dir" "$yaml" "omz-theme-agnoster"
-  ucc_yaml_simple_target "$cfg_dir" "$yaml" "home-bin-in-path"
-  ucc_yaml_simple_target "$cfg_dir" "$yaml" "ai-healthcheck"
-
-  # ---- GUI casks (macOS only) ----
-  if [[ "${HOST_PLATFORM:-macos}" == "macos" ]]; then
-    while IFS= read -r _target; do
-      [[ -n "$_target" ]] && ucc_yaml_simple_target "$cfg_dir" "$yaml" "$_target"
-    done < <(yaml_list "$cfg_dir" "$yaml" casks)
-  fi
+  while IFS= read -r target; do
+    [[ -n "$target" ]] || continue
+    ucc_yaml_simple_target "$cfg_dir" "$yaml" "$target"
+  done <<< "$ordered"
 }
