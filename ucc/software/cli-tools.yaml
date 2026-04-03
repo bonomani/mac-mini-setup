@@ -205,7 +205,6 @@ targets:
       install_url: ${omz_installer_url}
       install_dir: ${omz_dir}
       upgrade_script: tools/upgrade.sh
-      github_repo: ohmyzsh/ohmyzsh
   omz-theme-agnoster:
     component: cli-tools
     profile: configured
