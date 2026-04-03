@@ -376,6 +376,13 @@ PY
       curl -fsSL "$_OLLAMA_INSTALLER_URL" | sh || return 1
     fi
 
+    # Warn if ollama exists outside brew but brew could manage it
+    if is_installed brew && ! brew list "$_OLLAMA_BREW_SERVICE_NAME" &>/dev/null 2>&1; then
+      if is_installed ollama && [[ "${UIC_PREF_PREFERRED_DRIVER_POLICY:-warn}" != "ignore" ]]; then
+        log_warn "Ollama installed outside brew (app/installer). To migrate: brew install ollama"
+      fi
+    fi
+
     if is_installed brew && brew list "$_OLLAMA_BREW_SERVICE_NAME" &>/dev/null 2>&1; then
       if brew_service_is_started "$_OLLAMA_BREW_SERVICE_NAME"; then
         brew services restart "$_OLLAMA_BREW_SERVICE_NAME"
