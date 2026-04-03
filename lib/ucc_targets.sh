@@ -378,8 +378,8 @@ _ucc_eval_requires() {
       fi
       if [[ -n "$_actual" ]]; then
         local _result=1
-        # Compare as dotted version tuples
-        printf '%s\n%s' "$_actual" "$_ver" | sort -V | head -1 | read -r _smaller 2>/dev/null || _smaller="$_ver"
+        # Compare as dotted version tuples (avoid pipe-to-read subshell issue)
+        local _smaller; _smaller="$(printf '%s\n%s' "$_actual" "$_ver" | sort -V 2>/dev/null | head -1 || echo "$_ver")"
         case "$_op" in
           ">=") [[ "$_smaller" == "$_ver" || "$_actual" == "$_ver" ]] && _result=0 ;;
           "<=") [[ "$_smaller" == "$_actual" || "$_actual" == "$_ver" ]] && _result=0 ;;
