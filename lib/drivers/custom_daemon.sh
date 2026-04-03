@@ -32,7 +32,7 @@ _ucc_driver_custom_daemon_evidence() {
   local bin ver path
   bin="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.bin")"
   [[ -n "$bin" ]] || return 1
-  ver="$("$bin" --version 2>/dev/null | awk '{print $NF}')"
+  ver="$("$bin" --version 2>/dev/null | head -1 | awk '{print $NF}')"
   path="$(command -v "$bin" 2>/dev/null || true)"
   [[ -n "$ver" ]] || return 1
   printf 'version=%s  path=%s' "$ver" "$path"
