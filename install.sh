@@ -298,7 +298,7 @@ usage() {
 
 Usage: $0 [options] [component|target ...]
 
-Without arguments, runs ALL components in order.
+Without arguments, uses default-selection preference (all or none).
 Pass a component name to run that component.
 Pass a target name (not a component) to run only that target.
 
@@ -306,6 +306,7 @@ Options:
   --mode install    Install missing components (default)
   --mode update     Update already-installed components
   --all             Select all components and targets
+  --none            Select nothing (show current state only)
   --mode check      Observe current state without changing anything (drift detection)
   --dry-run         Show what would change without applying it
   --interactive     Prompt for preferences and confirm each change
@@ -341,7 +342,8 @@ while [[ $# -gt 0 ]]; do
     --mode)          export UCC_MODE="$2";    shift 2 ;;
     --interactive)   export UCC_INTERACTIVE=1; shift ;;
     --no-interactive) export UCC_INTERACTIVE=0; shift ;;
-    --all)           export UCC_RUN_ALL=1;    shift ;;
+    --all)           export UCC_DEFAULT_SELECTION=all;  shift ;;
+    --none)          export UCC_DEFAULT_SELECTION=none; shift ;;
     --debug)         export UCC_DEBUG=1;      shift ;;
     --preflight)     export UIC_PREFLIGHT=1;  shift ;;
     --pref)
@@ -415,9 +417,12 @@ _resolve_selection() {
 }
 
 _resolved=()
-if [[ "${UCC_RUN_ALL:-0}" == "1" ]]; then
-  # --all: select everything
+if [[ "${UCC_DEFAULT_SELECTION:-}" == "all" ]]; then
+  # --all flag
   for _c in "${COMPONENTS[@]}"; do _resolve_component "$_c"; done
+elif [[ "${UCC_DEFAULT_SELECTION:-}" == "none" ]]; then
+  # --none flag: nothing selected
+  :
 elif [[ ${#TO_RUN[@]} -gt 0 ]]; then
   # Explicit args: resolve those
   _resolve_selection "${TO_RUN[@]}"
@@ -431,11 +436,19 @@ elif [[ -f "$_UCC_SELECTION_FILE" ]]; then
     log_info "Loaded selection from $_UCC_SELECTION_FILE"
     _resolve_selection "${_saved_items[@]}"
   fi
-  # else: empty file → nothing selected
 else
-  # No args, no saved selection → nothing selected
-  # All components still run but every target shows as [skip]
-  :
+  # No args, no saved selection, no flag → use default-selection pref
+  # Read early from pref file or env (UIC not loaded yet)
+  _default_sel="${UIC_PREF_DEFAULT_SELECTION:-}"
+  if [[ -z "$_default_sel" ]]; then
+    _pf="${UIC_PREF_FILE:-$HOME/.ai-stack/preferences.env}"
+    [[ -f "$_pf" ]] && _default_sel="$(grep -E '^default-selection=' "$_pf" 2>/dev/null | head -1 | cut -d= -f2-)"
+  fi
+  _default_sel="${_default_sel:-all}"
+  if [[ "$_default_sel" == "all" ]]; then
+    for _c in "${COMPONENTS[@]}"; do _resolve_component "$_c"; done
+  fi
+  # else: none → nothing selected
 fi
 
 # Save selected components for preference scoping

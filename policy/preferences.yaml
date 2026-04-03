@@ -1,4 +1,8 @@
 preferences:
+  - name: default-selection
+    default: all
+    options: all|none
+    rationale: 'all: install/update everything when no targets specified; none: show current state only (select targets explicitly)'
   - name: destructive-updates
     default: 'off'
     options: on|off
