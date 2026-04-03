@@ -353,6 +353,62 @@ _ucc_run_yaml_action() {
 #   - populated = only targets in the set run
 export _UCC_EMITTED_TARGETS=""
 
+# Evaluate a requires: condition string (comma = OR).
+# Each atom: value (match), !value (negate), name>=ver (version compare).
+# Returns 0 if any atom is true.
+_ucc_eval_requires() {
+  local requires="$1" cond
+  local _host_vals="|${HOST_PLATFORM:-}|${HOST_PLATFORM_VARIANT:-}|${HOST_ARCH:-}|${HOST_OS_ID:-}|${HOST_PACKAGE_MANAGER:-}|"
+  # Add fingerprint segments
+  local _fp="${HOST_FINGERPRINT:-}"
+  local _seg; for _seg in ${_fp//\// }; do _host_vals="${_host_vals}${_seg}|"; done
+
+  IFS=',' read -ra _conds <<< "$requires"
+  for cond in "${_conds[@]}"; do
+    cond="${cond// /}"  # trim
+    [[ -z "$cond" ]] && continue
+
+    # Version comparison: name>=version, name<version, etc.
+    if [[ "$cond" =~ ^(!?)([a-zA-Z][a-zA-Z0-9_-]*)(>=|<=|>|<|==|!=)(.+)$ ]]; then
+      local _neg="${BASH_REMATCH[1]}" _name="${BASH_REMATCH[2]}" _op="${BASH_REMATCH[3]}" _ver="${BASH_REMATCH[4]}"
+      # Extract version from HOST_OS_ID: "macos-15.4" → macos=15.4
+      local _actual=""
+      if [[ "${HOST_OS_ID:-}" == "${_name}-"* ]]; then
+        _actual="${HOST_OS_ID#${_name}-}"
+      fi
+      if [[ -n "$_actual" ]]; then
+        local _result=1
+        # Compare as dotted version tuples
+        printf '%s\n%s' "$_actual" "$_ver" | sort -V | head -1 | read -r _smaller 2>/dev/null || _smaller="$_ver"
+        case "$_op" in
+          ">=") [[ "$_smaller" == "$_ver" || "$_actual" == "$_ver" ]] && _result=0 ;;
+          "<=") [[ "$_smaller" == "$_actual" || "$_actual" == "$_ver" ]] && _result=0 ;;
+          ">")  [[ "$_smaller" == "$_ver" && "$_actual" != "$_ver" ]] && _result=0 ;;
+          "<")  [[ "$_smaller" == "$_actual" && "$_actual" != "$_ver" ]] && _result=0 ;;
+          "==") [[ "$_actual" == "$_ver" ]] && _result=0 ;;
+          "!=") [[ "$_actual" != "$_ver" ]] && _result=0 ;;
+        esac
+        [[ -n "$_neg" ]] && { [[ $_result -eq 0 ]] && _result=1 || _result=0; }
+        [[ $_result -eq 0 ]] && return 0
+      else
+        # Name not found — atom fails (unless negated)
+        [[ -n "$_neg" ]] && return 0
+      fi
+      continue
+    fi
+
+    # Negation: !value
+    if [[ "$cond" == !* ]]; then
+      [[ "$_host_vals" != *"|${cond#!}|"* ]] && return 0
+      continue
+    fi
+
+    # Simple match: value
+    [[ "$_host_vals" == *"|${cond}|"* ]] && return 0
+  done
+  return 1  # no condition matched
+}
+
 _ucc_target_filtered_out() {
   local target="$1" cfg_dir="${2:-}" yaml="${3:-}"
   # Check if globally disabled by policy
@@ -361,6 +417,16 @@ _ucc_target_filtered_out() {
     local display_name; display_name="$(_ucc_display_name "$target")"
     printf '      [%-8s] %-30s %s\n' "disabled" "$display_name" "disabled by policy"
     return 0
+  fi
+  # Check requires: condition (platform/version/PM support)
+  if [[ -n "$cfg_dir" && -n "$yaml" ]]; then
+    local _requires; _requires="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "requires" 2>/dev/null || true)"
+    if [[ -n "$_requires" ]] && ! _ucc_eval_requires "$_requires"; then
+      _UCC_EMITTED_TARGETS="${_UCC_EMITTED_TARGETS}|${target}|"
+      local display_name; display_name="$(_ucc_display_name "$target")"
+      printf '      [%-8s] %-30s %s\n' "skip" "$display_name" "requires: ${_requires}"
+      return 0
+    fi
   fi
   if [[ "${UCC_TARGET_SET:-}" != *"${target}|"* ]]; then
     _UCC_EMITTED_TARGETS="${_UCC_EMITTED_TARGETS}|${target}|"

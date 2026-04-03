@@ -146,28 +146,12 @@ targets:
       host: localhost
       port: 6333
       path: /collections
-  ollama-host-supported:
-    component: ai-apps
-    profile: configured
-    type: precondition
-    state_model: config
-    display_name: Ollama host support
-    driver:
-      kind: custom
-    oracle:
-      configured: ollama_host_supported
-    evidence:
-      platform: echo_var "${HOST_PLATFORM:-unknown}"
-      version: host_os_version
-    actions:
-      install: ollama_unsupported_warn
   ollama:
     component: ai-apps
     profile: runtime
     type: runtime
     display_name: Ollama
-    depends_on:
-    - ollama-host-supported
+    requires: macos>=14,linux,wsl2
     provided_by_tool: ollama-installer
     driver:
       kind: custom-daemon

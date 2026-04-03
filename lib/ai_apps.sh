@@ -358,18 +358,8 @@ PY
     fallback_stop_pattern \
     fallback_start_cmd)
   _OLLAMA_API_URL="http://${_OLLAMA_API_HOST}:${_OLLAMA_API_PORT}${_OLLAMA_API_TAGS_PATH}"
-  while IFS=$'\t' read -r -d '' key value; do
-    case "$key" in
-      oracle.configured) _OLLAMA_HOST_SUPPORTED_CMD="$value" ;;
-    esac
-  done < <(yaml_target_get_many "$cfg_dir" "$yaml" "ollama-host-supported" "oracle.configured")
-
-  ucc_yaml_simple_target "$cfg_dir" "$yaml" "ollama-host-supported"
-
-  local _CFG_DIR="$cfg_dir" _YAML_PATH="$yaml" _TARGET_NAME="ollama-host-supported"
-  if [[ -n "$_OLLAMA_HOST_SUPPORTED_CMD" ]] && ! eval "$_OLLAMA_HOST_SUPPORTED_CMD" >/dev/null 2>&1; then
-    return 1
-  fi
+  # ollama target has requires: macos>=14,linux,wsl2
+  # The _ucc_target_filtered_out check handles skipping on unsupported platforms
 
   _start_ollama() {
     if ! is_installed ollama; then
