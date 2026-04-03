@@ -157,6 +157,7 @@ targets:
       kind: custom-daemon
       bin: ollama
       process: 'ollama (serve|app)'
+      github_repo: ollama/ollama
     endpoints:
     - name: Ollama API
       scheme: http

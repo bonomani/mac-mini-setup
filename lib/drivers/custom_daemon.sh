@@ -32,12 +32,18 @@ _ucc_driver_custom_daemon_evidence() {
   local bin ver path
   bin="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.bin")"
   [[ -n "$bin" ]] || return 1
-  local all_vers; all_vers="$("$bin" --version 2>&1 | awk '{print $NF}')"
-  ver="$(echo "$all_vers" | head -1)"
+  local version_output; version_output="$("$bin" --version 2>&1 || true)"
+  ver="$(echo "$version_output" | head -1 | awk '{print $NF}')"
   path="$(command -v "$bin" 2>/dev/null || true)"
   [[ -n "$ver" ]] || return 1
   printf 'version=%s' "$ver"
-  local update_ver; update_ver="$(echo "$all_vers" | sed -n '2p')"
-  [[ -n "$update_ver" && "$update_ver" != "$ver" ]] && printf '  update=%s' "$update_ver"
+  # Detect update available from version output or GitHub releases
+  local latest=""
+  local github_repo; github_repo="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.github_repo" 2>/dev/null || true)"
+  if [[ -n "$github_repo" ]]; then
+    latest="$(curl -fsS --max-time 5 "https://api.github.com/repos/${github_repo}/releases/latest" 2>/dev/null \
+      | awk -F'"' '/"tag_name"/{print $4}' | sed 's/^v//')"
+  fi
+  [[ -n "$latest" && "$latest" != "$ver" ]] && printf '  latest=%s' "$latest"
   [[ -n "$path" ]] && printf '  path=%s' "$path"
 }

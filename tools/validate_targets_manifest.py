@@ -78,7 +78,7 @@ DRIVER_SCHEMA = {
     "ollama-model":           {"required": ["ref"], "optional": []},
     "docker-compose-service": {"required": ["service_name"], "optional": []},
     "compose-file":           {"required": ["path_env"], "optional": []},
-    "custom-daemon":          {"required": ["bin", "process"], "optional": []},
+    "custom-daemon":          {"required": ["bin", "process"], "optional": ["github_repo"]},
     "launchd":                {"required": ["plist"], "optional": ["launchd_dir"]},
     "docker-settings":        {"required": [], "optional": []},
     "json-merge":             {"required": ["settings_relpath", "patch_relpath"], "optional": []},
