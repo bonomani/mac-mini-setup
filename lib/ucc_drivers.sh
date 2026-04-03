@@ -104,8 +104,14 @@ _ucc_driver_github_latest() {
   local cfg_dir="$1" yaml="$2" target="$3"
   local repo; repo="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.github_repo" 2>/dev/null || true)"
   [[ -n "$repo" ]] || return 0
+  # Try releases first
   local latest; latest="$(curl -fsS --max-time 5 "https://api.github.com/repos/${repo}/releases/latest" 2>/dev/null \
     | awk -F'"' '/"tag_name"/{print $4}' | sed 's/^v//')"
+  if [[ -z "$latest" ]]; then
+    # No releases — check latest commit (short hash)
+    latest="$(curl -fsS --max-time 5 "https://api.github.com/repos/${repo}/commits/HEAD" 2>/dev/null \
+      | awk -F'"' '/"sha"/{print substr($4,1,7); exit}')"
+  fi
   [[ -n "$latest" ]] && printf '  latest=%s' "$latest"
   return 0
 }
