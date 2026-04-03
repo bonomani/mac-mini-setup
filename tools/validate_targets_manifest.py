@@ -478,41 +478,48 @@ import re as _re
 _CONDITION_VERSION_RE = _re.compile(r'^(!?)(\w+)(>=|<=|>|<|==|!=)(.+)$')
 
 
+def _eval_single_condition(cond, host_values):
+    """Evaluate a single condition atom against host values.
+    Returns True/False.
+    """
+    # Version comparison: name>=version
+    m = _CONDITION_VERSION_RE.match(cond)
+    if m:
+        negate, name, op, version = m.groups()
+        named = _host_named_values()
+        actual = named.get(name, "")
+        result = _version_compare(actual, op, version) if actual else False
+        return not result if negate else result
+
+    # Negation: !value
+    if cond.startswith("!"):
+        return cond[1:] not in host_values
+
+    # Simple match: value
+    return cond in host_values
+
+
 def _resolve_conditional_dep(entry, host_values=None):
     """Parse 'target?condition' → (target_name, included).
-    Conditions:
-      ?value         → included if value in host match set
-      ?!value        → included if value NOT in host match set
-      ?name>=version → included if named value >= version
-      ?!name>=version → NOT (named value >= version)
+    Conditions (comma = OR):
+      ?value                     → match host value
+      ?!value                    → NOT match
+      ?name>=version             → version compare
+      ?macos>=14,linux,wsl2      → OR: any condition true → included
     For union mode (host_values=None), returns (target_name, True) always.
     """
     if "?" not in entry:
         return entry, True
     target, condition = entry.split("?", 1)
     if host_values is None:
-        # Union mode — include all possible deps regardless of condition
         return target, True
 
-    # Check for version comparison: name>=version, name<version, etc.
-    m = _CONDITION_VERSION_RE.match(condition)
-    if m:
-        negate, name, op, version = m.groups()
-        named = _host_named_values()
-        actual = named.get(name, "")
-        if not actual:
-            # Name not in host values — condition fails
-            result = False
-        else:
-            result = _version_compare(actual, op, version)
-        if negate:
-            result = not result
-        return target, result
-
-    # Simple match/negation
-    if condition.startswith("!"):
-        return target, condition[1:] not in host_values
-    return target, condition in host_values
+    # Split on comma for OR logic
+    for cond in condition.split(","):
+        cond = cond.strip()
+        if cond and _eval_single_condition(cond, host_values):
+            return target, True
+    return target, False
 
 
 def _driver_implicit_dep(data):
