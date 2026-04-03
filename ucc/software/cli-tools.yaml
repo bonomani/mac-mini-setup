@@ -294,6 +294,7 @@ cli_tools:
 - cli-opencode
 - cli-aria2
 - cli-cmake
+- xrdp
 casks:
 - iterm2
 - lm-studio
