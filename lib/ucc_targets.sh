@@ -359,9 +359,37 @@ _ucc_target_filtered_out() {
     _UCC_EMITTED_TARGETS="${_UCC_EMITTED_TARGETS}|${target}|"
     local display_name state=""
     display_name="$(_ucc_display_name "$target")"
-    # Try to observe current state via driver (read-only, best-effort)
+    # Try to observe current state (read-only, best-effort)
     if [[ -n "$cfg_dir" && -n "$yaml" ]]; then
+      # Try driver first, then fall back to YAML oracle/observe_cmd
       state="$(_ucc_driver_observe "$cfg_dir" "$yaml" "$target" 2>/dev/null || true)"
+      if [[ -z "$state" ]]; then
+        # Custom driver — try observe_cmd
+        local _obs_cmd; _obs_cmd="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "observe_cmd" 2>/dev/null || true)"
+        if [[ -n "$_obs_cmd" ]]; then
+          state="$(_ucc_eval_yaml_expr "$cfg_dir" "$yaml" "$target" "$_obs_cmd" 2>/dev/null || true)"
+        fi
+      fi
+      if [[ -z "$state" ]]; then
+        # Try oracle.configured
+        local _oracle; _oracle="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "oracle.configured" 2>/dev/null || true)"
+        if [[ -n "$_oracle" ]]; then
+          if _ucc_yaml_expr_succeeds "$cfg_dir" "$yaml" "$target" "$_oracle" 2>/dev/null; then
+            state="configured"
+          fi
+        fi
+      fi
+      if [[ -z "$state" ]]; then
+        # Try oracle.runtime
+        local _rt_oracle; _rt_oracle="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "oracle.runtime" 2>/dev/null || true)"
+        if [[ -n "$_rt_oracle" ]]; then
+          if _ucc_yaml_expr_succeeds "$cfg_dir" "$yaml" "$target" "$_rt_oracle" 2>/dev/null; then
+            state="running"
+          else
+            state="stopped"
+          fi
+        fi
+      fi
     fi
     if [[ -n "$state" && "$state" != "absent" ]]; then
       printf '      [%-8s] %-30s %s (current: %s)\n' "skip" "$display_name" "not selected" "$state"
