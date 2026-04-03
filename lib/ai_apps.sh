@@ -358,19 +358,16 @@ PY
     fallback_stop_pattern \
     fallback_start_cmd)
   _OLLAMA_API_URL="http://${_OLLAMA_API_HOST}:${_OLLAMA_API_PORT}${_OLLAMA_API_TAGS_PATH}"
-  # ollama target has requires: macos>=14,linux,wsl2
-  # The _ucc_target_filtered_out check handles skipping on unsupported platforms
+  # Warn if ollama exists outside brew but brew could manage it
+  if is_installed brew && is_installed ollama \
+     && ! brew list "$_OLLAMA_BREW_SERVICE_NAME" &>/dev/null 2>&1 \
+     && [[ "${UIC_PREF_PREFERRED_DRIVER_POLICY:-warn}" != "ignore" ]]; then
+    log_warn "Ollama installed outside brew (app/installer). To migrate: brew install ollama"
+  fi
 
   _start_ollama() {
     if ! is_installed ollama; then
       curl -fsSL "$_OLLAMA_INSTALLER_URL" | sh || return 1
-    fi
-
-    # Warn if ollama exists outside brew but brew could manage it
-    if is_installed brew && ! brew list "$_OLLAMA_BREW_SERVICE_NAME" &>/dev/null 2>&1; then
-      if is_installed ollama && [[ "${UIC_PREF_PREFERRED_DRIVER_POLICY:-warn}" != "ignore" ]]; then
-        log_warn "Ollama installed outside brew (app/installer). To migrate: brew install ollama"
-      fi
     fi
 
     if is_installed brew && brew list "$_OLLAMA_BREW_SERVICE_NAME" &>/dev/null 2>&1; then
