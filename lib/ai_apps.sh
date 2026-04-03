@@ -378,6 +378,8 @@ PY
         brew services start "$_OLLAMA_BREW_SERVICE_NAME"
       fi
     elif [[ "${HOST_PLATFORM:-}" == "macos" && -d "/Applications/Ollama.app" ]]; then
+      # Kill any stray ollama serve processes not managed by the app
+      pkill -f "^ollama serve" 2>/dev/null || true
       # macOS: start daemon via app in background (no GUI window)
       open -gja Ollama
       sleep 3  # give the app time to launch the daemon process
