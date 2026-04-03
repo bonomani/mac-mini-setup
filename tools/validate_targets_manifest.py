@@ -428,13 +428,64 @@ def _host_match_values():
     return vals
 
 
+def _host_named_values():
+    """Return dict mapping short names to values for version comparisons.
+    e.g. {'macos': '15.4', 'ubuntu': '22.04', 'wsl2': None}
+    """
+    vals = {}
+    # Platform → OS version
+    os_id = (os.environ.get("HOST_OS_ID") or "").strip()
+    if os_id:
+        # "macos-15.4" → macos=15.4, "ubuntu-22.04" → ubuntu=22.04
+        parts = os_id.split("-", 1)
+        if len(parts) == 2:
+            vals[parts[0]] = parts[1]
+    # Also map platform names
+    for var in ["HOST_PLATFORM", "HOST_PLATFORM_VARIANT"]:
+        v = (os.environ.get(var) or "").strip()
+        if v and v not in vals:
+            vals[v] = os_id.split("-", 1)[1] if "-" in os_id else ""
+    return vals
+
+
+def _version_compare(actual, op, required):
+    """Compare version strings: '15.4' >= '14' → True."""
+    try:
+        from packaging.version import Version
+        return {
+            ">=": lambda a, b: Version(a) >= Version(b),
+            "<=": lambda a, b: Version(a) <= Version(b),
+            ">":  lambda a, b: Version(a) > Version(b),
+            "<":  lambda a, b: Version(a) < Version(b),
+            "==": lambda a, b: Version(a) == Version(b),
+            "!=": lambda a, b: Version(a) != Version(b),
+        }[op](actual, required)
+    except Exception:
+        # Fallback: simple numeric comparison
+        try:
+            a = tuple(int(x) for x in actual.split("."))
+            b = tuple(int(x) for x in required.split("."))
+            return {
+                ">=": lambda: a >= b, "<=": lambda: a <= b,
+                ">": lambda: a > b, "<": lambda: a < b,
+                "==": lambda: a == b, "!=": lambda: a != b,
+            }[op]()
+        except Exception:
+            return False
+
+
+import re as _re
+_CONDITION_VERSION_RE = _re.compile(r'^(!?)(\w+)(>=|<=|>|<|==|!=)(.+)$')
+
+
 def _resolve_conditional_dep(entry, host_values=None):
     """Parse 'target?condition' → (target_name, included).
-    No '?' → always included.
-    '?value' → included if value in host_values.
-    '?!value' → included if value NOT in host_values.
-    Returns (target_name_without_condition, True/False).
-    For union mode (all possible deps), returns (target_name, True) always.
+    Conditions:
+      ?value         → included if value in host match set
+      ?!value        → included if value NOT in host match set
+      ?name>=version → included if named value >= version
+      ?!name>=version → NOT (named value >= version)
+    For union mode (host_values=None), returns (target_name, True) always.
     """
     if "?" not in entry:
         return entry, True
@@ -442,6 +493,23 @@ def _resolve_conditional_dep(entry, host_values=None):
     if host_values is None:
         # Union mode — include all possible deps regardless of condition
         return target, True
+
+    # Check for version comparison: name>=version, name<version, etc.
+    m = _CONDITION_VERSION_RE.match(condition)
+    if m:
+        negate, name, op, version = m.groups()
+        named = _host_named_values()
+        actual = named.get(name, "")
+        if not actual:
+            # Name not in host values — condition fails
+            result = False
+        else:
+            result = _version_compare(actual, op, version)
+        if negate:
+            result = not result
+        return target, result
+
+    # Simple match/negation
     if condition.startswith("!"):
         return target, condition[1:] not in host_values
     return target, condition in host_values
