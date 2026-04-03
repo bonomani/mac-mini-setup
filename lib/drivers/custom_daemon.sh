@@ -32,13 +32,12 @@ _ucc_driver_custom_daemon_evidence() {
   local bin ver path
   bin="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.bin")"
   [[ -n "$bin" ]] || return 1
-  local full_output; full_output="$("$bin" --version 2>&1 || true)"
-  ver="$(echo "$full_output" | head -1 | awk '{print $NF}')"
+  local all_vers; all_vers="$("$bin" --version 2>&1 | awk '{print $NF}')"
+  ver="$(echo "$all_vers" | head -1)"
   path="$(command -v "$bin" 2>/dev/null || true)"
   [[ -n "$ver" ]] || return 1
   printf 'version=%s' "$ver"
-  # Check for update notification (e.g. "Warning: newer version available: 0.20.0")
-  local update_ver; update_ver="$(echo "$full_output" | grep -i 'new\|update\|available\|upgrade' | awk '{print $NF}' | head -1)"
+  local update_ver; update_ver="$(echo "$all_vers" | sed -n '2p')"
   [[ -n "$update_ver" && "$update_ver" != "$ver" ]] && printf '  update=%s' "$update_ver"
   [[ -n "$path" ]] && printf '  path=%s' "$path"
 }
