@@ -392,6 +392,7 @@ PY
     elif [[ "${HOST_PLATFORM:-}" == "macos" && -d "/Applications/Ollama.app" ]]; then
       # macOS: start daemon via app in background (no GUI window)
       open -gja Ollama
+      sleep 3  # give the app time to launch the daemon process
     else
       # Linux/WSL2: start ollama serve directly
       pkill -f "$_OLLAMA_STOP_PATTERN" 2>/dev/null || true
