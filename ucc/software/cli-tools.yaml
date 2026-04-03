@@ -241,6 +241,16 @@ targets:
       kind: bin-script
       script_name: ai-healthcheck
       bin_dir: ${home_bin_dir}
+  xrdp:
+    component: cli-tools
+    profile: configured
+    type: package
+    state_model: package
+    display_name: xrdp
+    driver:
+      kind: package
+      ref: xrdp
+      github_repo: neutrinolabs/xrdp
   iterm2:
     component: cli-tools
     profile: configured
