@@ -247,6 +247,7 @@ targets:
     type: package
     state_model: package
     display_name: xrdp
+    requires: linux,wsl2
     driver:
       kind: package
       ref: xrdp
