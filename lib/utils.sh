@@ -246,6 +246,44 @@ brew_cask_migrate_install() {
   brew_refresh_caches 2>/dev/null || true
 }
 
+# Detect install source for a CLI binary: brew (formula), brew-cask, external, or absent.
+# Usage: cli_install_source <binary> [brew_formula]
+cli_install_source() {
+  local bin="$1" formula="${2:-}"
+  if ! command -v "$bin" >/dev/null 2>&1; then
+    printf 'absent'
+  elif [[ -n "$formula" ]] && is_installed brew && brew list "$formula" >/dev/null 2>&1; then
+    printf 'brew'
+  else
+    printf 'external'
+  fi
+}
+
+# Handle a CLI tool installed outside brew according to preferred-driver-policy.
+# Usage: handle_unmanaged_brew_package <formula> <display_name>
+handle_unmanaged_brew_package() {
+  local formula="$1" display_name="${2:-$1}"
+  local policy="${UIC_PREF_PREFERRED_DRIVER_POLICY:-warn}"
+  case "$policy" in
+    ignore)
+      log_info "${display_name} installed outside brew; ignoring (policy=ignore)."
+      return 0
+      ;;
+    warn)
+      log_warn "${display_name} installed outside brew. To migrate: brew install ${formula}"
+      return 124
+      ;;
+    migrate)
+      sudo_is_available || { log_warn "Migrating ${display_name} requires admin; run: sudo -v"; return 125; }
+      ucc_run brew install "$formula" || return 1
+      ;;
+    *)
+      log_warn "Unknown preferred-driver-policy '$policy'; treating as warn."
+      return 124
+      ;;
+  esac
+}
+
 # yaml_get_many <cfg_dir> <yaml_path> <key1> [key2 ...]
 # Output NUL-delimited tab-separated key/value rows for multiple scalar lookups.
 yaml_get_many() {
