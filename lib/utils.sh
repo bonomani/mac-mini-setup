@@ -226,7 +226,7 @@ desktop_app_handle_unmanaged_cask() {
       return 0
       ;;
     warn)
-      log_warn "${display_name} installed outside brew. To migrate: brew install --cask ${cask_id}"
+      log_warn "${display_name} installed outside brew. To migrate: brew install --cask ${cask_id} (or: ./install.sh --pref preferred-driver-policy=migrate ${cask_id})"
       return 124
       ;;
     migrate)
@@ -270,7 +270,7 @@ handle_unmanaged_brew_package() {
       return 0
       ;;
     warn)
-      log_warn "${display_name} installed outside brew. To migrate: brew install ${formula}"
+      log_warn "${display_name} installed outside brew. To migrate: brew install ${formula} (or: ./install.sh --pref preferred-driver-policy=migrate ${formula})"
       return 124
       ;;
     migrate)
