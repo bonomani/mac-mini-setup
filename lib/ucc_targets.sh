@@ -1502,7 +1502,7 @@ ucc_flush_registered_targets() {
     [[ "${_UCC_EMITTED_TARGETS:-}" == *"|${target}|"* ]] && _was_processed=1
     if [[ $_was_processed -eq 0 ]]; then
       local _dn; _dn="$(_ucc_display_name "$target")"
-      printf '      [%-8s] %-30s %s\n' "skip" "$_dn" "not applicable on ${HOST_PLATFORM:-unknown}"
+      printf '      [%-8s] %-30s %s\n' "skip" "$_dn" "not processed"
     fi
   done
 }
