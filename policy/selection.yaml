@@ -1,0 +1,13 @@
+# Default target selection
+# User overrides: ~/.ai-stack/selection.env
+
+# default: all | none
+# all  = run everything unless explicitly disabled below
+# none = run nothing unless explicitly selected
+default: all
+
+# Targets disabled globally (skipped even in --all mode)
+# Use for targets that are too large, experimental, or opt-in only
+disabled:
+- ollama-model-llama3.1-70b
+- ollama-model-qwen2.5-coder-32b

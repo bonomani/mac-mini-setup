@@ -355,6 +355,13 @@ export _UCC_EMITTED_TARGETS=""
 
 _ucc_target_filtered_out() {
   local target="$1" cfg_dir="${2:-}" yaml="${3:-}"
+  # Check if globally disabled by policy
+  if [[ -n "${UCC_DISABLED_TARGETS:-}" && "${UCC_DISABLED_TARGETS}" == *"${target}|"* ]]; then
+    _UCC_EMITTED_TARGETS="${_UCC_EMITTED_TARGETS}|${target}|"
+    local display_name; display_name="$(_ucc_display_name "$target")"
+    printf '      [%-8s] %-30s %s\n' "disabled" "$display_name" "disabled by policy"
+    return 0
+  fi
   if [[ "${UCC_TARGET_SET:-}" != *"${target}|"* ]]; then
     _UCC_EMITTED_TARGETS="${_UCC_EMITTED_TARGETS}|${target}|"
     local display_name state=""
@@ -1502,7 +1509,11 @@ ucc_flush_registered_targets() {
     [[ "${_UCC_EMITTED_TARGETS:-}" == *"|${target}|"* ]] && _was_processed=1
     if [[ $_was_processed -eq 0 ]]; then
       local _dn; _dn="$(_ucc_display_name "$target")"
-      printf '      [%-8s] %-30s %s\n' "skip" "$_dn" "not processed"
+      if [[ -n "${UCC_DISABLED_TARGETS:-}" && "${UCC_DISABLED_TARGETS}" == *"${target}|"* ]]; then
+        printf '      [%-8s] %-30s %s\n' "disabled" "$_dn" "disabled by policy"
+      else
+        printf '      [%-8s] %-30s %s\n' "skip" "$_dn" "not processed"
+      fi
     fi
   done
 }

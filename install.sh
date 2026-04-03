@@ -416,6 +416,26 @@ _resolve_selection() {
   done
 }
 
+# Load policy/selection.yaml defaults
+_SELECTION_POLICY="$DIR/policy/selection.yaml"
+_POLICY_DEFAULT="all"
+_POLICY_DISABLED=""
+if [[ -f "$_SELECTION_POLICY" ]]; then
+  _POLICY_DEFAULT="$(python3 -c "
+import yaml, sys
+with open(sys.argv[1]) as f:
+    d = yaml.safe_load(f) or {}
+print(d.get('default', 'all'))
+" "$_SELECTION_POLICY" 2>/dev/null || echo all)"
+  _POLICY_DISABLED="$(python3 -c "
+import yaml, sys
+with open(sys.argv[1]) as f:
+    d = yaml.safe_load(f) or {}
+for t in (d.get('disabled') or []):
+    print(t)
+" "$_SELECTION_POLICY" 2>/dev/null || true)"
+fi
+
 _resolved=()
 if [[ "${UCC_DEFAULT_SELECTION:-}" == "all" ]]; then
   # --all flag
@@ -427,7 +447,7 @@ elif [[ ${#TO_RUN[@]} -gt 0 ]]; then
   # Explicit args: resolve those
   _resolve_selection "${TO_RUN[@]}"
 elif [[ -f "$_UCC_SELECTION_FILE" ]]; then
-  # No args: load saved selection
+  # No args: load saved user selection
   _saved_items=()
   while IFS= read -r _line; do
     [[ -n "$_line" && "$_line" != \#* ]] && _saved_items+=("$_line")
@@ -437,18 +457,25 @@ elif [[ -f "$_UCC_SELECTION_FILE" ]]; then
     _resolve_selection "${_saved_items[@]}"
   fi
 else
-  # No args, no saved selection, no flag → use default-selection pref
-  # Read early from pref file or env (UIC not loaded yet)
-  _default_sel="${UIC_PREF_DEFAULT_SELECTION:-}"
-  if [[ -z "$_default_sel" ]]; then
-    _pf="${UIC_PREF_FILE:-$HOME/.ai-stack/preferences.env}"
-    [[ -f "$_pf" ]] && _default_sel="$(grep -E '^default-selection=' "$_pf" 2>/dev/null | head -1 | cut -d= -f2-)"
+  # No args, no user selection → use policy default
+  _default_sel="${UIC_PREF_DEFAULT_SELECTION:-$_POLICY_DEFAULT}"
+  # Also check user pref file
+  _pf="${UIC_PREF_FILE:-$HOME/.ai-stack/preferences.env}"
+  if [[ -f "$_pf" ]]; then
+    _user_default="$(grep -E '^default-selection=' "$_pf" 2>/dev/null | head -1 | cut -d= -f2-)"
+    [[ -n "$_user_default" ]] && _default_sel="$_user_default"
   fi
-  _default_sel="${_default_sel:-all}"
   if [[ "$_default_sel" == "all" ]]; then
     for _c in "${COMPONENTS[@]}"; do _resolve_component "$_c"; done
   fi
-  # else: none → nothing selected
+fi
+
+# Export disabled targets list for filtering
+export UCC_DISABLED_TARGETS=""
+if [[ -n "$_POLICY_DISABLED" ]]; then
+  while IFS= read -r _dt; do
+    [[ -n "$_dt" ]] && UCC_DISABLED_TARGETS="${UCC_DISABLED_TARGETS}${_dt}|"
+  done <<< "$_POLICY_DISABLED"
 fi
 
 # Save selected components for preference scoping
