@@ -265,25 +265,35 @@ _uic_scope_active() {
 }
 
 
-# Helper: update defaults/selection.yaml disabled list
-_selection_policy_set() {
+# Helper: update user-local selection overrides (~/.ai-stack/selection.yaml)
+# enable: adds to enabled: list (overrides defaults disabled)
+# disable: adds to disabled: list (adds to defaults disabled)
+_USER_SELECTION_FILE="${UIC_PREF_FILE%/*}/selection.yaml"
+_selection_override_set() {
   local target="$1" action="$2"  # action: enable|disable
+  local _sel_file="${_USER_SELECTION_FILE:-$HOME/.ai-stack/selection.yaml}"
+  mkdir -p "$(dirname "$_sel_file")"
   python3 -c "
-import yaml, sys
+import yaml, sys, os
 path, target, action = sys.argv[1], sys.argv[2], sys.argv[3]
-with open(path) as f:
-    data = yaml.safe_load(f) or {}
+if os.path.exists(path):
+    with open(path) as f:
+        data = yaml.safe_load(f) or {}
+else:
+    data = {}
+enabled = data.get('enabled') or []
 disabled = data.get('disabled') or []
-changed = False
-if action == 'enable' and target in disabled:
-    disabled.remove(target); changed = True
-elif action == 'disable' and target not in disabled:
-    disabled.append(target); changed = True
-if changed:
-    data['disabled'] = disabled
-    with open(path, 'w') as f:
-        yaml.dump(data, f, default_flow_style=False, sort_keys=False)
-" "${_SELECTION_POLICY:-$DIR/defaults/selection.yaml}" "$target" "$action" 2>/dev/null
+if action == 'enable':
+    if target not in enabled: enabled.append(target)
+    if target in disabled: disabled.remove(target)
+elif action == 'disable':
+    if target not in disabled: disabled.append(target)
+    if target in enabled: enabled.remove(target)
+data['enabled'] = enabled
+data['disabled'] = disabled
+with open(path, 'w') as f:
+    yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+" "$_sel_file" "$target" "$action" 2>/dev/null
 }
 
 usage() {
@@ -306,8 +316,8 @@ Options:
   --no-interactive  Skip all prompts (CI/automation mode)
   --preflight       Evaluate UIC gates and preferences; do NOT converge
   --pref key=value  Set a UIC preference for this run only (repeatable)
-  --enable target   Enable a disabled target (updates defaults/selection.yaml)
-  --disable target  Disable a target (updates defaults/selection.yaml)
+  --enable target   Enable a disabled target (updates ~/.ai-stack/selection.yaml)
+  --disable target  Disable a target (updates ~/.ai-stack/selection.yaml)
   --debug           Show DEBUG-level output
   -h, --help        Show this help
 
@@ -349,13 +359,13 @@ while [[ $# -gt 0 ]]; do
       export "${_pref_env}=${_pref_val}"
       ;;
     --disable)
-      _selection_policy_set "$2" disable
-      echo "Disabled $2 — updated defaults/selection.yaml"
+      _selection_override_set "$2" disable
+      echo "Disabled $2 — updated ~/.ai-stack/selection.yaml"
       exit 0
       ;;
     --enable)
-      _selection_policy_set "$2" enable
-      echo "Enabled $2 — updated defaults/selection.yaml"
+      _selection_override_set "$2" enable
+      echo "Enabled $2 — updated ~/.ai-stack/selection.yaml"
       exit 0
       ;;
     -h|--help)       usage ;;
@@ -476,13 +486,44 @@ else
   fi
 fi
 
-# Export disabled targets list for filtering
-export UCC_DISABLED_TARGETS=""
-if [[ -n "$_POLICY_DISABLED" ]]; then
-  while IFS= read -r _dt; do
-    [[ -n "$_dt" ]] && UCC_DISABLED_TARGETS="${UCC_DISABLED_TARGETS}${_dt}|"
-  done <<< "$_POLICY_DISABLED"
+# Build effective disabled list: (defaults.disabled + user.disabled) - user.enabled
+_USER_ENABLED=""
+_USER_DISABLED=""
+if [[ -f "$_USER_SELECTION_FILE" ]]; then
+  _USER_ENABLED="$(python3 -c "
+import yaml, sys
+with open(sys.argv[1]) as f:
+    d = yaml.safe_load(f) or {}
+for t in (d.get('enabled') or []):
+    print(t)
+" "$_USER_SELECTION_FILE" 2>/dev/null || true)"
+  _USER_DISABLED="$(python3 -c "
+import yaml, sys
+with open(sys.argv[1]) as f:
+    d = yaml.safe_load(f) or {}
+for t in (d.get('disabled') or []):
+    print(t)
+" "$_USER_SELECTION_FILE" 2>/dev/null || true)"
 fi
+
+# Merge: start with defaults disabled, add user disabled, subtract user enabled
+export UCC_DISABLED_TARGETS=""
+_all_disabled="${_POLICY_DISABLED}
+${_USER_DISABLED}"
+_user_enabled_set="|"
+if [[ -n "$_USER_ENABLED" ]]; then
+  while IFS= read -r _ue; do
+    [[ -n "$_ue" ]] && _user_enabled_set="${_user_enabled_set}${_ue}|"
+  done <<< "$_USER_ENABLED"
+fi
+while IFS= read -r _dt; do
+  [[ -z "$_dt" ]] && continue
+  # Skip if user explicitly enabled this target
+  if [[ "$_user_enabled_set" == *"|${_dt}|"* ]]; then continue; fi
+  # Avoid duplicates
+  if [[ "${UCC_DISABLED_TARGETS}" == *"${_dt}|"* ]]; then continue; fi
+  UCC_DISABLED_TARGETS="${UCC_DISABLED_TARGETS}${_dt}|"
+done <<< "$_all_disabled"
 
 # For explicit CLI targets in interactive mode, prompt enable/disable and persist
 if [[ "${_EXPLICIT_TARGETS:-0}" == "1" && "${UCC_INTERACTIVE:-0}" == "1" && -c /dev/tty ]]; then
@@ -501,15 +542,15 @@ if [[ "${_EXPLICIT_TARGETS:-0}" == "1" && "${UCC_INTERACTIVE:-0}" == "1" && -c /
     read -r _td_choice < /dev/tty
     if [[ $_is_disabled -eq 1 ]]; then
       if [[ "$_td_choice" != "2" ]]; then
-        _selection_policy_set "$_et" enable
+        _selection_override_set "$_et" enable
         UCC_DISABLED_TARGETS="${UCC_DISABLED_TARGETS//${_et}|/}"
-        log_info "Enabled '$_et' — updated defaults/selection.yaml"
+        log_info "Enabled '$_et' — updated ~/.ai-stack/selection.yaml"
       fi
     else
       if [[ "$_td_choice" == "2" ]]; then
-        _selection_policy_set "$_et" disable
+        _selection_override_set "$_et" disable
         UCC_DISABLED_TARGETS="${UCC_DISABLED_TARGETS}${_et}|"
-        log_info "Disabled '$_et' — updated defaults/selection.yaml"
+        log_info "Disabled '$_et' — updated ~/.ai-stack/selection.yaml"
       fi
     fi
   done
