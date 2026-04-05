@@ -2,35 +2,6 @@
 # lib/ai_apps.sh — Docker Compose AI stack targets
 # Sourced by components/ai-apps.sh
 
-# Return true when the host platform/version supports Ollama.
-# Reads macos_min_version from YAML via $CFG_DIR/$YAML_PATH.
-ollama_host_supported() {
-  local min_major=""
-  while IFS=$'\t' read -r -d '' key value; do
-    [[ "$key" == "macos_min_version" ]] && min_major="$value"
-  done < <(yaml_get_many "$CFG_DIR" "$YAML_PATH" macos_min_version)
-  if [[ "${HOST_PLATFORM:-unknown}" == "macos" ]]; then
-    [[ "$(sw_vers -productVersion 2>/dev/null | awk -F. '{print $1}')" -ge "${min_major:-0}" ]]
-  else
-    [[ "${HOST_PLATFORM:-unknown}" == "linux" || "${HOST_PLATFORM_VARIANT:-unknown}" == "wsl2" ]]
-  fi
-}
-
-# Emit a log_warn explaining why Ollama is unsupported, then return 1.
-# Reads macos_min_version from YAML via $CFG_DIR/$YAML_PATH.
-ollama_unsupported_warn() {
-  local min_major=""
-  while IFS=$'\t' read -r -d '' key value; do
-    [[ "$key" == "macos_min_version" ]] && min_major="$value"
-  done < <(yaml_get_many "$CFG_DIR" "$YAML_PATH" macos_min_version)
-  if [[ "${HOST_PLATFORM:-unknown}" == "macos" ]]; then
-    log_warn "Ollama requires macOS ${min_major}+ — current: macOS $(sw_vers -productVersion 2>/dev/null || echo unknown)"
-  else
-    log_warn "Ollama is not supported on host platform: ${HOST_PLATFORM:-unknown}"
-  fi
-  return 1
-}
-
 # Usage: run_ai_apps_from_yaml <cfg_dir> <yaml_path>
 run_ai_apps_from_yaml() {
   local cfg_dir="$1" yaml="$2"
