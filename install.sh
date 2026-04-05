@@ -469,7 +469,7 @@ else
   _pf="${UIC_PREF_FILE:-$HOME/.ai-stack/preferences.env}"
   if [[ -f "$_pf" ]]; then
     _user_default="$(grep -E '^default-selection=' "$_pf" 2>/dev/null | head -1 | cut -d= -f2-)"
-    [[ -n "$_user_default" ]] && _default_sel="$_user_default"
+    if [[ -n "$_user_default" ]]; then _default_sel="$_user_default"; fi
   fi
   if [[ "$_default_sel" == "all" ]]; then
     for _c in "${COMPONENTS[@]}"; do _resolve_component "$_c"; done
