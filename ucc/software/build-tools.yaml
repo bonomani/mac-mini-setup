@@ -15,7 +15,7 @@ targets:
     display_name: Rust (rustup)
     driver:
       kind: package
-      ref: rustup-init
+      ref: rustup
       bin: rustup
       fallback_install_url: https://sh.rustup.rs
       fallback_install_args: -y
