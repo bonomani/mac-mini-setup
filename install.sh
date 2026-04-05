@@ -285,6 +285,8 @@ Options:
   --no-interactive  Skip all prompts (CI/automation mode)
   --preflight       Evaluate UIC gates and preferences; do NOT converge
   --pref key=value  Set a UIC preference for this run only (repeatable)
+  --enable target   Enable a disabled target (updates policy/selection.yaml)
+  --disable target  Disable a target (updates policy/selection.yaml)
   --debug           Show DEBUG-level output
   -h, --help        Show this help
 
@@ -324,6 +326,46 @@ while [[ $# -gt 0 ]]; do
       _pref_val="${_pref_kv#*=}"
       _pref_env="UIC_PREF_$(echo "${_pref_key//-/_}" | tr '[:lower:]' '[:upper:]')"
       export "${_pref_env}=${_pref_val}"
+      ;;
+    --disable)
+      _dis_target="$2"; shift 2
+      python3 -c "
+import yaml, sys
+path = sys.argv[1]
+target = sys.argv[2]
+with open(path) as f:
+    data = yaml.safe_load(f) or {}
+disabled = data.get('disabled') or []
+if target not in disabled:
+    disabled.append(target)
+    data['disabled'] = disabled
+    with open(path, 'w') as f:
+        yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+    print(f'Disabled {target} — added to policy/selection.yaml')
+else:
+    print(f'{target} is already disabled')
+" "$DIR/policy/selection.yaml" "$_dis_target"
+      exit 0
+      ;;
+    --enable)
+      _en_target="$2"; shift 2
+      python3 -c "
+import yaml, sys
+path = sys.argv[1]
+target = sys.argv[2]
+with open(path) as f:
+    data = yaml.safe_load(f) or {}
+disabled = data.get('disabled') or []
+if target in disabled:
+    disabled.remove(target)
+    data['disabled'] = disabled
+    with open(path, 'w') as f:
+        yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+    print(f'Enabled {target} — removed from policy/selection.yaml')
+else:
+    print(f'{target} is not disabled')
+" "$DIR/policy/selection.yaml" "$_en_target"
+      exit 0
       ;;
     -h|--help)       usage ;;
     -*)              log_warn "Unknown option: $1"; shift ;;
@@ -452,7 +494,7 @@ if [[ -n "$_POLICY_DISABLED" ]]; then
     if [[ "${_EXPLICIT_TARGETS:-0}" == "1" && "${UCC_TARGET_SET}" == *"${_dt}|"* ]]; then
       if [[ -c /dev/tty ]]; then
         printf '\n  [?] Target '\''%s'\'' is disabled by policy. Enable it?\n' "$_dt"
-        printf '      Options: *1=yes, 2=no  →  '
+        printf '      Options: *1=enable, 2=keep disabled  →  '
         read -r _enable_choice < /dev/tty
         if [[ "$_enable_choice" == "2" ]]; then
           UCC_DISABLED_TARGETS="${UCC_DISABLED_TARGETS}${_dt}|"
@@ -471,7 +513,7 @@ if target in disabled:
     with open(path, 'w') as f:
         yaml.dump(data, f, default_flow_style=False, sort_keys=False)
 " "$_SELECTION_POLICY" "$_dt" 2>/dev/null && \
-          log_info "Removed '$_dt' from policy/selection.yaml disabled list"
+          log_info "Enabled '$_dt' — removed from policy/selection.yaml"
         fi
       else
         # Non-interactive: explicit request overrides disabled
