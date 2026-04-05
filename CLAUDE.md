@@ -83,6 +83,48 @@ When a target's `oracle`, `evidence`, or `actions` field passes `${driver.<key>}
 
 **Fix**: wrap the call in a lib function that injects these implicitly (e.g. `http_probe_endpoint` wraps `_ucc_http_probe_endpoint "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME"`).
 
+### Rule 6 — `requires:` is only for platform impossibilities
+
+`requires:` on a target means "this can NEVER work on other platforms" — OS kernel APIs, hardware features, platform-specific system tools.
+
+**Use `requires:`**:
+
+- `pmset` commands → `requires: macos` (macOS kernel power management)
+- `xcode-command-line-tools` → `requires: macos` (macOS SDK)
+- `mps-available` → `requires: macos` (Apple Metal GPU hardware)
+- `systemd` service → `requires: linux,wsl2` (Linux init system)
+- `CUDA` → `requires: linux,wsl2` (NVIDIA GPU drivers)
+
+**Do NOT use `requires:`**:
+
+- Package not yet in apt/brew on some platform → driver fails naturally, may work in future
+- brew tap not available on Linux → will work if tap is ported
+- Software only tested on macOS → not a platform impossibility
+
+**Principle**: Package availability can change. Platform APIs cannot. Let the driver handle PM failures — don't block with `requires:` what might work tomorrow.
+
+### Rule 7 — `depends_on` is for cross-ecosystem dependencies only
+
+YAML `depends_on` entries track dependencies that no single package manager can see. Do NOT duplicate intra-PM dependencies (the PM already handles those).
+
+**Use `depends_on`**:
+
+- Cross-driver: `python` → `xz` (pyenv-version needs package driver)
+- Cross-ecosystem: `ariaflow` → `networkquality-available` (OS binary)
+- Phase ordering: `git-global-config` → `git` (config needs package)
+- Composition: `system-composition` → all system targets
+
+**Do NOT use `depends_on`**:
+
+- brew formula A depends on brew formula B → brew handles it
+- pip package A requires pip package B → pip handles it
+
+**Conditional syntax**: `target?condition` with comma OR:
+
+- `xcode-command-line-tools?macos` — only on macOS
+- `build-deps?!brew` — when PM is not brew
+- `dep?macos>=14,linux,wsl2` — version comparison + OR
+
 ### Naming
 
 - Functions called directly from YAML (no leading underscore): `ollama_host_supported`, `brew_service_is_started`
