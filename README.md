@@ -66,11 +66,12 @@ state can describe the whole machine, not only individual components.
 | `lib/docker.sh` | Bash library | Docker component logic | Docker Desktop + resources |
 | `lib/ollama_models.sh` | Bash library | Ollama model targets | Autopull groups by size preference |
 | `lib/ai_apps.sh` | Bash library | AI app stack logic | Compose file + per-app runtimes |
-| `lib/dev_tools.sh` | Bash library | Dev tools logic | npm cache, VS Code, Node, CLI tools |
+| `lib/cli_tools.sh` | Bash library | CLI tools logic | Git, CLI tools, Oh My Zsh |
+| `lib/node_stack.sh` | Bash library | Node stack logic | nvm, Node.js, npm globals |
+| `lib/build_tools.sh` | Bash library | Build tools logic | Build tools (disabled) |
 | `lib/vscode_ext.sh` | Bash library | VS Code extension targets | Dynamic extension install targets |
-| `lib/macos_config.sh` | Bash library | macOS config logic | Parametric config targets and UI restarts |
 | `lib/unsloth_studio.sh` | Bash library | Unsloth Studio logic | launchd/systemd service |
-| `lib/system.sh` | Bash library | System composition logic | Derives whole-machine state |
+| `lib/system.sh` | Bash library | System component logic | OS config + composition |
 
 ### Tools
 
@@ -98,15 +99,17 @@ state can describe the whole machine, not only individual components.
 | `ucc/software/docker.yaml` | YAML manifest | docker | Docker Desktop + resources + capabilities |
 | `ucc/software/ai-python-stack.yaml` | YAML manifest | ai-python-stack | Pip groups, Unsloth Studio, GPU probes |
 | `ucc/software/ai-apps.yaml` | YAML manifest | ai-apps | Ollama + models + Docker Compose services |
-| `ucc/software/dev-tools.yaml` | YAML manifest | dev-tools | Git, Python, Node, CLI tools, VS Code, OMZ |
+| `ucc/software/cli-tools.yaml` | YAML manifest | cli-tools | Git, CLI tools, Oh My Zsh |
+| `ucc/software/node-stack.yaml` | YAML manifest | node-stack | Node.js, nvm, npm global packages |
+| `ucc/software/vscode.yaml` | YAML manifest | vscode-stack | VS Code, extensions, settings |
+| `ucc/software/build-tools.yaml` | YAML manifest | build-tools | Build tools (disabled) |
 | `ucc/software/vscode-settings.json` | JSON | VS Code settings patch | Merged into user settings |
 
 ### UCC System Manifests
 
 | File | Type | Purpose | Key Notes |
 |---|---|---|---|
-| `ucc/system/macos-config.yaml` | YAML manifest | macos-config | pmset, defaults, softwareupdate, sudo probe |
-| `ucc/system/system.yaml` | YAML manifest | system | Host composition meta-target |
+| `ucc/system/system.yaml` | YAML manifest | system | OS config (pmset, defaults, softwareupdate) + composition |
 
 ### TIC
 
@@ -115,6 +118,12 @@ state can describe the whole machine, not only individual components.
 | `tic/software/verify.yaml` | YAML | Software verification suite | Imports, package presence, service health |
 | `tic/system/verify.yaml` | YAML | System verification suite | Independent health checks + system-composition |
 | `tic/software/integration.yaml` | YAML | Integration test suite | Cross-component interaction tests |
+
+### Tests
+
+| File | Type | Purpose | Key Notes |
+|---|---|---|---|
+| `tests/` | Python | Unit tests | 30 unit tests across 8 test files  |
 
 ### Runtime Templates And Scripts
 
@@ -133,12 +142,14 @@ and `ucc/system/`, then dispatched through `install.sh`.
 | Component | Manifest | Description |
 |-----------|----------|-------------|
 | software-bootstrap | `ucc/software/homebrew.yaml` | Xcode CLT, build-deps, Homebrew, network probe |
-| dev-tools | `ucc/software/dev-tools.yaml` | Git, Python, Node, CLI tools, VS Code, OMZ, ariaflow |
+| cli-tools | `ucc/software/cli-tools.yaml` | Git, CLI tools, Oh My Zsh |
+| node-stack | `ucc/software/node-stack.yaml` | Node.js, nvm, npm global packages |
+| vscode-stack | `ucc/software/vscode.yaml` | VS Code, extensions, settings |
 | docker | `ucc/software/docker.yaml` | Docker Desktop + resources + capabilities |
 | ai-python-stack | `ucc/software/ai-python-stack.yaml` | PyTorch, HF, LangChain, pip groups, GPU probes, Unsloth |
 | ai-apps | `ucc/software/ai-apps.yaml` | Ollama + models + Docker Compose services |
-| macos-config | `ucc/system/macos-config.yaml` | pmset, defaults, softwareupdate, sudo |
-| system | `ucc/system/system.yaml` | Host composition meta-target |
+| build-tools | `ucc/software/build-tools.yaml` | Build tools (disabled) |
+| system | `ucc/system/system.yaml` | OS config (pmset, defaults, softwareupdate) + composition |
 | verify | `tic/` | Post-convergence verification + integration tests |
 
 ## Usage
@@ -153,6 +164,9 @@ chmod +x install.sh
 
 # Multiple components
 ./install.sh python ai-python-stack
+
+# Start with nothing selected
+./install.sh --none
 ```
 
 If you want admin-gated targets such as `macos-defaults` or

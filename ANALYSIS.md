@@ -13,9 +13,9 @@ install.sh
   │   ├── Gate evaluation (1 gate: supported-platform)
   │   └── Preference resolution (13 preferences)
   ├── UCC (Convergence)
-  │   ├── Component runners (7 components)
-  │   ├── Driver dispatch (30 driver kinds)
-  │   └── Target orchestration (100+ targets)
+  │   ├── Component runners (10 components, 9 enabled + 1 disabled)
+  │   ├── Driver dispatch (30 drivers)
+  │   └── Target orchestration (109 targets across 9 YAML files)
   ├── TIC (Verification)
   │   ├── Software verify (11 tests)
   │   ├── System verify (6 tests)
@@ -28,19 +28,22 @@ install.sh
 | Component | YAML | Platforms | Targets | Description |
 |-----------|------|-----------|---------|-------------|
 | software-bootstrap | homebrew.yaml | all | 5 | Xcode CLT, build-deps, Homebrew, analytics, network |
-| dev-tools | dev-tools.yaml | all | 51 | Git, Python, Node, CLI tools, VS Code, OMZ |
+| cli-tools | cli-tools.yaml | all | — | Git, CLI tools, Oh My Zsh |
+| node-stack | node-stack.yaml | all | — | Node.js, nvm, npm global packages |
+| vscode-stack | vscode.yaml | all | — | VS Code, extensions, settings |
 | docker | docker.yaml | macos | 4 | Docker Desktop + resources + capabilities |
 | ai-apps | ai-apps.yaml | all | 16 | Ollama + models + Docker Compose services |
 | ai-python-stack | ai-python-stack.yaml | all | 18 | PyTorch, HF, LangChain, pip groups, GPU probes |
-| macos-config | macos-config.yaml | macos | 14 | pmset, defaults, softwareupdate, sudo probe |
-| system | system.yaml | macos | 1 | Host composition meta-target |
+| build-tools | build-tools.yaml | all | — | Build tools (disabled) |
+| system | system.yaml | macos | 15 | pmset, defaults, softwareupdate, sudo, composition |
 
 ## Driver Architecture
 
-30 driver kinds across 4 classes. See `DRIVER_ARCHITECTURE.md` for full details.
+30 drivers across 4 classes. See `DRIVER_ARCHITECTURE.md` for full details.
 
-- **Package** (13): `package`, `brew`, `app-bundle`, `pip`, `npm-global`, `pyenv-brew`,
-  `pyenv-version`, `nvm`, `nvm-version`, `vscode-marketplace`, `ollama-model`, `pip-bootstrap`, `build-deps`
+- **Package** (15): `package`, `brew`, `app-bundle`, `pip`, `npm-global`, `pyenv-brew`,
+  `pyenv-version`, `nvm`, `nvm-version`, `vscode-marketplace`, `ollama-model`, `pip-bootstrap`,
+  `build-deps`, `git-repo`, `curl-installer`
 - **Config** (14): `brew-analytics`, `brew-unlink`, `json-merge`, `user-defaults`, `pmset`,
   `softwareupdate-defaults`, `softwareupdate-schedule`, `docker-settings`, `cli-symlink`,
   `script-installer`, `zsh-config`, `path-export`, `bin-script`, `git-global`
@@ -48,8 +51,14 @@ install.sh
 
 Key features:
 - **Driver-implied dependencies**: drivers declare `depends_on` and `provided_by_tool` — YAML targets don't repeat them
-- **Platform-aware `package` driver**: dispatches to brew (macOS) or apt/dnf/pacman (Linux/WSL2)
+- **Platform-aware `package` driver**: dispatches to brew (macOS) or apt/dnf/curl (Linux/WSL2) with curl fallback
 - **Driver schema validation**: required/optional keys enforced at validation time
+- **`requires:` field**: declares platform impossibilities (e.g. `requires: linux,wsl2`)
+- **Conditional deps**: `target?condition` with OR, version compare, negation
+- **Host fingerprint**: os/version/arch/pm for platform-aware dispatch
+- **`git-repo` driver**: clones and updates git repositories
+- **`curl-installer` driver**: install via curl-based installers
+- **30 unit tests** in `tests/`
 
 ## Gates
 

@@ -32,7 +32,19 @@ to `homebrew` on macOS, `build-deps` on Linux.
 `DRIVER_SCHEMA` in the validator defines required/optional keys per driver kind.
 Missing required keys or unexpected keys are flagged at validation time.
 
-### P6 — Escape hatch is explicit
+### P6 — Platform impossibilities via `requires:`
+
+Targets may declare `requires: <platform>[,<platform>]` to indicate they are
+impossible on other platforms. The engine skips them with a clear reason instead
+of failing. Example: `requires: linux,wsl2` means the target is unavailable on macOS.
+
+### P7 — Conditional dependencies
+
+`depends_on` entries may use `target?condition` syntax with OR (`|`), version
+compare (`>=`, `<`), and negation (`!`). This allows expressing platform-specific
+or version-gated dependency edges without custom code.
+
+### P8 — Escape hatch is explicit
 
 `driver.kind: custom` is the only valid way to keep inline oracle/evidence/actions
 in YAML. A target without `driver.kind` falls through silently (dispatcher returns 1).
@@ -45,7 +57,7 @@ in YAML. A target without `driver.kind` falls through silently (dispatcher retur
 
 | Driver | File | Purpose | Required keys |
 |--------|------|---------|---------------|
-| `package` | package.sh | Platform-aware: brew (macOS) or apt/dnf/pacman (Linux) | `ref` |
+| `package` | package.sh | Platform-aware: brew (macOS) or apt/dnf/curl fallback (Linux) | `ref` |
 | `brew` | brew.sh | Homebrew formula/cask | `ref` |
 | `app-bundle` | app_bundle.sh | macOS app with brew-cask backend | `app_path`, `brew_cask` |
 | `pyenv-version` | pyenv.sh | Python version via pyenv | `version` |
@@ -58,6 +70,8 @@ in YAML. A target without `driver.kind` falls through silently (dispatcher retur
 | `vscode-marketplace` | vscode.sh | VS Code extension | `extension_id` |
 | `ollama-model` | ollama_model.sh | Ollama model pull | `ref` |
 | `build-deps` | build_deps.sh | Native build tools (apt/dnf/pacman) | — |
+| `git-repo` | git_repo.sh | Clone/update git repository | `repo_url` |
+| `curl-installer` | curl_installer.sh | Install via curl-based installer | `install_url` |
 
 ### Config drivers (`type: config`)
 
@@ -101,8 +115,8 @@ Only 1 gate remains:
 All other gates have been converted to targets:
 - `ai-apps-template` → precondition target in ai-apps.yaml
 - `docker-settings-file` → precondition target in docker.yaml
-- `networkquality-available` → capability target in dev-tools.yaml
-- `sudo-available` → capability target in macos-config.yaml
+- `networkquality-available` → capability target in cli-tools.yaml
+- `sudo-available` → capability target in system.yaml
 - `network-available` → capability target in homebrew.yaml
 - `docker-available` → capability target in docker.yaml
 - `mps-available` → capability target in ai-python-stack.yaml
@@ -118,7 +132,6 @@ All other gates have been converted to targets:
 | `homebrew` | homebrew.yaml | Bootstrap — no brew available yet |
 | `docker-desktop` | docker.yaml | GUI app + daemon lifecycle |
 | `ollama` | ai-apps.yaml | Custom daemon with installer |
-| `ollama-host-supported` | ai-apps.yaml | Platform precondition |
 | `unsloth-studio` | ai-python-stack.yaml | Dynamic plist generation |
 | `unsloth-studio-service` | ai-python-stack.yaml | Dynamic systemd unit generation |
 | `mps-available` | ai-python-stack.yaml | Hardware capability probe |
@@ -127,6 +140,6 @@ All other gates have been converted to targets:
 | `docker-available` | docker.yaml | Daemon reachability probe |
 | `docker-settings-file` | docker.yaml | Settings file precondition |
 | `ai-apps-template` | ai-apps.yaml | Template file precondition |
-| `sudo-available` | macos-config.yaml | Authorization probe |
+| `sudo-available` | system.yaml | Authorization probe |
 | `networkquality-available` | dev-tools.yaml | Command availability probe |
 | `system-composition` | system.yaml | Meta-target (composition) |

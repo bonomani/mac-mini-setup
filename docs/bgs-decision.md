@@ -4,13 +4,14 @@
 decision_id: mac-mini-setup-bgs-001
 bgs_slice: BGS-State-Modeled-Governed
 declared_scope: >
-  AI workstation setup — full installation lifecycle across 9
-  governed components. macOS is the primary/full profile; Linux and
-  WSL2 run most components via the platform-aware package driver with
-  macOS-specific targets skipped:
-  software layer (ucc/software/): software-bootstrap, dev-tools,
-  docker, ai-python-stack, ai-apps;
-  system layer (ucc/system/): macos-config, system;
+  AI workstation setup — full installation lifecycle across 10
+  governed components (9 enabled + 1 disabled). macOS is the primary/full
+  profile; Linux and WSL2 run most components via the platform-aware
+  package driver with macOS-specific targets skipped:
+  software layer (ucc/software/): software-bootstrap, cli-tools,
+  node-stack, vscode-stack, docker, ai-python-stack, ai-apps,
+  build-tools (disabled);
+  system layer (ucc/system/): system, system;
   verification (tic/): verify + integration.
   Covers install, check (drift detection), update, and interactive modes.
 
@@ -69,7 +70,7 @@ evidence_refs:
 
 limitations:
   - macOS remains the full-profile target. Linux/WSL2 run most software
-    targets via the package driver; macOS-only components (macos-config,
+    targets via the package driver; macOS-only components (system,
     docker, system) are skipped on non-macOS platforms.
   - Does not manage credentials or API tokens.
   - TIC tests are read-only probes; they do not re-run convergence.

@@ -12,17 +12,20 @@ bounded lifecycle and explicit admissible transitions.
 Scope:
 - AI workstation setup
 - macOS is the full-profile target; Linux and WSL2 use the portable subset
-- 9 governed components across two convergence layers plus verification:
+- 10 governed components (9 enabled + 1 disabled) across two convergence layers plus verification:
 
   Software layer (`ucc/software/`) — software convergence:
   - `software-bootstrap` (Xcode CLT, build-deps, Homebrew)
-  - `dev-tools` (Git, Node, CLI tools, VS Code, Oh My Zsh)
+  - `cli-tools` (Git, CLI tools, Oh My Zsh)
+  - `node-stack` (Node.js, nvm, npm global packages)
+  - `vscode-stack` (VS Code, extensions, settings)
   - `docker` (Docker Desktop + resources + capabilities)
   - `ai-python-stack` (pyenv, Python, pip, PyTorch, HF, LangChain, pip groups, GPU probes)
   - `ai-apps` (Ollama + models + Docker Compose services)
+  - `build-tools` (build tools — disabled)
 
   System layer (`ucc/system/`) — value convergence:
-  - `macos-config` (pmset, defaults, softwareupdate, sudo probe)
+  - `system` (pmset, defaults, softwareupdate, sudo probe)
   - `system` (host composition meta-target)
 
   Verification (`tic/`):
