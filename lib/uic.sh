@@ -40,6 +40,7 @@ _UIC_PREF_DEFAULTS=()
 _UIC_PREF_OPTIONS=()
 _UIC_PREF_RATIONALES=()
 _UIC_PREF_SCOPES=()
+_UIC_PREF_PINNED=()
 
 _UIC_FAILED_HARD=()
 _UIC_FAILED_SOFT=()
@@ -139,9 +140,11 @@ uic_preference() {
   local file_val env_key env_val
   env_key="$(_uic_pref_key "$name")"
   env_val="${!env_key:-}"
+  local _pinned="0"
   if [[ -n "$env_val" ]]; then
     if echo "$options" | tr '|' '\n' | grep -qx "$env_val" 2>/dev/null; then
       resolved="$env_val"
+      _pinned="1"
     else
       log_warn "UIC: preference '$name' — env var value '$env_val' not in options ($options); using safe default '$default'"
     fi
@@ -154,33 +157,36 @@ uic_preference() {
       echo "  ── Preference Selection ──────────────────────────────"
       _UIC_INTERACTIVE_HEADER_SHOWN=1
     fi
-    local _opts_arr=() _i=1 _choice _opts_inline=""
+    local _opts_arr=() _i=1 _choice
     while IFS= read -r _o; do
       _opts_arr+=("$_o")
-      local _marker=""
-      [[ "$_o" == "$default" ]] && _marker="*"
-      _opts_inline="${_opts_inline:+$_opts_inline, }${_marker}${_i})${_o}"
       _i=$((_i + 1))
     done < <(echo "$options" | tr '|' '\n')
     echo ""
     printf '  [?] %s\n' "$name"
     local _oi=1
     for _o in "${_opts_arr[@]}"; do
-      local _def=""
-      [[ "$_o" == "$default" ]] && _def=" (default)"
-      printf '      %d) %s%s\n' "$_oi" "$_o" "$_def"
+      local _marker=" "
+      if [[ "$_o" == "$default" ]]; then
+        _marker="*"
+        printf '    %s %d) %s (current default)\n' "$_marker" "$_oi" "$_o"
+      else
+        printf '      %d) %s\n' "$_oi" "$_o"
+      fi
       _oi=$((_oi + 1))
     done
-    printf '      → '
+    printf '      → (enter=follow default, number=lock choice) '
     read -r _choice < /dev/tty
     if [[ -n "$_choice" && "$_choice" =~ ^[0-9]+$ && "$_choice" -ge 1 && "$_choice" -le "${#_opts_arr[@]}" ]]; then
       resolved="${_opts_arr[$((_choice - 1))]}"
+      _pinned="1"
     fi
   else
     file_val="$(_uic_file_val "$name")"
     if [[ -n "$file_val" ]]; then
       if echo "$options" | tr '|' '\n' | grep -qx "$file_val" 2>/dev/null; then
         resolved="$file_val"
+        _pinned="1"
       else
         log_warn "UIC: preference '$name' — operator value '$file_val' not in options ($options); using safe default '$default'"
       fi
@@ -196,6 +202,7 @@ uic_preference() {
   _UIC_PREF_OPTIONS+=("$options")
   _UIC_PREF_RATIONALES+=("$rationale")
   _UIC_PREF_SCOPES+=("$scope")
+  _UIC_PREF_PINNED+=("$_pinned")
 }
 
 # ============================================================

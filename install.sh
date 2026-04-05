@@ -794,47 +794,30 @@ uic_export
 if [[ "${UCC_INTERACTIVE:-0}" == "1" ]] && [[ -c /dev/tty ]]; then
   _pref_file="${UIC_PREF_FILE:-$HOME/.ai-stack/preferences.env}"
 
-  # Count non-default values
-  _changed=0
-  for _i in "${!_UIC_PREF_NAMES[@]}"; do
-    [[ "${_UIC_PREF_VALUES[$_i]}" != "${_UIC_PREF_DEFAULTS[$_i]}" ]] && _changed=$((_changed + 1))
+  # Save pinned preferences (explicitly chosen by user or loaded from file/env)
+  _pinned_count=0
+  for _i in "${!_UIC_PREF_PINNED[@]}"; do
+    [[ "${_UIC_PREF_PINNED[$_i]}" == "1" ]] && _pinned_count=$((_pinned_count + 1))
   done
 
-  # Show only non-default choices
-  _changed=0
-  for _i in "${!_UIC_PREF_NAMES[@]}"; do
-    [[ "${_UIC_PREF_VALUES[$_i]}" != "${_UIC_PREF_DEFAULTS[$_i]}" ]] && _changed=$((_changed + 1))
-  done
-
-  echo ""
-  if [[ $_changed -gt 0 ]]; then
-    echo "  Changed from defaults:"
-    for _i in "${!_UIC_PREF_NAMES[@]}"; do
-      [[ "${_UIC_PREF_VALUES[$_i]}" != "${_UIC_PREF_DEFAULTS[$_i]}" ]] && \
-        printf '    %-28s %s → %s\n' "${_UIC_PREF_NAMES[$_i]}" "${_UIC_PREF_DEFAULTS[$_i]}" "${_UIC_PREF_VALUES[$_i]}"
-    done
-    # Auto-save non-default choices
+  if [[ $_pinned_count -gt 0 ]]; then
+    echo ""
+    echo "  Locked preferences:"
     mkdir -p "$(dirname "$_pref_file")"
-    printf '# User preference overrides\n' > "$_pref_file"
+    printf '# User preferences (locked choices)\n' > "$_pref_file"
     for _i in "${!_UIC_PREF_NAMES[@]}"; do
-      [[ "${_UIC_PREF_VALUES[$_i]}" != "${_UIC_PREF_DEFAULTS[$_i]}" ]] && \
+      if [[ "${_UIC_PREF_PINNED[$_i]}" == "1" ]]; then
+        local _label=""
+        if [[ "${_UIC_PREF_VALUES[$_i]}" == "${_UIC_PREF_DEFAULTS[$_i]}" ]]; then
+          _label="(locked to default)"
+        else
+          _label="(non-default)"
+        fi
+        printf '    %-28s %s %s\n' "${_UIC_PREF_NAMES[$_i]}" "${_UIC_PREF_VALUES[$_i]}" "$_label"
         printf '%s=%s\n' "${_UIC_PREF_NAMES[$_i]}" "${_UIC_PREF_VALUES[$_i]}" >> "$_pref_file"
+      fi
     done
     log_info "Saved to $_pref_file"
-  fi
-
-  printf '  [?] Pin current values as your preferences?\n'
-  printf '      (protects against future default changes)\n'
-  printf '      Options: 1=yes, *2=no  →  '
-  read -r _save_defaults < /dev/tty
-  if [[ "$_save_defaults" == "1" ]]; then
-    mkdir -p "$(dirname "$_pref_file")"
-    printf '# User preferences (all values pinned)\n' > "$_pref_file"
-    for _i in "${!_UIC_PREF_NAMES[@]}"; do
-      printf '%s=%s\n' "${_UIC_PREF_NAMES[$_i]}" "${_UIC_PREF_VALUES[$_i]}" >> "$_pref_file"
-    done
-    [[ "${UCC_INTERACTIVE:-1}" == "0" ]] && printf 'interactive=no\n' >> "$_pref_file"
-    log_info "All preferences pinned to $_pref_file"
   fi
 fi
 
