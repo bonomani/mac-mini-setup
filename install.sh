@@ -444,10 +444,16 @@ else
 fi
 
 # Export disabled targets list for filtering
+# Explicit CLI targets override the disabled list
 export UCC_DISABLED_TARGETS=""
 if [[ -n "$_POLICY_DISABLED" ]]; then
   while IFS= read -r _dt; do
-    [[ -n "$_dt" ]] && UCC_DISABLED_TARGETS="${UCC_DISABLED_TARGETS}${_dt}|"
+    [[ -z "$_dt" ]] && continue
+    # Skip if this target was explicitly requested on CLI
+    if [[ "${_EXPLICIT_TARGETS:-0}" == "1" && "${UCC_TARGET_SET}" == *"${_dt}|"* ]]; then
+      continue
+    fi
+    UCC_DISABLED_TARGETS="${UCC_DISABLED_TARGETS}${_dt}|"
   done <<< "$_POLICY_DISABLED"
 fi
 
