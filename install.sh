@@ -417,6 +417,7 @@ elif [[ "${UCC_DEFAULT_SELECTION:-}" == "none" ]]; then
   :
 elif [[ ${#TO_RUN[@]} -gt 0 ]]; then
   # Explicit args: resolve those
+  _EXPLICIT_TARGETS=1
   _resolve_selection "${TO_RUN[@]}"
 elif [[ -f "$_UCC_SELECTION_FILE" ]]; then
   # No args: load saved user selection
@@ -469,6 +470,7 @@ for _c in "${_resolved[@]+"${_resolved[@]}"}"; do
 done
 TO_RUN=("${_deduped[@]+"${_deduped[@]}"}")
 export UCC_TARGET_SET
+export UCC_EXPLICIT_TARGETS="${_EXPLICIT_TARGETS:-0}"
 
 # Validate mode
 [[ "$UCC_MODE" =~ ^(install|update|check)$ ]] || log_error "Invalid --mode: $UCC_MODE (must be install, update, or check)"
