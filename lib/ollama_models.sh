@@ -45,7 +45,7 @@ load_ollama_models_from_yaml() {
       groups=(small medium large)
       ;;
     none|*)
-      return 0
+      groups=(small medium large)
       ;;
   esac
 
