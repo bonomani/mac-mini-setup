@@ -471,12 +471,22 @@ else
 fi
 
 # Export disabled targets list for filtering
+# Start with individually disabled targets from selection.yaml
 export UCC_DISABLED_TARGETS=""
 if [[ -n "$_POLICY_DISABLED" ]]; then
   while IFS= read -r _dt; do
     [[ -n "$_dt" ]] && UCC_DISABLED_TARGETS="${UCC_DISABLED_TARGETS}${_dt}|"
   done <<< "$_POLICY_DISABLED"
 fi
+# Propagate component-level disable to all targets in that component
+for _ci in "${!_COMP_POLICY_NAMES[@]}"; do
+  [[ "${_COMP_POLICY_MODES[$_ci]}" == "disabled" ]] || continue
+  _comp_targets="$(python3 "$DIR/tools/validate_targets_manifest.py" \
+    --ordered-targets "${_COMP_POLICY_NAMES[$_ci]}" "$DIR/ucc" 2>/dev/null || true)"
+  while IFS= read -r _ct; do
+    [[ -n "$_ct" ]] && UCC_DISABLED_TARGETS="${UCC_DISABLED_TARGETS}${_ct}|"
+  done <<< "$_comp_targets"
+done
 
 # Save selected components for preference scoping
 export UCC_SELECTED_COMPS=""
@@ -899,17 +909,6 @@ _DISP_CONFIGS=()
 
 for comp in "${TO_RUN[@]}"; do
   if [[ "$comp" == "verify" ]]; then
-    _mode="$(_component_mode "$comp")"
-    case "$_mode" in
-      disabled)
-        log_info "Skipping $(_display_component_name "$comp") (policy=disabled)"
-        continue
-        ;;
-      remove)
-        log_warn "Component $comp policy=remove — skipping (run with --mode remove to uninstall)"
-        continue
-        ;;
-    esac
     if ! _component_supported_for "$comp" "tic"; then
       log_info "Skipping $(_display_component_name "$comp") (platform=${HOST_PLATFORM} unsupported)"
       continue
@@ -926,17 +925,6 @@ for comp in "${TO_RUN[@]}"; do
   _runner=$(printf '%s\n' "$_dispatch" | sed -n '2p')
   _on_fail=$(printf '%s\n' "$_dispatch" | sed -n '3p')
   _config=$(printf '%s\n' "$_dispatch" | sed -n '4p')
-  _mode="$(_component_mode "$comp")"
-  case "$_mode" in
-    disabled)
-      log_info "Skipping $(_display_component_name "$comp") (policy=disabled)"
-      continue
-      ;;
-    remove)
-      log_warn "Component $comp policy=remove — removal is not implemented yet; skipping"
-      continue
-      ;;
-  esac
   if [[ -z "$_libs" || -z "$_runner" || -z "$_config" ]]; then
     log_warn "Component $comp has no dispatch info in manifest — skipping"
     continue
