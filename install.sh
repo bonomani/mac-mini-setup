@@ -265,6 +265,27 @@ _uic_scope_active() {
 }
 
 
+# Helper: update policy/selection.yaml disabled list
+_selection_policy_set() {
+  local target="$1" action="$2"  # action: enable|disable
+  python3 -c "
+import yaml, sys
+path, target, action = sys.argv[1], sys.argv[2], sys.argv[3]
+with open(path) as f:
+    data = yaml.safe_load(f) or {}
+disabled = data.get('disabled') or []
+changed = False
+if action == 'enable' and target in disabled:
+    disabled.remove(target); changed = True
+elif action == 'disable' and target not in disabled:
+    disabled.append(target); changed = True
+if changed:
+    data['disabled'] = disabled
+    with open(path, 'w') as f:
+        yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+" "${_SELECTION_POLICY:-$DIR/policy/selection.yaml}" "$target" "$action" 2>/dev/null
+}
+
 usage() {
   cat <<EOF
 
@@ -328,43 +349,13 @@ while [[ $# -gt 0 ]]; do
       export "${_pref_env}=${_pref_val}"
       ;;
     --disable)
-      _dis_target="$2"; shift 2
-      python3 -c "
-import yaml, sys
-path = sys.argv[1]
-target = sys.argv[2]
-with open(path) as f:
-    data = yaml.safe_load(f) or {}
-disabled = data.get('disabled') or []
-if target not in disabled:
-    disabled.append(target)
-    data['disabled'] = disabled
-    with open(path, 'w') as f:
-        yaml.dump(data, f, default_flow_style=False, sort_keys=False)
-    print(f'Disabled {target} — added to policy/selection.yaml')
-else:
-    print(f'{target} is already disabled')
-" "$DIR/policy/selection.yaml" "$_dis_target"
+      _selection_policy_set "$2" disable
+      echo "Disabled $2 — updated policy/selection.yaml"
       exit 0
       ;;
     --enable)
-      _en_target="$2"; shift 2
-      python3 -c "
-import yaml, sys
-path = sys.argv[1]
-target = sys.argv[2]
-with open(path) as f:
-    data = yaml.safe_load(f) or {}
-disabled = data.get('disabled') or []
-if target in disabled:
-    disabled.remove(target)
-    data['disabled'] = disabled
-    with open(path, 'w') as f:
-        yaml.dump(data, f, default_flow_style=False, sort_keys=False)
-    print(f'Enabled {target} — removed from policy/selection.yaml')
-else:
-    print(f'{target} is not disabled')
-" "$DIR/policy/selection.yaml" "$_en_target"
+      _selection_policy_set "$2" enable
+      echo "Enabled $2 — updated policy/selection.yaml"
       exit 0
       ;;
     -h|--help)       usage ;;
@@ -486,43 +477,42 @@ else
 fi
 
 # Export disabled targets list for filtering
-# If an explicit CLI target is disabled, ask whether to override
 export UCC_DISABLED_TARGETS=""
 if [[ -n "$_POLICY_DISABLED" ]]; then
   while IFS= read -r _dt; do
-    [[ -z "$_dt" ]] && continue
-    if [[ "${_EXPLICIT_TARGETS:-0}" == "1" && "${UCC_TARGET_SET}" == *"${_dt}|"* ]]; then
-      if [[ -c /dev/tty ]]; then
-        printf '\n  [?] Target '\''%s'\'' is disabled by policy. Enable it?\n' "$_dt"
-        printf '      Options: *1=enable, 2=keep disabled  →  '
-        read -r _enable_choice < /dev/tty
-        if [[ "$_enable_choice" == "2" ]]; then
-          UCC_DISABLED_TARGETS="${UCC_DISABLED_TARGETS}${_dt}|"
-        else
-          # Remove from policy/selection.yaml disabled list
-          python3 -c "
-import yaml, sys
-path = sys.argv[1]
-target = sys.argv[2]
-with open(path) as f:
-    data = yaml.safe_load(f) or {}
-disabled = data.get('disabled') or []
-if target in disabled:
-    disabled.remove(target)
-    data['disabled'] = disabled
-    with open(path, 'w') as f:
-        yaml.dump(data, f, default_flow_style=False, sort_keys=False)
-" "$_SELECTION_POLICY" "$_dt" 2>/dev/null && \
-          log_info "Enabled '$_dt' — removed from policy/selection.yaml"
-        fi
-      else
-        # Non-interactive: explicit request overrides disabled
-        :
+    [[ -n "$_dt" ]] && UCC_DISABLED_TARGETS="${UCC_DISABLED_TARGETS}${_dt}|"
+  done <<< "$_POLICY_DISABLED"
+fi
+
+# For explicit CLI targets in interactive mode, prompt enable/disable and persist
+if [[ "${_EXPLICIT_TARGETS:-0}" == "1" && "${UCC_INTERACTIVE:-0}" == "1" && -c /dev/tty ]]; then
+  for _et in "${TO_RUN[@]}"; do
+    # Only prompt for actual targets, not components
+    python3 "$_QUERY_SCRIPT" --find-target "$_et" "$_MANIFEST_DIR" >/dev/null 2>&1 || continue
+    _is_disabled=0
+    [[ "${UCC_DISABLED_TARGETS}" == *"${_et}|"* ]] && _is_disabled=1
+    if [[ $_is_disabled -eq 1 ]]; then
+      printf '\n  [?] Target '\''%s'\'' is currently disabled.\n' "$_et"
+      printf '      Options: *1=enable, 2=keep disabled  →  '
+    else
+      printf '\n  [?] Target '\''%s'\'' is currently enabled.\n' "$_et"
+      printf '      Options: *1=keep enabled, 2=disable  →  '
+    fi
+    read -r _td_choice < /dev/tty
+    if [[ $_is_disabled -eq 1 ]]; then
+      if [[ "$_td_choice" != "2" ]]; then
+        _selection_policy_set "$_et" enable
+        UCC_DISABLED_TARGETS="${UCC_DISABLED_TARGETS//${_et}|/}"
+        log_info "Enabled '$_et' — updated policy/selection.yaml"
       fi
     else
-      UCC_DISABLED_TARGETS="${UCC_DISABLED_TARGETS}${_dt}|"
+      if [[ "$_td_choice" == "2" ]]; then
+        _selection_policy_set "$_et" disable
+        UCC_DISABLED_TARGETS="${UCC_DISABLED_TARGETS}${_et}|"
+        log_info "Disabled '$_et' — updated policy/selection.yaml"
+      fi
     fi
-  done <<< "$_POLICY_DISABLED"
+  done
 fi
 
 # Save selected components for preference scoping
