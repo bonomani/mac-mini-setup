@@ -332,25 +332,20 @@ while [[ $# -gt 0 ]]; do
 done
 
 # --- Interactive mode resolution (after arg parsing so --no-interactive works) ---
-# Explicit target/component args → non-interactive (user knows what they want)
 if [[ -z "${UCC_INTERACTIVE:-}" ]]; then
-  if [[ ${#TO_RUN[@]} -gt 0 ]]; then
+  _saved_interactive=""
+  _pf="${UIC_PREF_FILE:-$HOME/.ai-stack/preferences.env}"
+  [[ -f "$_pf" ]] && _saved_interactive="$(grep -E '^interactive=' "$_pf" 2>/dev/null | head -1 | cut -d= -f2-)"
+  if [[ "$_saved_interactive" == "no" ]]; then
     export UCC_INTERACTIVE=0
+  elif [[ "$_saved_interactive" == "yes" ]]; then
+    export UCC_INTERACTIVE=1
+  elif [[ -c /dev/tty ]]; then
+    printf '\n  [?] Run in interactive mode? (*1=yes, 2=no) → '
+    read -r _im_choice < /dev/tty
+    [[ "$_im_choice" == "2" ]] && export UCC_INTERACTIVE=0 || export UCC_INTERACTIVE=1
   else
-    _saved_interactive=""
-    _pf="${UIC_PREF_FILE:-$HOME/.ai-stack/preferences.env}"
-    [[ -f "$_pf" ]] && _saved_interactive="$(grep -E '^interactive=' "$_pf" 2>/dev/null | head -1 | cut -d= -f2-)"
-    if [[ "$_saved_interactive" == "no" ]]; then
-      export UCC_INTERACTIVE=0
-    elif [[ "$_saved_interactive" == "yes" ]]; then
-      export UCC_INTERACTIVE=1
-    elif [[ -c /dev/tty ]]; then
-      printf '\n  [?] Run in interactive mode? (*1=yes, 2=no) → '
-      read -r _im_choice < /dev/tty
-      [[ "$_im_choice" == "2" ]] && export UCC_INTERACTIVE=0 || export UCC_INTERACTIVE=1
-    else
-      export UCC_INTERACTIVE=0
-    fi
+    export UCC_INTERACTIVE=0
   fi
 fi
 
