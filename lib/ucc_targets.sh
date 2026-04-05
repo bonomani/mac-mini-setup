@@ -170,6 +170,10 @@ _ucc_display_name_load_cache() {
   [[ -z "${_UCC_ALL_DISPLAY_NAMES_CACHE:-}" ]] && return
   while IFS=$'\t' read -r key value; do
     [[ -n "$key" ]] || continue
+    # Append target name when display name differs
+    if [[ -n "$value" && "$value" != "$key" ]]; then
+      value="${value} (${key})"
+    fi
     _UCC_DISPLAY_NAME_CACHE_KEYS+=("$key")
     _UCC_DISPLAY_NAME_CACHE_VALUES+=("$value")
   done <<< "$_UCC_ALL_DISPLAY_NAMES_CACHE"
