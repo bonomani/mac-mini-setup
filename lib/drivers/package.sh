@@ -23,18 +23,36 @@ _pkg_backend() {
 }
 
 # Determine the effective backend for a specific package.
-# Falls back to brew if the native PM doesn't have the package.
+# Priority: native PM → brew fallback → curl fallback
 _pkg_effective_backend() {
   local cfg_dir="$1" yaml="$2" target="$3"
   local backend ref
   backend="$(_pkg_backend)"
   if [[ "$backend" != "brew" ]]; then
     ref="$(_pkg_ref_for_backend "$cfg_dir" "$yaml" "$target" "$backend")"
-    # Check if native PM knows this package
     if ! _pkg_native_can_install "$backend" "$ref" 2>/dev/null; then
-      # Fall back to brew if available
+      # Try brew
       if command -v brew >/dev/null 2>&1; then
-        printf 'brew'
+        ref="$(_pkg_ref_for_backend "$cfg_dir" "$yaml" "$target" "brew")"
+        if brew list "$ref" >/dev/null 2>&1 || brew info "$ref" >/dev/null 2>&1; then
+          printf 'brew'
+          return
+        fi
+      fi
+      # Try curl fallback
+      local _fallback; _fallback="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.fallback_install_url" 2>/dev/null || true)"
+      if [[ -n "$_fallback" ]]; then
+        printf 'curl'
+        return
+      fi
+    fi
+  else
+    # On brew — check if formula exists, fall back to curl if not
+    ref="$(_pkg_ref_for_backend "$cfg_dir" "$yaml" "$target" "brew")"
+    if ! brew list "$ref" >/dev/null 2>&1 && ! brew info "$ref" >/dev/null 2>&1; then
+      local _fallback; _fallback="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.fallback_install_url" 2>/dev/null || true)"
+      if [[ -n "$_fallback" ]]; then
+        printf 'curl'
         return
       fi
     fi
@@ -142,6 +160,19 @@ _ucc_driver_package_observe() {
   local cfg_dir="$1" yaml="$2" target="$3"
   local backend ref
   backend="$(_pkg_effective_backend "$cfg_dir" "$yaml" "$target")"
+
+  if [[ "$backend" == "curl" ]]; then
+    # curl-installed: check if binary exists
+    local bin; bin="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.bin" 2>/dev/null || true)"
+    bin="${bin:-$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.ref")}"
+    if command -v "$bin" >/dev/null 2>&1; then
+      printf 'installed'
+    else
+      printf 'absent'
+    fi
+    return
+  fi
+
   ref="$(_pkg_ref_for_backend "$cfg_dir" "$yaml" "$target" "$backend")"
   [[ -n "$ref" ]] || return 1
 
@@ -168,6 +199,26 @@ _ucc_driver_package_action() {
   local cfg_dir="$1" yaml="$2" target="$3" action="$4"
   local backend ref
   backend="$(_pkg_effective_backend "$cfg_dir" "$yaml" "$target")"
+
+  if [[ "$backend" == "curl" ]]; then
+    local url args
+    url="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.fallback_install_url")"
+    args="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.fallback_install_args" 2>/dev/null || true)"
+    [[ -n "$url" ]] || return 1
+    case "$action" in
+      install) curl -fsSL "$url" | sh ${args:+$args} ;;
+      update)
+        local update_cmd; update_cmd="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.update_cmd" 2>/dev/null || true)"
+        if [[ -n "$update_cmd" ]]; then
+          $update_cmd
+        else
+          curl -fsSL "$url" | sh ${args:+$args}
+        fi
+        ;;
+    esac
+    return
+  fi
+
   ref="$(_pkg_ref_for_backend "$cfg_dir" "$yaml" "$target" "$backend")"
   [[ -n "$ref" ]] || return 1
 
@@ -205,6 +256,15 @@ _ucc_driver_package_evidence() {
   local cfg_dir="$1" yaml="$2" target="$3"
   local backend ref ver
   backend="$(_pkg_effective_backend "$cfg_dir" "$yaml" "$target")"
+
+  if [[ "$backend" == "curl" ]]; then
+    local bin; bin="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.bin" 2>/dev/null || true)"
+    bin="${bin:-$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.ref")}"
+    ver="$("$bin" --version 2>/dev/null | head -1 | awk '{print $NF}')"
+    [[ -n "$ver" ]] && printf 'version=%s  backend=curl' "$ver"
+    return
+  fi
+
   ref="$(_pkg_ref_for_backend "$cfg_dir" "$yaml" "$target" "$backend")"
   [[ -n "$ref" ]] || return 1
 

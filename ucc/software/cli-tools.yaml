@@ -241,6 +241,34 @@ targets:
       kind: bin-script
       script_name: ai-healthcheck
       bin_dir: ${home_bin_dir}
+  rustup:
+    component: cli-tools
+    profile: configured
+    type: package
+    state_model: package
+    display_name: Rust (rustup)
+    driver:
+      kind: curl-installer
+      install_url: https://sh.rustup.rs
+      bin: rustup
+      install_args: -y
+      brew_formula: rustup-init
+      externally_managed_updates: true
+      github_repo: rust-lang/rustup
+  rustup:
+    component: cli-tools
+    profile: configured
+    type: package
+    state_model: package
+    display_name: Rust (rustup)
+    driver:
+      kind: package
+      ref: rustup-init
+      bin: rustup
+      fallback_install_url: https://sh.rustup.rs
+      fallback_install_args: -y
+      externally_managed_updates: true
+      github_repo: rust-lang/rustup
   xrdp:
     component: cli-tools
     profile: configured

@@ -23,26 +23,28 @@ _ucc_driver_curl_installer_observe() {
 
 _ucc_driver_curl_installer_action() {
   local cfg_dir="$1" yaml="$2" target="$3" action="$4"
-  local install_url install_args update_cmd externally_managed
+  local install_url install_args update_cmd externally_managed brew_formula
   install_url="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.install_url")"
   install_args="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.install_args")"
   update_cmd="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.update_cmd" 2>/dev/null)"
   externally_managed="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.externally_managed_updates" 2>/dev/null)"
+  brew_formula="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.brew_formula" 2>/dev/null)"
   [[ -n "$install_url" ]] || return 1
   case "$action" in
     install)
+      # Try brew first if formula is declared and brew is available
+      if [[ -n "$brew_formula" ]] && is_installed brew; then
+        brew_install "$brew_formula" && return 0
+      fi
       curl -fsSL "$install_url" | sh ${install_args:+$install_args}
       ;;
     update)
       if [[ -n "$update_cmd" ]]; then
-        # Software has its own update mechanism
         $update_cmd
       elif [[ "$externally_managed" == "true" ]]; then
-        # Software auto-updates — nothing to do
-        log_info "$(basename "$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.bin")") manages its own updates"
+        log_info "$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.bin") manages its own updates"
         return 0
       else
-        # Re-run installer
         curl -fsSL "$install_url" | sh ${install_args:+$install_args}
       fi
       ;;

@@ -61,7 +61,10 @@
       "Bash(python3 tools/validate_targets_manifest.py --all-dispatch ucc)",
       "Bash(grep -v \"^--\\\\|done\\\\|python3\\\\|^$\")",
       "Bash(python3 tools/read_config.py --all-targets-get-many-with-evidence ucc/software/homebrew.yaml profile actions.install type oracle.configured)",
-      "Bash(python3 -:*)"
+      "Bash(python3 -:*)",
+      "Bash(bash -n lib/drivers/package.sh)",
+      "Bash(bash -n install.sh)",
+      "Bash(python3 tools/validate_targets_manifest.py ucc/)"
     ],
     "additionalDirectories": [
       "/tmp"

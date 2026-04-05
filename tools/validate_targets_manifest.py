@@ -93,8 +93,8 @@ DRIVER_SCHEMA = {
     "bin-script":             {"required": ["script_name", "bin_dir"], "optional": []},
     "git-global":             {"required": [], "optional": []},
     "build-deps":             {"required": [], "optional": []},
-    "curl-installer":         {"required": ["install_url", "bin"], "optional": ["version_cmd", "install_args", "update_cmd", "externally_managed_updates"]},
-    "package":                {"required": ["ref"], "optional": ["cask", "greedy_auto_updates", "previous_ref", "apt_ref", "dnf_ref", "pacman_ref"]},
+    "curl-installer":         {"required": ["install_url", "bin"], "optional": ["version_cmd", "install_args", "update_cmd", "externally_managed_updates", "brew_formula"]},
+    "package":                {"required": ["ref"], "optional": ["cask", "greedy_auto_updates", "previous_ref", "apt_ref", "dnf_ref", "pacman_ref", "fallback_install_url", "fallback_install_args", "update_cmd", "bin", "externally_managed_updates"]},
 }
 
 KNOWN_PACKAGE_DRIVERS = {
