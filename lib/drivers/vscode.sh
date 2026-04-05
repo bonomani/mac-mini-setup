@@ -42,7 +42,7 @@ _ucc_driver_json_merge_observe() {
   rel_patch="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.patch_relpath")"
   [[ -n "$rel_settings" && -n "$rel_patch" ]] || return 1
   settings_path="$HOME/$rel_settings"
-  patch_path="$cfg_dir/$rel_patch"
+  if [[ "$rel_patch" == /* ]]; then patch_path="$rel_patch"; else patch_path="$cfg_dir/$rel_patch"; fi
   if python3 "$cfg_dir/tools/drivers/json_merge.py" check "$settings_path" "$patch_path" 2>/dev/null; then
     printf 'configured'
   else
@@ -62,7 +62,7 @@ _ucc_driver_json_merge_apply() {
   rel_patch="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.patch_relpath")"
   [[ -n "$rel_settings" && -n "$rel_patch" ]] || return 1
   settings_path="$HOME/$rel_settings"
-  patch_path="$cfg_dir/$rel_patch"
+  if [[ "$rel_patch" == /* ]]; then patch_path="$rel_patch"; else patch_path="$cfg_dir/$rel_patch"; fi
   ucc_run mkdir -p "$(dirname "$settings_path")"
   ucc_run python3 "$cfg_dir/tools/drivers/json_merge.py" apply "$settings_path" "$patch_path"
 }

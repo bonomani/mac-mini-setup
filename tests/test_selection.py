@@ -95,8 +95,7 @@ def test_component_selection_includes_all_targets():
     assert "docker-desktop" in targets
     assert "docker-resources" in targets
     assert "docker-available" in targets
-    assert "docker-settings-file" in targets
-    assert len(targets) == 4, f"Docker has 4 targets, got {len(targets)}"
+    assert len(targets) == 3, f"Docker has 3 targets, got {len(targets)}"
     print("PASS: Component selection includes all targets")
 
 

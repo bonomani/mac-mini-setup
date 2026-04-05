@@ -12,12 +12,6 @@ docker_version() {
   docker --version 2>/dev/null | awk '{print $3}' | tr -d ','
 }
 
-# Print a docker-settings desired-state string for memory and CPU.
-# Usage: docker_desired_resources <mem_gb> <cpu_count>
-docker_desired_resources() {
-  printf 'mem=%sGB cpu=%s' "$1" "$2"
-}
-
 # Print the install source of Docker Desktop if it is not absent/brew-cask.
 # Uses implicit $CFG_DIR/$YAML_PATH context.
 docker_install_source_observe() {
@@ -66,18 +60,25 @@ run_docker_from_yaml() {
       disk_mib)         disk_mib="$value" ;;
     esac
   done < <(yaml_get_many "$cfg_dir" "$yaml" settings_relpath memory_gb cpu_count swap_mib disk_mib)
-  export DOCKER_SETTINGS_PATH="$HOME/${settings_relpath}"
 
-  # ---- Precondition: settings file must exist ----
-  ucc_yaml_simple_target "$cfg_dir" "$yaml" "docker-settings-file"
+  local _mem_gb="${UIC_PREF_DOCKER_MEMORY_GB:-$memory_gb}"
+  local _cpu_count="${UIC_PREF_DOCKER_CPU_COUNT:-$cpu_count}"
+  local _swap_mib="${UIC_PREF_DOCKER_SWAP_MIB:-$swap_mib}"
+  local _disk_mib="${UIC_PREF_DOCKER_DISK_MIB:-$disk_mib}"
+  local _mem_mib=$(( _mem_gb * 1024 ))
 
-  export DOCKER_MEM_GB="${UIC_PREF_DOCKER_MEMORY_GB:-$memory_gb}"
-  export DOCKER_MEM_MIB=$(( DOCKER_MEM_GB * 1024 ))
-  export DOCKER_CPU_COUNT="${UIC_PREF_DOCKER_CPU_COUNT:-$cpu_count}"
-  export DOCKER_SWAP_MIB="${UIC_PREF_DOCKER_SWAP_MIB:-$swap_mib}"
-  export DOCKER_DISK_MIB="${UIC_PREF_DOCKER_DISK_MIB:-$disk_mib}"
-
-  ucc_yaml_parametric_target "$cfg_dir" "$yaml" "docker-resources"
+  # Generate runtime patch file and configure resources
+  # Requires Docker settings file to exist (created on first Docker launch)
+  local _settings_path="$HOME/${settings_relpath}"
+  if [[ -f "$_settings_path" ]]; then
+    local _patch_dir="$cfg_dir/.build"
+    mkdir -p "$_patch_dir"
+    printf '{"memoryMiB": %d, "cpus": %d, "swapMiB": %d, "diskSizeMiB": %d}\n' \
+      "$_mem_mib" "$_cpu_count" "$_swap_mib" "$_disk_mib" > "$_patch_dir/docker-resources-patch.json"
+    ucc_yaml_simple_target "$cfg_dir" "$yaml" "docker-resources"
+  else
+    log_warn "Docker settings file not found — resource configuration deferred until Docker is launched"
+  fi
 }
 
 # Apply silent-start settings to the Docker settings-store JSON.

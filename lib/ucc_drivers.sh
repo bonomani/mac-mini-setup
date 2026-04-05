@@ -20,7 +20,6 @@ for _ucc_drv_file in \
   "$_UCC_DRIVERS_DIR/pip.sh" \
   "$_UCC_DRIVERS_DIR/macos_defaults.sh" \
   "$_UCC_DRIVERS_DIR/macos_swupdate.sh" \
-  "$_UCC_DRIVERS_DIR/docker.sh" \
   "$_UCC_DRIVERS_DIR/app_bundle.sh" \
   "$_UCC_DRIVERS_DIR/pyenv.sh" \
   "$_UCC_DRIVERS_DIR/nvm.sh" \
