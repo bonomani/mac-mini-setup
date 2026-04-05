@@ -192,6 +192,10 @@ _ucc_display_name() {
     fi
   fi
 
+  # Show target name in parentheses when display name differs
+  if [[ "$display_name" != "$target" ]]; then
+    display_name="${display_name} (${target})"
+  fi
   _UCC_DISPLAY_NAME_CACHE_KEYS+=("$target")
   _UCC_DISPLAY_NAME_CACHE_VALUES+=("$display_name")
   printf '%s' "$display_name"
