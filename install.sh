@@ -451,11 +451,27 @@ if [[ -n "$_POLICY_DISABLED" ]]; then
     [[ -z "$_dt" ]] && continue
     if [[ "${_EXPLICIT_TARGETS:-0}" == "1" && "${UCC_TARGET_SET}" == *"${_dt}|"* ]]; then
       if [[ -c /dev/tty ]]; then
-        printf '\n  [?] Target '\''%s'\'' is disabled by policy. Enable it for this run?\n' "$_dt"
+        printf '\n  [?] Target '\''%s'\'' is disabled by policy. Enable it?\n' "$_dt"
         printf '      Options: *1=yes, 2=no  →  '
         read -r _enable_choice < /dev/tty
         if [[ "$_enable_choice" == "2" ]]; then
           UCC_DISABLED_TARGETS="${UCC_DISABLED_TARGETS}${_dt}|"
+        else
+          # Remove from policy/selection.yaml disabled list
+          python3 -c "
+import yaml, sys
+path = sys.argv[1]
+target = sys.argv[2]
+with open(path) as f:
+    data = yaml.safe_load(f) or {}
+disabled = data.get('disabled') or []
+if target in disabled:
+    disabled.remove(target)
+    data['disabled'] = disabled
+    with open(path, 'w') as f:
+        yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+" "$_SELECTION_POLICY" "$_dt" 2>/dev/null && \
+          log_info "Removed '$_dt' from policy/selection.yaml disabled list"
         fi
       else
         # Non-interactive: explicit request overrides disabled
