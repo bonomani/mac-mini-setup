@@ -27,8 +27,8 @@ class YamlSchemaTests(unittest.TestCase):
             return yaml.safe_load(f) or {}
 
     def test_preferences_only_allowed_keys(self):
-        """policy/preferences.yaml preferences must use only allowed keys."""
-        path = os.path.join(REPO_ROOT, "policy", "preferences.yaml")
+        """defaults/preferences.yaml preferences must use only allowed keys."""
+        path = os.path.join(REPO_ROOT, "defaults", "preferences.yaml")
         data = self._load_yaml(path)
         for pref in data.get("preferences", []):
             if not isinstance(pref, dict):
@@ -41,7 +41,7 @@ class YamlSchemaTests(unittest.TestCase):
 
     def test_preferences_no_runtime_logic_keys(self):
         """No preference should contain runtime logic fields."""
-        path = os.path.join(REPO_ROOT, "policy", "preferences.yaml")
+        path = os.path.join(REPO_ROOT, "defaults", "preferences.yaml")
         data = self._load_yaml(path)
         for pref in data.get("preferences", []):
             if not isinstance(pref, dict):
@@ -77,8 +77,8 @@ class YamlSchemaTests(unittest.TestCase):
                 )
 
     def test_selection_only_allowed_keys(self):
-        """policy/selection.yaml must use only allowed top-level keys."""
-        path = os.path.join(REPO_ROOT, "policy", "selection.yaml")
+        """defaults/selection.yaml must use only allowed top-level keys."""
+        path = os.path.join(REPO_ROOT, "defaults", "selection.yaml")
         data = self._load_yaml(path)
         extra = set(data.keys()) - SELECTION_ALLOWED_KEYS
         self.assertEqual(

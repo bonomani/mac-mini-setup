@@ -82,14 +82,14 @@ state can describe the whole machine, not only individual components.
 | `tools/validate_targets_manifest.py` | Python | UCC manifest validator | Checks targets, deps, components, dispatch, runtime endpoints |
 | `tools/format_targets_manifest.py` | Python | Manifest formatter | Enforces canonical target key ordering |
 
-### Policy
+### Defaults
 
 | File | Type | Purpose | Key Notes |
 |---|---|---|---|
-| `policy/gates.yaml` | YAML | UIC gates | Single hard gate: supported-platform |
-| `policy/preferences.yaml` | YAML | UIC preferences | Safe defaults and operator overrides |
-| `policy/selection.yaml` | YAML | Target selection | Default selection mode and globally disabled targets |
-| `policy/profiles.yaml` | YAML | UCC profiles | Configured/runtime/capability/parametric baselines for convergence targets |
+| `defaults/gates.yaml` | YAML | UIC gates | Single hard gate: supported-platform |
+| `defaults/preferences.yaml` | YAML | UIC preferences | Safe defaults and operator overrides |
+| `defaults/selection.yaml` | YAML | Target selection | Default selection mode and globally disabled targets |
+| `defaults/profiles.yaml` | YAML | UCC profiles | Configured/runtime/capability/parametric baselines for convergence targets |
 
 ### UCC Software Manifests
 
@@ -177,9 +177,9 @@ non-interactive sudo ticket first:
 sudo -v && ./install.sh
 ```
 
-## Target Policy
+## Target Selection
 
-Individual targets can be disabled in `policy/selection.yaml` under the
+Individual targets can be disabled in `defaults/selection.yaml` under the
 `disabled:` list. Disabled targets are skipped even in `--all` mode and
 shown as `[disabled]` in the output.
 

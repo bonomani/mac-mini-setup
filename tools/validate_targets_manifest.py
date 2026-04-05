@@ -1159,7 +1159,7 @@ def main():
     path = Path(args[0]) if args else Path("ucc")
     try:
         manifest = parse_manifest(path)
-        known_gates = parse_gate_names(REPO_ROOT / "policy" / "gates.yaml")
+        known_gates = parse_gate_names(REPO_ROOT / "defaults" / "gates.yaml")
         errors, ordered = validate(manifest, known_gates)
     except Exception as exc:
         print(f"ERROR: {exc}", file=sys.stderr)

@@ -359,7 +359,7 @@ _ucc_profile_flush() {
 
 _ucc_load_profiles() {
   local profile_file="" line current_id="" current_label="" current_aliases="" current_axes="" current_expected="" current_installation="" current_runtime="" current_health="" current_admin="" current_dependencies=""
-  profile_file="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/policy/profiles.yaml"
+  profile_file="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/defaults/profiles.yaml"
   [[ -f "$profile_file" ]] || return 0
 
   while IFS= read -r line; do

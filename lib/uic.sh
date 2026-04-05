@@ -410,7 +410,7 @@ uic_write_template() {
 
 load_uic_gates() {
   local dir="$1"
-  local gates_file="$dir/policy/gates.yaml"
+  local gates_file="$dir/defaults/gates.yaml"
   local name="" condition="" scope="" class="" target_state="" blocking=""
   [[ -f "$gates_file" ]] || return 0
   while IFS= read -r _line; do
@@ -471,7 +471,7 @@ load_uic_preferences() {
     [[ -n "$_n" ]] || continue
     _pref_names+=("$_n"); _pref_defaults+=("$_d")
     _pref_options+=("$_o"); _pref_rationales+=("$_r")
-  done < <(_uic_parse_prefs_from_yaml "$dir/policy/preferences.yaml")
+  done < <(_uic_parse_prefs_from_yaml "$dir/defaults/preferences.yaml")
 
   # 2. Component preferences from selected component YAMLs
   local _sel_comps="${UCC_SELECTED_COMPS:-}"

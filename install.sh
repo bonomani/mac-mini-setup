@@ -265,7 +265,7 @@ _uic_scope_active() {
 }
 
 
-# Helper: update policy/selection.yaml disabled list
+# Helper: update defaults/selection.yaml disabled list
 _selection_policy_set() {
   local target="$1" action="$2"  # action: enable|disable
   python3 -c "
@@ -283,7 +283,7 @@ if changed:
     data['disabled'] = disabled
     with open(path, 'w') as f:
         yaml.dump(data, f, default_flow_style=False, sort_keys=False)
-" "${_SELECTION_POLICY:-$DIR/policy/selection.yaml}" "$target" "$action" 2>/dev/null
+" "${_SELECTION_POLICY:-$DIR/defaults/selection.yaml}" "$target" "$action" 2>/dev/null
 }
 
 usage() {
@@ -306,8 +306,8 @@ Options:
   --no-interactive  Skip all prompts (CI/automation mode)
   --preflight       Evaluate UIC gates and preferences; do NOT converge
   --pref key=value  Set a UIC preference for this run only (repeatable)
-  --enable target   Enable a disabled target (updates policy/selection.yaml)
-  --disable target  Disable a target (updates policy/selection.yaml)
+  --enable target   Enable a disabled target (updates defaults/selection.yaml)
+  --disable target  Disable a target (updates defaults/selection.yaml)
   --debug           Show DEBUG-level output
   -h, --help        Show this help
 
@@ -350,12 +350,12 @@ while [[ $# -gt 0 ]]; do
       ;;
     --disable)
       _selection_policy_set "$2" disable
-      echo "Disabled $2 — updated policy/selection.yaml"
+      echo "Disabled $2 — updated defaults/selection.yaml"
       exit 0
       ;;
     --enable)
       _selection_policy_set "$2" enable
-      echo "Enabled $2 — updated policy/selection.yaml"
+      echo "Enabled $2 — updated defaults/selection.yaml"
       exit 0
       ;;
     -h|--help)       usage ;;
@@ -421,8 +421,8 @@ _resolve_selection() {
   done
 }
 
-# Load policy/selection.yaml defaults
-_SELECTION_POLICY="$DIR/policy/selection.yaml"
+# Load defaults/selection.yaml defaults
+_SELECTION_POLICY="$DIR/defaults/selection.yaml"
 _POLICY_DEFAULT="all"
 _POLICY_DISABLED=""
 if [[ -f "$_SELECTION_POLICY" ]]; then
@@ -503,13 +503,13 @@ if [[ "${_EXPLICIT_TARGETS:-0}" == "1" && "${UCC_INTERACTIVE:-0}" == "1" && -c /
       if [[ "$_td_choice" != "2" ]]; then
         _selection_policy_set "$_et" enable
         UCC_DISABLED_TARGETS="${UCC_DISABLED_TARGETS//${_et}|/}"
-        log_info "Enabled '$_et' — updated policy/selection.yaml"
+        log_info "Enabled '$_et' — updated defaults/selection.yaml"
       fi
     else
       if [[ "$_td_choice" == "2" ]]; then
         _selection_policy_set "$_et" disable
         UCC_DISABLED_TARGETS="${UCC_DISABLED_TARGETS}${_et}|"
-        log_info "Disabled '$_et' — updated policy/selection.yaml"
+        log_info "Disabled '$_et' — updated defaults/selection.yaml"
       fi
     fi
   done

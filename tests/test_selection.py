@@ -101,8 +101,8 @@ def test_component_selection_includes_all_targets():
 
 
 def test_disabled_targets_in_policy():
-    """Targets in policy/selection.yaml disabled: list."""
-    with open(os.path.join(REPO_ROOT, "policy", "selection.yaml")) as f:
+    """Targets in defaults/selection.yaml disabled: list."""
+    with open(os.path.join(REPO_ROOT, "defaults", "selection.yaml")) as f:
         sel = yaml.safe_load(f) or {}
     disabled = sel.get("disabled", [])
 

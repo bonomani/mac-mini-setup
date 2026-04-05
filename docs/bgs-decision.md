@@ -59,8 +59,8 @@ evidence_refs:
   - ../install.sh
   - ../lib/ucc.sh
   - ../lib/uic.sh
-  - ../policy/gates.yaml
-  - ../policy/preferences.yaml
+  - ../defaults/gates.yaml
+  - ../defaults/preferences.yaml
   - ../lib/tic.sh
   - ../tic/software/verify.yaml
   - ../tic/system/verify.yaml

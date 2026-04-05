@@ -303,4 +303,4 @@ This model is evidenced by:
 - component YAML manifests in `../ucc/software/` and `../ucc/system/`
 - stack runtime composition template in `../stack/docker-compose.yml`
 - AI apps convergence logic in `../lib/ai_apps.sh`
-- parametric profile definition in `../policy/profiles.yaml`
+- parametric profile definition in `../defaults/profiles.yaml`
