@@ -217,8 +217,6 @@ while IFS= read -r _component; do
   [[ -n "$_component" ]] && COMPONENTS+=("$_component")
 done < <(_load_components)
 
-_COMPONENT_POLICY_FILE="$DIR/policy/components.yaml"
-
 _component_supported_for() {
   local comp="$1" config="$2" platform item
   local supported=()

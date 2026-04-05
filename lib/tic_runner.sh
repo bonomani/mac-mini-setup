@@ -1,34 +1,8 @@
 #!/usr/bin/env bash
 # lib/tic_runner.sh — YAML-driven TIC test runner
 
-_TIC_POLICY_NAMES=()
-_TIC_POLICY_MODES=()
 _TIC_DISPATCH_COMPS=()
 _TIC_DISPATCH_CONFIGS=()
-
-_tic_load_component_policies() {
-  local cfg_dir="$1" name mode
-  _TIC_POLICY_NAMES=()
-  _TIC_POLICY_MODES=()
-  _TIC_DISPATCH_COMPS=()
-  _TIC_DISPATCH_CONFIGS=()
-  [[ -f "$cfg_dir/policy/components.yaml" ]] || return 0
-  while IFS=$'\t' read -r name mode; do
-    [[ -n "$name" ]] || continue
-    _TIC_POLICY_NAMES+=("$name")
-    _TIC_POLICY_MODES+=("${mode:-enabled}")
-  done < <(yaml_records "$cfg_dir" "$cfg_dir/policy/components.yaml" components name mode)
-}
-
-_tic_component_mode() {
-  local comp="$1" i
-  for i in "${!_TIC_POLICY_NAMES[@]}"; do
-    [[ "${_TIC_POLICY_NAMES[$i]}" == "$comp" ]] || continue
-    printf '%s' "${_TIC_POLICY_MODES[$i]}"
-    return 0
-  done
-  printf 'enabled'
-}
 
 _tic_component_config() {
   local cfg_dir="$1" comp="$2" i dispatch config
@@ -63,16 +37,8 @@ _tic_component_supported_for_host() {
 }
 
 _tic_component_skip_reason() {
-  local cfg_dir="$1" comp="$2" mode config
+  local cfg_dir="$1" comp="$2" config
   [[ -n "$comp" ]] || return 1
-  mode="$(_tic_component_mode "$comp")"
-  case "$mode" in
-    enabled) ;;
-    *)
-      printf 'component=%s policy=%s' "$comp" "$mode"
-      return 0
-      ;;
-  esac
   config="$(_tic_component_config "$cfg_dir" "$comp")"
   if ! _tic_component_supported_for_host "$cfg_dir" "$comp" "$config"; then
     printf 'component=%s platform unsupported on host=%s' "$comp" "${HOST_PLATFORM:-unknown}"
@@ -173,8 +139,6 @@ run_verify() {
       pyenv_dir) [[ -n "$value" ]] && _PYENV_DIR="$value" ;;
     esac
   done < <(yaml_get_many "$cfg_dir" "$cfg_dir/ucc/software/ai-python-stack.yaml" pyenv_dir)
-  _tic_load_component_policies "$cfg_dir"
-
   # Ensure pyenv and nvm-managed node are in PATH so oracle commands resolve correctly
   export PYENV_ROOT="$HOME/$_PYENV_DIR"
   export PATH="$PYENV_ROOT/bin:$PYENV_ROOT/shims:$PATH"

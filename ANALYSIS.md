@@ -13,7 +13,7 @@ install.sh
   │   ├── Gate evaluation (1 gate: supported-platform)
   │   └── Preference resolution (13 preferences)
   ├── UCC (Convergence)
-  │   ├── Component runners (10 components, 9 enabled + 1 disabled)
+  │   ├── Component runners (10 components)
   │   ├── Driver dispatch (30 drivers)
   │   └── Target orchestration (109 targets across 9 YAML files)
   ├── TIC (Verification)
@@ -34,7 +34,7 @@ install.sh
 | docker | docker.yaml | macos | 4 | Docker Desktop + resources + capabilities |
 | ai-apps | ai-apps.yaml | all | 16 | Ollama + models + Docker Compose services |
 | ai-python-stack | ai-python-stack.yaml | all | 18 | PyTorch, HF, LangChain, pip groups, GPU probes |
-| build-tools | build-tools.yaml | all | — | Build tools (disabled) |
+| build-tools | build-tools.yaml | all | — | Build tools |
 | system | system.yaml | macos | 15 | pmset, defaults, softwareupdate, sudo, composition |
 
 ## Driver Architecture

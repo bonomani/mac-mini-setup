@@ -52,7 +52,7 @@ jobs:
                   except yaml.YAMLError as e:
                       print(f'FAIL: {path}: {e}')
                       errors += 1
-          for path in ['policy/gates.yaml', 'policy/components.yaml']:
+          for path in ['policy/gates.yaml']:
               if os.path.exists(path):
                   try:
                       with open(path) as fh:

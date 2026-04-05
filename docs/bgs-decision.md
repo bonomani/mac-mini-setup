@@ -5,12 +5,12 @@ decision_id: mac-mini-setup-bgs-001
 bgs_slice: BGS-State-Modeled-Governed
 declared_scope: >
   AI workstation setup — full installation lifecycle across 10
-  governed components (9 enabled + 1 disabled). macOS is the primary/full
+  governed components (10 active). macOS is the primary/full
   profile; Linux and WSL2 run most components via the platform-aware
   package driver with macOS-specific targets skipped:
   software layer (ucc/software/): software-bootstrap, cli-tools,
   node-stack, vscode-stack, docker, ai-python-stack, ai-apps,
-  build-tools (disabled);
+  build-tools);
   system layer (ucc/system/): system, system;
   verification (tic/): verify + integration.
   Covers install, check (drift detection), update, and interactive modes.

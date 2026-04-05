@@ -68,7 +68,7 @@ state can describe the whole machine, not only individual components.
 | `lib/ai_apps.sh` | Bash library | AI app stack logic | Compose file + per-app runtimes |
 | `lib/cli_tools.sh` | Bash library | CLI tools logic | Git, CLI tools, Oh My Zsh |
 | `lib/node_stack.sh` | Bash library | Node stack logic | nvm, Node.js, npm globals |
-| `lib/build_tools.sh` | Bash library | Build tools logic | Build tools (disabled) |
+| `lib/build_tools.sh` | Bash library | Build tools logic | Build tools |
 | `lib/vscode_ext.sh` | Bash library | VS Code extension targets | Dynamic extension install targets |
 | `lib/unsloth_studio.sh` | Bash library | Unsloth Studio logic | launchd/systemd service |
 | `lib/system.sh` | Bash library | System component logic | OS config + composition |
@@ -88,7 +88,7 @@ state can describe the whole machine, not only individual components.
 |---|---|---|---|
 | `policy/gates.yaml` | YAML | UIC gates | Single hard gate: supported-platform |
 | `policy/preferences.yaml` | YAML | UIC preferences | Safe defaults and operator overrides |
-| `policy/components.yaml` | YAML | Component policy | Per-component `enabled|disabled|remove` mode declarations |
+| `policy/selection.yaml` | YAML | Target selection | Default selection mode and globally disabled targets |
 | `policy/profiles.yaml` | YAML | UCC profiles | Configured/runtime/capability/parametric baselines for convergence targets |
 
 ### UCC Software Manifests
@@ -102,7 +102,7 @@ state can describe the whole machine, not only individual components.
 | `ucc/software/cli-tools.yaml` | YAML manifest | cli-tools | Git, CLI tools, Oh My Zsh |
 | `ucc/software/node-stack.yaml` | YAML manifest | node-stack | Node.js, nvm, npm global packages |
 | `ucc/software/vscode.yaml` | YAML manifest | vscode-stack | VS Code, extensions, settings |
-| `ucc/software/build-tools.yaml` | YAML manifest | build-tools | Build tools (disabled) |
+| `ucc/software/build-tools.yaml` | YAML manifest | build-tools | Build tools |
 | `ucc/software/vscode-settings.json` | JSON | VS Code settings patch | Merged into user settings |
 
 ### UCC System Manifests
@@ -148,7 +148,7 @@ and `ucc/system/`, then dispatched through `install.sh`.
 | docker | `ucc/software/docker.yaml` | Docker Desktop + resources + capabilities |
 | ai-python-stack | `ucc/software/ai-python-stack.yaml` | PyTorch, HF, LangChain, pip groups, GPU probes, Unsloth |
 | ai-apps | `ucc/software/ai-apps.yaml` | Ollama + models + Docker Compose services |
-| build-tools | `ucc/software/build-tools.yaml` | Build tools (disabled) |
+| build-tools | `ucc/software/build-tools.yaml` | Build tools |
 | system | `ucc/system/system.yaml` | OS config (pmset, defaults, softwareupdate) + composition |
 | verify | `tic/` | Post-convergence verification + integration tests |
 
@@ -177,18 +177,17 @@ non-interactive sudo ticket first:
 sudo -v && ./install.sh
 ```
 
-## Component Policy
+## Target Policy
 
-Component participation is controlled in `policy/components.yaml`.
+Individual targets can be disabled in `policy/selection.yaml` under the
+`disabled:` list. Disabled targets are skipped even in `--all` mode and
+shown as `[disabled]` in the output.
 
-Supported modes:
-- `enabled`: include the component in normal runs
-- `disabled`: skip the component without treating it as a failure
-- `remove`: reserved for future removal handlers; currently reported and skipped safely
-
-Platform support is also declared per component in the `ucc/software/*.yaml`
-and `ucc/system/*.yaml` manifests. On unsupported hosts such components are
-skipped automatically instead of aborting the whole installer.
+Components are derived from the YAML manifests and serve as pure
+organizational grouping. Platform support is declared per component in the
+`ucc/software/*.yaml` and `ucc/system/*.yaml` manifests. On unsupported
+hosts such components are skipped automatically instead of aborting the
+whole installer.
 
 ## macOS Validation
 
