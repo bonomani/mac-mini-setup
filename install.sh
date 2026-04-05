@@ -316,8 +316,6 @@ Options:
   --no-interactive  Skip all prompts (CI/automation mode)
   --preflight       Evaluate UIC gates and preferences; do NOT converge
   --pref key=value  Set a UIC preference for this run only (repeatable)
-  --enable target   Enable a disabled target (updates ~/.ai-stack/selection.yaml)
-  --disable target  Disable a target (updates ~/.ai-stack/selection.yaml)
   --debug           Show DEBUG-level output
   -h, --help        Show this help
 
@@ -357,16 +355,6 @@ while [[ $# -gt 0 ]]; do
       _pref_val="${_pref_kv#*=}"
       _pref_env="UIC_PREF_$(echo "${_pref_key//-/_}" | tr '[:lower:]' '[:upper:]')"
       export "${_pref_env}=${_pref_val}"
-      ;;
-    --disable)
-      _selection_override_set "$2" disable
-      echo "Disabled $2 — updated ~/.ai-stack/selection.yaml"
-      exit 0
-      ;;
-    --enable)
-      _selection_override_set "$2" enable
-      echo "Enabled $2 — updated ~/.ai-stack/selection.yaml"
-      exit 0
       ;;
     -h|--help)       usage ;;
     -*)              log_warn "Unknown option: $1"; shift ;;
