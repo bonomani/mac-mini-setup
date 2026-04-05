@@ -71,12 +71,8 @@ run_node_stack_from_yaml() {
   ucc_yaml_simple_target "$cfg_dir" "$yaml" "node-lts"
   [[ -s "$NVM_DIR/nvm.sh" ]] && nvm use "$_NODE_VER" >/dev/null 2>&1 || true
 
-  # ---- Ensure brew's node is never on PATH (macOS only) ----
-  if [[ "${HOST_PLATFORM:-macos}" == "macos" ]]; then
-    ucc_yaml_simple_target "$cfg_dir" "$yaml" "brew-node-unlinked"
-  else
-    ucc_skip_target "brew-node-unlinked" "macOS only (brew node not applicable)"
-  fi
+  # ---- Ensure brew's node is never on PATH ----
+  ucc_yaml_simple_target "$cfg_dir" "$yaml" "brew-node-unlinked"
 
   # ---- npm global packages ----
   npm_global_cache_versions
@@ -85,14 +81,8 @@ run_node_stack_from_yaml() {
     [[ -n "$_target" ]] && ucc_yaml_simple_target "$cfg_dir" "$yaml" "$_target"
   done < <(yaml_list "$cfg_dir" "$yaml" npm_packages)
 
-  # ---- Ariaflow (macOS only — brew tap service) ----
-  if [[ "${HOST_PLATFORM:-macos}" == "macos" ]]; then
-    ucc_yaml_capability_target "$cfg_dir" "$yaml" "networkquality-available"
-    ucc_brew_runtime_formula_target "ariaflow" "ariaflow" "$_ARIAFLOW_FORMULA" "$cfg_dir" "$yaml"
-    ucc_brew_runtime_formula_target "ariaflow-web" "ariaflow-web" "$_ARIAFLOW_WEB_FORMULA" "$cfg_dir" "$yaml"
-  else
-    ucc_skip_target "networkquality-available" "macOS only"
-    ucc_skip_target "ariaflow" "macOS only (brew tap service)"
-    ucc_skip_target "ariaflow-web" "macOS only (brew tap service)"
-  fi
+  # ---- Ariaflow ----
+  ucc_yaml_capability_target "$cfg_dir" "$yaml" "networkquality-available"
+  ucc_brew_runtime_formula_target "ariaflow" "ariaflow" "$_ARIAFLOW_FORMULA" "$cfg_dir" "$yaml"
+  ucc_brew_runtime_formula_target "ariaflow-web" "ariaflow-web" "$_ARIAFLOW_WEB_FORMULA" "$cfg_dir" "$yaml"
 }

@@ -69,7 +69,13 @@
       "Bash(bash -n lib/drivers/git_repo.sh)",
       "Bash(bash -n lib/ucc_drivers.sh)",
       "Bash(bash -n lib/utils.sh)",
-      "Bash(bash -n lib/ai_apps.sh)"
+      "Bash(bash -n lib/ai_apps.sh)",
+      "Bash(do)",
+      "Bash(echo \"--- $f ---\")",
+      "Bash(echo \"=== 1. GATES: only 1 gate — are there hardcoded checks that should be gates? ===\" echo \"\" echo \"Current gate:\" cat policy/gates.yaml echo \"\" echo \"Hardcoded platform/readiness checks in runners:\" grep -rn 'HOST_PLATFORM.*==\\\\|is_installed.*||.*return\\\\|command -v.*>/dev/null.*||' lib/*.sh)",
+      "Bash(grep -v '#' __NEW_LINE_5a0ccdbfd2d82d84__ echo \"\" echo \"--- homebrew.sh: macOS-only guard ---\" grep -n 'HOST_PLATFORM.*macos' lib/homebrew.sh)",
+      "Bash(grep -v '#' __NEW_LINE_5a0ccdbfd2d82d84__ echo \"\" echo \"--- pip_group.sh: macOS-only guard ---\" grep -n 'HOST_PLATFORM.*macos' lib/pip_group.sh)",
+      "Bash(bash -n lib/node_stack.sh)"
     ],
     "additionalDirectories": [
       "/tmp"
