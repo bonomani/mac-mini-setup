@@ -25,10 +25,9 @@ docker_desktop_cask_id: docker-desktop
 docker_desktop_app_name: Docker
 docker_desktop_app_path: /Applications/Docker.app
 docker_socket: $HOME/.docker/run/docker.sock
-docker_settings_store_relpath: Library/Group Containers/group.com.docker/settings-store.json
 docker_backend_process: com.docker.backend
 docker_kill_pattern: com.docker
-settings_relpath: Library/Group Containers/group.com.docker/settings.json
+settings_relpath: Library/Group Containers/group.com.docker/settings-store.json
 memory_gb: 48
 cpu_count: 10
 swap_mib: 4096
