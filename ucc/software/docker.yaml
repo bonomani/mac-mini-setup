@@ -39,7 +39,7 @@ targets:
     profile: runtime
     type: runtime
     display_name: Docker Desktop
-    requires: macos
+
     depends_on:
     - homebrew
     provided_by_tool: brew-cask
@@ -69,7 +69,7 @@ targets:
     type: precondition
     state_model: config
     display_name: Docker settings file
-    requires: macos
+
     depends_on:
     - docker-desktop
     driver:
@@ -84,7 +84,7 @@ targets:
     type: config
     state_model: parametric
     display_name: Docker resources
-    requires: macos
+
     depends_on:
     - docker-desktop
     - docker-settings-file
@@ -96,7 +96,7 @@ targets:
     profile: capability
     type: capability
     display_name: Docker daemon
-    requires: macos
+
     depends_on:
     - docker-desktop
     driver:

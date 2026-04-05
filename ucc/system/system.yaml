@@ -17,7 +17,7 @@ targets:
     profile: capability
     type: capability
     display_name: sudo access
-    requires: macos
+
     driver:
       kind: custom
     runtime_manager: capability
@@ -33,7 +33,7 @@ targets:
     type: config
     state_model: parametric
     display_name: AC sleep
-    requires: macos
+
     admin_required: true
     driver:
       kind: pmset
@@ -46,7 +46,7 @@ targets:
     type: config
     state_model: parametric
     display_name: Disk sleep
-    requires: macos
+
     admin_required: true
     driver:
       kind: pmset
@@ -59,7 +59,7 @@ targets:
     type: config
     state_model: parametric
     display_name: Standby
-    requires: macos
+
     admin_required: true
     driver:
       kind: pmset
@@ -73,7 +73,7 @@ targets:
     type: config
     state_model: parametric
     display_name: App Nap
-    requires: macos
+
     driver:
       kind: user-defaults
       domain: NSGlobalDomain
@@ -87,7 +87,7 @@ targets:
     type: config
     state_model: parametric
     display_name: Finder hidden files
-    requires: macos
+
     driver:
       kind: user-defaults
       domain: com.apple.finder
@@ -101,7 +101,7 @@ targets:
     type: config
     state_model: parametric
     display_name: Filename extensions
-    requires: macos
+
     driver:
       kind: user-defaults
       domain: NSGlobalDomain
@@ -115,7 +115,7 @@ targets:
     type: config
     state_model: parametric
     display_name: Dock auto-hide
-    requires: macos
+
     driver:
       kind: user-defaults
       domain: com.apple.dock
@@ -130,7 +130,7 @@ targets:
     type: config
     state_model: parametric
     display_name: Software Update schedule
-    requires: macos
+
     admin_required: true
     driver:
       kind: softwareupdate-schedule
@@ -141,7 +141,7 @@ targets:
     type: config
     state_model: parametric
     display_name: Automatic update checks
-    requires: macos
+
     admin_required: true
     driver:
       kind: softwareupdate-defaults
@@ -155,7 +155,7 @@ targets:
     type: config
     state_model: parametric
     display_name: Automatic update downloads
-    requires: macos
+
     admin_required: true
     driver:
       kind: softwareupdate-defaults
@@ -169,7 +169,7 @@ targets:
     type: config
     state_model: parametric
     display_name: Automatic macOS updates
-    requires: macos
+
     admin_required: true
     driver:
       kind: softwareupdate-defaults
@@ -183,7 +183,7 @@ targets:
     type: config
     state_model: parametric
     display_name: Configuration data updates
-    requires: macos
+
     admin_required: true
     driver:
       kind: softwareupdate-defaults
@@ -197,7 +197,7 @@ targets:
     type: config
     state_model: parametric
     display_name: Security updates
-    requires: macos
+
     admin_required: true
     driver:
       kind: softwareupdate-defaults
@@ -212,7 +212,7 @@ targets:
     type: config
     state_model: parametric
     display_name: System composition
-    requires: macos
+
     depends_on:
     - sudo-available
     - pmset-ac-sleep=0
