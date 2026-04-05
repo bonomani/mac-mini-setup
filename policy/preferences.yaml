@@ -2,7 +2,6 @@ preferences:
   - name: default-selection
     default: all
     options: all|none
-    skip_when: explicit-targets
     rationale: 'all: install/update everything when no targets specified; none: show current state only (select targets explicitly)'
   - name: destructive-updates
     default: 'off'

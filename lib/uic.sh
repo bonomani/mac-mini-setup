@@ -457,20 +457,20 @@ for p in data.get('preferences', []):
     if not isinstance(p, dict): continue
     d = p.get('default','')
     if isinstance(d, bool): d = str(d).lower()
-    print('{}\t{}\t{}\t{}\t{}'.format(
-        p.get('name',''), d, p.get('options',''), p.get('rationale',''), p.get('skip_when','')))
+    print('{}\t{}\t{}\t{}'.format(
+        p.get('name',''), d, p.get('options',''), p.get('rationale','')))
 " "$yaml_file" 2>/dev/null || true
 }
 
 load_uic_preferences() {
   local dir="$1"
-  local _pref_names=() _pref_defaults=() _pref_options=() _pref_rationales=() _pref_skip_whens=()
+  local _pref_names=() _pref_defaults=() _pref_options=() _pref_rationales=()
 
   # 1. Global preferences from policy
-  while IFS=$'\t' read -r _n _d _o _r _s; do
+  while IFS=$'\t' read -r _n _d _o _r; do
     [[ -n "$_n" ]] || continue
     _pref_names+=("$_n"); _pref_defaults+=("$_d")
-    _pref_options+=("$_o"); _pref_rationales+=("$_r"); _pref_skip_whens+=("${_s:-}")
+    _pref_options+=("$_o"); _pref_rationales+=("$_r")
   done < <(_uic_parse_prefs_from_yaml "$dir/policy/preferences.yaml")
 
   # 2. Component preferences from selected component YAMLs
@@ -481,10 +481,10 @@ load_uic_preferences() {
       [[ -f "$_yaml" ]] || continue
       local _ycomp; _ycomp="$(head -1 "$_yaml" | sed 's/^component: //')"
       [[ "$_ycomp" == "$_comp" ]] || continue
-      while IFS=$'\t' read -r _n _d _o _r _s; do
+      while IFS=$'\t' read -r _n _d _o _r; do
         [[ -n "$_n" ]] || continue
         _pref_names+=("$_n"); _pref_defaults+=("$_d")
-        _pref_options+=("$_o"); _pref_rationales+=("$_r"); _pref_skip_whens+=("${_s:-}")
+        _pref_options+=("$_o"); _pref_rationales+=("$_r")
       done < <(_uic_parse_prefs_from_yaml "$_yaml")
       break
     done
@@ -492,8 +492,8 @@ load_uic_preferences() {
 
   # 3. Call uic_preference with stdin free
   for _i in "${!_pref_names[@]}"; do
-    # skip_when: explicit-targets → skip this pref when targets were given on CLI
-    if [[ "${_pref_skip_whens[$_i]}" == "explicit-targets" && "${UCC_EXPLICIT_TARGETS:-0}" == "1" ]]; then
+    # default-selection only matters when no explicit targets were given
+    if [[ "${_pref_names[$_i]}" == "default-selection" && "${UCC_EXPLICIT_TARGETS:-0}" == "1" ]]; then
       continue
     fi
     uic_preference --name "${_pref_names[$_i]}" --default "${_pref_defaults[$_i]}" \
