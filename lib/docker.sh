@@ -7,6 +7,43 @@ docker_desktop_observe() {
   command -v docker >/dev/null 2>&1 && printf 'installed' || printf 'absent'
 }
 
+# Observe current Docker resource settings from settings-store.json.
+# Prints: mem=<N>GB cpu=<N> swap=<N>MiB disk=<N>MiB
+docker_resources_observe() {
+  local settings_path="$HOME/$(yaml_get_many "$CFG_DIR" "$YAML_PATH" settings_relpath)"
+  [[ -f "$settings_path" ]] || { printf 'absent'; return; }
+  python3 -c "
+import json, sys
+d = json.loads(open(sys.argv[1]).read())
+mem = int(d.get('memoryMiB', 0)) // 1024
+cpu = int(d.get('cpus', 0))
+swap = int(d.get('swapMiB', 0))
+disk = int(d.get('diskSizeMiB', 0))
+if mem == 0 and cpu == 0:
+    print('absent')
+else:
+    print(f'mem={mem}GB cpu={cpu} swap={swap}MiB disk={disk}MiB')
+" "$settings_path" 2>/dev/null || printf 'absent'
+}
+
+# Print desired Docker resource settings from prefs.
+# Prints: mem=<N>GB cpu=<N> swap=<N>MiB disk=<N>MiB
+docker_resources_desired() {
+  printf 'mem=%sGB cpu=%s swap=%sMiB disk=%sMiB' \
+    "${DOCKER_RES_MEM_GB}" "${DOCKER_RES_CPU}" "${DOCKER_RES_SWAP}" "${DOCKER_RES_DISK}"
+}
+
+# Apply Docker resource settings via json-merge.
+# Uses runtime-generated patch file from .build/
+docker_resources_apply() {
+  local settings_path="$HOME/$(yaml_get_many "$CFG_DIR" "$YAML_PATH" settings_relpath)"
+  local patch_path="$CFG_DIR/.build/docker-resources-patch.json"
+  [[ -f "$settings_path" ]] || { log_warn "Docker settings file not found — launch Docker first"; return 1; }
+  [[ -f "$patch_path" ]] || { log_warn "Docker resources patch not generated"; return 1; }
+  ucc_run python3 "$CFG_DIR/tools/drivers/json_merge.py" apply "$settings_path" "$patch_path"
+  log_warn "Restart Docker Desktop to apply new resource settings"
+}
+
 # Print Docker CLI version string (e.g. "27.3.1").
 docker_version() {
   docker --version 2>/dev/null | awk '{print $3}' | tr -d ','
@@ -67,7 +104,13 @@ run_docker_from_yaml() {
   local _disk_mib="${UIC_PREF_DOCKER_DISK_MIB:-$disk_mib}"
   local _mem_mib=$(( _mem_gb * 1024 ))
 
-  # Generate runtime patch file and configure resources
+  # Export resource prefs for observe/desired functions
+  export DOCKER_RES_MEM_GB="$_mem_gb"
+  export DOCKER_RES_CPU="$_cpu_count"
+  export DOCKER_RES_SWAP="$_swap_mib"
+  export DOCKER_RES_DISK="$_disk_mib"
+
+  # Generate runtime patch file for json-merge action
   # Requires Docker settings file to exist (created on first Docker launch)
   local _settings_path="$HOME/${settings_relpath}"
   if [[ -f "$_settings_path" ]]; then
@@ -75,10 +118,9 @@ run_docker_from_yaml() {
     mkdir -p "$_patch_dir"
     printf '{"memoryMiB": %d, "cpus": %d, "swapMiB": %d, "diskSizeMiB": %d}\n' \
       "$_mem_mib" "$_cpu_count" "$_swap_mib" "$_disk_mib" > "$_patch_dir/docker-resources-patch.json"
-    ucc_yaml_simple_target "$cfg_dir" "$yaml" "docker-resources"
-  else
-    log_warn "Docker settings file not found — resource configuration deferred until Docker is launched"
   fi
+
+  ucc_yaml_parametric_target "$cfg_dir" "$yaml" "docker-resources"
 }
 
 # Apply silent-start settings to the Docker settings-store JSON.

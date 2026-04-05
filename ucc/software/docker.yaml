@@ -64,16 +64,21 @@ targets:
       install: _docker_desktop_install_and_start
   docker-resources:
     component: docker
-    profile: configured
+    profile: parametric
     type: config
-    state_model: config
+    state_model: parametric
     display_name: Docker resources
     depends_on:
     - docker-desktop
     driver:
-      kind: json-merge
-      settings_relpath: ${settings_relpath}
-      patch_relpath: .build/docker-resources-patch.json
+      kind: custom
+    observe_cmd: docker_resources_observe
+    desired_cmd: docker_resources_desired
+    evidence:
+      value: docker_resources_observe
+    actions:
+      install: docker_resources_apply
+      update: docker_resources_apply
   docker-available:
     component: docker
     profile: capability
