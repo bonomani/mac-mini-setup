@@ -1,0 +1,34 @@
+component: build-tools
+primary_profile: configured
+libs: build_tools
+runner: run_build_tools_from_yaml
+platforms:
+- macos
+- linux
+- wsl2
+targets:
+  rustup:
+    component: build-tools
+    profile: configured
+    type: package
+    state_model: package
+    display_name: Rust (rustup)
+    driver:
+      kind: package
+      ref: rustup-init
+      bin: rustup
+      fallback_install_url: https://sh.rustup.rs
+      fallback_install_args: -y
+      externally_managed_updates: true
+      github_repo: rust-lang/rustup
+  xrdp:
+    component: build-tools
+    profile: configured
+    type: package
+    state_model: package
+    display_name: xrdp
+    requires: linux,wsl2
+    driver:
+      kind: package
+      ref: xrdp
+      github_repo: neutrinolabs/xrdp

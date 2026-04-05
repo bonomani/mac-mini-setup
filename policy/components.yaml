@@ -13,6 +13,8 @@ components:
     mode: enabled
   - name: ai-apps
     mode: enabled
+  - name: build-tools
+    mode: disabled
   - name: system
     mode: enabled
   - name: verify
