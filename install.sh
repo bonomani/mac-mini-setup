@@ -444,16 +444,26 @@ else
 fi
 
 # Export disabled targets list for filtering
-# Explicit CLI targets override the disabled list
+# If an explicit CLI target is disabled, ask whether to override
 export UCC_DISABLED_TARGETS=""
 if [[ -n "$_POLICY_DISABLED" ]]; then
   while IFS= read -r _dt; do
     [[ -z "$_dt" ]] && continue
-    # Skip if this target was explicitly requested on CLI
     if [[ "${_EXPLICIT_TARGETS:-0}" == "1" && "${UCC_TARGET_SET}" == *"${_dt}|"* ]]; then
-      continue
+      if [[ -c /dev/tty ]]; then
+        printf '\n  [?] Target '\''%s'\'' is disabled by policy. Enable it for this run?\n' "$_dt"
+        printf '      Options: *1=yes, 2=no  →  '
+        read -r _enable_choice < /dev/tty
+        if [[ "$_enable_choice" == "2" ]]; then
+          UCC_DISABLED_TARGETS="${UCC_DISABLED_TARGETS}${_dt}|"
+        fi
+      else
+        # Non-interactive: explicit request overrides disabled
+        :
+      fi
+    else
+      UCC_DISABLED_TARGETS="${UCC_DISABLED_TARGETS}${_dt}|"
     fi
-    UCC_DISABLED_TARGETS="${UCC_DISABLED_TARGETS}${_dt}|"
   done <<< "$_POLICY_DISABLED"
 fi
 
