@@ -28,10 +28,6 @@ docker_socket: $HOME/.docker/run/docker.sock
 docker_backend_process: com.docker.backend
 docker_kill_pattern: com.docker
 settings_relpath: Library/Group Containers/group.com.docker/settings-store.json
-memory_gb: 48
-cpu_count: 10
-swap_mib: 4096
-disk_mib: 204800
 targets:
   docker-desktop:
     component: docker
@@ -68,6 +64,10 @@ targets:
     type: config
     state_model: parametric
     display_name: Docker resources
+    memory_gb: 48
+    cpu_count: 10
+    swap_mib: 4096
+    disk_mib: 204800
     depends_on:
     - docker-desktop
     driver:

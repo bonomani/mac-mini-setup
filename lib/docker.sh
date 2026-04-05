@@ -7,8 +7,21 @@ docker_desktop_observe() {
   command -v docker >/dev/null 2>&1 && printf 'installed' || printf 'absent'
 }
 
+# Read docker-resources target config (respects user prefs over YAML defaults).
+_docker_resources_config() {
+  local mem_gb cpu_count swap_mib disk_mib
+  mem_gb="$(_ucc_yaml_target_get "$CFG_DIR" "$YAML_PATH" "docker-resources" "memory_gb")"
+  cpu_count="$(_ucc_yaml_target_get "$CFG_DIR" "$YAML_PATH" "docker-resources" "cpu_count")"
+  swap_mib="$(_ucc_yaml_target_get "$CFG_DIR" "$YAML_PATH" "docker-resources" "swap_mib")"
+  disk_mib="$(_ucc_yaml_target_get "$CFG_DIR" "$YAML_PATH" "docker-resources" "disk_mib")"
+  printf '%s\t%s\t%s\t%s' \
+    "${UIC_PREF_DOCKER_MEMORY_GB:-$mem_gb}" \
+    "${UIC_PREF_DOCKER_CPU_COUNT:-$cpu_count}" \
+    "${UIC_PREF_DOCKER_SWAP_MIB:-$swap_mib}" \
+    "${UIC_PREF_DOCKER_DISK_MIB:-$disk_mib}"
+}
+
 # Observe current Docker resource settings from settings-store.json.
-# Prints: mem=<N>GB cpu=<N> swap=<N>MiB disk=<N>MiB
 docker_resources_observe() {
   local settings_path="$HOME/$(yaml_get_many "$CFG_DIR" "$YAML_PATH" settings_relpath)"
   [[ -f "$settings_path" ]] || { printf 'absent'; return; }
@@ -26,21 +39,25 @@ else:
 " "$settings_path" 2>/dev/null || printf 'absent'
 }
 
-# Print desired Docker resource settings from prefs.
-# Prints: mem=<N>GB cpu=<N> swap=<N>MiB disk=<N>MiB
+# Print desired Docker resource settings from target config + prefs.
 docker_resources_desired() {
-  printf 'mem=%sGB cpu=%s swap=%sMiB disk=%sMiB' \
-    "${DOCKER_RES_MEM_GB}" "${DOCKER_RES_CPU}" "${DOCKER_RES_SWAP}" "${DOCKER_RES_DISK}"
+  local _cfg
+  IFS=$'\t' read -r _mem _cpu _swap _disk <<< "$(_docker_resources_config)"
+  printf 'mem=%sGB cpu=%s swap=%sMiB disk=%sMiB' "$_mem" "$_cpu" "$_swap" "$_disk"
 }
 
 # Apply Docker resource settings via json-merge.
-# Uses runtime-generated patch file from .build/
 docker_resources_apply() {
   local settings_path="$HOME/$(yaml_get_many "$CFG_DIR" "$YAML_PATH" settings_relpath)"
-  local patch_path="$CFG_DIR/.build/docker-resources-patch.json"
   [[ -f "$settings_path" ]] || { log_warn "Docker settings file not found — launch Docker first"; return 1; }
-  [[ -f "$patch_path" ]] || { log_warn "Docker resources patch not generated"; return 1; }
-  ucc_run python3 "$CFG_DIR/tools/drivers/json_merge.py" apply "$settings_path" "$patch_path"
+  local _mem _cpu _swap _disk
+  IFS=$'\t' read -r _mem _cpu _swap _disk <<< "$(_docker_resources_config)"
+  local _mem_mib=$(( _mem * 1024 ))
+  local _patch_dir="$CFG_DIR/.build"
+  mkdir -p "$_patch_dir"
+  printf '{"memoryMiB": %d, "cpus": %d, "swapMiB": %d, "diskSizeMiB": %d}\n' \
+    "$_mem_mib" "$_cpu" "$_swap" "$_disk" > "$_patch_dir/docker-resources-patch.json"
+  ucc_run python3 "$CFG_DIR/tools/drivers/json_merge.py" apply "$settings_path" "$_patch_dir/docker-resources-patch.json"
   log_warn "Restart Docker Desktop to apply new resource settings"
 }
 
@@ -86,40 +103,6 @@ run_docker_from_yaml() {
   ucc_yaml_runtime_target "$cfg_dir" "$yaml" "docker-available"
 
   # ---- Phase 4: post-runtime config (resources) ----
-  local settings_relpath memory_gb cpu_count swap_mib disk_mib
-  while IFS=$'\t' read -r -d '' key value; do
-    [[ -n "$value" ]] || continue
-    case "$key" in
-      settings_relpath) settings_relpath="$value" ;;
-      memory_gb)        memory_gb="$value" ;;
-      cpu_count)        cpu_count="$value" ;;
-      swap_mib)         swap_mib="$value" ;;
-      disk_mib)         disk_mib="$value" ;;
-    esac
-  done < <(yaml_get_many "$cfg_dir" "$yaml" settings_relpath memory_gb cpu_count swap_mib disk_mib)
-
-  local _mem_gb="${UIC_PREF_DOCKER_MEMORY_GB:-$memory_gb}"
-  local _cpu_count="${UIC_PREF_DOCKER_CPU_COUNT:-$cpu_count}"
-  local _swap_mib="${UIC_PREF_DOCKER_SWAP_MIB:-$swap_mib}"
-  local _disk_mib="${UIC_PREF_DOCKER_DISK_MIB:-$disk_mib}"
-  local _mem_mib=$(( _mem_gb * 1024 ))
-
-  # Export resource prefs for observe/desired functions
-  export DOCKER_RES_MEM_GB="$_mem_gb"
-  export DOCKER_RES_CPU="$_cpu_count"
-  export DOCKER_RES_SWAP="$_swap_mib"
-  export DOCKER_RES_DISK="$_disk_mib"
-
-  # Generate runtime patch file for json-merge action
-  # Requires Docker settings file to exist (created on first Docker launch)
-  local _settings_path="$HOME/${settings_relpath}"
-  if [[ -f "$_settings_path" ]]; then
-    local _patch_dir="$cfg_dir/.build"
-    mkdir -p "$_patch_dir"
-    printf '{"memoryMiB": %d, "cpus": %d, "swapMiB": %d, "diskSizeMiB": %d}\n' \
-      "$_mem_mib" "$_cpu_count" "$_swap_mib" "$_disk_mib" > "$_patch_dir/docker-resources-patch.json"
-  fi
-
   ucc_yaml_parametric_target "$cfg_dir" "$yaml" "docker-resources"
 }
 
