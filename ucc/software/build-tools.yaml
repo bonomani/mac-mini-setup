@@ -12,7 +12,7 @@ targets:
     profile: configured
     type: package
     state_model: package
-    display_name: Rust (rustup)
+    display_name: rustup
     driver:
       kind: package
       ref: rustup
