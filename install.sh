@@ -368,7 +368,7 @@ done
 if [[ -z "${UCC_INTERACTIVE:-}" ]]; then
   _saved_interactive=""
   _pf="${UIC_PREF_FILE:-$HOME/.ai-stack/preferences.env}"
-  [[ -f "$_pf" ]] && _saved_interactive="$(grep -E '^interactive=' "$_pf" 2>/dev/null | head -1 | cut -d= -f2-)"
+  if [[ -f "$_pf" ]]; then _saved_interactive="$(grep -E '^interactive=' "$_pf" 2>/dev/null | head -1 | cut -d= -f2- || true)"; fi
   if [[ "$_saved_interactive" == "no" ]]; then
     export UCC_INTERACTIVE=0
   elif [[ "$_saved_interactive" == "yes" ]]; then
@@ -468,7 +468,7 @@ else
   # Also check user pref file
   _pf="${UIC_PREF_FILE:-$HOME/.ai-stack/preferences.env}"
   if [[ -f "$_pf" ]]; then
-    _user_default="$(grep -E '^default-selection=' "$_pf" 2>/dev/null | head -1 | cut -d= -f2-)"
+    _user_default="$(grep -E '^default-selection=' "$_pf" 2>/dev/null | head -1 | cut -d= -f2- || true)"
     if [[ -n "$_user_default" ]]; then _default_sel="$_user_default"; fi
   fi
   if [[ "$_default_sel" == "all" ]]; then
