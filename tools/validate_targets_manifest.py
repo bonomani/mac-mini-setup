@@ -1011,6 +1011,8 @@ def validate(manifest, known_gates):
     indegree = {name: 0 for name in targets}
     for name, data in targets.items():
         for dep in _target_order_union(data):
+            if dep not in targets:
+                continue  # external cross-manifest dep — skip for ordering
             graph[dep].append(name)
             indegree[name] += 1
 
