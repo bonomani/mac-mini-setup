@@ -9,11 +9,16 @@ ollama_model_cache_list() {
 }
 
 # Return 0 if the given Ollama model ref is present locally.
+# Handles both exact refs (mistral:7b) and short refs (llama3.2 → llama3.2:latest).
 ollama_model_present() {
+  local ref="$1"
+  local pattern="$ref"
+  # If ref has no tag, also match ref:latest
+  [[ "$ref" == *:* ]] || pattern="($ref|${ref}:latest)"
   if [[ -n "${_OLLAMA_MODELS_CACHE+x}" ]]; then
-    grep -Fxq "$1" <<< "$_OLLAMA_MODELS_CACHE"
+    grep -Eq "^${pattern}$" <<< "$_OLLAMA_MODELS_CACHE"
   else
-    ollama list 2>/dev/null | awk 'NR>1 {print $1}' | grep -Fxq "$1"
+    ollama list 2>/dev/null | awk 'NR>1 {print $1}' | grep -Eq "^${pattern}$"
   fi
 }
 
