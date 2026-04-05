@@ -11,6 +11,7 @@ default: all
 disabled:
 - ollama-model-llama3.1-70b
 - ollama-model-qwen2.5-coder-32b
+- ollama-model-qwen3-latest
 - rustup
 - rdpilot
 - xrdp
