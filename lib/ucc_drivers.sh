@@ -108,12 +108,14 @@ _ucc_driver_github_latest() {
   # Try releases first
   local latest; latest="$(curl -fsS --max-time 5 "https://api.github.com/repos/${repo}/releases/latest" 2>/dev/null \
     | awk -F'"' '/"tag_name"/{print $4}' | sed 's/^v//')"
-  if [[ -z "$latest" ]]; then
-    # No releases — check latest commit (short hash)
+  if [[ -n "$latest" ]]; then
+    printf '  latest=%s' "$latest"
+  else
+    # No releases — check latest commit (short hash), label differently
     latest="$(curl -fsS --max-time 5 "https://api.github.com/repos/${repo}/commits/HEAD" 2>/dev/null \
       | awk -F'"' '/"sha"/{print substr($4,1,7); exit}')"
+    [[ -n "$latest" ]] && printf '  latest-commit=%s' "$latest"
   fi
-  [[ -n "$latest" ]] && printf '  latest=%s' "$latest"
   return 0
 }
 
