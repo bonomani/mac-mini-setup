@@ -64,7 +64,10 @@
       "Bash(python3 -:*)",
       "Bash(bash -n lib/drivers/package.sh)",
       "Bash(bash -n install.sh)",
-      "Bash(python3 tools/validate_targets_manifest.py ucc/)"
+      "Bash(python3 tools/validate_targets_manifest.py ucc/)",
+      "Bash(echo \"  Install: git clone https://github.com/bonomani/rdpilot <dir>\")",
+      "Bash(bash -n lib/drivers/git_repo.sh)",
+      "Bash(bash -n lib/ucc_drivers.sh)"
     ],
     "additionalDirectories": [
       "/tmp"

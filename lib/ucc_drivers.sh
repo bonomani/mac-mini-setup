@@ -30,6 +30,7 @@ for _ucc_drv_file in \
   "$_UCC_DRIVERS_DIR/compose_file.sh" \
   "$_UCC_DRIVERS_DIR/docker_compose_service.sh" \
   "$_UCC_DRIVERS_DIR/package.sh" \
+  "$_UCC_DRIVERS_DIR/git_repo.sh" \
   "$_UCC_DRIVERS_DIR/curl_installer.sh" \
   "$_UCC_DRIVERS_DIR/build_deps.sh" \
   "$_UCC_DRIVERS_DIR/swupdate_schedule.sh" \
@@ -190,3 +191,6 @@ _ucc_driver_brew_service_provided_by()     { printf 'brew'; }
 
 _ucc_driver_docker_compose_service_depends_on()  { printf 'docker-desktop'; }
 _ucc_driver_docker_compose_service_provided_by() { printf 'docker-compose'; }
+
+# git-repo
+_ucc_driver_git_repo_provided_by()     { printf 'git'; }

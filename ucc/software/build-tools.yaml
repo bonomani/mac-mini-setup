@@ -21,6 +21,17 @@ targets:
       fallback_install_args: -y
       externally_managed_updates: true
       github_repo: rust-lang/rustup
+  rdpilot:
+    component: build-tools
+    profile: configured
+    type: package
+    state_model: package
+    display_name: RDPilot
+    driver:
+      kind: git-repo
+      repo: bonomani/rdpilot
+      dest: repos/github/bonomani/rdpilot
+      github_repo: bonomani/rdpilot
   xrdp:
     component: build-tools
     profile: configured
