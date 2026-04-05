@@ -64,6 +64,7 @@ targets:
     type: config
     state_model: parametric
     display_name: Docker resources
+    settings_relpath: ${settings_relpath}
     memory_gb: 48
     cpu_count: 10
     swap_mib: 4096

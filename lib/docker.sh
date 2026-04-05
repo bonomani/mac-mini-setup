@@ -7,6 +7,11 @@ docker_desktop_observe() {
   command -v docker >/dev/null 2>&1 && printf 'installed' || printf 'absent'
 }
 
+# Resolve Docker settings-store.json full path from YAML.
+_docker_settings_path() {
+  printf '%s/%s' "$HOME" "$(_ucc_yaml_target_get "$CFG_DIR" "$YAML_PATH" "docker-resources" "settings_relpath")"
+}
+
 # Read docker-resources target config (respects user prefs over YAML defaults).
 _docker_resources_config() {
   local mem_gb cpu_count swap_mib disk_mib
@@ -23,7 +28,7 @@ _docker_resources_config() {
 
 # Observe current Docker resource settings from settings-store.json.
 docker_resources_observe() {
-  local settings_path="$HOME/$(yaml_get_many "$CFG_DIR" "$YAML_PATH" settings_relpath)"
+  local settings_path; settings_path="$(_docker_settings_path)"
   [[ -f "$settings_path" ]] || { printf 'absent'; return; }
   python3 -c "
 import json, sys
@@ -41,14 +46,14 @@ else:
 
 # Print desired Docker resource settings from target config + prefs.
 docker_resources_desired() {
-  local _cfg
+  local _mem _cpu _swap _disk
   IFS=$'\t' read -r _mem _cpu _swap _disk <<< "$(_docker_resources_config)"
   printf 'mem=%sGB cpu=%s swap=%sMiB disk=%sMiB' "$_mem" "$_cpu" "$_swap" "$_disk"
 }
 
 # Apply Docker resource settings via json-merge.
 docker_resources_apply() {
-  local settings_path="$HOME/$(yaml_get_many "$CFG_DIR" "$YAML_PATH" settings_relpath)"
+  local settings_path; settings_path="$(_docker_settings_path)"
   [[ -f "$settings_path" ]] || { log_warn "Docker settings file not found — launch Docker first"; return 1; }
   local _mem _cpu _swap _disk
   IFS=$'\t' read -r _mem _cpu _swap _disk <<< "$(_docker_resources_config)"
