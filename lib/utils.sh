@@ -138,6 +138,11 @@ _tic_not_macos() {
   [[ "${HOST_PLATFORM:-unknown}" != "macos" ]]
 }
 
+# Return 0 if the current platform IS macOS.
+_tic_is_macos() {
+  [[ "${HOST_PLATFORM:-unknown}" == "macos" ]]
+}
+
 # Return 0 if elevated privileges are available (root or cached sudo ticket).
 sudo_is_available() { [[ $EUID -eq 0 ]] || sudo -n true 2>/dev/null; }
 

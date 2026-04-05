@@ -30,7 +30,7 @@ tests:
     oracle: 'python3_module_importable unsloth'
     trace: "component:ai-python-stack / ucc-target:unsloth-studio"
     skip: "not importable on Apple Silicon (NVIDIA only) — Studio runs in its own venv"
-    skip_when: '_tic_target_status_is "mps-available" "ok"'
+    skip_when: '_tic_is_macos'
   # ── dev-tools ─────────────────────────────────────────────
   # cli_tools and npm_packages have no explicit target entries for oracle:
   - name: cmake-installed

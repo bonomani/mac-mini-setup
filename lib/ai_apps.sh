@@ -358,8 +358,8 @@ PY
     fallback_stop_pattern \
     fallback_start_cmd)
   _OLLAMA_API_URL="http://${_OLLAMA_API_HOST}:${_OLLAMA_API_PORT}${_OLLAMA_API_TAGS_PATH}"
-  # Check if ollama is installed outside brew (app/installer)
-  if is_installed brew && is_installed ollama; then
+  # Check if ollama is installed outside brew (only when ollama is selected)
+  if [[ "${UCC_TARGET_SET:-}" == *"ollama|"* ]] && is_installed brew && is_installed ollama; then
     local _ollama_src; _ollama_src="$(cli_install_source ollama "$_OLLAMA_BREW_SERVICE_NAME")"
     if [[ "$_ollama_src" == "external" ]]; then
       handle_unmanaged_brew_package "$_OLLAMA_BREW_SERVICE_NAME" "Ollama" || true
