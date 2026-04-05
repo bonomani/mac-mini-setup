@@ -9,16 +9,16 @@ docker_desktop_observe() {
 
 # Resolve Docker settings-store.json full path from YAML.
 _docker_settings_path() {
-  printf '%s/%s' "$HOME" "$(_ucc_yaml_target_get "$CFG_DIR" "$YAML_PATH" "docker-resources" "settings_relpath")"
+  printf '%s/%s' "$HOME" "$(_ucc_yaml_target_get "$CFG_DIR" "$YAML_PATH" "docker-resources" "driver.settings_relpath")"
 }
 
 # Read docker-resources target config (respects user prefs over YAML defaults).
 _docker_resources_config() {
   local mem_gb cpu_count swap_mib disk_mib
-  mem_gb="$(_ucc_yaml_target_get "$CFG_DIR" "$YAML_PATH" "docker-resources" "memory_gb")"
-  cpu_count="$(_ucc_yaml_target_get "$CFG_DIR" "$YAML_PATH" "docker-resources" "cpu_count")"
-  swap_mib="$(_ucc_yaml_target_get "$CFG_DIR" "$YAML_PATH" "docker-resources" "swap_mib")"
-  disk_mib="$(_ucc_yaml_target_get "$CFG_DIR" "$YAML_PATH" "docker-resources" "disk_mib")"
+  mem_gb="$(_ucc_yaml_target_get "$CFG_DIR" "$YAML_PATH" "docker-resources" "driver.memory_gb")"
+  cpu_count="$(_ucc_yaml_target_get "$CFG_DIR" "$YAML_PATH" "docker-resources" "driver.cpu_count")"
+  swap_mib="$(_ucc_yaml_target_get "$CFG_DIR" "$YAML_PATH" "docker-resources" "driver.swap_mib")"
+  disk_mib="$(_ucc_yaml_target_get "$CFG_DIR" "$YAML_PATH" "docker-resources" "driver.disk_mib")"
   printf '%s\t%s\t%s\t%s' \
     "${UIC_PREF_DOCKER_MEMORY_GB:-$mem_gb}" \
     "${UIC_PREF_DOCKER_CPU_COUNT:-$cpu_count}" \

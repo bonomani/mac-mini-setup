@@ -64,15 +64,15 @@ targets:
     type: config
     state_model: parametric
     display_name: Docker resources
-    settings_relpath: ${settings_relpath}
-    memory_gb: 48
-    cpu_count: 10
-    swap_mib: 4096
-    disk_mib: 204800
     depends_on:
     - docker-desktop
     driver:
       kind: custom
+      settings_relpath: ${settings_relpath}
+      memory_gb: 48
+      cpu_count: 10
+      swap_mib: 4096
+      disk_mib: 204800
     observe_cmd: docker_resources_observe
     desired_cmd: docker_resources_desired
     evidence:
