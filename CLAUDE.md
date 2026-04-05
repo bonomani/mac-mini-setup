@@ -125,6 +125,16 @@ YAML `depends_on` entries track dependencies that no single package manager can 
 - `build-deps?!brew` — when PM is not brew
 - `dep?macos>=14,linux,wsl2` — version comparison + OR
 
+### Rule 8 — YAML is configuration only, never runtime logic
+
+YAML files declare **what** (names, values, relationships), never **when** or **how** to act at runtime. Runtime decisions belong in code where the execution context is available.
+
+**Allowed in YAML**: target names, driver keys, dependency lists, profile types, display names, package refs, default values, option lists, rationale text.
+
+**Not allowed in YAML**: conditional execution rules (`skip_when`, `run_if`), environment-dependent switches, mode/state checks, temporal logic. These belong in the code that reads the YAML.
+
+**Principle**: YAML is a static declaration. If a field's value only makes sense with runtime context (current args, environment, platform state), it belongs in code.
+
 ### Naming
 
 - Functions called directly from YAML (no leading underscore): `ollama_host_supported`, `brew_service_is_started`
