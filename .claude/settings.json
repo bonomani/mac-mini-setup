@@ -75,7 +75,12 @@
       "Bash(echo \"=== 1. GATES: only 1 gate — are there hardcoded checks that should be gates? ===\" echo \"\" echo \"Current gate:\" cat policy/gates.yaml echo \"\" echo \"Hardcoded platform/readiness checks in runners:\" grep -rn 'HOST_PLATFORM.*==\\\\|is_installed.*||.*return\\\\|command -v.*>/dev/null.*||' lib/*.sh)",
       "Bash(grep -v '#' __NEW_LINE_5a0ccdbfd2d82d84__ echo \"\" echo \"--- homebrew.sh: macOS-only guard ---\" grep -n 'HOST_PLATFORM.*macos' lib/homebrew.sh)",
       "Bash(grep -v '#' __NEW_LINE_5a0ccdbfd2d82d84__ echo \"\" echo \"--- pip_group.sh: macOS-only guard ---\" grep -n 'HOST_PLATFORM.*macos' lib/pip_group.sh)",
-      "Bash(bash -n lib/node_stack.sh)"
+      "Bash(bash -n lib/node_stack.sh)",
+      "Bash(__NEW_LINE_f72f65a96e98ccf1__ echo:*)",
+      "Bash(python3 tests/test_ordering.py)",
+      "Bash(python3 tests/test_conditions.py)",
+      "Bash(python3 tests/test_selection.py)",
+      "Bash(python3 tests/test_drivers.py)"
     ],
     "additionalDirectories": [
       "/tmp"

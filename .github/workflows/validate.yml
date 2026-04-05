@@ -125,3 +125,11 @@ jobs:
               sys.exit(1)
           print('Rule 1: no shell operators in YAML fields')
           "
+
+      - name: Unit tests — ordering, conditions, selection, drivers, fingerprint
+        run: |
+          python3 tests/test_ordering.py
+          python3 tests/test_conditions.py
+          python3 tests/test_selection.py
+          python3 tests/test_drivers.py
+          python3 tests/test_fingerprint.py
