@@ -218,28 +218,6 @@ while IFS= read -r _component; do
 done < <(_load_components)
 
 _COMPONENT_POLICY_FILE="$DIR/policy/components.yaml"
-_COMP_POLICY_NAMES=()
-_COMP_POLICY_MODES=()
-
-_load_component_policies() {
-  local name mode
-  [[ -f "$_COMPONENT_POLICY_FILE" ]] || return 0
-  while IFS=$'\t' read -r name mode; do
-    [[ -n "$name" ]] || continue
-    _COMP_POLICY_NAMES+=("$name")
-    _COMP_POLICY_MODES+=("${mode:-enabled}")
-  done < <(yaml_records "$DIR" "$_COMPONENT_POLICY_FILE" components name mode)
-}
-
-_component_mode() {
-  local comp="$1" i
-  for i in "${!_COMP_POLICY_NAMES[@]}"; do
-    [[ "${_COMP_POLICY_NAMES[$i]}" == "$comp" ]] || continue
-    printf '%s' "${_COMP_POLICY_MODES[$i]}"
-    return 0
-  done
-  printf 'enabled'
-}
 
 _component_supported_for() {
   local comp="$1" config="$2" platform item
@@ -269,16 +247,12 @@ _display_component_name() {
   esac
 }
 
-_load_component_policies
-
 _uic_scope_active() {
-  local scope="$1" comp config mode
+  local scope="$1" comp config
   case "$scope" in
     global|target:*) return 0 ;;
     component:*)
       comp="${scope#component:}"
-      mode="$(_component_mode "$comp")"
-      [[ "$mode" == "enabled" ]] || return 1
       if [[ "$comp" == "verify" ]]; then
         _component_supported_for "$comp" "tic"
         return $?
@@ -471,22 +445,12 @@ else
 fi
 
 # Export disabled targets list for filtering
-# Start with individually disabled targets from selection.yaml
 export UCC_DISABLED_TARGETS=""
 if [[ -n "$_POLICY_DISABLED" ]]; then
   while IFS= read -r _dt; do
     [[ -n "$_dt" ]] && UCC_DISABLED_TARGETS="${UCC_DISABLED_TARGETS}${_dt}|"
   done <<< "$_POLICY_DISABLED"
 fi
-# Propagate component-level disable to all targets in that component
-for _ci in "${!_COMP_POLICY_NAMES[@]}"; do
-  [[ "${_COMP_POLICY_MODES[$_ci]}" == "disabled" ]] || continue
-  _comp_targets="$(python3 "$DIR/tools/validate_targets_manifest.py" \
-    --ordered-targets "${_COMP_POLICY_NAMES[$_ci]}" "$DIR/ucc" 2>/dev/null || true)"
-  while IFS= read -r _ct; do
-    [[ -n "$_ct" ]] && UCC_DISABLED_TARGETS="${UCC_DISABLED_TARGETS}${_ct}|"
-  done <<< "$_comp_targets"
-done
 
 # Save selected components for preference scoping
 export UCC_SELECTED_COMPS=""
