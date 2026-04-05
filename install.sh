@@ -546,14 +546,23 @@ if [[ "${UCC_INTERACTIVE:-0}" == "1" && -c /dev/tty && -z "$UCC_TARGET_SET" ]]; 
     echo ""
     echo "    a) All"
     for _c in "${_BROWSE_COMPS[@]}"; do
-      _tcount=$(echo "${_COMP_TARGETS_DATA[$((_idx - 1))]}" | grep -c . || echo 0)
-      # Count how many targets from this component are in the set
-      _selected=0
+      _tcount=0; _disabled_count=0; _selected=0
       while IFS= read -r _t; do
-        [[ -n "$_t" && "${UCC_TARGET_SET}" == *"${_t}|"* ]] && _selected=$((_selected + 1))
+        [[ -z "$_t" ]] && continue
+        _tcount=$((_tcount + 1))
+        if [[ -n "${UCC_DISABLED_TARGETS}" && "${UCC_DISABLED_TARGETS}" == *"${_t}|"* ]]; then
+          _disabled_count=$((_disabled_count + 1))
+        elif [[ "${UCC_TARGET_SET}" == *"${_t}|"* ]]; then
+          _selected=$((_selected + 1))
+        fi
       done <<< "${_COMP_TARGETS_DATA[$((_idx - 1))]}"
+      _avail=$((_tcount - _disabled_count))
       if [[ $_selected -gt 0 ]]; then
-        printf '    %d) %-20s (%d/%d selected)\n' "$_idx" "$_c" "$_selected" "$_tcount"
+        printf '    %d) %-20s (%d/%d selected)\n' "$_idx" "$_c" "$_selected" "$_avail"
+      elif [[ $_disabled_count -gt 0 && $_avail -eq 0 ]]; then
+        printf '    %d) %-20s (all disabled)\n' "$_idx" "$_c"
+      elif [[ $_disabled_count -gt 0 ]]; then
+        printf '    %d) %-20s (%d targets, %d disabled)\n' "$_idx" "$_c" "$_avail" "$_disabled_count"
       else
         printf '    %d) %-20s (%d targets)\n' "$_idx" "$_c" "$_tcount"
       fi
@@ -583,7 +592,15 @@ if [[ "${UCC_INTERACTIVE:-0}" == "1" && -c /dev/tty && -z "$UCC_TARGET_SET" ]]; 
       echo "  ── ${_sel_comp} ──"
       _tidx=1
       while IFS= read -r _t; do
-        [[ -n "$_t" ]] && printf '      %d) %s\n' "$_tidx" "$_t"
+        if [[ -n "$_t" ]]; then
+          if [[ -n "${UCC_DISABLED_TARGETS}" && "${UCC_DISABLED_TARGETS}" == *"${_t}|"* ]]; then
+            printf '      %d) %-30s [disabled]\n' "$_tidx" "$_t"
+          elif [[ "${UCC_TARGET_SET}" == *"${_t}|"* ]]; then
+            printf '      %d) %-30s [selected]\n' "$_tidx" "$_t"
+          else
+            printf '      %d) %s\n' "$_tidx" "$_t"
+          fi
+        fi
         _tidx=$((_tidx + 1))
       done <<< "$(_get_comp_targets "$_sel_comp")"
       echo ""
@@ -605,8 +622,13 @@ if [[ "${UCC_INTERACTIVE:-0}" == "1" && -c /dev/tty && -z "$UCC_TARGET_SET" ]]; 
         for _sp in "${_sub_picks[@]}"; do
           _sp="${_sp// /}"
           if [[ "$_sp" =~ ^[0-9]+$ && "$_sp" -ge 1 && "$_sp" -le "${#_targets_arr[@]}" ]]; then
-            _resolve_target "${_targets_arr[$((_sp - 1))]}"
-            echo "  Added: ${_targets_arr[$((_sp - 1))]}"
+            _pick="${_targets_arr[$((_sp - 1))]}"
+            if [[ -n "${UCC_DISABLED_TARGETS}" && "${UCC_DISABLED_TARGETS}" == *"${_pick}|"* ]]; then
+              echo "  Skipped: ${_pick} (disabled by policy)"
+            else
+              _resolve_target "$_pick"
+              echo "  Added: ${_pick}"
+            fi
           fi
         done
       fi
