@@ -795,7 +795,7 @@ if [[ "${UCC_INTERACTIVE:-0}" == "1" ]] && [[ -c /dev/tty ]]; then
     printf '# User preferences (locked choices)\n' > "$_pref_file"
     for _i in "${!_UIC_PREF_NAMES[@]}"; do
       if [[ "${_UIC_PREF_PINNED[$_i]}" == "1" ]]; then
-        local _label=""
+        _label=""
         if [[ "${_UIC_PREF_VALUES[$_i]}" == "${_UIC_PREF_DEFAULTS[$_i]}" ]]; then
           _label="(locked to default)"
         else
