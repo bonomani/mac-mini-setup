@@ -524,7 +524,7 @@ load_uic_preferences() {
     # Always-relevant prefs bypass scoping.
     if [[ "${UCC_EXPLICIT_TARGETS:-0}" == "1" ]]; then
       case "$_pname" in
-        skip-display-mode|destructive-updates) ;;  # always relevant
+        skip-display-mode) ;;  # always relevant — controls output verbosity
         *)
           local _env_key
           _env_key="UIC_PREF_$(echo "${_pname//-/_}" | tr '[:lower:]' '[:upper:]')"
