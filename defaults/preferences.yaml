@@ -3,6 +3,10 @@ preferences:
     default: all
     options: all|none
     rationale: 'all: install/update everything when no targets specified; none: show current state only (select targets explicitly)'
+  - name: skip-display-mode
+    default: full
+    options: full|fast
+    rationale: 'full: show every target with current state and version (slower observe); fast: hide non-selected targets entirely (faster runs)'
   - name: destructive-updates
     default: 'off'
     options: on|off

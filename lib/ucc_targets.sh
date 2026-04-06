@@ -438,6 +438,10 @@ _ucc_target_filtered_out() {
   fi
   if [[ "${UCC_TARGET_SET:-}" != *"${target}|"* ]]; then
     _UCC_EMITTED_TARGETS="${_UCC_EMITTED_TARGETS}|${target}|"
+    # Fast mode: hide non-selected targets entirely (no observe, no output)
+    if [[ "${UIC_PREF_SKIP_DISPLAY_MODE:-full}" == "fast" ]]; then
+      return 0
+    fi
     local display_name state=""
     display_name="$(_ucc_display_name "$target")"
     # Try to observe current state (read-only, best-effort)

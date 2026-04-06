@@ -938,6 +938,13 @@ _collect_layer_components() {
       tic)      [[ "$_cfg" != "tic" ]] && continue ;;
     esac
     _comp="${_DISP_COMPS[$_i]}"
+    # Fast mode: hide components with no selected targets
+    if [[ "${UIC_PREF_SKIP_DISPLAY_MODE:-full}" == "fast" ]] \
+      && [[ -n "${UCC_TARGET_SET:-}" ]] \
+      && [[ "$_cfg" != "tic" ]] \
+      && ! _component_has_selected_targets "$_comp"; then
+      continue
+    fi
     comps+=("$_comp")
   done
   [[ ${#comps[@]} -gt 0 ]] && printf '%s\n' "${comps[@]}"
@@ -958,8 +965,23 @@ print_execution_plan() {
   return 0
 }
 
+_component_has_selected_targets() {
+  local comp="$1" _t
+  while IFS= read -r _t; do
+    [[ -z "$_t" ]] && continue
+    [[ "${UCC_TARGET_SET:-}" == *"${_t}|"* ]] && return 0
+  done < <(python3 "$_QUERY_SCRIPT" --ordered-targets "$comp" "$_MANIFEST_DIR" 2>/dev/null)
+  return 1
+}
+
 _print_component_header() {
   local comp="$1"
+  # Fast mode: skip header if no targets in this component are selected
+  if [[ "${UIC_PREF_SKIP_DISPLAY_MODE:-full}" == "fast" ]] \
+    && [[ -n "${UCC_TARGET_SET:-}" ]] \
+    && ! _component_has_selected_targets "$comp"; then
+    return 0
+  fi
   printf '  [%s]\n' "$(_display_component_name "$comp")"
 }
 

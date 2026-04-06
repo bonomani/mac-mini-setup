@@ -497,11 +497,40 @@ load_uic_preferences() {
     done
   done
 
-  # 3. Call uic_preference with stdin free
+  # 3. Build set of UIC_PREF_* env vars referenced by selected component lib files
+  # (only when explicit targets are given — for full runs, all prefs are relevant)
+  local _referenced_prefs=""
+  if [[ "${UCC_EXPLICIT_TARGETS:-0}" == "1" ]]; then
+    local _comp _libs _lib
+    for _comp in ${TO_RUN[@]+"${TO_RUN[@]}"}; do
+      [[ "${_sel_comps}" == *"${_comp}|"* ]] || continue
+      _libs="$(printf '%s\n' "${_all_dispatch:-}" | awk -F'\t' -v c="$_comp" '$1==c{print $2; exit}')"
+      IFS=',' read -ra _lib_arr <<< "$_libs"
+      for _lib in "${_lib_arr[@]}"; do
+        [[ -f "$dir/lib/${_lib}.sh" ]] || continue
+        _referenced_prefs+="$(grep -oE 'UIC_PREF_[A-Z_]+' "$dir/lib/${_lib}.sh" 2>/dev/null | sort -u | tr '\n' '|' || true)"
+      done
+    done
+  fi
+
+  # 4. Call uic_preference with stdin free
   for _i in "${!_pref_names[@]}"; do
+    local _pname="${_pref_names[$_i]}"
     # default-selection only matters when no explicit targets were given
-    if [[ "${_pref_names[$_i]}" == "default-selection" && "${UCC_EXPLICIT_TARGETS:-0}" == "1" ]]; then
+    if [[ "$_pname" == "default-selection" && "${UCC_EXPLICIT_TARGETS:-0}" == "1" ]]; then
       continue
+    fi
+    # When explicit targets are given, scope preferences to those used by selected components.
+    # Always-relevant prefs bypass scoping.
+    if [[ "${UCC_EXPLICIT_TARGETS:-0}" == "1" ]]; then
+      case "$_pname" in
+        skip-display-mode|destructive-updates) ;;  # always relevant
+        *)
+          local _env_key
+          _env_key="UIC_PREF_$(echo "${_pname//-/_}" | tr '[:lower:]' '[:upper:]')"
+          [[ "$_referenced_prefs" == *"${_env_key}|"* ]] || continue
+          ;;
+      esac
     fi
     uic_preference --name "${_pref_names[$_i]}" --default "${_pref_defaults[$_i]}" \
       --options "${_pref_options[$_i]}" --rationale "${_pref_rationales[$_i]}" \
