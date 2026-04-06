@@ -179,15 +179,32 @@ sudo -v && ./install.sh
 
 ## Target Selection
 
-Individual targets can be disabled in `defaults/selection.yaml` under the
-`disabled:` list. Disabled targets are skipped even in `--all` mode and
-shown as `[disabled]` in the output.
+`defaults/selection.yaml` ships repository defaults — read-only at runtime.
+User overrides live in `~/.ai-stack/selection.yaml` and persist across runs.
+The interactive prompt asks per-target whether to enable or disable, and
+writes the choice to the user-local file.
 
 Components are derived from the YAML manifests and serve as pure
 organizational grouping. Platform support is declared per component in the
 `ucc/software/*.yaml` and `ucc/system/*.yaml` manifests. On unsupported
 hosts such components are skipped automatically instead of aborting the
 whole installer.
+
+### Display modes
+
+The `skip-display-mode` preference controls output verbosity:
+- `full` (default): every target is shown with its current state
+- `fast`: hides non-selected targets and unrelated components — good for
+  targeted runs like `./install.sh ariaflow`
+
+### Preferred driver policy
+
+When a target is detected installed via a non-preferred driver (e.g.
+ollama installed via curl while the preferred driver is brew), the script
+prompts inline with three choices: migrate now, ignore permanently, or
+warn next run. Permanent ignores are saved to
+`~/.ai-stack/target-overrides.yaml` so the prompt only appears once per
+target.
 
 ## macOS Validation
 

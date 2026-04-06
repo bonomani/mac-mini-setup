@@ -11,9 +11,9 @@ orchestration, driver-based package management, and post-convergence verificatio
 install.sh
   ├── UIC (Pre-convergence)
   │   ├── Gate evaluation (1 gate: supported-platform)
-  │   └── Preference resolution (13 preferences)
+  │   └── Preference resolution (14 preferences)
   ├── UCC (Convergence)
-  │   ├── Component runners (10 components)
+  │   ├── Component runners (9 components + verify)
   │   ├── Driver dispatch (33 drivers)
   │   └── Target orchestration (108 targets across 9 YAML files)
   ├── TIC (Verification)
@@ -67,7 +67,7 @@ Key features:
 | supported-platform | hard/global | Block unsupported platforms |
 
 All other preconditions are now **capability/precondition targets**: sudo-available,
-docker-settings-file, networkquality-available, ai-apps-template, network-available,
+networkquality-available, ai-apps-template, network-available,
 docker-available, mps-available, cuda-available.
 
 ## Usage

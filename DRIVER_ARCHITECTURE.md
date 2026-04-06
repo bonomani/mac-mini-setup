@@ -113,7 +113,6 @@ Only 1 gate remains:
 
 All other gates have been converted to targets:
 - `ai-apps-template` → precondition target in ai-apps.yaml
-- `docker-settings-file` → precondition target in docker.yaml
 - `networkquality-available` → capability target in cli-tools.yaml
 - `sudo-available` → capability target in system.yaml
 - `network-available` → capability target in homebrew.yaml
