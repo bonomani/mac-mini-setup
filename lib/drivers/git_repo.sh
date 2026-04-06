@@ -53,7 +53,12 @@ _ucc_driver_git_repo_action() {
   case "$action" in
     install)
       mkdir -p "$(dirname "$dir")"
-      ucc_run git clone --branch "$branch" "$url" "$dir"
+      # Prefer gh repo clone (uses gh auth, works for private repos)
+      if command -v gh >/dev/null 2>&1 && [[ "$repo" != http* && "$repo" != git@* ]]; then
+        ucc_run gh repo clone "$repo" "$dir" -- --branch "$branch"
+      else
+        ucc_run git clone --branch "$branch" "$url" "$dir"
+      fi
       if [[ -n "$upstream" ]]; then
         ucc_run git -C "$dir" remote add upstream "$(_git_repo_url "$upstream")"
       fi
