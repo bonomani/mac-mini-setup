@@ -137,5 +137,5 @@ YAML files declare **what** (names, values, relationships), never **when** or **
 
 ### Naming
 
-- Functions called directly from YAML (no leading underscore): `ollama_host_supported`, `brew_service_is_started`
+- Functions called directly from YAML (no leading underscore): `docker_resources_observe`, `brew_service_is_started`
 - Internal helpers not called from YAML (leading underscore): `_docker_cask_ensure`, `_ai_cache_get`

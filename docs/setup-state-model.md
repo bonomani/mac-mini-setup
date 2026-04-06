@@ -134,7 +134,6 @@ Meaning:
 - dependency readiness is checked via capability/precondition targets
 - examples:
   - `docker-available` — Docker daemon reachable
-  - `docker-settings-file` — Docker settings file present
   - `network-available` — Internet connectivity
   - `sudo-available` — passwordless sudo for macOS config targets
 
