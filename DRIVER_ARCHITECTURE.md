@@ -84,7 +84,6 @@ in YAML. A target without `driver.kind` falls through silently (dispatcher retur
 | `pmset` | macos_defaults.sh | macOS pmset power | `setting`, `value` |
 | `softwareupdate-defaults` | macos_swupdate.sh | macOS SU defaults | `domain`, `key`, `value` |
 | `softwareupdate-schedule` | swupdate_schedule.sh | macOS SU schedule | — |
-| `docker-settings` | docker.sh | Docker Desktop resources | — |
 | `cli-symlink` | cli_symlink.sh | Binary symlink | `src_path`, `link_relpath`, `cmd` |
 | `script-installer` | script_installer.sh | curl installer + upgrade | `install_url`, `install_dir` |
 | `zsh-config` | zsh_config.sh | Set key=value in zsh config | `key`, `value`, `config_file` |
@@ -138,8 +137,7 @@ All other gates have been converted to targets:
 | `cuda-available` | ai-python-stack.yaml | Hardware capability probe |
 | `network-available` | homebrew.yaml | Connectivity probe |
 | `docker-available` | docker.yaml | Daemon reachability probe |
-| `docker-settings-file` | docker.yaml | Settings file precondition |
 | `ai-apps-template` | ai-apps.yaml | Template file precondition |
 | `sudo-available` | system.yaml | Authorization probe |
-| `networkquality-available` | dev-tools.yaml | Command availability probe |
+| `networkquality-available` | cli-tools.yaml | Command availability probe |
 | `system-composition` | system.yaml | Meta-target (composition) |

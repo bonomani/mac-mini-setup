@@ -14,8 +14,8 @@ install.sh
   │   └── Preference resolution (13 preferences)
   ├── UCC (Convergence)
   │   ├── Component runners (10 components)
-  │   ├── Driver dispatch (30 drivers)
-  │   └── Target orchestration (109 targets across 9 YAML files)
+  │   ├── Driver dispatch (33 drivers)
+  │   └── Target orchestration (108 targets across 9 YAML files)
   ├── TIC (Verification)
   │   ├── Software verify (11 tests)
   │   ├── System verify (6 tests)
@@ -31,7 +31,7 @@ install.sh
 | cli-tools | cli-tools.yaml | all | — | Git, CLI tools, Oh My Zsh |
 | node-stack | node-stack.yaml | all | — | Node.js, nvm, npm global packages |
 | vscode-stack | vscode.yaml | all | — | VS Code, extensions, settings |
-| docker | docker.yaml | macos | 4 | Docker Desktop + resources + capabilities |
+| docker | docker.yaml | macos | 3 | Docker Desktop + resources + capabilities |
 | ai-apps | ai-apps.yaml | all | 16 | Ollama + models + Docker Compose services |
 | ai-python-stack | ai-python-stack.yaml | all | 18 | PyTorch, HF, LangChain, pip groups, GPU probes |
 | build-tools | build-tools.yaml | all | — | Build tools |
@@ -39,13 +39,13 @@ install.sh
 
 ## Driver Architecture
 
-30 drivers across 4 classes. See `DRIVER_ARCHITECTURE.md` for full details.
+33 drivers across 4 classes. See `DRIVER_ARCHITECTURE.md` for full details.
 
 - **Package** (15): `package`, `brew`, `app-bundle`, `pip`, `npm-global`, `pyenv-brew`,
   `pyenv-version`, `nvm`, `nvm-version`, `vscode-marketplace`, `ollama-model`, `pip-bootstrap`,
   `build-deps`, `git-repo`, `curl-installer`
-- **Config** (14): `brew-analytics`, `brew-unlink`, `json-merge`, `user-defaults`, `pmset`,
-  `softwareupdate-defaults`, `softwareupdate-schedule`, `docker-settings`, `cli-symlink`,
+- **Config** (13): `brew-analytics`, `brew-unlink`, `json-merge`, `user-defaults`, `pmset`,
+  `softwareupdate-defaults`, `softwareupdate-schedule`, `cli-symlink`,
   `script-installer`, `zsh-config`, `path-export`, `bin-script`, `git-global`
 - **Runtime** (5): `brew-service`, `docker-compose-service`, `launchd`, `custom-daemon`, `compose-file`
 
