@@ -10,8 +10,8 @@ _git_repo_url() {
   local repo="$1"
   # If already a URL, use as-is
   [[ "$repo" == http* || "$repo" == git@* ]] && { printf '%s' "$repo"; return; }
-  # Otherwise, assume GitHub
-  printf 'https://github.com/%s.git' "$repo"
+  # Otherwise, assume GitHub — prefer SSH (uses user's key, no prompt)
+  printf 'git@github.com:%s.git' "$repo"
 }
 
 _ucc_driver_git_repo_observe() {
@@ -41,10 +41,11 @@ _ucc_driver_git_repo_observe() {
 
 _ucc_driver_git_repo_action() {
   local cfg_dir="$1" yaml="$2" target="$3" action="$4"
-  local repo dest branch url
+  local repo dest branch url upstream
   repo="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.repo")"
   dest="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.dest")"
   branch="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.branch" 2>/dev/null)"
+  upstream="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.upstream" 2>/dev/null)"
   branch="${branch:-main}"
   [[ -n "$repo" && -n "$dest" ]] || return 1
   url="$(_git_repo_url "$repo")"
@@ -53,6 +54,9 @@ _ucc_driver_git_repo_action() {
     install)
       mkdir -p "$(dirname "$dir")"
       ucc_run git clone --branch "$branch" "$url" "$dir"
+      if [[ -n "$upstream" ]]; then
+        ucc_run git -C "$dir" remote add upstream "$(_git_repo_url "$upstream")"
+      fi
       ;;
     update)
       ucc_run git -C "$dir" pull --ff-only origin "$branch"
