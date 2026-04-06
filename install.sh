@@ -513,6 +513,21 @@ while IFS= read -r _dt; do
   UCC_DISABLED_TARGETS="${UCC_DISABLED_TARGETS}${_dt}|"
 done <<< "$_all_disabled"
 
+# Load per-target preferred-driver ignore list (~/.ai-stack/target-overrides.yaml)
+export UCC_PREFERRED_DRIVER_IGNORED="|"
+_OVERRIDES_FILE="${UIC_PREF_FILE%/*}/target-overrides.yaml"
+if [[ -f "$_OVERRIDES_FILE" ]]; then
+  while IFS= read -r _line; do
+    [[ -n "$_line" ]] && UCC_PREFERRED_DRIVER_IGNORED="${UCC_PREFERRED_DRIVER_IGNORED}${_line}|"
+  done < <(python3 -c "
+import yaml, sys
+with open(sys.argv[1]) as f:
+    d = yaml.safe_load(f) or {}
+for t in (d.get('preferred-driver-ignore') or []):
+    print(t)
+" "$_OVERRIDES_FILE" 2>/dev/null || true)
+fi
+
 # For explicit CLI targets in interactive mode, prompt enable/disable and persist
 if [[ "${_EXPLICIT_TARGETS:-0}" == "1" && "${UCC_INTERACTIVE:-0}" == "1" && -c /dev/tty ]]; then
   for _et in "${TO_RUN[@]}"; do

@@ -520,6 +520,18 @@ load_uic_preferences() {
     if [[ "$_pname" == "default-selection" && "${UCC_EXPLICIT_TARGETS:-0}" == "1" ]]; then
       continue
     fi
+    # preferred-driver-policy is handled inline when drift is detected
+    # (per-target, on demand). Resolve as non-interactive so it picks up
+    # env/file/default without prompting upfront.
+    if [[ "$_pname" == "preferred-driver-policy" ]]; then
+      local _saved_interactive="${UCC_INTERACTIVE:-0}"
+      UCC_INTERACTIVE=0
+      uic_preference --name "${_pref_names[$_i]}" --default "${_pref_defaults[$_i]}" \
+        --options "${_pref_options[$_i]}" --rationale "${_pref_rationales[$_i]}" \
+        --scope "global"
+      UCC_INTERACTIVE="$_saved_interactive"
+      continue
+    fi
     # When explicit targets are given, scope preferences to those used by selected components.
     # Always-relevant prefs bypass scoping.
     if [[ "${UCC_EXPLICIT_TARGETS:-0}" == "1" ]]; then

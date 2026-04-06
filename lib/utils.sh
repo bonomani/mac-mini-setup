@@ -264,10 +264,67 @@ cli_install_source() {
   fi
 }
 
-# Handle a CLI tool installed outside brew according to preferred-driver-policy.
+# Add a target to the per-target preferred-driver ignore list.
+# Persists to ~/.ai-stack/target-overrides.yaml.
+_preferred_driver_ignore_add() {
+  local target="$1"
+  local overrides_file="${UIC_PREF_FILE%/*}/target-overrides.yaml"
+  mkdir -p "$(dirname "$overrides_file")"
+  python3 -c "
+import yaml, sys, os
+path, target = sys.argv[1], sys.argv[2]
+data = {}
+if os.path.exists(path):
+    with open(path) as f:
+        data = yaml.safe_load(f) or {}
+ignored = data.get('preferred-driver-ignore') or []
+if target not in ignored:
+    ignored.append(target)
+    data['preferred-driver-ignore'] = ignored
+    with open(path, 'w') as f:
+        yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+" "$overrides_file" "$target" 2>/dev/null
+}
+
+# Handle a CLI tool installed outside brew.
+# Per-target ignore list overrides the global preferred-driver-policy.
+# In interactive mode, prompts the user inline with migrate/ignore/warn choices.
 # Usage: handle_unmanaged_brew_package <formula> <display_name>
 handle_unmanaged_brew_package() {
   local formula="$1" display_name="${2:-$1}"
+  # Check per-target ignore list first
+  if [[ -n "${UCC_PREFERRED_DRIVER_IGNORED:-}" && "${UCC_PREFERRED_DRIVER_IGNORED}" == *"|${formula}|"* ]]; then
+    return 0
+  fi
+  # Interactive mode: prompt inline
+  if [[ "${UCC_INTERACTIVE:-0}" == "1" && -c /dev/tty ]]; then
+    printf '\n  [?] %s is installed outside brew, but the preferred driver is brew.\n' "$display_name"
+    printf '      Options:\n'
+    printf '        1) migrate — uninstall and reinstall via brew (this run only)\n'
+    printf '        2) ignore  — accept the current install permanently (saved)\n'
+    printf '       *3) warn    — show this warning again next run\n'
+    printf '      → '
+    local _choice; read -r _choice < /dev/tty
+    case "$_choice" in
+      1)
+        sudo_is_available || { log_warn "Migrating ${display_name} requires admin; run: sudo -v"; return 125; }
+        ucc_run brew install "$formula" || return 1
+        return 0
+        ;;
+      2)
+        _preferred_driver_ignore_add "$formula"
+        UCC_PREFERRED_DRIVER_IGNORED="${UCC_PREFERRED_DRIVER_IGNORED}${formula}|"
+        export UCC_PREFERRED_DRIVER_IGNORED
+        log_info "${display_name} added to ignore list (~/.ai-stack/target-overrides.yaml)"
+        return 0
+        ;;
+      *)
+        log_warn "${display_name} installed outside brew. Will ask again next run."
+        return 124
+        ;;
+    esac
+  fi
+  # Non-interactive: fall back to global policy
   local policy="${UIC_PREF_PREFERRED_DRIVER_POLICY:-warn}"
   case "$policy" in
     ignore)
