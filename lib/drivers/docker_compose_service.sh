@@ -41,5 +41,6 @@ _ucc_driver_docker_compose_service_evidence() {
   [[ -n "$ver"    ]] && out="version=$ver"
   [[ -n "$digest" ]] && out="${out:+$out  }digest=$digest"
   [[ -n "$ref"    ]] && out="${out:+$out  }ref=$ref"
-  [[ -n "$out" ]] && printf '%s' "$out"
+  out="${out:+$out  }log=docker logs ${svc}"
+  printf '%s' "$out"
 }

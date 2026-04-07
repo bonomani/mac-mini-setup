@@ -88,12 +88,33 @@ _ucc_driver_service_evidence() {
   case "$_SVC_BACKEND" in
     brew)
       [[ -n "$_SVC_REF" ]] || return 1
-      local ver; ver="$(_brew_cached_version "$_SVC_REF")"
-      [[ -n "$ver" ]] && printf 'version=%s' "$ver"
+      local ver out
+      ver="$(_brew_cached_version "$_SVC_REF")"
+      [[ -n "$ver" ]] && out="version=$ver"
+      # Conventional brew services log location
+      local prefix log
+      prefix="$(brew --prefix 2>/dev/null)"
+      if [[ -n "$prefix" ]]; then
+        for log in "$prefix/var/log/${_SVC_REF}.log" "$HOME/Library/Logs/${_SVC_REF}.log"; do
+          if [[ -f "$log" ]]; then
+            out="${out:+$out  }log=$log"
+            break
+          fi
+        done
+      fi
+      [[ -n "$out" ]] && printf '%s' "$out"
       ;;
     launchd)
       [[ -n "$_SVC_PLIST" ]] || return 1
-      printf 'plist=%s' "$(_service_launchd_plist_file)"
+      local plist_file log_path
+      plist_file="$(_service_launchd_plist_file)"
+      printf 'plist=%s' "$plist_file"
+      # Read StandardOutPath / StandardErrorPath if defined
+      if [[ -f "$plist_file" ]] && command -v plutil >/dev/null 2>&1; then
+        log_path="$(plutil -extract StandardOutPath raw -- "$plist_file" 2>/dev/null \
+          || plutil -extract StandardErrorPath raw -- "$plist_file" 2>/dev/null || true)"
+        [[ -n "$log_path" ]] && printf '  log=%s' "$log_path"
+      fi
       ;;
   esac
 }

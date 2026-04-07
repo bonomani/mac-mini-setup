@@ -29,13 +29,15 @@ _ucc_driver_custom_daemon_action() {
 
 _ucc_driver_custom_daemon_evidence() {
   local cfg_dir="$1" yaml="$2" target="$3"
-  local bin ver path
+  local bin ver path log_path
   bin="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.bin")"
   [[ -n "$bin" ]] || return 1
   ver="$("$bin" --version 2>/dev/null | head -1 | awk '{print $NF}')"
   path="$(command -v "$bin" 2>/dev/null || true)"
+  log_path="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.log_path" 2>/dev/null || true)"
   [[ -n "$ver" ]] || return 1
   printf 'version=%s' "$ver"
-  [[ -n "$path" ]] && printf '  path=%s' "$path"
+  [[ -n "$path"     ]] && printf '  path=%s' "$path"
+  [[ -n "$log_path" ]] && printf '  log=%s' "$log_path"
   # latest= appended by generic _ucc_driver_github_latest in ucc_drivers.sh
 }
