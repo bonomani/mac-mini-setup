@@ -86,8 +86,19 @@ _ucc_driver_pip_action() {
     pip_cmd="python3 -m pip"
   fi
   case "$action" in
-    install) ucc_run $pip_cmd install -q $pkgs && pip_cache_versions ;;
-    update)  ucc_run $pip_cmd install -q --upgrade $pkgs && pip_cache_versions ;;
+    install)
+      # Plain install: don't touch existing deps unless required by <pkgs>.
+      ucc_run $pip_cmd install -q --upgrade-strategy only-if-needed $pkgs \
+        && pip_cache_versions
+      ;;
+    update)
+      # Upgrade only the named packages; bump transitive deps only when
+      # the named packages actually require it. Prevents one pip-group-*
+      # target from yanking shared deps (torch, langchain, …) past the
+      # constraints another group's pinned packages need.
+      ucc_run $pip_cmd install -q --upgrade --upgrade-strategy only-if-needed $pkgs \
+        && pip_cache_versions
+      ;;
   esac
 }
 
