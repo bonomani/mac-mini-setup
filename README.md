@@ -9,7 +9,7 @@ state can describe the whole machine, not only individual components.
 ## Governance
 
 - BGS entry: `./BGS.md`
-- decision record: `./docs/bgs-decision.md`
+- decision record: `./docs/bgs-decision.yaml`
 - BISS evidence: `./docs/biss-classification.md`
 - ASM state model: `./docs/setup-state-model.md`
 - ASM state artifact: `./docs/setup-state-artifact.yaml`
@@ -39,7 +39,7 @@ state can describe the whole machine, not only individual components.
 
 | File | Type | Purpose | Key Notes |
 |---|---|---|---|
-| `docs/bgs-decision.md` | Markdown | BGS decision record | Scope, controls, evidence, limitations |
+| `docs/bgs-decision.yaml` | YAML | BGS decision record | Validated by `tools/check-bgs.sh` against the BGS Grade-2 schema |
 | `docs/biss-classification.md` | Markdown | BISS classification | Boundary inventory and axis mapping |
 | `docs/setup-state-model.md` | Markdown | ASM setup model | States, transitions, admissibility |
 | `docs/setup-state-artifact.yaml` | YAML | Example ASM artifact | Validator-backed sample state |
@@ -124,6 +124,18 @@ state can describe the whole machine, not only individual components.
 | File | Type | Purpose | Key Notes |
 |---|---|---|---|
 | `tests/` | Python | Unit tests | 30 unit tests across 8 test files  |
+
+### BGS compliance check
+
+`tools/check-bgs.sh` runs the BGS Grade-2 validator from `../BGSPrivate/bgs/`
+against `BGS.md` and the linked decision record. Override the location with
+`BGS_REPO=/path/to/bgs`. The script exits 0 (pass / no validator found) or
+non-zero on validation FAIL.
+
+Install as a pre-commit hook so future BGS bumps fail loudly:
+```sh
+ln -sf ../../tools/check-bgs.sh .git/hooks/pre-commit
+```
 
 ### Runtime Templates And Scripts
 
