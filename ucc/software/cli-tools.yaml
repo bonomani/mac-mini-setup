@@ -64,9 +64,13 @@ targets:
     type: package
     state_model: package
     display_name: htop
+    provided_by_tool: pkg
     driver:
-      kind: package
-      ref: htop
+      kind: pkg
+      backends:
+      - brew: htop
+      - native-pm: htop
+      bin: htop
   cli-btop:
     component: cli-tools
     profile: configured
