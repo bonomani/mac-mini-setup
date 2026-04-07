@@ -35,6 +35,7 @@ _DRIVER_META_STATIC = {
     "nvm-version":           ("nvm",            "nvm"),
     "ollama-model":          ("ollama",         "ollama"),
     "service":               (None,             None),  # backend-aware, see lib/drivers/service.sh
+    "pkg":                   (None,             None),  # backend-aware, see lib/drivers/pkg.sh
     "docker-compose-service":("docker-desktop", "docker-compose"),
     "git-repo":              (None,             "git"),
 }
@@ -82,6 +83,7 @@ DRIVER_SCHEMA = {
     "custom-daemon":          {"required": ["bin", "process"], "optional": ["github_repo"]},
     "json-merge":             {"required": ["settings_relpath", "patch_relpath"], "optional": []},
     "setting":                {"required": ["backend", "key", "value"], "optional": ["domain", "type", "requires_sudo"]},
+    "pkg":                    {"required": ["backends"], "optional": ["bin", "github_repo", "migration_safety"]},
     "softwareupdate-schedule":{"required": [], "optional": []},
     "home-artifact":          {"required": ["subkind"], "optional": ["script_name", "bin_dir", "src_path", "link_relpath", "cmd", "hint"]},
     "script-installer":       {"required": ["install_url", "install_dir"], "optional": ["install_args", "upgrade_script"]},
@@ -100,6 +102,7 @@ KNOWN_PACKAGE_DRIVERS = {
     "git-repo",
     "curl-installer",
     "package",
+    "pkg",
     "custom",
     "brew",
     "macos-clt",

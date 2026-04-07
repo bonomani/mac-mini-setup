@@ -23,6 +23,7 @@ for _ucc_drv_file in \
   "$_UCC_DRIVERS_DIR/pyenv.sh" \
   "$_UCC_DRIVERS_DIR/nvm.sh" \
   "$_UCC_DRIVERS_DIR/service.sh" \
+  "$_UCC_DRIVERS_DIR/pkg.sh" \
   "$_UCC_DRIVERS_DIR/custom_daemon.sh" \
   "$_UCC_DRIVERS_DIR/compose_file.sh" \
   "$_UCC_DRIVERS_DIR/docker_compose_service.sh" \
