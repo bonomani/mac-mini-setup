@@ -70,7 +70,7 @@ DRIVER_SCHEMA = {
     "app-bundle":             {"required": ["app_path", "brew_cask"], "optional": ["update_api", "download_url_tpl", "package_ext"]},
     "pip":                    {"required": ["probe_pkg", "install_packages"], "optional": ["min_version"]},
     "pip-bootstrap":          {"required": [], "optional": []},
-    "npm-global":             {"required": ["package"], "optional": []},
+    "npm-global":             {"required": ["package"], "optional": ["bin", "migration_safety"]},
     "vscode-marketplace":     {"required": ["extension_id"], "optional": []},
     "pyenv-version":          {"required": ["version"], "optional": []},
     "pyenv-brew":             {"required": [], "optional": []},
