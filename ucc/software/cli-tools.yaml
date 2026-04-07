@@ -18,9 +18,13 @@ targets:
     type: package
     state_model: package
     display_name: Git
+    provided_by_tool: pkg
     driver:
-      kind: package
-      ref: git
+      kind: pkg
+      backends:
+      - brew: git
+      - native-pm: git
+      bin: git
   git-global-config:
     component: cli-tools
     profile: configured
@@ -37,27 +41,39 @@ targets:
     type: package
     state_model: package
     display_name: jq
+    provided_by_tool: pkg
     driver:
-      kind: package
-      ref: jq
+      kind: pkg
+      backends:
+      - brew: jq
+      - native-pm: jq
+      bin: jq
   cli-wget:
     component: cli-tools
     profile: configured
     type: package
     state_model: package
     display_name: wget
+    provided_by_tool: pkg
     driver:
-      kind: package
-      ref: wget
+      kind: pkg
+      backends:
+      - brew: wget
+      - native-pm: wget
+      bin: wget
   cli-curl:
     component: cli-tools
     profile: configured
     type: package
     state_model: package
     display_name: curl
+    provided_by_tool: pkg
     driver:
-      kind: package
-      ref: curl
+      kind: pkg
+      backends:
+      - brew: curl
+      - native-pm: curl
+      bin: curl
   cli-htop:
     component: cli-tools
     profile: configured
@@ -77,100 +93,143 @@ targets:
     type: package
     state_model: package
     display_name: btop
+    provided_by_tool: pkg
     driver:
-      kind: package
-      ref: btop
+      kind: pkg
+      backends:
+      - brew: btop
+      - native-pm: btop
+      bin: btop
   cli-tmux:
     component: cli-tools
     profile: configured
     type: package
     state_model: package
     display_name: tmux
+    provided_by_tool: pkg
     driver:
-      kind: package
-      ref: tmux
+      kind: pkg
+      backends:
+      - brew: tmux
+      - native-pm: tmux
+      bin: tmux
   cli-fzf:
     component: cli-tools
     profile: configured
     type: package
     state_model: package
     display_name: fzf
+    provided_by_tool: pkg
     driver:
-      kind: package
-      ref: fzf
+      kind: pkg
+      backends:
+      - brew: fzf
+      - native-pm: fzf
+      bin: fzf
   cli-ripgrep:
     component: cli-tools
     profile: configured
     type: package
     state_model: package
     display_name: ripgrep
+    provided_by_tool: pkg
     driver:
-      kind: package
-      ref: ripgrep
+      kind: pkg
+      backends:
+      - brew: ripgrep
+      - native-pm: ripgrep
+      bin: ripgrep
   cli-fd:
     component: cli-tools
     profile: configured
     type: package
     state_model: package
     display_name: fd
+    provided_by_tool: pkg
     driver:
-      kind: package
-      ref: fd
-      apt_ref: fd-find
+      kind: pkg
+      backends:
+      - brew: fd
+      - native-pm: fd-find
+      bin: fd
   cli-tree:
     component: cli-tools
     profile: configured
     type: package
     state_model: package
     display_name: tree
+    provided_by_tool: pkg
     driver:
-      kind: package
-      ref: tree
+      kind: pkg
+      backends:
+      - brew: tree
+      - native-pm: tree
+      bin: tree
   cli-uv:
     component: cli-tools
     profile: configured
     type: package
     state_model: package
     display_name: uv
+    provided_by_tool: pkg
     driver:
-      kind: package
-      ref: uv
+      kind: pkg
+      backends:
+      - brew: uv
+      - native-pm: uv
+      bin: uv
   cli-pnpm:
     component: cli-tools
     profile: configured
     type: package
     state_model: package
     display_name: pnpm
+    provided_by_tool: pkg
     driver:
-      kind: package
-      ref: pnpm
+      kind: pkg
+      backends:
+      - brew: pnpm
+      - native-pm: pnpm
+      bin: pnpm
   cli-gcc:
     component: cli-tools
     profile: configured
     type: package
     state_model: package
     display_name: GCC
+    provided_by_tool: pkg
     driver:
-      kind: package
-      ref: gcc
+      kind: pkg
+      backends:
+      - brew: gcc
+      - native-pm: gcc
+      bin: gcc
   cli-gh:
     component: cli-tools
     profile: configured
     type: package
     state_model: package
     display_name: GitHub CLI
+    provided_by_tool: pkg
     driver:
-      kind: package
-      ref: gh
+      kind: pkg
+      backends:
+      - brew: gh
+      - native-pm: gh
+      bin: gh
   cli-llama.cpp:
     component: cli-tools
     profile: configured
     type: package
     state_model: package
     display_name: llama.cpp
+    provided_by_tool: pkg
     driver:
-      kind: package
-      ref: llama.cpp
+      kind: pkg
+      backends:
+      - brew: llama.cpp
+      - native-pm: llama.cpp
+      bin: llama.cpp
   cli-opencode:
     component: cli-tools
     profile: configured
@@ -191,18 +250,26 @@ targets:
     type: package
     state_model: package
     display_name: aria2
+    provided_by_tool: pkg
     driver:
-      kind: package
-      ref: aria2
+      kind: pkg
+      backends:
+      - brew: aria2
+      - native-pm: aria2
+      bin: aria2
   cli-cmake:
     component: cli-tools
     profile: configured
     type: package
     state_model: package
     display_name: CMake
+    provided_by_tool: pkg
     driver:
-      kind: package
-      ref: cmake
+      kind: pkg
+      backends:
+      - brew: cmake
+      - native-pm: cmake
+      bin: cmake
   oh-my-zsh:
     component: cli-tools
     profile: configured
