@@ -49,6 +49,71 @@ package. A user might want to override `git_global` user.email per-machine,
 or pin a `service` driver to a specific backend. Keeping it general avoids
 re-doing it later.
 
+### Phase 0c — BGS Grade-2 compliance refresh against `BGSPrivate/bgs`  (~1 day)
+
+**Problem**: BGS canonical home moved to `~/repos/github/bonomani/BGSPrivate/bgs/`
+and advanced to Grade 2 (Extension Model: profiles + policies, mechanical
+validators, stricter schema). This repo's BGS artifacts predate that and
+would fail `tools/check-bgs-compliance.py`.
+
+**Concrete gaps**:
+1. `docs/bgs-decision.md` is missing schema-required fields:
+   `decision_id`, `bgs_version_ref` (immutable, no branch),
+   `members_used`, `overlays_used`, `member_version_refs` (sha/tag per
+   member), `external_controls` (5 required keys),
+   `evidence_refs[]`.
+2. CR-7 violations: any `master`/`HEAD`/`main` refs in BGS docs are
+   rejected. Replace with sha or tag.
+3. `BGS.md` lacks `bgs_version_ref` and a pointer at the new canonical
+   home.
+4. `docs/bgs-compliance-report.md` references the old `bgs/` paths in
+   places.
+5. README.md / cross-doc links may still point at the old location.
+6. Validator never wired into CI.
+
+**Approach**:
+1. Re-shape `docs/bgs-decision.md` to satisfy
+   `BGSPrivate/bgs/schemas/decision-record.schema.json`:
+   - Add all required fields with concrete values.
+   - `members_used: [BISS, ASM, UIC, UCC]`.
+   - `overlays_used: []` unless adopting `Basic`/`RIG`.
+   - `member_version_refs`: pin each member to a sha or tag from its
+     repo (UIC, UCC, ASM, BISS — TIC if listed).
+   - `external_controls`: declare each of the 5 keys as
+     `external` / `out_of_scope` / `in_scope_with_link`.
+   - `evidence_refs[]`: list paths to UIC preflight artifacts, UCC
+     convergence reports, ASM model doc, BISS classification doc.
+2. Update `BGS.md`: add `bgs_version_ref: bgs@<sha-or-tag>` and
+   `bgs_canonical: ../BGSPrivate/bgs`.
+3. Refresh `docs/bgs-compliance-report.md`:
+   - Re-point to `BGSPrivate/bgs` for slice/schema/example refs.
+   - Verify CR-1a (smallest sufficient slice), CR-1b (ASM-based for
+     stateful), CR-7 (no branch refs) all still hold.
+4. Optional Grade-2 declaration: if/when the schema gains
+   `profiles_used`, declare ASM's `SOFTWARE-MODEL.md` profile (we use
+   its `state_model: package|config|...` vocabulary throughout YAML).
+5. Wire the validator:
+   ```sh
+   python3 ../BGSPrivate/bgs/tools/check-bgs-compliance.py docs/bgs-decision.md
+   ```
+   Add as a pre-commit hook or CI step. Fail the run on validation
+   error.
+6. `git grep` for `../bgs/` and `bgs/` references; rewrite to
+   `BGSPrivate/bgs/` where they refer to the suite (not this repo's
+   own state).
+
+**Risk**: low. Pure docs and metadata. No code paths affected.
+**Payoff**: passes the new validator, audit-ready, sets up mechanical
+drift detection so the next BGS bump is a one-command refresh instead
+of a forensic exercise.
+
+**Out of scope**:
+- Adopting new overlays (`Basic`, `RIG`) — declare absence honestly.
+- Claiming SMGV (would require formalizing TIC as a slice member) —
+  separate decision.
+- Profile/policy declarations — additive in Grade 2; do later if
+  needed.
+
 ### Phase 1 — Group E: filesystem plumbing  (~1-2 days)
 
 **New driver**: `lib/drivers/fs_artifact.sh` with `driver.kind: fs-artifact`
