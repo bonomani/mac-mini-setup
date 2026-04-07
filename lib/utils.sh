@@ -226,13 +226,19 @@ desktop_app_install_source() {
 # foreign package manager (binaries, libs, manpages under its prefix). It MUST
 # NOT touch anything under $HOME — user config, caches, data, dotfiles, app
 # state — even if the foreign PM offered to. The new driver is expected to
-# read the same user files transparently. This keeps `policy=migrate` safe to
-# enable globally.
+# read the same user files transparently.
 #
-# Usage: handle_foreign_install <display_name> <foreign_owner> <warn_hint> <migrator_fn> [migrator_args...]
+# Safety gate: callers declare whether the migration is "safe" (PM-only,
+# reversible, no user data touched) or "destructive" (anything else). Safe
+# migrations bypass the warn gate and auto-migrate on the default policy,
+# because the worst case is reinstalling a binary. Destructive migrations
+# require explicit policy=migrate.
+#
+# Usage: handle_foreign_install <display_name> <foreign_owner> <safety> <warn_hint> <migrator_fn> [migrator_args...]
 #   <foreign_owner>   short tag identifying who owns the conflicting artifact
 #                     (e.g. "brew", "brew-cask", "pip"); used in log messages.
 #                     Empty means no conflict — returns 0 immediately.
+#   <safety>          "safe" or "destructive".
 #   <warn_hint>       full command suggestion shown to the user under policy=warn.
 #   <migrator_fn>     function to call under policy=migrate; must return 0 on
 #                     success, non-zero on failure.
@@ -240,10 +246,16 @@ desktop_app_install_source() {
 # Returns: 0=handled/no-op, 1=migrate failed, 124=warn (caller should abort
 #          install), 125=migrate needs sudo.
 handle_foreign_install() {
-  local display_name="$1" owner="$2" hint="$3" migrator="$4"
-  shift 4
+  local display_name="$1" owner="$2" safety="$3" hint="$4" migrator="$5"
+  shift 5
   [[ -z "$owner" ]] && return 0
   local policy="${UIC_PREF_PREFERRED_DRIVER_POLICY:-warn}"
+  # Safe migrations skip the warn gate.
+  if [[ "$safety" == "safe" && "$policy" == "warn" ]]; then
+    log_info "${display_name} installed via ${owner}; auto-migrating (safe, no user data touched)."
+    "$migrator" "$@" || return 1
+    return 0
+  fi
   case "$policy" in
     ignore)
       log_info "${display_name} installed via ${owner}; ignoring (policy=ignore)."
@@ -272,7 +284,7 @@ desktop_app_handle_unmanaged_cask() {
   if [[ "${UIC_PREF_PREFERRED_DRIVER_POLICY:-warn}" == "migrate" ]]; then
     sudo_is_available || { log_warn "Migrating ${display_name} requires admin; run: sudo -v"; return 125; }
   fi
-  handle_foreign_install "$display_name" "outside brew-cask" "$hint" \
+  handle_foreign_install "$display_name" "outside brew-cask" "destructive" "$hint" \
     brew_cask_migrate_install "$cask_id"
 }
 
