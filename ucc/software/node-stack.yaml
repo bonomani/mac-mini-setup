@@ -51,27 +51,42 @@ targets:
     type: package
     state_model: package
     display_name: Codex CLI
+    depends_on:
+    - node-lts
+    provided_by_tool: pkg
     driver:
-      kind: npm-global
-      package: '@openai/codex'
+      kind: pkg
+      backends:
+      - npm: '@openai/codex'
+      bin: codex
   npm-global-@anthropic-ai/claude-code:
     component: node-stack
     profile: configured
     type: package
     state_model: package
     display_name: Claude Code CLI
+    depends_on:
+    - node-lts
+    provided_by_tool: pkg
     driver:
-      kind: npm-global
-      package: '@anthropic-ai/claude-code'
+      kind: pkg
+      backends:
+      - npm: '@anthropic-ai/claude-code'
+      bin: claude-code
   npm-global-bmad-method:
     component: node-stack
     profile: configured
     type: package
     state_model: package
     display_name: BMAD Method CLI
+    depends_on:
+    - node-lts
+    provided_by_tool: pkg
     driver:
-      kind: npm-global
-      package: bmad-method
+      kind: pkg
+      backends:
+      - npm: bmad-method
+      bin: bmad-method
   networkquality-available:
     component: node-stack
     profile: capability
