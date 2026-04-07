@@ -324,8 +324,25 @@ _assess_migration_safety() {
 # brew formula probe
 _migration_safety_brew() {
   local ref="$1"
-  local dependents services sysetc plists
+  local dependents services sysetc plists orphan_risk
   dependents="$(brew uses --installed --recursive "$ref" 2>/dev/null | head -1)"
+  # Orphan check: would removing <ref> leave critical leaves (e.g. node) with
+  # no dependents? Those are exactly what `brew autoremove` would purge.
+  # Even with HOMEBREW_NO_AUTOREMOVE=1 in our migrator, we err on the side of
+  # caution: if removing <ref> would orphan node/python/git/etc., classify
+  # destructive so the user explicitly opts in.
+  orphan_risk=""
+  local crit
+  for crit in node python python@3 git ruby; do
+    brew list --formula "$crit" >/dev/null 2>&1 || continue
+    # Is <crit> only depended on by <ref> (transitively)?
+    local users
+    users="$(brew uses --installed --recursive "$crit" 2>/dev/null | grep -vxF "$ref" | head -1)"
+    if [[ -z "$users" ]]; then
+      orphan_risk="$crit"
+      break
+    fi
+  done
   services="$(brew services list 2>/dev/null | awk -v r="$ref" '$1==r{print; exit}')"
   local prefix; prefix="$(brew --prefix 2>/dev/null)"
   sysetc=""
@@ -337,14 +354,15 @@ _migration_safety_brew() {
     plists="$(grep -lr --include='*.plist' -F "$prefix/opt/$ref" \
       /Library/LaunchDaemons /Library/LaunchAgents "$HOME/Library/LaunchAgents" 2>/dev/null | head -1)"
   fi
-  if [[ -z "$dependents" && -z "$services" && -z "$sysetc" && -z "$plists" ]]; then
-    printf 'safe\tdependents=0 services=none system_config=none launchd=none'
+  if [[ -z "$dependents" && -z "$services" && -z "$sysetc" && -z "$plists" && -z "$orphan_risk" ]]; then
+    printf 'safe\tdependents=0 services=none system_config=none launchd=none orphans=none'
   else
     local why=""
-    [[ -n "$dependents" ]] && why+="dependents "
-    [[ -n "$services" ]]   && why+="brew-services "
-    [[ -n "$sysetc" ]]     && why+="system-config "
-    [[ -n "$plists" ]]     && why+="launchd "
+    [[ -n "$dependents" ]]  && why+="dependents "
+    [[ -n "$services" ]]    && why+="brew-services "
+    [[ -n "$sysetc" ]]      && why+="system-config "
+    [[ -n "$plists" ]]      && why+="launchd "
+    [[ -n "$orphan_risk" ]] && why+="would-orphan=${orphan_risk} "
     printf 'destructive\t%s' "${why% }"
   fi
 }

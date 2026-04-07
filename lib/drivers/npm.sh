@@ -104,15 +104,17 @@ _npm_global_foreign_owner() {
 
 # Migrate away from a foreign install so npm-global can take over.
 # Usage: _npm_global_migrate <owner> <bin> <pkg>
+# IMPORTANT: HOMEBREW_NO_AUTOREMOVE=1 prevents brew from cascading the
+# uninstall to orphaned leaves like `node` (which would yank npm itself).
 _npm_global_migrate() {
   local owner="$1" bin="$2" pkg="$3"
   case "$owner" in
     brew)
-      ucc_run brew uninstall --formula "$bin" || return 1
+      HOMEBREW_NO_AUTOREMOVE=1 ucc_run brew uninstall --formula "$bin" || return 1
       brew_refresh_caches 2>/dev/null || true
       ;;
     brew-cask)
-      ucc_run brew uninstall --cask "$bin" || return 1
+      HOMEBREW_NO_AUTOREMOVE=1 ucc_run brew uninstall --cask "$bin" || return 1
       brew_refresh_caches 2>/dev/null || true
       ;;
     *)
