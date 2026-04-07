@@ -701,6 +701,9 @@ def validate(manifest, known_gates):
                 for key, value in driver.items():
                     if not isinstance(key, str) or not key.strip():
                         errors.append(f"target '{name}' driver contains an empty key")
+                    elif key == "backends":
+                        if not isinstance(value, list) or not value:
+                            errors.append(f"target '{name}' driver.backends must be a non-empty list")
                     elif not isinstance(value, (str, int, float, bool)):
                         errors.append(f"target '{name}' driver '{key}' must be a scalar")
                 # Driver schema validation

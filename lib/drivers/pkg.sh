@@ -26,27 +26,57 @@
 
 # ── Backend registry ─────────────────────────────────────────────────────────
 
-# brew (formula)
+# brew (formula). brew_observe already returns absent/outdated/<version>.
 _pkg_brew_available() { command -v brew >/dev/null 2>&1; }
 _pkg_brew_activate()  { :; }
 _pkg_brew_observe()   { brew_observe "$1"; }
 _pkg_brew_install()   { brew_install "$1"; }
 _pkg_brew_update()    { brew_upgrade "$1"; }
 _pkg_brew_version()   { _brew_cached_version "$1"; }
+# Outdated detection: piggyback on brew_observe (returns "outdated" when
+# brew outdated flags it; UIC_PREF_BREW_LIVECHECK=1 catches formula lag).
+_pkg_brew_outdated()  { [[ "$(brew_observe "$1")" == "outdated" ]]; }
 
 # npm-global
 _pkg_npm_available()  { _npm_ensure_path; }
 _pkg_npm_activate()   { _npm_ensure_path; }
-_pkg_npm_observe()    { npm_global_observe "$1"; }
+_pkg_npm_observe()    {
+  local pkg="$1" v
+  v="$(npm_global_version "$pkg")"
+  [[ -z "$v" ]] && { printf 'absent'; return; }
+  if _pkg_npm_outdated "$pkg"; then
+    printf 'outdated'
+  else
+    printf '%s' "$v"
+  fi
+}
 _pkg_npm_install()    { npm_global_install "$1"; }
 _pkg_npm_update()     { npm_global_update  "$1"; }
 _pkg_npm_version()    { npm_global_version "$1"; }
+# Cache `npm outdated -g --json` once per process; opt-in via the brew
+# livecheck flag (same trade-off — slow network call).
+_pkg_npm_outdated() {
+  [[ "${UIC_PREF_BREW_LIVECHECK:-0}" == "1" ]] || return 1
+  local pkg="$1"
+  if [[ -z "${_NPM_OUTDATED_CACHE+x}" ]]; then
+    export _NPM_OUTDATED_CACHE
+    _NPM_OUTDATED_CACHE="$(npm outdated -g --json 2>/dev/null || true)"
+  fi
+  [[ -n "$_NPM_OUTDATED_CACHE" ]] || return 1
+  printf '%s' "$_NPM_OUTDATED_CACHE" | python3 -c "
+import sys, json
+try:
+    d = json.load(sys.stdin)
+except Exception:
+    sys.exit(1)
+sys.exit(0 if '$pkg' in d else 1)
+" 2>/dev/null
+}
 
-# curl (script installer fallback)
+# curl (script installer fallback). Presence-only: no version source.
 _pkg_curl_available() { command -v curl >/dev/null 2>&1; }
 _pkg_curl_activate()  { :; }
 _pkg_curl_observe()   {
-  # Presence-only: curl-installed packages have no version source.
   local bin="${_PKG_BIN:-}"
   [[ -n "$bin" ]] || return 1
   command -v "$bin" >/dev/null 2>&1 && printf 'installed' || printf 'absent'
@@ -57,6 +87,7 @@ _pkg_curl_install() {
 }
 _pkg_curl_update()  { _pkg_curl_install "$1"; }
 _pkg_curl_version() { :; }
+_pkg_curl_outdated() { return 1; }  # no upstream signal
 
 # ── Dispatcher ───────────────────────────────────────────────────────────────
 
@@ -134,6 +165,24 @@ _ucc_driver_pkg_action() {
   # Optional activation
   local ensure_fn="_pkg_${_PKG_PICKED_NAME//-/_}_activate"
   declare -f "$ensure_fn" >/dev/null 2>&1 && "$ensure_fn" 2>/dev/null || true
+  # Foreign-install handling on install: detect a binary owned by a
+  # different package manager and consult preferred-driver-policy.
+  if [[ "$action" == "install" ]]; then
+    local bin display owner safety hint
+    bin="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.bin" 2>/dev/null || true)"
+    [[ -z "$bin" ]] && bin="${_PKG_PICKED_REF##*/}"
+    display="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "display_name" 2>/dev/null || true)"
+    [[ -z "$display" ]] && display="$target"
+    if declare -f _npm_global_foreign_owner >/dev/null 2>&1; then
+      owner="$(_npm_global_foreign_owner "$bin")"
+    fi
+    if [[ -n "$owner" ]]; then
+      safety="$(_migration_safety_for_target "$cfg_dir" "$yaml" "$target" "$owner" "$bin")"
+      hint="brew uninstall ${bin} && retry (or: ./install.sh --pref preferred-driver-policy=migrate ${target})"
+      handle_foreign_install "$display" "$owner" "$safety" "$hint" \
+        _npm_global_migrate "$owner" "$bin" "$_PKG_PICKED_REF" || return $?
+    fi
+  fi
   "$act_fn" "$_PKG_PICKED_REF"
 }
 

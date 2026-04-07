@@ -173,10 +173,14 @@ targets:
     type: package
     state_model: package
     display_name: OpenCode
+    provided_by_tool: pkg
     driver:
-      kind: npm-global
-      package: opencode-ai
+      kind: pkg
+      backends:
+      - npm: opencode-ai
+      - brew: opencode
       bin: opencode
+      github_repo: sst/opencode
   cli-aria2:
     component: cli-tools
     profile: configured
