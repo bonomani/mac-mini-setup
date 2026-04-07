@@ -83,7 +83,7 @@ DRIVER_SCHEMA = {
     "custom-daemon":          {"required": ["bin", "process"], "optional": ["github_repo"]},
     "json-merge":             {"required": ["settings_relpath", "patch_relpath"], "optional": []},
     "setting":                {"required": ["backend", "key", "value"], "optional": ["domain", "type", "requires_sudo"]},
-    "pkg":                    {"required": ["backends"], "optional": ["bin", "github_repo", "migration_safety"]},
+    "pkg":                    {"required": ["backends"], "optional": ["bin", "github_repo", "migration_safety", "curl_args"]},
     "softwareupdate-schedule":{"required": [], "optional": []},
     "home-artifact":          {"required": ["subkind"], "optional": ["script_name", "bin_dir", "src_path", "link_relpath", "cmd", "hint"]},
     "script-installer":       {"required": ["install_url", "install_dir"], "optional": ["install_args", "upgrade_script"]},

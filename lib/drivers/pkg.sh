@@ -83,7 +83,12 @@ _pkg_curl_observe()   {
 }
 _pkg_curl_install() {
   local url="$1"
-  ucc_run sh -c "curl -fsSL '$url' | sh"
+  local args="${_PKG_CURL_ARGS:-}"
+  if [[ -n "$args" ]]; then
+    ucc_run sh -c "curl -fsSL '$url' | sh -s -- $args"
+  else
+    ucc_run sh -c "curl -fsSL '$url' | sh"
+  fi
 }
 _pkg_curl_update()  { _pkg_curl_install "$1"; }
 _pkg_curl_version() { :; }
@@ -223,6 +228,8 @@ _ucc_driver_pkg_action() {
   local cfg_dir="$1" yaml="$2" target="$3" action="$4"
   _pkg_load_backends "$cfg_dir" "$yaml" "$target"
   _pkg_select_backend || { log_warn "pkg/${target}: no available backend"; return 1; }
+  # Per-backend extras (currently only curl_args).
+  _PKG_CURL_ARGS="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.curl_args" 2>/dev/null || true)"
   local act_fn="_pkg_${_PKG_PICKED_NAME//-/_}_${action}"
   declare -f "$act_fn" >/dev/null 2>&1 || return 1
   # Optional activation

@@ -13,13 +13,15 @@ targets:
     type: package
     state_model: package
     display_name: rustup
+    provided_by_tool: pkg
     driver:
-      kind: package
-      ref: rustup
+      kind: pkg
+      backends:
+      - brew: rustup
+      - native-pm: rustup
+      - curl: https://sh.rustup.rs
+      curl_args: '-y'
       bin: rustup
-      fallback_install_url: https://sh.rustup.rs
-      fallback_install_args: -y
-      externally_managed_updates: true
       github_repo: rust-lang/rustup
   rdpilot:
     component: build-tools
@@ -39,7 +41,10 @@ targets:
     state_model: package
     display_name: xrdp
     requires: linux,wsl2
+    provided_by_tool: pkg
     driver:
-      kind: package
-      ref: xrdp
+      kind: pkg
+      backends:
+      - native-pm: xrdp
+      bin: xrdp
       github_repo: neutrinolabs/xrdp
