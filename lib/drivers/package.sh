@@ -178,13 +178,15 @@ _ucc_driver_package_observe() {
 
   if [[ "$backend" == "brew" ]]; then
     # Delegate to existing brew driver logic
-    local cask; cask="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.cask")"
+    local cask state
+    cask="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.cask")"
     if [[ "$cask" == "true" ]]; then
       local greedy; greedy="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.greedy_auto_updates")"
-      brew_cask_observe "$ref" "$greedy"
+      state="$(brew_cask_observe "$ref" "$greedy")"
     else
-      brew_observe "$ref"
+      state="$(brew_observe "$ref")"
     fi
+    _ucc_brew_state_with_upstream "$cfg_dir" "$yaml" "$target" "$state"
   else
     if _pkg_native_is_installed "$backend" "$ref"; then
       local ver; ver="$(_pkg_native_version "$backend" "$ref")"

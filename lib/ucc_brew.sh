@@ -19,6 +19,25 @@ brew_cache_outdated() {
   _BREW_OUTDATED_CACHE=$(brew outdated --quiet 2>/dev/null || true)
   _BREW_CASK_OUTDATED_CACHE=$(brew outdated --cask --quiet 2>/dev/null || true)
   _BREW_CASK_OUTDATED_GREEDY_AUTO_UPDATES_CACHE=$(brew outdated --cask --greedy-auto-updates --quiet 2>/dev/null || true)
+  brew_cache_livecheck
+}
+
+# Cross-check installed formulae against upstream via `brew livecheck`.
+# Catches releases that are newer than the formula in Homebrew (formula lag).
+# Opt-in via UIC_PREF_BREW_LIVECHECK=1 because livecheck is network-bound and slow.
+# Output format from `brew livecheck --quiet --newer-only --installed`:
+#   <name> : <installed> ==> <latest>
+brew_cache_livecheck() {
+  export _BREW_LIVECHECK_CACHE=""
+  [[ "${UIC_PREF_BREW_LIVECHECK:-0}" == "1" ]] || return 0
+  _BREW_LIVECHECK_CACHE=$(brew livecheck --quiet --newer-only --installed 2>/dev/null || true)
+}
+
+# Match a formula or cask short name in the livecheck cache.
+_brew_livecheck_is_outdated() {
+  local pkg="${1##*/}"
+  [[ -n "${_BREW_LIVECHECK_CACHE:-}" ]] || return 1
+  echo "${_BREW_LIVECHECK_CACHE}" | awk -F' *: *' -v p="$pkg" '$1==p{found=1} END{exit !found}'
 }
 
 brew_refresh_caches() {
@@ -80,4 +99,25 @@ brew_cask_observe() {
     _brew_cask_is_outdated "$pkg" "$greedy_auto_updates" && { echo "outdated"; return; }
   fi
   echo "$ver"
+}
+
+# Post-process a brew observe state with `brew livecheck` results.
+# If `brew outdated` says current but livecheck found a newer upstream release,
+# return "outdated". Otherwise pass-through.
+# Reads driver.ref to identify the package.
+_ucc_brew_state_with_upstream() {
+  local cfg_dir="$1" yaml="$2" target="$3" state="$4"
+  if [[ "$state" == "absent" || "$state" == "outdated" ]]; then
+    printf '%s' "$state"; return
+  fi
+  if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-always-upgrade}" != "always-upgrade" ]]; then
+    printf '%s' "$state"; return
+  fi
+  local ref
+  ref="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.ref" 2>/dev/null || true)"
+  [[ -n "$ref" ]] || { printf '%s' "$state"; return; }
+  if _brew_livecheck_is_outdated "$ref"; then
+    printf 'outdated'; return
+  fi
+  printf '%s' "$state"
 }
