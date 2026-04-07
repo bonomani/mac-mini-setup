@@ -61,12 +61,62 @@ _ucc_driver_npm_global_observe() {
 
 _ucc_driver_npm_global_action() {
   local cfg_dir="$1" yaml="$2" target="$3" action="$4"
-  local pkg
+  local pkg bin display
   pkg="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.package")"
   [[ -n "$pkg" ]] || return 1
+  bin="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.bin" 2>/dev/null || true)"
+  # Default bin: package name minus npm scope (@scope/x → x)
+  [[ -z "$bin" ]] && bin="${pkg##*/}"
+  display="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "display_name" 2>/dev/null || true)"
+  [[ -z "$display" ]] && display="$target"
   case "$action" in
-    install) npm_global_install "$pkg" ;;
+    install)
+      local owner; owner="$(_npm_global_foreign_owner "$bin")"
+      if [[ -n "$owner" ]]; then
+        local hint="brew uninstall ${bin} && npm install -g ${pkg} (or: ./install.sh --pref preferred-driver-policy=migrate ${target})"
+        handle_foreign_install "$display" "$owner" "$hint" \
+          _npm_global_migrate "$owner" "$bin" "$pkg" || return $?
+      fi
+      npm_global_install "$pkg"
+      ;;
     update)  npm_global_update  "$pkg" ;;
+  esac
+}
+
+# Detect a conflicting binary owned by another package manager.
+# Echoes a short owner tag (brew, brew-cask, external) or empty when no conflict.
+_npm_global_foreign_owner() {
+  local bin="$1"
+  [[ -n "$bin" ]] || return 0
+  command -v "$bin" >/dev/null 2>&1 || return 0
+  if command -v brew >/dev/null 2>&1; then
+    if brew list --formula "$bin" >/dev/null 2>&1; then
+      printf 'brew'; return 0
+    fi
+    if brew list --cask "$bin" >/dev/null 2>&1; then
+      printf 'brew-cask'; return 0
+    fi
+  fi
+  printf 'external'
+}
+
+# Migrate away from a foreign install so npm-global can take over.
+# Usage: _npm_global_migrate <owner> <bin> <pkg>
+_npm_global_migrate() {
+  local owner="$1" bin="$2" pkg="$3"
+  case "$owner" in
+    brew)
+      ucc_run brew uninstall --formula "$bin" || return 1
+      brew_refresh_caches 2>/dev/null || true
+      ;;
+    brew-cask)
+      ucc_run brew uninstall --cask "$bin" || return 1
+      brew_refresh_caches 2>/dev/null || true
+      ;;
+    *)
+      log_warn "npm-global: cannot auto-migrate ${bin} owned by '${owner}'; remove it manually."
+      return 1
+      ;;
   esac
 }
 

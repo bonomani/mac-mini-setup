@@ -176,6 +176,7 @@ targets:
     driver:
       kind: npm-global
       package: opencode-ai
+      bin: opencode
   cli-aria2:
     component: cli-tools
     profile: configured

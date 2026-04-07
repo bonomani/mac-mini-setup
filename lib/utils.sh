@@ -219,30 +219,54 @@ desktop_app_install_source() {
   fi
 }
 
-# Handle a cask installed outside brew-cask according to preferred-driver-policy.
-# Usage: desktop_app_handle_unmanaged_cask <cask_id> <display_name>
-# Returns: 0=handled/ok, 1=migrate failed, 124=warn, 125=needs sudo
-desktop_app_handle_unmanaged_cask() {
-  local cask_id="$1" display_name="${2:-$1}"
+# Generic foreign-install handler. Reads UIC_PREF_PREFERRED_DRIVER_POLICY and
+# either ignores, warns (with a hint), or invokes the supplied migrator.
+#
+# Usage: handle_foreign_install <display_name> <foreign_owner> <warn_hint> <migrator_fn> [migrator_args...]
+#   <foreign_owner>   short tag identifying who owns the conflicting artifact
+#                     (e.g. "brew", "brew-cask", "pip"); used in log messages.
+#                     Empty means no conflict — returns 0 immediately.
+#   <warn_hint>       full command suggestion shown to the user under policy=warn.
+#   <migrator_fn>     function to call under policy=migrate; must return 0 on
+#                     success, non-zero on failure.
+#
+# Returns: 0=handled/no-op, 1=migrate failed, 124=warn (caller should abort
+#          install), 125=migrate needs sudo.
+handle_foreign_install() {
+  local display_name="$1" owner="$2" hint="$3" migrator="$4"
+  shift 4
+  [[ -z "$owner" ]] && return 0
   local policy="${UIC_PREF_PREFERRED_DRIVER_POLICY:-warn}"
   case "$policy" in
     ignore)
-      log_info "${display_name} installed outside brew-cask; ignoring (policy=ignore)."
+      log_info "${display_name} installed via ${owner}; ignoring (policy=ignore)."
       return 0
       ;;
     warn)
-      log_warn "${display_name} installed outside brew. To migrate: brew install --cask ${cask_id} (or: ./install.sh --pref preferred-driver-policy=migrate ${cask_id})"
+      log_warn "${display_name} installed via ${owner}. To migrate: ${hint}"
       return 124
       ;;
     migrate)
-      sudo_is_available || { log_warn "Migrating ${display_name} requires admin; run: sudo -v"; return 125; }
-      brew_cask_migrate_install "$cask_id" || return 1
+      "$migrator" "$@" || return 1
       ;;
     *)
       log_warn "Unknown preferred-driver-policy '$policy'; treating as warn."
       return 124
       ;;
   esac
+}
+
+# Handle a cask installed outside brew-cask according to preferred-driver-policy.
+# Usage: desktop_app_handle_unmanaged_cask <cask_id> <display_name>
+# Returns: 0=handled/ok, 1=migrate failed, 124=warn, 125=needs sudo
+desktop_app_handle_unmanaged_cask() {
+  local cask_id="$1" display_name="${2:-$1}"
+  local hint="brew install --cask ${cask_id} (or: ./install.sh --pref preferred-driver-policy=migrate ${cask_id})"
+  if [[ "${UIC_PREF_PREFERRED_DRIVER_POLICY:-warn}" == "migrate" ]]; then
+    sudo_is_available || { log_warn "Migrating ${display_name} requires admin; run: sudo -v"; return 125; }
+  fi
+  handle_foreign_install "$display_name" "outside brew-cask" "$hint" \
+    brew_cask_migrate_install "$cask_id"
 }
 
 brew_cask_migrate_install() {
