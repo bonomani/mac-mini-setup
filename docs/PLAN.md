@@ -6,33 +6,6 @@ Goal: collapse the 28 current driver files into 5 generic drivers, one per
 similarity group from `docs/driver-feature-matrix.md`. Ship in dependency
 order so each phase de-risks the next.
 
-### Phase 2 — Group D: configuration writers  (~1-2 weeks)
-
-**New driver**: `lib/drivers/config_writer.sh` with `driver.kind: config` and
-`driver.format: defaults|pmset|gitconfig|json-merge|line-append|plist|brew-toggle`.
-
-**Absorbs**: `macos_defaults.sh` (`pmset`, `user-defaults`),
-`macos_swupdate.sh`, `swupdate_schedule.sh`, `vscode.sh` (`json-merge`),
-`git_global.sh`, `zsh_config.sh`, `path_export.sh`, `brew.sh` (`brew-analytics`),
-`compose_file.sh`.
-
-**Approach**:
-1. Define a `(read, diff, write)` triple per format. Each format implements
-   `_cfg_<format>_get key`, `_cfg_<format>_set key value`, optional
-   `_cfg_<format>_delete key`.
-2. Generic driver dispatches to the triple via `driver.format`.
-3. Drop the `apply` vs `action` distinction — config writes are always
-   apply-style.
-4. Add backup-before-write at the framework level (single place).
-5. Add drift detection: a YAML field `desired` is compared to current; only
-   writes if different. Already the de-facto pattern; now enforced.
-6. Migrate YAML, delete old drivers.
-
-**Risk**: medium. Drift semantics must match per-driver quirks (e.g.
-`defaults` types). Requires careful per-format tests.
-**Payoff**: 9 → 1 file; eliminates the `apply` hook entirely; uniform drift
-detection; one place for backup/rollback.
-
 ### Phase 3 — Group C: services / daemons  (~3-5 days)
 
 **New driver**: `lib/drivers/service.sh` with `driver.kind: service` and
