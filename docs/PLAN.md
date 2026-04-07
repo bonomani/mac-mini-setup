@@ -6,30 +6,6 @@ Goal: collapse the 28 current driver files into 5 generic drivers, one per
 similarity group from `docs/driver-feature-matrix.md`. Ship in dependency
 order so each phase de-risks the next.
 
-### Phase 3 — Group C: services / daemons  (~3-5 days)
-
-**New driver**: `lib/drivers/service.sh` with `driver.kind: service` and
-`driver.backend: launchd|brew-services|systemd|docker-compose|custom`.
-
-**Absorbs**: `brew_service.sh`, `launchd.sh`, `custom_daemon.sh`,
-`docker_compose_service.sh`.
-
-**Approach**:
-1. Standardize state vocabulary: `stopped | started | failed | autostart_on
-   | autostart_off`.
-2. Per-backend interface: `_svc_<backend>_status`, `_svc_<backend>_start`,
-   `_svc_<backend>_stop`, `_svc_<backend>_enable`, `_svc_<backend>_disable`.
-3. Generic driver maps `desired_state` (from YAML) to the right backend call.
-4. Keep `provided_by` / `depends_on` declarations for each backend.
-5. Migrate YAML, delete old drivers.
-
-**Risk**: medium. Backends differ wildly in YAML shape — the generic schema
-must accommodate launchd plists *and* brew-service refs *and* compose files
-without becoming a kitchen sink. Mitigation: backend-specific sub-objects
-under `driver.<backend>`.
-**Payoff**: 4 → 1 file; uniform service status reporting; one place to add
-new init systems.
-
 ### Phase 4 — Group A: package installers  (~2-3 weeks)
 
 **New driver**: `lib/drivers/package_v2.sh` (eventually replacing
