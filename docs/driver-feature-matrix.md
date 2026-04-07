@@ -1,5 +1,24 @@
 # Driver Feature Matrix
 
+> **STATUS (post-Phase 4)**: this document is the **pre-consolidation
+> snapshot** that drove the 5-phase refactor in `docs/PLAN.md`. After
+> Phase 4 landed (commits `9246a9b`..`80a4ee7`), most rows below are
+> outdated:
+>
+> - 6 driver files were retired (`bin_script`, `cli_symlink`,
+>   `macos_defaults`, `macos_swupdate`, `brew_service`, `launchd`).
+> - 41 YAML targets moved to `kind: pkg`, the unified package driver
+>   with 8 backends (`brew`, `brew-cask`, `native-pm`, `npm`, `pyenv`,
+>   `ollama`, `vscode`, `curl`).
+> - For current backend coverage and outdated/migration/activation
+>   support, read these instead:
+>     - `docs/install-method-gaps.md`
+>     - `docs/update-detection-gaps.md`
+>     - `docs/runtime-activation-gaps.md`
+>
+> The grouping and maturity ranking below remain a useful historical
+> record of the consolidation reasoning.
+
 Snapshot of every driver under `lib/drivers/`. Columns:
 
 - **observe** — has `_ucc_driver_<kind>_observe` (state read).

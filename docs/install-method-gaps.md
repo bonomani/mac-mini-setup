@@ -1,22 +1,32 @@
 # Install Method Coverage Gaps
 
-Which upstream install methods UCC can drive today, using `opencode` as the
-reference case (it ships via the widest variety of channels).
+Which upstream install methods UCC can drive today, after Phase 4 (the
+unified `kind: pkg` driver with backend registry).
 
-## Covered
+## Covered (via `kind: pkg` backends)
 
-| Method | Driver | Notes |
+| Method | Backend | Outdated | Notes |
+|---|---|---|---|
+| `brew install <formula>` | `brew` | ✅ (livecheck opt-in) | Lags upstream until formula bumps; `UIC_PREF_BREW_LIVECHECK=1` catches the lag |
+| `brew install <user>/<tap>/<formula>` | `brew` | ✅ | Tap auto-installs; `_brew_cached_version` strips tap prefix (fixed in commit `ae16139`) |
+| `brew install --cask <name>` | `brew-cask` | ✅ (with `--greedy` when `driver.greedy_auto_updates: true`) | macOS GUI apps |
+| `apt/dnf/pacman/zypper install` | `native-pm` | ❌ | Linux/WSL2 only |
+| `npm i -g <pkg>` | `npm` | ✅ (opt-in) | `npm outdated -g --json` cached per process |
+| `pyenv install <ver>` | `pyenv` | ❌ | |
+| `ollama pull <model>` | `ollama` | ❌ | |
+| `code --install-extension <id>` | `vscode` | ❌ | |
+| `curl … \| bash` | `curl` | ❌ | `driver.curl_args` for `-y` and similar |
+
+## Still separate (deliberate, documented)
+
+| Method | Driver | Reason |
 |---|---|---|
-| `curl … \| bash` | `lib/drivers/curl_installer.sh`, `lib/drivers/script_installer.sh` | No native outdated check |
-| `npm i -g <pkg>` | `lib/drivers/npm.sh` | — |
-| `brew install <formula>` | `lib/drivers/brew.sh`, meta `lib/drivers/package.sh` | Lags upstream until formula bumps; livecheck opt-in via `UIC_PREF_BREW_LIVECHECK=1` |
-| `apt/dnf/pacman/zypper install` | `lib/drivers/package.sh` (native PM branch) | Linux/WSL2 only |
-
-## Partial
-
-| Method | Driver | Gap |
-|---|---|---|
-| `brew install <user>/<tap>/<formula>` | `lib/drivers/brew.sh` | Install auto-taps and works; **observe is broken**: `_brew_cached_version` (`lib/ucc_brew.sh:61`) does strict `==` against `brew list --versions` output, which uses the short name. A tapped ref always reads as `absent`. Needs either a `driver.tap` field + short ref, or a normalization step in the cache lookup. |
+| `pip install <pkg> [<pkg>…]` | `kind: pip` | Multi-package shape (`probe_pkg` + `install_packages: [...]`) doesn't fit single-ref backend model |
+| `pyenv` brew install + plugin/init | `kind: pyenv-brew` | Installs `pyenv_packages` plugins and writes a shell-init snippet |
+| `nvm` install + version | `kind: nvm` / `nvm-version` | Carries `nvm_dir` context and self-sources `nvm.sh` in subshells |
+| Pip bootstrap | `kind: pip-bootstrap` | Special bootstrap step |
+| Direct dmg/pkg/zip download | `kind: app-bundle` | Action is wholly different from any package-manager backend |
+| `git clone` | `kind: git-repo` | Single-purpose; already has outdated detection |
 
 ## Not covered
 
@@ -24,102 +34,73 @@ reference case (it ships via the widest variety of channels).
 |---|---|
 | `scoop install` | Windows only — out of platform scope |
 | `choco install` | Windows only — out of platform scope |
-| `paru -S` / AUR | No AUR driver; would need a new `lib/drivers/aur.sh` |
-| `mise use -g` | No mise driver |
-| `nix run nixpkgs#…` / flake refs | No nix driver |
+| `paru -S` / AUR | No `aur` backend; would slot into `pkg` if added |
+| `mise use -g` | No `mise` backend |
+| `nix run nixpkgs#…` / flake refs | No `nix` backend |
 
-## Method-selection cheat sheet (worked example: `cli-opencode` on macOS)
+## Method-selection cheat sheet
 
-Use this matrix to pick a method per target. The same axes apply to any tool
-that ships through multiple channels.
+Targets that can be installed via multiple channels declare them in
+preference order under `driver.backends`. The first backend whose
+`_pkg_<be>_available` returns true wins. Example (`cli-opencode`):
 
-| Method | Latest? | Auto-upgrade | UCC support | Notes |
-|---|---|---|---|---|
-| `brew install opencode` | ❌ lags (1.3.10) | ✅ via `brew upgrade` | ✅ full | Maintained by homebrew-core volunteers — slow bumps |
-| `brew install anomalyco/tap/opencode` | ✅ tracks upstream | ✅ via `brew upgrade` | ⚠️ install OK, observe broken (tapped-ref bug) | Best fit once the brew-tap gap is fixed |
-| `npm i -g opencode-ai` | ✅ latest | ✅ `npm update -g` | ✅ via `npm.sh` | Adds a Node dependency you'd carry anyway (node-stack present) |
-| `curl … \| bash` | ✅ latest | ❌ no outdated detection | ⚠️ installs but state always "installed" | Worst observability |
-| `mise use -g opencode` | ✅ latest | ✅ | ❌ no driver | Would require new driver |
+```yaml
+driver:
+  kind: pkg
+  backends:
+  - npm: opencode-ai
+  - brew: opencode
+  bin: opencode
+  github_repo: sst/opencode
+```
 
-**Decision rule**: pick the highest-ranked method whose row has ✅ in *both*
-"Latest?" and "UCC support". For `cli-opencode` on macOS, that's `npm i -g
-opencode-ai` — which is what `cli-opencode` is configured to use today.
+On a Mac mini with brew + node both present, npm wins (first in the list).
+Override per box without editing tracked YAML — see "User override" below.
 
-### User override
+| Method | Latest? | Auto-upgrade | UCC support |
+|---|---|---|---|
+| `brew install <formula>` | ❌ lags | ✅ | ✅ via `pkg` |
+| `brew install --cask <name>` | ✅ (greedy) | ✅ | ✅ via `pkg` |
+| `brew install <tap>/<formula>` | ✅ | ✅ | ✅ via `pkg` (tapped refs work) |
+| `npm i -g <pkg>` | ✅ | ✅ (opt-in) | ✅ via `pkg` |
+| `pyenv install <ver>` | ✅ | ❌ | ✅ via `pkg` |
+| `ollama pull <model>` | ✅ (per tag) | ❌ | ✅ via `pkg` |
+| `vscode-marketplace` | ✅ | ❌ | ✅ via `pkg` |
+| `apt/dnf/pacman/zypper` | ✅ | ❌ | ✅ via `pkg` |
+| `curl … \| bash` | ✅ | ❌ | ✅ via `pkg` (no observability) |
+| `pip install` (multi-pkg) | ✅ | ❌ | ✅ via separate `kind: pip` |
+| `mise use -g` | ✅ | ✅ | ❌ no backend |
+| `paru -S` (AUR) | ✅ | ✅ | ❌ no backend |
 
-YAML encodes the *default* method. A user must be able to override it on their
-own box without editing tracked files. Proposed mechanism:
+**Decision rule**: pick the highest-ranked method that works on the box and
+that you actually have a backend for. The dispatcher does this automatically
+once you list the backends in YAML order.
 
-1. **Per-target env override** — `UCC_DRIVER__<TARGET>=<kind>:<ref>` resolved
-   before driver dispatch in `_ucc_driver_observe` /
-   `_ucc_driver_action`. Examples:
+## User override
+
+Implemented in commit `8b7e8e6`. Three layers, highest precedence first:
+
+1. **Env var** — `UCC_OVERRIDE__<TARGET>__<KEY>=<value>` (target `-` → `_`,
+   key `.` → `_`):
    ```sh
-   export UCC_DRIVER__cli_opencode='brew:opencode'
-   export UCC_DRIVER__cli_opencode='curl:https://opencode.ai/install'
+   UCC_OVERRIDE__cli_opencode__driver_kind=brew \
+   UCC_OVERRIDE__cli_opencode__driver_ref=opencode \
+   ./install.sh cli-opencode
    ```
-   (target name normalized: `-` → `_`.)
-
-2. **User overlay file** — `~/.config/ucc/overrides.yaml`, merged on top of the
-   tracked YAML by `_ucc_yaml_target_get`:
+2. **Overlay file** — `~/.ai-stack/target-overrides.yaml`, top-level
+   `target-overrides:` key (coexists with `preferred-driver-ignore:`):
    ```yaml
-   cli-opencode:
-     driver:
-       kind: brew
-       ref: opencode
+   target-overrides:
+     cli-opencode:
+       driver:
+         kind: pkg
+         backends:
+         - brew: opencode
    ```
-   Same precedence as the env var, but persistent and diffable.
+3. **Tracked YAML** — repo defaults.
 
-3. **Precedence** (highest wins):
-   `UCC_DRIVER__*` env > `~/.config/ucc/overrides.yaml` > tracked YAML.
+Listing: `./install.sh --show-overrides` prints effective overrides with
+their source (env / overlay).
 
-4. **Listing** — `install.sh --show-overrides` prints the effective driver per
-   target with the source (env/overlay/yaml), so users can audit drift.
-
-This keeps the tracked YAML authoritative for "what we recommend" while letting
-each box pin a different method when the default doesn't fit (offline boxes,
-no Node, corporate brew mirror, etc.).
-
-## Implications for `cli-opencode`
-
-Today the target uses `kind: package` → brew → homebrew/core formula, which
-lags upstream (currently 1.3.10 vs upstream 1.3.17 from `anomalyco/tap`).
-Available paths to track the latest:
-
-1. **Fix the tapped-brew gap** above and switch ref to `anomalyco/tap/opencode`.
-2. **Switch driver to `npm`** (`opencode-ai` package).
-3. **Switch driver to `curl_installer`** (`https://opencode.ai/install`) — loses
-   outdated detection entirely.
-
-Option 1 is the cleanest fit for the existing brew-centric stack and would also
-unlock other tapped formulae generally.
-
-## Bigger gap: multi-backend per target
-
-Today the `package` meta-driver (`lib/drivers/package.sh`) only knows three
-backends in a fixed order: brew → native PM → curl fallback. Targets cannot
-declare arbitrary alternatives (npm, mise, nix, AUR, tapped-brew, …) and cannot
-express a preference order.
-
-To make every install method available to any target, the meta-driver would
-need:
-
-1. **Backend registry** — each method (`brew`, `brew-tap`, `npm`, `pip`,
-   `curl`, `mise`, `nix`, `aur`, native-pm) implements a uniform interface:
-   `available?`, `is_installed`, `version`, `is_outdated`, `install`, `upgrade`.
-2. **Per-target backend list** in YAML, ordered by preference:
-   ```yaml
-   driver:
-     kind: package
-     ref: opencode
-     backends:
-       - brew-tap: anomalyco/tap/opencode
-       - npm: opencode-ai
-       - brew: opencode
-       - curl: https://opencode.ai/install
-   ```
-3. **Selection policy** — first available backend wins, with optional global
-   override (`UIC_PREF_PACKAGE_BACKEND=npm`).
-4. **Unified state model** — observe/install/upgrade dispatch to the selected
-   backend's functions.
-5. **Migration** — existing `driver.ref` / `driver.apt_ref` etc. become sugar
-   for a single-backend list.
+Limitation: env-var overrides are scalar-only. List fields (`driver.backends`)
+must be set via the overlay file, not env vars.
