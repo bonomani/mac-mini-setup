@@ -29,11 +29,9 @@ _DRIVER_META_STATIC = {
     "pip-bootstrap":         ("python",         "pip"),
     "npm-global":            ("node-lts",       "npm"),
     "vscode-marketplace":    ("vscode-code-cmd","vscode-marketplace"),
-    "pyenv-version":         ("pyenv",          "pyenv"),
     "pyenv-brew":            ("homebrew",       "brew"),
     "nvm":                   ("homebrew",       "nvm-installer"),
     "nvm-version":           ("nvm",            "nvm"),
-    "ollama-model":          ("ollama",         "ollama"),
     "service":               (None,             None),  # backend-aware, see lib/drivers/service.sh
     "pkg":                   (None,             None),  # backend-aware, see lib/drivers/pkg.sh
     "docker-compose-service":("docker-desktop", "docker-compose"),
@@ -73,11 +71,9 @@ DRIVER_SCHEMA = {
     "pip-bootstrap":          {"required": [], "optional": []},
     "npm-global":             {"required": ["package"], "optional": ["bin", "migration_safety"]},
     "vscode-marketplace":     {"required": ["extension_id"], "optional": []},
-    "pyenv-version":          {"required": ["version"], "optional": []},
     "pyenv-brew":             {"required": [], "optional": []},
     "nvm":                    {"required": ["nvm_dir"], "optional": []},
     "nvm-version":            {"required": ["version", "nvm_dir"], "optional": []},
-    "ollama-model":           {"required": ["ref"], "optional": []},
     "docker-compose-service": {"required": ["service_name"], "optional": []},
     "compose-file":           {"required": ["path_env"], "optional": []},
     "custom-daemon":          {"required": ["bin", "process"], "optional": ["github_repo"]},
@@ -92,7 +88,6 @@ DRIVER_SCHEMA = {
     "git-global":             {"required": [], "optional": []},
     "build-deps":             {"required": [], "optional": []},
     "git-repo":               {"required": ["repo", "dest"], "optional": ["branch", "upstream"]},
-    "curl-installer":         {"required": ["install_url", "bin"], "optional": ["version_cmd", "install_args", "update_cmd", "externally_managed_updates", "brew_formula"]},
     "package":                {"required": ["ref"], "optional": ["cask", "greedy_auto_updates", "previous_ref", "apt_ref", "dnf_ref", "pacman_ref", "fallback_install_url", "fallback_install_args", "update_cmd", "bin", "externally_managed_updates"]},
 }
 
@@ -100,20 +95,15 @@ KNOWN_PACKAGE_DRIVERS = {
     "build-deps",
     "brew-bootstrap",
     "git-repo",
-    "curl-installer",
     "package",
     "pkg",
     "custom",
     "brew",
     "macos-clt",
-    "vscode-marketplace",
-    "npm-global",
     "pip",
     "pyenv-brew",
-    "pyenv-version",
     "nvm",
     "nvm-version",
-    "ollama-model",
     "app-bundle",
 }
 KNOWN_RUNTIME_DRIVERS = {

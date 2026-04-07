@@ -1,35 +1,6 @@
 #!/usr/bin/env bash
-# lib/drivers/vscode.sh — driver.kind: vscode-marketplace, json-merge
-# driver.extension_id: <publisher.name>  (e.g. ms-python.python)
-
-_ucc_driver_vscode_marketplace_observe() {
-  local cfg_dir="$1" yaml="$2" target="$3"
-  local ext_id ver
-  ext_id="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.extension_id")"
-  [[ -n "$ext_id" ]] || return 1
-  ver="$(_vscode_extension_cached_version "$ext_id")"
-  printf '%s' "${ver:-absent}"
-}
-
-_ucc_driver_vscode_marketplace_action() {
-  local cfg_dir="$1" yaml="$2" target="$3" action="$4"
-  local ext_id
-  ext_id="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.extension_id")"
-  [[ -n "$ext_id" ]] || return 1
-  case "$action" in
-    install) vscode_extension_install "$ext_id" ;;
-    update)  vscode_extension_update  "$ext_id" ;;
-  esac
-}
-
-_ucc_driver_vscode_marketplace_evidence() {
-  local cfg_dir="$1" yaml="$2" target="$3"
-  local ext_id ver
-  ext_id="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.extension_id")"
-  [[ -n "$ext_id" ]] || return 1
-  ver="$(_vscode_extension_cached_version "$ext_id")"
-  [[ -n "$ver" ]] && printf 'version=%s' "$ver"
-}
+# lib/drivers/vscode.sh — driver.kind: json-merge
+# (vscode-marketplace driver retired; use kind: pkg with vscode backend.)
 
 # ── json-merge ────────────────────────────────────────────────────────────────
 # driver.settings_relpath: path relative to $HOME

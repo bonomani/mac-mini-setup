@@ -68,41 +68,7 @@ npm_global_observe() {
   printf '%s' "${version:-absent}"
 }
 
-# ── Driver interface ──────────────────────────────────────────────────────────
-_ucc_driver_npm_global_observe() {
-  local cfg_dir="$1" yaml="$2" target="$3"
-  local pkg
-  pkg="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.package")"
-  [[ -n "$pkg" ]] || return 1
-  npm_global_observe "$pkg"
-}
-
-_ucc_driver_npm_global_action() {
-  local cfg_dir="$1" yaml="$2" target="$3" action="$4"
-  local pkg bin display
-  pkg="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.package")"
-  [[ -n "$pkg" ]] || return 1
-  bin="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.bin" 2>/dev/null || true)"
-  # Default bin: package name minus npm scope (@scope/x → x)
-  [[ -z "$bin" ]] && bin="${pkg##*/}"
-  display="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "display_name" 2>/dev/null || true)"
-  [[ -z "$display" ]] && display="$target"
-  case "$action" in
-    install)
-      local owner; owner="$(_npm_global_foreign_owner "$bin")"
-      if [[ -n "$owner" ]]; then
-        local safety
-        safety="$(_migration_safety_for_target "$cfg_dir" "$yaml" "$target" "$owner" "$bin")"
-        local hint="brew uninstall ${bin} && npm install -g ${pkg} (or: ./install.sh --pref preferred-driver-policy=migrate ${target})"
-        handle_foreign_install "$display" "$owner" "$safety" "$hint" \
-          _npm_global_migrate "$owner" "$bin" "$pkg" || return $?
-      fi
-      npm_global_install "$pkg"
-      ;;
-    update)  npm_global_update  "$pkg" ;;
-  esac
-}
-
+# ── Foreign-install helpers (used by pkg dispatcher's foreign-install path) ──
 # Detect a conflicting binary owned by another package manager.
 # Echoes a short owner tag (brew, brew-cask, external) or empty when no conflict.
 _npm_global_foreign_owner() {
@@ -142,11 +108,3 @@ _npm_global_migrate() {
   esac
 }
 
-_ucc_driver_npm_global_evidence() {
-  local cfg_dir="$1" yaml="$2" target="$3"
-  local pkg ver
-  pkg="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.package")"
-  [[ -n "$pkg" ]] || return 1
-  ver="$(npm_global_version "$pkg")"
-  [[ -n "$ver" ]] && printf 'version=%s' "$ver"
-}

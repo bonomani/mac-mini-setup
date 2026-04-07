@@ -15,12 +15,10 @@ _UCC_DRIVERS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/drivers" && pwd)"
 for _ucc_drv_file in \
   "$_UCC_DRIVERS_DIR/brew.sh" \
   "$_UCC_DRIVERS_DIR/vscode.sh" \
-  "$_UCC_DRIVERS_DIR/ollama_model.sh" \
   "$_UCC_DRIVERS_DIR/npm.sh" \
   "$_UCC_DRIVERS_DIR/pip.sh" \
   "$_UCC_DRIVERS_DIR/setting.sh" \
   "$_UCC_DRIVERS_DIR/app_bundle.sh" \
-  "$_UCC_DRIVERS_DIR/pyenv.sh" \
   "$_UCC_DRIVERS_DIR/nvm.sh" \
   "$_UCC_DRIVERS_DIR/service.sh" \
   "$_UCC_DRIVERS_DIR/pkg.sh" \
@@ -29,7 +27,6 @@ for _ucc_drv_file in \
   "$_UCC_DRIVERS_DIR/docker_compose_service.sh" \
   "$_UCC_DRIVERS_DIR/package.sh" \
   "$_UCC_DRIVERS_DIR/git_repo.sh" \
-  "$_UCC_DRIVERS_DIR/curl_installer.sh" \
   "$_UCC_DRIVERS_DIR/build_deps.sh" \
   "$_UCC_DRIVERS_DIR/swupdate_schedule.sh" \
   "$_UCC_DRIVERS_DIR/pyenv_brew.sh" \
@@ -182,8 +179,6 @@ _ucc_driver_nvm_provided_by()              { printf 'nvm-installer'; }
 _ucc_driver_nvm_version_depends_on()       { printf 'nvm'; }
 _ucc_driver_nvm_version_provided_by()      { printf 'nvm'; }
 
-_ucc_driver_ollama_model_depends_on()      { printf 'ollama'; }
-_ucc_driver_ollama_model_provided_by()     { printf 'ollama'; }
 
 _ucc_driver_service_depends_on() {
   # Inherit dependency from the backend. Only brew has one today.
