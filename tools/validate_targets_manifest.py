@@ -67,7 +67,7 @@ DRIVER_SCHEMA = {
     "brew-analytics":         {"required": [], "optional": []},
     "brew-unlink":            {"required": ["formula"], "optional": []},
     "app-bundle":             {"required": ["app_path", "brew_cask"], "optional": ["update_api", "download_url_tpl", "package_ext"]},
-    "pip":                    {"required": ["probe_pkg", "install_packages"], "optional": ["min_version"]},
+    "pip":                    {"required": ["probe_pkg", "install_packages"], "optional": ["min_version", "isolation"]},
     "pip-bootstrap":          {"required": [], "optional": []},
     "npm-global":             {"required": ["package"], "optional": ["bin", "migration_safety"]},
     "vscode-marketplace":     {"required": ["extension_id"], "optional": []},

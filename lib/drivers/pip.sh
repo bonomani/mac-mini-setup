@@ -3,6 +3,11 @@
 # driver.probe_pkg:       primary package to probe for presence/version
 # driver.install_packages: space-separated list of packages to install/upgrade
 # driver.min_version:     minimum required version (empty = no constraint)
+# driver.isolation:       none (default) | pipx
+#                         pipx: each package installed into its own venv via
+#                               pipx. No cross-package conflicts possible.
+#                               Use only for self-contained CLI tools — pipx
+#                               targets cannot share imports with other groups.
 
 # Ensure pip + python are on PATH for non-interactive subshells.
 # Falls back to the pyenv-managed interpreter when pyenv is set up.
@@ -46,8 +51,88 @@ sys.exit(0 if wanted & outdated else 1)
 " 2>/dev/null
 }
 
+# ── pipx isolation backend ───────────────────────────────────────────────────
+_pipx_available() { command -v pipx >/dev/null 2>&1; }
+
+# Cache `pipx list --json` once per process. Maps tool name → version.
+_pipx_cache_load() {
+  [[ -n "${_PIPX_CACHE+x}" ]] && return 0
+  export _PIPX_CACHE=""
+  _pipx_available || return 1
+  _PIPX_CACHE="$(pipx list --json 2>/dev/null \
+    | python3 -c "
+import sys, json
+try:
+    d = json.load(sys.stdin)
+except Exception:
+    sys.exit(0)
+for name, info in (d.get('venvs') or {}).items():
+    md = info.get('metadata') or {}
+    pkg = (md.get('main_package') or {})
+    ver = pkg.get('package_version', '')
+    print(f'{name}\t{ver}')
+" 2>/dev/null || true)"
+}
+
+_pipx_version() {
+  local pkg="$1"
+  _pipx_cache_load
+  printf '%s\n' "${_PIPX_CACHE:-}" | awk -F'\t' -v p="$pkg" '$1==p{print $2; exit}'
+}
+
+# pipx outdated cache: pipx has no `outdated` json so we compare each tool's
+# version against PyPI's latest via the same opt-in flag.
+_pipx_outdated() {
+  [[ "${UIC_PREF_BREW_LIVECHECK:-0}" == "1" ]] || return 1
+  local pkg="$1"
+  local installed; installed="$(_pipx_version "$pkg")"
+  [[ -n "$installed" ]] || return 1
+  local latest
+  latest="$(curl -fsS --max-time 5 "https://pypi.org/pypi/${pkg}/json" 2>/dev/null \
+    | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('info',{}).get('version',''))" 2>/dev/null)"
+  [[ -n "$latest" ]] || return 1
+  [[ "$installed" != "$latest" ]] || return 1
+  # any version difference (newer per pypi) → outdated
+  declare -f _pkg_version_lt >/dev/null 2>&1 || return 1
+  _pkg_version_lt "$installed" "$latest"
+}
+
+_pipx_install_pkgs() {
+  local pkgs="$1" pkg
+  for pkg in $pkgs; do
+    pipx list --short 2>/dev/null | awk '{print $1}' | grep -qx "$pkg" || \
+      ucc_run pipx install "$pkg" || return 1
+  done
+  unset _PIPX_CACHE
+}
+
+_pipx_upgrade_pkgs() {
+  local pkgs="$1" pkg
+  for pkg in $pkgs; do
+    ucc_run pipx upgrade "$pkg" || return 1
+  done
+  unset _PIPX_CACHE
+}
+
+# ── Driver interface ─────────────────────────────────────────────────────────
 _ucc_driver_pip_observe() {
   local cfg_dir="$1" yaml="$2" target="$3"
+  local isolation
+  isolation="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.isolation" 2>/dev/null || true)"
+  if [[ "$isolation" == "pipx" ]]; then
+    _pipx_available || { printf 'absent'; return; }
+    local probe ver
+    probe="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.probe_pkg")"
+    [[ -n "$probe" ]] || return 1
+    ver="$(_pipx_version "$probe")"
+    [[ -z "$ver" ]] && { printf 'absent'; return; }
+    if _pipx_outdated "$probe"; then
+      printf 'outdated'
+    else
+      printf '%s' "$ver"
+    fi
+    return
+  fi
   _pip_ensure_path || { printf 'absent'; return; }
   local probe min_ver pkgs ver
   probe="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.probe_pkg")"
@@ -76,10 +161,23 @@ _ucc_driver_pip_observe() {
 
 _ucc_driver_pip_action() {
   local cfg_dir="$1" yaml="$2" target="$3" action="$4"
-  _pip_ensure_path || { log_warn "pip not available (no pyenv/python on PATH)"; return 1; }
-  local pkgs pip_cmd
+  local isolation pkgs
+  isolation="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.isolation" 2>/dev/null || true)"
   pkgs="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.install_packages")"
   [[ -n "$pkgs" ]] || return 1
+  if [[ "$isolation" == "pipx" ]]; then
+    if ! _pipx_available; then
+      log_warn "pipx not available — install with: brew install pipx"
+      return 1
+    fi
+    case "$action" in
+      install) _pipx_install_pkgs "$pkgs" ;;
+      update)  _pipx_upgrade_pkgs "$pkgs" ;;
+    esac
+    return $?
+  fi
+  _pip_ensure_path || { log_warn "pip not available (no pyenv/python on PATH)"; return 1; }
+  local pip_cmd
   if command -v pip >/dev/null 2>&1; then
     pip_cmd="pip"
   else
@@ -127,9 +225,15 @@ _pip_update_would_conflict() {
 
 _ucc_driver_pip_evidence() {
   local cfg_dir="$1" yaml="$2" target="$3"
-  local probe ver
+  local isolation probe ver
+  isolation="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.isolation" 2>/dev/null || true)"
   probe="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.probe_pkg")"
   [[ -n "$probe" ]] || return 1
+  if [[ "$isolation" == "pipx" ]]; then
+    ver="$(_pipx_version "$probe")"
+    printf 'version=%s  pkg=%s  isolation=pipx' "${ver:-absent}" "$probe"
+    return
+  fi
   ver="$(_pip_cached_version "$probe")"
   printf 'version=%s  pkg=%s' "${ver:-absent}" "$probe"
 }
