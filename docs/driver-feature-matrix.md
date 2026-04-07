@@ -57,7 +57,7 @@ Columns:
 | `vscode.sh` | `json-merge` | ✅ | ✅ | ✅ | ✅ | n/a (config writer) | n/a | implicit |
 | `brew.sh` | `brew-analytics` | ✅ | ✅ | ✅ | ✅ | n/a (toggle) | n/a | implicit |
 | `swupdate_schedule.sh` | `softwareupdate-schedule` | ✅ | ✅ | — | ✅ | n/a | n/a | n/a |
-| `pyenv_brew.sh` | `pyenv-brew` | ✅ | ✅ | — | ✅ | — | — | implicit |
+| `pyenv_brew.sh` | `pyenv-brew` | ✅ | ✅ | — | ✅ | ✅ (via `brew_observe pyenv`) | — | implicit |
 | `pip_bootstrap.sh` | `pip-bootstrap` | ✅ | ✅ | — | ✅ | — | — | implicit |
 | `compose_file.sh` | `compose-file` | ✅ | ✅ | — | ✅ | n/a | n/a | n/a |
 | `docker_compose_service.sh` | `docker-compose-service` | ✅ | ✅ | — | ✅ | — | — | implicit |

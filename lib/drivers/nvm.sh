@@ -12,13 +12,22 @@ _ucc_driver_nvm_observe() {
   local cfg_dir="$1" yaml="$2" target="$3"
   local nvm_dir; nvm_dir="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.nvm_dir")"
   nvm_dir="${nvm_dir:-.nvm}"
-  if [[ -s "$HOME/$nvm_dir/nvm.sh" ]]; then
-    local ver
-    ver="$(bash -c "source \"\$HOME/$nvm_dir/nvm.sh\" 2>/dev/null && nvm --version 2>/dev/null" || true)"
-    printf '%s' "${ver:-present}"
-  else
-    printf 'absent'
+  [[ -s "$HOME/$nvm_dir/nvm.sh" ]] || { printf 'absent'; return; }
+  local ver
+  ver="$(bash -c "source \"\$HOME/$nvm_dir/nvm.sh\" 2>/dev/null && nvm --version 2>/dev/null" || true)"
+  [[ -z "$ver" ]] && { printf 'present'; return; }
+  # Outdated check via driver.github_repo (e.g. nvm-sh/nvm), opt-in.
+  if [[ "${UIC_PREF_BREW_LIVECHECK:-0}" == "1" ]]; then
+    local repo; repo="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.github_repo" 2>/dev/null || true)"
+    if [[ -n "$repo" ]] && declare -f _pkg_github_latest_tag >/dev/null 2>&1; then
+      local latest; latest="$(_pkg_github_latest_tag "$repo" 2>/dev/null)"
+      if [[ -n "$latest" ]] && declare -f _pkg_version_lt >/dev/null 2>&1 \
+         && _pkg_version_lt "$ver" "$latest"; then
+        printf 'outdated'; return
+      fi
+    fi
   fi
+  printf '%s' "$ver"
 }
 
 _ucc_driver_nvm_action() {
@@ -53,11 +62,26 @@ _ucc_driver_nvm_version_observe() {
     printf 'absent'
     return
   fi
-  if bash -c "source \"\$HOME/$nvm_dir/nvm.sh\" 2>/dev/null && nvm ls \"$ver\" 2>/dev/null" | grep -q "v${ver}"; then
-    printf '%s' "$ver"
-  else
+  local installed
+  installed="$(bash -c "source \"\$HOME/$nvm_dir/nvm.sh\" 2>/dev/null && nvm ls \"$ver\" 2>/dev/null" \
+    | grep -oE "v${ver}\.[0-9]+\.[0-9]+" | head -1 | sed 's/^v//')"
+  if [[ -z "$installed" ]]; then
     printf 'absent'
+    return
   fi
+  # Outdated check: compare against `nvm ls-remote --lts` for the major.
+  # Opt-in via UIC_PREF_BREW_LIVECHECK=1 (network call).
+  if [[ "${UIC_PREF_BREW_LIVECHECK:-0}" == "1" ]]; then
+    local latest
+    latest="$(bash -c "source \"\$HOME/$nvm_dir/nvm.sh\" 2>/dev/null && nvm ls-remote --lts 2>/dev/null" \
+      | grep -oE "v${ver}\.[0-9]+\.[0-9]+" | tail -1 | sed 's/^v//')"
+    if [[ -n "$latest" ]] && declare -f _pkg_version_lt >/dev/null 2>&1 \
+       && _pkg_version_lt "$installed" "$latest"; then
+      printf 'outdated'
+      return
+    fi
+  fi
+  printf '%s' "$installed"
 }
 
 _ucc_driver_nvm_version_action() {
