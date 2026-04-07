@@ -10,11 +10,23 @@ _ucc_driver_script_installer_observe() {
   local install_dir
   install_dir="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.install_dir")"
   [[ -n "$install_dir" ]] || return 1
-  if [[ -d "$HOME/$install_dir" ]]; then
-    printf 'installed'
-  else
-    printf 'absent'
+  [[ -d "$HOME/$install_dir" ]] || { printf 'absent'; return; }
+  # Outdated check: most script installers (oh-my-zsh etc.) clone a git
+  # repo under install_dir. If so, compare local HEAD vs origin HEAD.
+  # Opt-in via UIC_PREF_BREW_LIVECHECK=1 (network call).
+  if [[ "${UIC_PREF_BREW_LIVECHECK:-0}" == "1" && -d "$HOME/$install_dir/.git" ]]; then
+    local local_head remote_head
+    local_head="$(git -C "$HOME/$install_dir" rev-parse HEAD 2>/dev/null)"
+    git -C "$HOME/$install_dir" fetch --quiet origin 2>/dev/null || true
+    remote_head="$(git -C "$HOME/$install_dir" rev-parse origin/HEAD 2>/dev/null \
+      || git -C "$HOME/$install_dir" rev-parse origin/master 2>/dev/null \
+      || git -C "$HOME/$install_dir" rev-parse origin/main 2>/dev/null || true)"
+    if [[ -n "$local_head" && -n "$remote_head" && "$local_head" != "$remote_head" ]]; then
+      printf 'outdated'
+      return
+    fi
   fi
+  printf 'installed'
 }
 
 _ucc_driver_script_installer_action() {
