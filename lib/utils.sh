@@ -222,6 +222,13 @@ desktop_app_install_source() {
 # Generic foreign-install handler. Reads UIC_PREF_PREFERRED_DRIVER_POLICY and
 # either ignores, warns (with a hint), or invokes the supplied migrator.
 #
+# Non-destructive contract: a migrator MUST only remove artifacts owned by the
+# foreign package manager (binaries, libs, manpages under its prefix). It MUST
+# NOT touch anything under $HOME — user config, caches, data, dotfiles, app
+# state — even if the foreign PM offered to. The new driver is expected to
+# read the same user files transparently. This keeps `policy=migrate` safe to
+# enable globally.
+#
 # Usage: handle_foreign_install <display_name> <foreign_owner> <warn_hint> <migrator_fn> [migrator_args...]
 #   <foreign_owner>   short tag identifying who owns the conflicting artifact
 #                     (e.g. "brew", "brew-cask", "pip"); used in log messages.
