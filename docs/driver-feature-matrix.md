@@ -1,185 +1,109 @@
 # Driver Feature Matrix
 
-> **STATUS (post-Phase 4)**: this document is the **pre-consolidation
-> snapshot** that drove the 5-phase refactor in `docs/PLAN.md`. After
-> Phase 4 landed (commits `9246a9b`..`80a4ee7`), most rows below are
-> outdated:
->
-> - 6 driver files were retired (`bin_script`, `cli_symlink`,
->   `macos_defaults`, `macos_swupdate`, `brew_service`, `launchd`).
-> - 41 YAML targets moved to `kind: pkg`, the unified package driver
->   with 8 backends (`brew`, `brew-cask`, `native-pm`, `npm`, `pyenv`,
->   `ollama`, `vscode`, `curl`).
-> - For current backend coverage and outdated/migration/activation
->   support, read these instead:
->     - `docs/install-method-gaps.md`
->     - `docs/update-detection-gaps.md`
->     - `docs/runtime-activation-gaps.md`
->
-> The grouping and maturity ranking below remain a useful historical
-> record of the consolidation reasoning.
+Snapshot of every driver under `lib/drivers/` after Phase 4 + the
+post-Phase-4 gap closures (R1, R2, B1, O1–O4, B2).
 
-Snapshot of every driver under `lib/drivers/`. Columns:
+## Drivers
 
-- **observe** — has `_ucc_driver_<kind>_observe` (state read).
-- **action** — has `install`/`update` action handler.
-- **apply** — has `_ucc_driver_<kind>_apply` (config/bool model).
-- **evidence** — emits human-readable evidence string.
-- **outdated** — distinguishes "installed but newer available" from "current".
-- **migration** — supports foreign-install conflict resolution
-  (`handle_foreign_install` + safety probe).
-- **runtime activation** — sources its required runtime (nvm/pyenv/etc.)
-  before calling its tools.
-- **always-loaded helpers** — non-driver helper functions live in the same
-  file (so callers don't need a component lib).
-- **notes** — gaps and quirks worth knowing.
+| File | Kind(s) exported | Role | Outdated | Migration | Activation | Notes |
+|---|---|---|---|---|---|---|
+| `pkg.sh` | `pkg` | Unified package dispatcher with 8 backends. The dominant driver — 41 YAML targets. | brew/brew-cask/npm/vscode/native-pm/curl(github) — opt-in `UIC_PREF_BREW_LIVECHECK=1`; pyenv/ollama no | yes (`handle_foreign_install` + safety probe) | npm via `_npm_ensure_path`, pyenv via `_pyenv_ensure_path` | Replaces brew/package/npm-global/vscode-marketplace/pyenv-version/ollama-model/curl-installer |
+| `brew.sh` | `brew-analytics` | Bool toggle (only the analytics flag remains; the formula driver was retired) | n/a | n/a | implicit | 1 YAML target |
+| `vscode.sh` | `json-merge` | Idempotent jq edit on `~/Library/Application Support/Code/User/settings.json` | n/a | n/a | implicit | 1 YAML target |
+| `setting.sh` | `setting` | Unified config writer (defaults / pmset). Replaces user-defaults + pmset + softwareupdate-defaults. | n/a (config) | n/a | implicit | 12 YAML targets |
+| `service.sh` | `service` | Unified daemon wrapper (brew + launchd). Replaces brew-service + launchd. | n/a | n/a | implicit | 2 YAML targets |
+| `home_artifact.sh` | `home-artifact` | Filesystem artifact under `$HOME` (script | symlink). Replaces bin-script + cli-symlink. | n/a | n/a | n/a | 2 YAML targets |
+| `app_bundle.sh` | `app-bundle` | Direct dmg/pkg/zip download + install | yes (upstream API) | no | n/a | 1 YAML target |
+| `git_repo.sh` | `git-repo` | Clone + ref tracking | yes (local vs remote ref) | no | n/a | 1 YAML target |
+| `pip.sh` | `pip` | Multi-package pip install | yes (R2/O3 closed: `pip list --outdated`) | no | yes (R2: `_pip_ensure_path`) | 13 YAML targets — stays separate (multi-package shape) |
+| `pip_bootstrap.sh` | `pip-bootstrap` | Ensure pip itself | n/a | n/a | implicit | 1 YAML target |
+| `pyenv_brew.sh` | `pyenv-brew` | Brew install + plugins + shell init | n/a | no | implicit | 1 YAML target |
+| `nvm.sh` | `nvm`, `nvm-version` | Install nvm itself + per-version node | no | no | yes (subshell wrapper) | 2 YAML targets |
+| `package.sh` | (helpers only) | `_pkg_native_*` + `_pkg_native_outdated_*` helpers used by `pkg`'s `native-pm` backend. Dispatcher functions retired. | — | — | — | not a driver any more |
+| `npm.sh` | (helpers only) | `_npm_ensure_path`, `npm_global_*`, `_npm_global_foreign_owner`, `_npm_global_migrate` helpers used by `pkg` and the foreign-install path. | — | — | — | not a driver any more |
+| `compose_file.sh` | `compose-file` | Static compose file ensure | n/a | n/a | n/a | 1 YAML target |
+| `docker_compose_service.sh` | `docker-compose-service` | Compose-managed service. Tightly coupled to `ai_apps` runner. | no | no | implicit | 1 YAML target |
+| `custom_daemon.sh` | `custom-daemon` | Process probe (observe-only — action returns 1) | no | no | n/a | 1 YAML target |
+| `build_deps.sh` | `build-deps` | Linux native PM bootstrap | no | no | n/a | 1 YAML target |
+| `git_global.sh` | `git-global` | Interactive git config user.name + user.email | n/a | n/a | n/a | 1 YAML target |
+| `git_repo.sh` | (above) | | | | | |
+| `path_export.sh` | `path-export` | Append PATH= line to shell rc | n/a | n/a | n/a | 1 YAML target |
+| `zsh_config.sh` | `zsh-config` | Idempotent line edit in `.zshrc` | n/a | n/a | n/a | 1 YAML target |
+| `brew_unlink.sh` | `brew-unlink` | Unlink a brew formula | n/a | n/a | implicit | 1 YAML target |
+| `script_installer.sh` | `script-installer` | Generic shell installer (oh-my-zsh, etc.) | no | no | n/a | 1 YAML target |
+| `swupdate_schedule.sh` | `softwareupdate-schedule` | macOS automatic update scheduler | n/a | n/a | n/a | 1 YAML target |
 
-| Driver | obs | act | app | ev | outd | mig | rt act | helpers | notes |
-|---|---|---|---|---|---|---|---|---|---|
-| `app_bundle` | ✅ | ✅ | — | ✅ | ✅ | — | — | — | Compares installed vs upstream API; one of only three drivers that detect updates. |
-| `bin_script` | ✅ | ✅ | — | ✅ | — | — | — | — | Installs a script into `~/bin`; presence-only. |
-| `brew` (formula) | ✅ | ✅ | — | ✅ | ⚠️ | — | implicit | — | Detects outdated via `brew outdated` (and `brew livecheck` opt-in via `UIC_PREF_BREW_LIVECHECK=1`); can lag upstream. |
-| `brew-analytics` | ✅ | ✅ | ✅ | ✅ | — | — | implicit | — | Bool config (on/off). |
-| `brew-service` | ✅ | ✅ | — | ✅ | — | — | implicit | — | Wraps `brew services`. |
-| `brew-unlink` | ✅ | ✅ | — | ✅ | — | — | implicit | — | Idempotent unlink. |
-| `build-deps` | ✅ | ✅ | — | ✅ | — | — | — | — | Linux native PM bootstrap. |
-| `cli-symlink` | ✅ | ✅ | — | ✅ | — | — | — | — | Symlink management. |
-| `compose-file` | ✅ | ✅ | — | ✅ | — | — | — | — | Static file ensure. |
-| `curl_installer` | ✅ | ✅ | — | ✅ | ⚠️ | — | — | — | Notes "no native outdated check" in source; presence-only effectively. |
-| `custom-daemon` | ✅ | ✅ | — | ✅ | — | — | — | — | Generic daemon scaffolding. |
-| `docker-compose-service` | ✅ | ✅ | — | ✅ | — | — | implicit | — | Requires Docker Desktop on PATH. |
-| `git-global` | ✅ | ✅ | — | ✅ | — | — | — | — | git config user/email. |
-| `git-repo` | ✅ | ✅ | — | ✅ | ✅ | — | — | — | Compares local vs remote ref → outdated. |
-| `launchd` | ✅ | ✅ | — | ✅ | — | — | — | — | Plist install + load. |
-| `macos-defaults` (`pmset`, `user-defaults`) | ✅ | ✅ | ✅ | ✅ | — | — | — | — | Bool/scalar config via `defaults`/`pmset`. |
-| `macos-swupdate` (`softwareupdate-defaults`) | ✅ | ✅ | ✅ | ✅ | — | — | — | — | macOS auto-update toggles. |
-| `npm-global` | ✅ | ✅ | — | ✅ | — | ✅ | ✅ (`_npm_ensure_path`) | ✅ (`npm_global_*`) | Migration probe + nvm activation; no `npm outdated` integration yet. |
-| `nvm` / `nvm-version` | ✅ | ✅ | — | ✅ | — | — | ✅ (subshell wrapper) | — | Self-sources `nvm.sh` in `bash -c`; reference pattern for activation. |
-| `ollama-model` | ✅ | ✅ | — | ✅ | — | — | implicit | — | Wraps `ollama pull`/`list`. |
-| `package` (meta) | ✅ | ✅ | — | ✅ | ⚠️ | — | implicit | — | Dispatches brew/native-PM/curl. Inherits brew's outdated quirks. |
-| `path-export` | ✅ | ✅ | — | ✅ | — | — | — | — | Shell rc-file edits. |
-| `pip` | ✅ | ✅ | — | ✅ | — | — | ❌ gap | — | Calls `pip` bare; misses pyenv-managed python activation. |
-| `pip-bootstrap` | ✅ | ✅ | — | ✅ | — | — | — | — | Ensures pip itself. |
-| `pyenv-version` | ✅ | ✅ | — | ✅ | — | — | ❌ gap | — | Calls `pyenv` bare; needs `pyenv init` shims. |
-| `pyenv-brew` | ✅ | ✅ | — | ✅ | — | — | implicit | — | Brew-installed pyenv binary; no shim init needed for the calls used. |
-| `script-installer` | ✅ | ✅ | — | ✅ | — | — | — | — | Generic shell installer. |
-| `swupdate-schedule` (`softwareupdate-schedule`) | ✅ | ✅ | — | ✅ | — | — | — | — | macOS scheduling. |
-| `vscode` (`vscode-marketplace`, `json-merge`) | ✅ | ✅ | ✅ (json-merge) | ✅ | — | — | implicit | — | Extension install + settings.json merge. |
-| `zsh-config` | ✅ | ✅ | — | ✅ | — | — | — | — | rc snippet ensure. |
+24 driver files total. Two of them (`package.sh`, `npm.sh`) host helper
+functions only — their dispatcher entry points were retired in Phase B1.
 
-Legend: ✅ has it · ⚠️ partial / known limitation · — not applicable / not implemented · `implicit` runtime is on PATH because its installer (brew etc.) places it there with no shell init needed.
+## Active YAML kinds
 
-## Cross-cutting capabilities
+`pkg` (41), `pip` (13), `setting` (12), `home-artifact` (2), `service` (2),
+`nvm-version` (1), `nvm` (1), `pyenv-brew` (1), `pip-bootstrap` (1),
+`brew-analytics` (1), `json-merge` (1), `app-bundle` (1), `git-repo` (1),
+`docker-compose-service` (1), `custom-daemon` (1), `build-deps` (1),
+`git-global` (1), `path-export` (1), `zsh-config` (1), `brew-unlink` (1),
+`script-installer` (1), `softwareupdate-schedule` (1), `compose-file` (1).
 
-| Capability | Drivers that have it | Drivers that should have it |
-|---|---|---|
-| Outdated detection | `app_bundle`, `git_repo`, `brew` (partial via livecheck) | `npm-global` (via `npm outdated`), `pip` (via `pip list --outdated`), `curl_installer` (via versioned URL or release feed) |
-| Migration / foreign-install handling | `npm-global`, `brew-cask` (via `desktop_app_handle_unmanaged_cask`) | `brew`, `pip`, every package-installing driver in principle |
-| Runtime activation guard | `npm-global`, `nvm` | `pyenv-version`, `pip` (when pyenv-managed) |
-| Per-driver `evidence` evidence + GitHub-latest hint | All drivers via `_ucc_driver_evidence` post-hook | — |
-| Driver-implicit dependencies (`_<kind>_depends_on`) | Most | New drivers: `mise`, `nix`, `aur` (don't exist yet) |
+23 distinct kinds, dominated by `pkg`.
 
-## Known gaps (linked docs)
+## Outdated detection (post-O1–O4)
 
-- Update detection: `docs/update-detection-gaps.md`.
-- Install method coverage + multi-backend & user override: `docs/install-method-gaps.md`.
-- Runtime activation: `docs/runtime-activation-gaps.md`.
+Behind `UIC_PREF_BREW_LIVECHECK=1`:
 
-## Grouping by similarity
+| Source | Mechanism |
+|---|---|
+| `pkg` brew | `brew outdated` always; `brew livecheck` opt-in |
+| `pkg` brew-cask | `brew outdated --cask` (+ `--greedy` if YAML asks) |
+| `pkg` npm | `npm outdated -g --json`, cached |
+| `pkg` vscode | marketplace `extensionquery` POST API, bulk + cached |
+| `pkg` curl | `_pkg_curl_version` + `driver.github_repo` release tag |
+| `pkg` native-pm | per-PM cache: apt list --upgradable / dnf check-update / pacman -Qu / zypper -n list-updates |
+| `pip` | `pip list --outdated --format=json`, cached |
+| `app_bundle` | upstream API |
+| `git_repo` | local vs remote ref |
 
-### A. Package installers (binary on $PATH)
+No outdated detection (by design): pkg pyenv, pkg ollama, custom-daemon,
+script-installer, build-deps, all config-writer kinds.
 
-Install a binary/library through some upstream package manager. Same shape:
-ref → install → version → outdated.
+## Foreign-install migration
 
-- `brew` (formula)
-- `package` (meta: brew → native PM → curl fallback)
-- `build-deps` (Linux native PM bootstrap)
-- `npm-global`
-- `pip`
-- `pip-bootstrap`
-- `pyenv-version`
-- `pyenv-brew`
-- `nvm`, `nvm-version`
-- `ollama-model`
-- `vscode-marketplace`
-- `curl_installer`
-- `script_installer`
+Implemented in `lib/utils.sh:handle_foreign_install` + per-driver-pair safety
+probe (`_assess_migration_safety`). Used by:
 
-Common needs: outdated detection, runtime activation, foreign-install
-migration, version cache.
+- `pkg` install action (any backend, before reinstalling).
+- `desktop_app_handle_unmanaged_cask` (legacy cask handler, refactored to use
+  the same helper).
 
-### B. GUI / app-bundle installers
+## Runtime activation
 
-Install a `.app` or system-wide GUI artifact, possibly under `/Applications`.
+| Backend / driver | Helper |
+|---|---|
+| `pkg` npm | `_npm_ensure_path` (in-process gate) |
+| `pkg` pyenv | `_pyenv_ensure_path` (R1) |
+| `kind: pip` | `_pip_ensure_path` → `_pyenv_ensure_path` fallback (R2) |
+| `kind: nvm` / `nvm-version` | `bash -c 'source nvm.sh && …'` (subshell wrapper) |
 
-- `app_bundle`
-- `brew` (cask branch — handled inside `brew.sh`)
+## What was retired
 
-Common needs: sudo/admin, system-wide cleanup, kext/helper handling, almost
-always destructive on migration.
+- `bin_script.sh` → folded into `home_artifact.sh`
+- `cli_symlink.sh` → folded into `home_artifact.sh`
+- `macos_defaults.sh` → folded into `setting.sh` (user-defaults + pmset)
+- `macos_swupdate.sh` → folded into `setting.sh`
+- `brew_service.sh` → folded into `service.sh`
+- `launchd.sh` → folded into `service.sh`
+- `curl_installer.sh` → folded into `pkg.sh` (curl backend)
+- `ollama_model.sh` → folded into `pkg.sh` (ollama backend)
+- `pyenv.sh` → folded into `pkg.sh` (pyenv backend)
+- `npm.sh` (driver portion) → folded into `pkg.sh` (npm backend)
+- `package.sh` (driver portion) → folded into `pkg.sh` (brew + brew-cask + native-pm backends)
+- `vscode.sh` (vscode-marketplace portion) → folded into `pkg.sh` (vscode backend)
 
-### C. Service / daemon managers
+12 driver kinds retired into 4 unified drivers (`pkg`, `setting`, `service`,
+`home_artifact`).
 
-Manage a long-running process via an init system.
+## Linked living docs
 
-- `brew-service`
-- `launchd`
-- `custom-daemon`
-- `docker-compose-service`
-
-Common needs: start/stop/status, autostart toggle, log location, restart
-semantics.
-
-### D. Configuration writers (idempotent file edits)
-
-Mutate a config file or registry to converge on a desired value. Use the
-`apply` model rather than `action`.
-
-- `macos-defaults` (`pmset`, `user-defaults`)
-- `macos-swupdate`
-- `swupdate-schedule`
-- `vscode` (`json-merge`)
-- `git-global`
-- `zsh-config`
-- `path-export`
-- `brew-analytics`
-- `compose-file`
-
-Common needs: backup-before-write, drift detection, idempotency, no service
-restart unless required.
-
-### E. Filesystem / link plumbing
-
-Create/maintain artifacts on the filesystem with no external PM involved.
-
-- `bin_script`
-- `cli_symlink`
-- `brew_unlink`
-- `git_repo` (clone + ref tracking)
-
-Common needs: ownership, replace-if-different, dry-run safety.
-
-### Cross-group observations
-
-- **Group A** is where the unfinished work lives: outdated detection,
-  multi-backend, migration safety, runtime activation.
-- **Group B** is where the strictest safety gates belong (system-wide,
-  potentially destructive, often needs sudo).
-- **Group C** would benefit from a shared service-state model (started,
-  stopped, failed, autostart) instead of each driver inventing its own.
-- **Group D** is the only group that uses the `apply` hook; this is the
-  natural home for an "intended-state" reconciler.
-- **Group E** is the simplest and most stable — nothing missing.
-
-## Maturity ranking
-
-1. **Most mature**: `brew`, `package`, `npm-global`, `nvm` — complete
-   observe/action/evidence, clear migration story, good cache use.
-2. **Solid but narrow**: `app_bundle`, `git_repo`, all `*-defaults`,
-   `brew-service`, `launchd`.
-3. **Functional with gaps**: `pip`, `pyenv-version` (runtime activation),
-   `curl_installer` (no outdated detection), `script_installer`.
-4. **Single-purpose helpers**: `bin_script`, `cli_symlink`, `compose_file`,
-   `path_export`, `zsh_config`, `git_global`, `brew_unlink` — narrow scope,
-   nothing missing.
+- `docs/install-method-gaps.md` — backend coverage and user-override layer.
+- `docs/update-detection-gaps.md` — outdated detection per backend/driver.
+- `docs/runtime-activation-gaps.md` — what activates what.
