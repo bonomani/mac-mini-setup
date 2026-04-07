@@ -316,6 +316,7 @@ Options:
   --no-interactive  Skip all prompts (CI/automation mode)
   --preflight       Evaluate UIC gates and preferences; do NOT converge
   --pref key=value  Set a UIC preference for this run only (repeatable)
+  --show-overrides  Print user overrides (UCC_OVERRIDE__* env + target-overrides.yaml) and exit
   --debug           Show DEBUG-level output
   -h, --help        Show this help
 
@@ -349,6 +350,16 @@ while [[ $# -gt 0 ]]; do
     --none)          export UCC_DEFAULT_SELECTION=none; shift ;;
     --debug)         export UCC_DEBUG=1;      shift ;;
     --preflight)     export UIC_PREFLIGHT=1;  shift ;;
+    --show-overrides)
+      # Print effective user overrides (env + overlay) and exit.
+      # Sources lib so the helpers are available without running the full pipeline.
+      # shellcheck disable=SC1091
+      source "$(dirname "$0")/lib/ucc_targets.sh" 2>/dev/null || true
+      printf '%-8s  %-40s  %-30s  %s\n' SOURCE TARGET KEY VALUE
+      _ucc_user_override_list 2>/dev/null \
+        | awk -F'\t' '{printf "%-8s  %-40s  %-30s  %s\n", $1, $2, $3, $4}'
+      exit 0
+      ;;
     --pref)
       _pref_kv="$2"; shift 2
       _pref_key="${_pref_kv%%=*}"

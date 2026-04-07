@@ -6,34 +6,6 @@ Goal: collapse the 28 current driver files into 5 generic drivers, one per
 similarity group from `docs/driver-feature-matrix.md`. Ship in dependency
 order so each phase de-risks the next.
 
-### Phase 0b — Cross-cutting: user override layer  (~2-3 days)
-
-**Problem**: targets are configured in tracked YAML, but every box has
-exceptions (offline, corporate mirror, missing runtime, deliberate
-divergence). Today the only escape is to edit tracked files. Documented in
-`docs/install-method-gaps.md` under "User override".
-
-**Approach**:
-1. New env-var convention: `UCC_DRIVER__<TARGET>=<kind>:<ref>` (target name
-   normalized, `-` → `_`). Resolved before driver dispatch in
-   `_ucc_driver_observe`/`_action`.
-2. New overlay file: `~/.config/ucc/overrides.yaml`, deep-merged on top of
-   tracked YAML by `_ucc_yaml_target_get`.
-3. Precedence (highest wins): env var > overlay file > tracked YAML.
-4. New CLI: `install.sh --show-overrides` lists each target's effective
-   driver and the source (env / overlay / yaml), so users can audit drift.
-5. Tests: env override takes precedence; overlay merges field-by-field;
-   missing overlay file is silent; malformed overlay is a hard error.
-
-**Why before Phase 4**: the package driver's multi-backend selection logic
-needs an override surface to consume on day one. Building the override layer
-first means Phase 4 plugs into it instead of inventing its own.
-
-**Why cross-cutting (not Phase-4-only)**: every driver benefits, not just
-package. A user might want to override `git_global` user.email per-machine,
-or pin a `service` driver to a specific backend. Keeping it general avoids
-re-doing it later.
-
 ### Phase 0c — BGS Grade-2 compliance refresh against `BGSPrivate/bgs`  (~1 day)
 
 **Problem**: BGS canonical home moved to `~/repos/github/bonomani/BGSPrivate/bgs/`

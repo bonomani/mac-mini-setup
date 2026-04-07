@@ -52,8 +52,101 @@ _ucc_ytgt_source() {
   fi
 }
 
+# ── User override layer (env + overlay file) ─────────────────────────────────
+# Precedence (highest first): env var > overlay yaml > tracked yaml.
+#
+# This is the single per-target user overlay. Slot-in to the existing
+# ~/.ai-stack/ layered model:
+#   preferences.env       — UIC policies (KEY=value)
+#   selection.yaml        — per-target run/skip selection
+#   target-overrides.yaml — per-target field overrides (this layer) +
+#                           per-target opt-outs (preferred-driver-ignore)
+#
+#  Env var format:  UCC_OVERRIDE__<TARGET>__<KEY>=<value>
+#                   target: '-' → '_';  key: '.' → '_'
+#  Example:         UCC_OVERRIDE__cli_opencode__driver_kind=brew
+#
+#  Overlay file:    $HOME/.ai-stack/target-overrides.yaml
+#  Top-level key:   target-overrides
+#  Shape:           target-overrides: { <target>: { driver: { kind: brew, ... } } }
+_UCC_OVERLAY_CACHE_LOADED=0
+_UCC_OVERLAY_CACHE=""
+
+_ucc_overlay_load_once() {
+  [[ "$_UCC_OVERLAY_CACHE_LOADED" == "1" ]] && return 0
+  _UCC_OVERLAY_CACHE_LOADED=1
+  local file="${UIC_PREF_FILE:-$HOME/.ai-stack/preferences.env}"
+  file="${file%/*}/target-overrides.yaml"
+  [[ -f "$file" ]] || return 0
+  _UCC_OVERLAY_CACHE="$(python3 - "$file" 2>/dev/null <<'PY' || true
+import sys, yaml
+def flatten(prefix, node, out):
+    if isinstance(node, dict):
+        for k, v in node.items():
+            key = f"{prefix}.{k}" if prefix else k
+            flatten(key, v, out)
+    else:
+        out.append((prefix, node))
+try:
+    with open(sys.argv[1]) as f:
+        data = yaml.safe_load(f) or {}
+except Exception:
+    sys.exit(0)
+overrides = (data or {}).get('target-overrides') or {}
+for target, fields in overrides.items():
+    flat = []
+    flatten("", fields or {}, flat)
+    for k, v in flat:
+        print(f"{target}\t{k}\t{v}")
+PY
+)"
+}
+
+# Echo override value for <target> <key>, return 0 if found.
+_ucc_user_override_get() {
+  local target="$1" key="$2"
+  # 1. env var
+  local env_target="${target//-/_}"
+  local env_key="${key//./_}"
+  local env_var="UCC_OVERRIDE__${env_target}__${env_key}"
+  if [[ -n "${!env_var:-}" ]]; then
+    printf '%s' "${!env_var}"
+    return 0
+  fi
+  # 2. overlay file
+  _ucc_overlay_load_once
+  [[ -n "$_UCC_OVERLAY_CACHE" ]] || return 1
+  local val
+  val=$(printf '%s\n' "$_UCC_OVERLAY_CACHE" \
+    | awk -F'\t' -v t="$target" -v k="$key" '$1==t && $2==k{print $3; exit}')
+  [[ -n "$val" ]] || return 1
+  printf '%s' "$val"
+}
+
+# List all known overrides as "<source>\t<target>\t<key>\t<value>" lines.
+# Used by install.sh --show-overrides.
+_ucc_user_override_list() {
+  local v
+  while IFS='=' read -r name v; do
+    [[ "$name" == UCC_OVERRIDE__*__* ]] || continue
+    local rest="${name#UCC_OVERRIDE__}"
+    local t="${rest%%__*}"
+    local k="${rest#*__}"
+    printf 'env\t%s\t%s\t%s\n' "${t//_/-}" "${k//_/.}" "$v"
+  done < <(env)
+  _ucc_overlay_load_once
+  [[ -n "$_UCC_OVERLAY_CACHE" ]] || return 0
+  printf '%s\n' "$_UCC_OVERLAY_CACHE" | awk -F'\t' '{print "overlay\t"$0}'
+}
+
 _ucc_yaml_target_get() {
   local cfg_dir="$1" yaml="$2" target="$3" key="$4" default="${5:-}"
+  # User override layer takes precedence over the tracked YAML.
+  local override
+  if override="$(_ucc_user_override_get "$target" "$key")" && [[ -n "$override" ]]; then
+    printf '%s' "$override"
+    return
+  fi
   local yaml_fn="${yaml//[^a-zA-Z0-9]/_}"
   local target_fn="${target//[^a-zA-Z0-9]/_}"
   local cache_var="_UCC_YTGT_${yaml_fn}_${target_fn}"
