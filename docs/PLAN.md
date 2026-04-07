@@ -6,21 +6,6 @@ Goal: collapse the 28 current driver files into 5 generic drivers, one per
 similarity group from `docs/driver-feature-matrix.md`. Ship in dependency
 order so each phase de-risks the next.
 
-### Phase 0a — Pre-refactor quick fix: tapped brew refs  (~1-2 hours)
-
-**Problem**: `_brew_cached_version` (`lib/ucc_brew.sh:61`) does strict
-equality against `brew list --versions` short names. A YAML `driver.ref` of
-`anomalyco/tap/opencode` therefore always observes as `absent`, even though
-`brew install` auto-taps and works. Documented in
-`docs/install-method-gaps.md`.
-
-**Fix**: strip the tap prefix before lookup:
-`pkg_short="${ref##*/}"; awk -v p="$pkg_short" ...`. Same idea as
-`_brew_is_outdated`'s regex match. Add a test case.
-
-**Why now**: unblocks tapped formula targets today; orthogonal to the
-refactor; the fix is ~5 lines and won't conflict with Phase 4.
-
 ### Phase 0b — Cross-cutting: user override layer  (~2-3 days)
 
 **Problem**: targets are configured in tracked YAML, but every box has

@@ -77,8 +77,10 @@ brew_service_is_started() {
 # brew_cask_is_installed is defined in lib/utils.sh
 # which is always sourced before these helpers are called.
 # Lookup version from cache (no brew subprocess)
-_brew_cached_version()      { echo "${_BREW_VERSIONS_CACHE:-}"      | awk -v p="$1" '$1==p{print $NF}'; }
-_brew_cask_cached_version() { echo "${_BREW_CASK_VERSIONS_CACHE:-}" | awk -v p="$1" '$1==p{v=$NF; sub(/,.*$/,"",v); print v}'; }
+# Strip tap prefix for cache lookup: brew list --versions emits short names,
+# but driver.ref may carry a tap (e.g. anomalyco/tap/opencode → opencode).
+_brew_cached_version()      { local p="${1##*/}"; echo "${_BREW_VERSIONS_CACHE:-}"      | awk -v p="$p" '$1==p{print $NF}'; }
+_brew_cask_cached_version() { local p="${1##*/}"; echo "${_BREW_CASK_VERSIONS_CACHE:-}" | awk -v p="$p" '$1==p{v=$NF; sub(/,.*$/,"",v); print v}'; }
 
 brew_observe() {
   local pkg="$1" ver
