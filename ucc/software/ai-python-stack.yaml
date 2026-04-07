@@ -51,10 +51,13 @@ targets:
     type: package
     state_model: package
     display_name: XZ Utils
+    provided_by_tool: pkg
     driver:
-      kind: package
-      ref: xz
-      apt_ref: xz-utils
+      kind: pkg
+      backends:
+      - brew: xz
+      - native-pm: xz-utils
+      bin: xz
   python:
     component: ai-python-stack
     profile: configured
