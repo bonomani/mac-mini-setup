@@ -6,24 +6,6 @@ Goal: collapse the 28 current driver files into 5 generic drivers, one per
 similarity group from `docs/driver-feature-matrix.md`. Ship in dependency
 order so each phase de-risks the next.
 
-### Phase 1 — Group E: filesystem plumbing  (~1-2 days)
-
-**New driver**: `lib/drivers/fs_artifact.sh` with `driver.kind: fs-artifact`
-and `driver.subkind: symlink|file|repo|unlink`.
-
-**Absorbs**: `bin_script.sh`, `cli_symlink.sh`, `brew_unlink.sh`, `git_repo.sh`.
-
-**Approach**:
-1. Define a uniform interface: `_fs_<subkind>_observe/_action/_evidence`.
-2. Move existing logic verbatim under the subkind dispatch.
-3. Add a YAML compat shim: old `kind: bin-script` etc. dispatches to the new
-   driver until all YAML is migrated.
-4. Migrate YAML targets one component at a time.
-5. Delete the old driver files when no YAML references them.
-
-**Risk**: very low. No semantic change.
-**Payoff**: 4 → 1 file; proves the consolidation pattern.
-
 ### Phase 2 — Group D: configuration writers  (~1-2 weeks)
 
 **New driver**: `lib/drivers/config_writer.sh` with `driver.kind: config` and

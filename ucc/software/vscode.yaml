@@ -37,7 +37,8 @@ targets:
     depends_on:
     - vscode
     driver:
-      kind: cli-symlink
+      kind: home-artifact
+      subkind: symlink
       src_path: ${vscode_cli_path}
       link_relpath: ${vscode_cli_link_relpath}
       cmd: code

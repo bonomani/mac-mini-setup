@@ -239,7 +239,8 @@ targets:
     depends_on:
     - home-bin-in-path
     driver:
-      kind: bin-script
+      kind: home-artifact
+      subkind: script
       script_name: ai-healthcheck
       bin_dir: ${home_bin_dir}
   iterm2:
