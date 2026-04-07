@@ -73,13 +73,19 @@ sys.exit(0 if '$pkg' in d else 1)
 " 2>/dev/null
 }
 
-# curl (script installer fallback). Presence-only: no version source.
+# curl (script installer fallback). Presence by default; outdated detection
+# is opt-in via driver.github_repo + UIC_PREF_BREW_LIVECHECK=1.
 _pkg_curl_available() { command -v curl >/dev/null 2>&1; }
 _pkg_curl_activate()  { :; }
 _pkg_curl_observe()   {
   local bin="${_PKG_BIN:-}"
   [[ -n "$bin" ]] || return 1
-  command -v "$bin" >/dev/null 2>&1 && printf 'installed' || printf 'absent'
+  command -v "$bin" >/dev/null 2>&1 || { printf 'absent'; return; }
+  if _pkg_curl_outdated; then
+    printf 'outdated'
+  else
+    printf 'installed'
+  fi
 }
 _pkg_curl_install() {
   local url="$1"
@@ -91,8 +97,61 @@ _pkg_curl_install() {
   fi
 }
 _pkg_curl_update()  { _pkg_curl_install "$1"; }
-_pkg_curl_version() { :; }
-_pkg_curl_outdated() { return 1; }  # no upstream signal
+_pkg_curl_version() {
+  local bin="${_PKG_BIN:-}"
+  [[ -n "$bin" ]] || return 0
+  "$bin" --version 2>/dev/null | head -1 \
+    | grep -oE '[0-9]+(\.[0-9]+){1,3}' | head -1
+}
+# True (0) if upstream GitHub release is strictly newer than installed binary.
+# Gated on UIC_PREF_BREW_LIVECHECK=1 (network call). Reads driver.github_repo
+# from _PKG_GITHUB_REPO stashed by the dispatcher.
+_pkg_curl_outdated() {
+  [[ "${UIC_PREF_BREW_LIVECHECK:-0}" == "1" ]] || return 1
+  [[ -n "${_PKG_GITHUB_REPO:-}" ]] || return 1
+  local installed latest
+  installed="$(_pkg_curl_version)"
+  [[ -n "$installed" ]] || return 1
+  latest="$(_pkg_github_latest_tag "$_PKG_GITHUB_REPO")"
+  [[ -n "$latest" ]] || return 1
+  _pkg_version_lt "$installed" "$latest"
+}
+
+# Return 0 if $1 (installed) is strictly older than $2 (latest). Tolerates `v`
+# prefix and trailing metadata. Empty inputs → not older.
+_pkg_version_lt() {
+  local installed="${1#v}" latest="${2#v}"
+  [[ -n "$installed" && -n "$latest" ]] || return 1
+  [[ "$installed" == "$latest" ]] && return 1
+  local first
+  first=$(printf '%s\n%s\n' "$installed" "$latest" | sort -V | head -n1)
+  [[ "$first" == "$installed" ]]
+}
+
+# Per-process cache of GitHub latest release tag, shared across pkg backends.
+# Cache format: lines of "<repo>\t<tag>"; "-" tag means "lookup failed".
+_pkg_github_latest_tag() {
+  local repo="$1"
+  [[ -n "$repo" ]] || return 1
+  local cached
+  cached="$(printf '%s\n' "${_PKG_GH_TAG_CACHE:-}" \
+    | awk -F'\t' -v r="$repo" '$1==r{print $2; exit}')"
+  if [[ -n "$cached" ]]; then
+    [[ "$cached" == "-" ]] && return 1
+    printf '%s' "$cached"
+    return 0
+  fi
+  local tag; tag="$(curl -fsS --max-time 5 "https://api.github.com/repos/${repo}/releases/latest" 2>/dev/null \
+    | awk -F'"' '/"tag_name"/{print $4}' | sed 's/^v//')"
+  if [[ -z "$tag" ]]; then
+    export _PKG_GH_TAG_CACHE="${_PKG_GH_TAG_CACHE:+${_PKG_GH_TAG_CACHE}
+}${repo}	-"
+    return 1
+  fi
+  export _PKG_GH_TAG_CACHE="${_PKG_GH_TAG_CACHE:+${_PKG_GH_TAG_CACHE}
+}${repo}	${tag}"
+  printf '%s' "$tag"
+}
 
 # brew-cask: macOS GUI apps via Homebrew Cask. Greedy mode (auto-update casks)
 # is opt-in via driver.greedy_auto_updates: true at the YAML level.
@@ -253,6 +312,7 @@ _ucc_driver_pkg_observe() {
   _pkg_select_backend || { printf 'absent'; return; }
   _PKG_BIN="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.bin" 2>/dev/null || true)"
   _PKG_GREEDY="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.greedy_auto_updates" 2>/dev/null || true)"
+  _PKG_GITHUB_REPO="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.github_repo" 2>/dev/null || true)"
   local fn="_pkg_${_PKG_PICKED_NAME//-/_}_observe"
   declare -f "$fn" >/dev/null 2>&1 || return 1
   "$fn" "$_PKG_PICKED_REF"
