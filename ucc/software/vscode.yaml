@@ -63,63 +63,91 @@ targets:
     type: package
     state_model: package
     display_name: VS Code Python
+    depends_on:
+    - vscode-code-cmd
+    provided_by_tool: pkg
     driver:
-      kind: vscode-marketplace
-      extension_id: ms-python.python
+      kind: pkg
+      backends:
+      - vscode: ms-python.python
   vscode-ext-ms-python.vscode-pylance:
     component: vscode-stack
     profile: configured
     type: package
     state_model: package
     display_name: VS Code Pylance
+    depends_on:
+    - vscode-code-cmd
+    provided_by_tool: pkg
     driver:
-      kind: vscode-marketplace
-      extension_id: ms-python.vscode-pylance
+      kind: pkg
+      backends:
+      - vscode: ms-python.vscode-pylance
   vscode-ext-ms-toolsai.jupyter:
     component: vscode-stack
     profile: configured
     type: package
     state_model: package
     display_name: VS Code Jupyter
+    depends_on:
+    - vscode-code-cmd
+    provided_by_tool: pkg
     driver:
-      kind: vscode-marketplace
-      extension_id: ms-toolsai.jupyter
+      kind: pkg
+      backends:
+      - vscode: ms-toolsai.jupyter
   vscode-ext-ms-vscode.cpptools:
     component: vscode-stack
     profile: configured
     type: package
     state_model: package
     display_name: VS Code C/C++
+    depends_on:
+    - vscode-code-cmd
+    provided_by_tool: pkg
     driver:
-      kind: vscode-marketplace
-      extension_id: ms-vscode.cpptools
+      kind: pkg
+      backends:
+      - vscode: ms-vscode.cpptools
   vscode-ext-continue.continue:
     component: vscode-stack
     profile: configured
     type: package
     state_model: package
     display_name: VS Code Continue
+    depends_on:
+    - vscode-code-cmd
+    provided_by_tool: pkg
     driver:
-      kind: vscode-marketplace
-      extension_id: continue.continue
+      kind: pkg
+      backends:
+      - vscode: continue.continue
   vscode-ext-eamodio.gitlens:
     component: vscode-stack
     profile: configured
     type: package
     state_model: package
     display_name: VS Code GitLens
+    depends_on:
+    - vscode-code-cmd
+    provided_by_tool: pkg
     driver:
-      kind: vscode-marketplace
-      extension_id: eamodio.gitlens
+      kind: pkg
+      backends:
+      - vscode: eamodio.gitlens
   vscode-ext-ms-vscode-remote.remote-containers:
     component: vscode-stack
     profile: configured
     type: package
     state_model: package
     display_name: VS Code Dev Containers
+    depends_on:
+    - vscode-code-cmd
+    provided_by_tool: pkg
     driver:
-      kind: vscode-marketplace
-      extension_id: ms-vscode-remote.remote-containers
+      kind: pkg
+      backends:
+      - vscode: ms-vscode-remote.remote-containers
 vscode_extensions:
 - vscode-ext-ms-python.python
 - vscode-ext-ms-python.vscode-pylance
