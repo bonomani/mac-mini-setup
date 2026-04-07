@@ -22,8 +22,7 @@ for _ucc_drv_file in \
   "$_UCC_DRIVERS_DIR/app_bundle.sh" \
   "$_UCC_DRIVERS_DIR/pyenv.sh" \
   "$_UCC_DRIVERS_DIR/nvm.sh" \
-  "$_UCC_DRIVERS_DIR/brew_service.sh" \
-  "$_UCC_DRIVERS_DIR/launchd.sh" \
+  "$_UCC_DRIVERS_DIR/service.sh" \
   "$_UCC_DRIVERS_DIR/custom_daemon.sh" \
   "$_UCC_DRIVERS_DIR/compose_file.sh" \
   "$_UCC_DRIVERS_DIR/docker_compose_service.sh" \
@@ -185,8 +184,13 @@ _ucc_driver_nvm_version_provided_by()      { printf 'nvm'; }
 _ucc_driver_ollama_model_depends_on()      { printf 'ollama'; }
 _ucc_driver_ollama_model_provided_by()     { printf 'ollama'; }
 
-_ucc_driver_brew_service_depends_on()      { printf 'homebrew'; }
-_ucc_driver_brew_service_provided_by()     { printf 'brew'; }
+_ucc_driver_service_depends_on() {
+  # Inherit dependency from the backend. Only brew has one today.
+  case "${_SVC_BACKEND:-}" in brew) printf 'homebrew' ;; esac
+}
+_ucc_driver_service_provided_by() {
+  case "${_SVC_BACKEND:-}" in brew) printf 'brew' ;; launchd) printf 'launchd' ;; esac
+}
 
 _ucc_driver_docker_compose_service_depends_on()  { printf 'docker-desktop'; }
 _ucc_driver_docker_compose_service_provided_by() { printf 'docker-compose'; }

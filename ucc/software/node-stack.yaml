@@ -94,7 +94,8 @@ targets:
     depends_on:
     - networkquality-available
     driver:
-      kind: brew-service
+      kind: service
+      backend: brew
       ref: ariaflow
     endpoints:
     - name: aria2 RPC
@@ -113,7 +114,8 @@ targets:
     type: runtime
     display_name: Ariaflow Web
     driver:
-      kind: brew-service
+      kind: service
+      backend: brew
       ref: ariaflow-web
     endpoints:
     - name: ariaflow web UI

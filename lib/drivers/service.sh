@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+# lib/drivers/service.sh — driver.kind: service
+# Unified service driver for init-system-managed daemons. Replaces
+# brew-service and launchd, both of which share the same observe/action
+# shape (presence → running/stopped, start/restart).
+#
+# custom-daemon and docker-compose-service deliberately stay separate:
+# the first is observe-only (no real action) and the second is tightly
+# coupled to the ai_apps runner.
+#
+#  driver.backend: brew | launchd
+#
+#  brew:
+#    driver.ref: <formula-name>
+#  launchd:
+#    driver.plist:       <launchd label>  (e.g. ai.unsloth.studio)
+#    driver.launchd_dir: plist directory relative to $HOME
+#                        (default: Library/LaunchAgents)
+
+_service_get_fields() {
+  local cfg_dir="$1" yaml="$2" target="$3"
+  _SVC_BACKEND="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.backend")"
+  _SVC_REF="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.ref")"
+  _SVC_PLIST="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.plist")"
+  _SVC_LAUNCHD_DIR="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.launchd_dir" 2>/dev/null)"
+  _SVC_LAUNCHD_DIR="${_SVC_LAUNCHD_DIR:-Library/LaunchAgents}"
+}
+
+_service_launchd_plist_file() {
+  printf '%s/%s/%s.plist' "$HOME" "$_SVC_LAUNCHD_DIR" "$_SVC_PLIST"
+}
+
+_ucc_driver_service_observe() {
+  local cfg_dir="$1" yaml="$2" target="$3"
+  _service_get_fields "$cfg_dir" "$yaml" "$target"
+  case "$_SVC_BACKEND" in
+    brew)
+      [[ -n "$_SVC_REF" ]] || return 1
+      brew list "$_SVC_REF" >/dev/null 2>&1 || { printf 'absent'; return; }
+      if brew_service_is_started "$_SVC_REF"; then
+        printf 'running'
+      else
+        printf 'stopped'
+      fi
+      ;;
+    launchd)
+      [[ -n "$_SVC_PLIST" ]] || return 1
+      [[ -f "$(_service_launchd_plist_file)" ]] || { printf 'absent'; return; }
+      if launchctl list 2>/dev/null | grep -q "$_SVC_PLIST"; then
+        printf 'running'
+      else
+        printf 'stopped'
+      fi
+      ;;
+    *) return 1 ;;
+  esac
+}
+
+_ucc_driver_service_action() {
+  local cfg_dir="$1" yaml="$2" target="$3" action="$4"
+  _service_get_fields "$cfg_dir" "$yaml" "$target"
+  case "$_SVC_BACKEND" in
+    brew)
+      [[ -n "$_SVC_REF" ]] || return 1
+      case "$action" in
+        install) ucc_run brew services start   "$_SVC_REF" ;;
+        update)  ucc_run brew services restart "$_SVC_REF" ;;
+      esac
+      ;;
+    launchd)
+      [[ -n "$_SVC_PLIST" ]] || return 1
+      local file; file="$(_service_launchd_plist_file)"
+      case "$action" in
+        install) ucc_run launchctl load "$file" ;;
+        update)
+          ucc_run launchctl unload "$file" 2>/dev/null || true
+          ucc_run launchctl load "$file"
+          ;;
+      esac
+      ;;
+    *) return 1 ;;
+  esac
+}
+
+_ucc_driver_service_evidence() {
+  local cfg_dir="$1" yaml="$2" target="$3"
+  _service_get_fields "$cfg_dir" "$yaml" "$target"
+  case "$_SVC_BACKEND" in
+    brew)
+      [[ -n "$_SVC_REF" ]] || return 1
+      local ver; ver="$(_brew_cached_version "$_SVC_REF")"
+      [[ -n "$ver" ]] && printf 'version=%s' "$ver"
+      ;;
+    launchd)
+      [[ -n "$_SVC_PLIST" ]] || return 1
+      printf 'plist=%s' "$(_service_launchd_plist_file)"
+      ;;
+  esac
+}

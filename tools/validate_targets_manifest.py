@@ -34,7 +34,7 @@ _DRIVER_META_STATIC = {
     "nvm":                   ("homebrew",       "nvm-installer"),
     "nvm-version":           ("nvm",            "nvm"),
     "ollama-model":          ("ollama",         "ollama"),
-    "brew-service":          ("homebrew",       "brew"),
+    "service":               (None,             None),  # backend-aware, see lib/drivers/service.sh
     "docker-compose-service":("docker-desktop", "docker-compose"),
     "git-repo":              (None,             "git"),
 }
@@ -64,7 +64,7 @@ DRIVER_META = _resolve_driver_meta()
 # Drivers not listed here accept any keys (custom, etc.)
 DRIVER_SCHEMA = {
     "brew":                   {"required": ["ref"], "optional": ["cask", "greedy_auto_updates", "previous_ref"]},
-    "brew-service":           {"required": ["ref"], "optional": []},
+    "service":                {"required": ["backend"], "optional": ["ref", "plist", "launchd_dir"]},
     "brew-analytics":         {"required": [], "optional": []},
     "brew-unlink":            {"required": ["formula"], "optional": []},
     "app-bundle":             {"required": ["app_path", "brew_cask"], "optional": ["update_api", "download_url_tpl", "package_ext"]},
@@ -80,7 +80,6 @@ DRIVER_SCHEMA = {
     "docker-compose-service": {"required": ["service_name"], "optional": []},
     "compose-file":           {"required": ["path_env"], "optional": []},
     "custom-daemon":          {"required": ["bin", "process"], "optional": ["github_repo"]},
-    "launchd":                {"required": ["plist"], "optional": ["launchd_dir"]},
     "json-merge":             {"required": ["settings_relpath", "patch_relpath"], "optional": []},
     "setting":                {"required": ["backend", "key", "value"], "optional": ["domain", "type", "requires_sudo"]},
     "softwareupdate-schedule":{"required": [], "optional": []},
@@ -115,14 +114,13 @@ KNOWN_PACKAGE_DRIVERS = {
     "app-bundle",
 }
 KNOWN_RUNTIME_DRIVERS = {
-    "brew-service",
     "compose-file",
     "custom",
     "custom-daemon",
     "desktop-app",
     "docker-compose",
     "docker-compose-service",
-    "launchd",
+    "service",
 }
 KNOWN_CONFIG_DRIVERS = {
     "home-artifact",
