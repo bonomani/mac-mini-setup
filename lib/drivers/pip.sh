@@ -92,14 +92,37 @@ _ucc_driver_pip_action() {
         && pip_cache_versions
       ;;
     update)
-      # Upgrade only the named packages; bump transitive deps only when
-      # the named packages actually require it. Prevents one pip-group-*
-      # target from yanking shared deps (torch, langchain, …) past the
-      # constraints another group's pinned packages need.
+      # Non-destructive update: dry-run first; if the resolver would
+      # leave any other already-installed package with an unsatisfied
+      # constraint ("X requires Y<Z, but you have Y>=Z"), skip the
+      # upgrade entirely and leave the current install untouched.
+      # Outdated detection still flags the target so the operator
+      # knows there's a pending update; only the *write* is gated.
+      if _pip_update_would_conflict "$pip_cmd" "$pkgs"; then
+        return 0
+      fi
       ucc_run $pip_cmd install -q --upgrade --upgrade-strategy only-if-needed $pkgs \
         && pip_cache_versions
       ;;
   esac
+}
+
+# Return 0 (= would conflict) if a dry-run upgrade reports incompatibility
+# warnings against any other installed package. Logs the offending lines.
+_pip_update_would_conflict() {
+  local pip_cmd="$1" pkgs="$2"
+  local out conflicts
+  out="$($pip_cmd install --dry-run --upgrade --upgrade-strategy only-if-needed -q $pkgs 2>&1 || true)"
+  # pip prints lines like:
+  #   unsloth 2026.4.4 requires torch<2.11.0,>=2.4.0, but you have torch 2.11.0 which is incompatible.
+  conflicts="$(printf '%s\n' "$out" | grep -E '^[A-Za-z0-9._-]+ [^ ]+ requires .*which is incompatible\.$' || true)"
+  [[ -z "$conflicts" ]] && return 1
+  log_warn "pip update for [${pkgs}] would break existing packages; skipping (non-destructive)."
+  printf '%s\n' "$conflicts" | head -5 | while IFS= read -r line; do
+    log_warn "  ${line}"
+  done
+  log_warn "  Resolve manually with a coordinated upgrade, or relax the conflicting pins, then re-run."
+  return 0
 }
 
 _ucc_driver_pip_evidence() {
