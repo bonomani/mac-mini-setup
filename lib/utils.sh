@@ -288,6 +288,91 @@ desktop_app_handle_unmanaged_cask() {
     brew_cask_migrate_install "$cask_id"
 }
 
+# ── Migration safety probes ───────────────────────────────────────────────────
+# Per-process cache: lines of "<owner>:<ref>\t<verdict>\t<evidence>"
+_MIGRATION_SAFETY_CACHE=""
+
+# Echoes "safe" or "destructive". Cached per (owner, ref).
+# Side-effect: emits one log_info line on first assessment with the evidence.
+_assess_migration_safety() {
+  local owner="$1" ref="$2"
+  local key="${owner}:${ref}" cached
+  cached=$(printf '%s\n' "$_MIGRATION_SAFETY_CACHE" \
+    | awk -F'\t' -v k="$key" '$1==k{print $2; exit}')
+  if [[ -n "$cached" ]]; then
+    printf '%s' "$cached"
+    return
+  fi
+  local fn="_migration_safety_${owner//-/_}"
+  local verdict evidence
+  if declare -f "$fn" >/dev/null 2>&1; then
+    # Probe must echo "<verdict>\t<evidence>"
+    local out; out="$("$fn" "$ref")"
+    verdict="${out%%	*}"
+    evidence="${out#*	}"
+  else
+    verdict=destructive
+    evidence="unknown owner"
+  fi
+  [[ "$verdict" != "safe" && "$verdict" != "destructive" ]] && verdict=destructive
+  _MIGRATION_SAFETY_CACHE="${_MIGRATION_SAFETY_CACHE:+${_MIGRATION_SAFETY_CACHE}
+}${key}	${verdict}	${evidence}"
+  log_info "migration-safety: ${owner}/${ref} → ${verdict} (${evidence})"
+  printf '%s' "$verdict"
+}
+
+# brew formula probe
+_migration_safety_brew() {
+  local ref="$1"
+  local dependents services sysetc plists
+  dependents="$(brew uses --installed --recursive "$ref" 2>/dev/null | head -1)"
+  services="$(brew services list 2>/dev/null | awk -v r="$ref" '$1==r{print; exit}')"
+  local prefix; prefix="$(brew --prefix 2>/dev/null)"
+  sysetc=""
+  if [[ -n "$prefix" && -d "$prefix/etc/$ref" ]]; then
+    [[ -n "$(ls -A "$prefix/etc/$ref" 2>/dev/null)" ]] && sysetc="$prefix/etc/$ref"
+  fi
+  plists=""
+  if [[ -n "$prefix" ]]; then
+    plists="$(grep -lr --include='*.plist' -F "$prefix/opt/$ref" \
+      /Library/LaunchDaemons /Library/LaunchAgents "$HOME/Library/LaunchAgents" 2>/dev/null | head -1)"
+  fi
+  if [[ -z "$dependents" && -z "$services" && -z "$sysetc" && -z "$plists" ]]; then
+    printf 'safe\tdependents=0 services=none system_config=none launchd=none'
+  else
+    local why=""
+    [[ -n "$dependents" ]] && why+="dependents "
+    [[ -n "$services" ]]   && why+="brew-services "
+    [[ -n "$sysetc" ]]     && why+="system-config "
+    [[ -n "$plists" ]]     && why+="launchd "
+    printf 'destructive\t%s' "${why% }"
+  fi
+}
+
+# brew cask probe — always destructive (system-wide /Applications, kexts, etc.)
+_migration_safety_brew_cask() {
+  printf 'destructive\t/Applications scope'
+}
+
+# unknown / curl-installed probe — never auto-migrate
+_migration_safety_external() {
+  printf 'destructive\tunknown footprint'
+}
+
+# Resolve effective safety: probe + per-target YAML override.
+# Usage: _migration_safety_for_target <cfg_dir> <yaml> <target> <owner> <ref>
+_migration_safety_for_target() {
+  local cfg_dir="$1" yaml="$2" target="$3" owner="$4" ref="$5"
+  local override
+  override="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.migration_safety" 2>/dev/null || true)"
+  if [[ -n "$override" && "$override" != "auto" ]]; then
+    log_info "migration-safety: ${target} pinned to '${override}' via driver.migration_safety"
+    printf '%s' "$override"
+    return
+  fi
+  _assess_migration_safety "$owner" "$ref"
+}
+
 brew_cask_migrate_install() {
   local pkg="$1"
   ucc_run brew install --cask --force "$pkg" || return $?

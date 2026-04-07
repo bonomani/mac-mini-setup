@@ -73,8 +73,10 @@ _ucc_driver_npm_global_action() {
     install)
       local owner; owner="$(_npm_global_foreign_owner "$bin")"
       if [[ -n "$owner" ]]; then
+        local safety
+        safety="$(_migration_safety_for_target "$cfg_dir" "$yaml" "$target" "$owner" "$bin")"
         local hint="brew uninstall ${bin} && npm install -g ${pkg} (or: ./install.sh --pref preferred-driver-policy=migrate ${target})"
-        handle_foreign_install "$display" "$owner" "safe" "$hint" \
+        handle_foreign_install "$display" "$owner" "$safety" "$hint" \
           _npm_global_migrate "$owner" "$bin" "$pkg" || return $?
       fi
       npm_global_install "$pkg"
