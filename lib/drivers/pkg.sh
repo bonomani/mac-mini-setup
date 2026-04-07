@@ -172,19 +172,28 @@ _pkg_load_backends() {
   _PKG_BE_REFS=()
   local out
   out="$(python3 - "$cfg_dir" "$yaml" "$target" <<'PY' 2>/dev/null || true
-import sys, yaml, pathlib
+import sys, yaml, pathlib, re
 cfg_dir, yaml_path, target = sys.argv[1], sys.argv[2], sys.argv[3]
 p = pathlib.Path(cfg_dir) / yaml_path if not pathlib.Path(yaml_path).is_absolute() else pathlib.Path(yaml_path)
 try:
     data = yaml.safe_load(open(p)) or {}
 except Exception:
     sys.exit(0)
+# Top-level scalar vars are eligible for ${var} substitution.
+top_vars = {k: str(v) for k, v in data.items()
+            if k not in ("targets",) and isinstance(v, (str, int, float, bool))}
+def subst(s):
+    if not isinstance(s, str):
+        return s
+    return re.sub(r'\$\{([a-zA-Z_][a-zA-Z0-9_]*)\}',
+                  lambda m: top_vars.get(m.group(1), m.group(0)),
+                  s)
 t = (data.get("targets") or {}).get(target) or {}
 backends = ((t.get("driver") or {}).get("backends")) or []
 for item in backends:
     if isinstance(item, dict) and len(item) == 1:
         for k, v in item.items():
-            print(f"{k}\t{v}")
+            print(f"{k}\t{subst(v)}")
 PY
 )"
   while IFS=$'\t' read -r name ref; do
