@@ -174,8 +174,8 @@ targets:
     state_model: package
     display_name: OpenCode
     driver:
-      kind: package
-      ref: opencode
+      kind: npm-global
+      package: opencode-ai
   cli-aria2:
     component: cli-tools
     profile: configured
