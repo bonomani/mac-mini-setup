@@ -66,9 +66,11 @@ targets:
     display_name: Python
     depends_on:
     - xz
+    provided_by_tool: pkg
     driver:
-      kind: pyenv-version
-      version: ${python_version}
+      kind: pkg
+      backends:
+      - pyenv: ${python_version}
   pip-latest:
     component: ai-python-stack
     profile: configured

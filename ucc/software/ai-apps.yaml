@@ -172,63 +172,91 @@ targets:
     type: package
     state_model: package
     display_name: Ollama llama3.2
+    depends_on:
+    - ollama
+    provided_by_tool: pkg
     driver:
-      kind: ollama-model
-      ref: llama3.2
+      kind: pkg
+      backends:
+      - ollama: llama3.2
   ollama-model-nomic-embed-text:
     component: ai-apps
     profile: configured
     type: package
     state_model: package
     display_name: Ollama nomic-embed-text
+    depends_on:
+    - ollama
+    provided_by_tool: pkg
     driver:
-      kind: ollama-model
-      ref: nomic-embed-text
+      kind: pkg
+      backends:
+      - ollama: nomic-embed-text
   ollama-model-qwen3-latest:
     component: ai-apps
     profile: configured
     type: package
     state_model: package
     display_name: Ollama qwen3:latest
+    depends_on:
+    - ollama
+    provided_by_tool: pkg
     driver:
-      kind: ollama-model
-      ref: qwen3:latest
+      kind: pkg
+      backends:
+      - ollama: qwen3:latest
   ollama-model-llama3.1-8b:
     component: ai-apps
     profile: configured
     type: package
     state_model: package
     display_name: Ollama llama3.1:8b
+    depends_on:
+    - ollama
+    provided_by_tool: pkg
     driver:
-      kind: ollama-model
-      ref: llama3.1:8b
+      kind: pkg
+      backends:
+      - ollama: llama3.1:8b
   ollama-model-mistral-7b:
     component: ai-apps
     profile: configured
     type: package
     state_model: package
     display_name: Ollama mistral:7b
+    depends_on:
+    - ollama
+    provided_by_tool: pkg
     driver:
-      kind: ollama-model
-      ref: mistral:7b
+      kind: pkg
+      backends:
+      - ollama: mistral:7b
   ollama-model-qwen2.5-coder-32b:
     component: ai-apps
     profile: configured
     type: package
     state_model: package
     display_name: Ollama qwen2.5-coder:32b
+    depends_on:
+    - ollama
+    provided_by_tool: pkg
     driver:
-      kind: ollama-model
-      ref: qwen2.5-coder:32b
+      kind: pkg
+      backends:
+      - ollama: qwen2.5-coder:32b
   ollama-model-llama3.1-70b:
     component: ai-apps
     profile: configured
     type: package
     state_model: package
     display_name: Ollama llama3.1:70b
+    depends_on:
+    - ollama
+    provided_by_tool: pkg
     driver:
-      kind: ollama-model
-      ref: llama3.1:70b
+      kind: pkg
+      backends:
+      - ollama: llama3.1:70b
 small:
 - ollama-model-llama3.2
 - ollama-model-nomic-embed-text
