@@ -89,6 +89,43 @@ _pkg_curl_update()  { _pkg_curl_install "$1"; }
 _pkg_curl_version() { :; }
 _pkg_curl_outdated() { return 1; }  # no upstream signal
 
+# pyenv-version
+_pkg_pyenv_available() { command -v pyenv >/dev/null 2>&1; }
+_pkg_pyenv_activate()  { :; }
+_pkg_pyenv_observe()   {
+  local v="$1"
+  pyenv versions 2>/dev/null | grep -q "$v" && printf '%s' "$v" || printf 'absent'
+}
+_pkg_pyenv_install()   { ucc_run pyenv install "$1" && ucc_run pyenv global "$1"; }
+_pkg_pyenv_update()    { ucc_run pyenv install --skip-existing "$1" && ucc_run pyenv global "$1"; }
+_pkg_pyenv_version()   { python3 --version 2>/dev/null | awk '{print $2}'; }
+_pkg_pyenv_outdated()  { return 1; }
+
+# ollama-model
+_pkg_ollama_available() { command -v ollama >/dev/null 2>&1; }
+_pkg_ollama_activate()  { :; }
+_pkg_ollama_observe()   {
+  local m="$1"
+  ollama_model_present "$m" && printf '%s' "$m" || printf 'absent'
+}
+_pkg_ollama_install()   { ollama_model_pull "$1"; }
+_pkg_ollama_update()    { ollama_model_pull "$1"; }
+_pkg_ollama_version()   { :; }
+_pkg_ollama_outdated()  { return 1; }
+
+# vscode-marketplace
+_pkg_vscode_available() { command -v code >/dev/null 2>&1; }
+_pkg_vscode_activate()  { :; }
+_pkg_vscode_observe()   {
+  local id="$1" v
+  v="$(_vscode_extension_cached_version "$id" 2>/dev/null || true)"
+  [[ -n "$v" ]] && printf '%s' "$v" || printf 'absent'
+}
+_pkg_vscode_install()   { vscode_extension_install "$1"; }
+_pkg_vscode_update()    { vscode_extension_update  "$1"; }
+_pkg_vscode_version()   { _vscode_extension_cached_version "$1"; }
+_pkg_vscode_outdated()  { return 1; }
+
 # ── Dispatcher ───────────────────────────────────────────────────────────────
 
 # Parse driver.backends list into two arrays: _PKG_BE_NAMES and _PKG_BE_REFS.
