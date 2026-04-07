@@ -80,10 +80,27 @@
       "Bash(python3 tests/test_ordering.py)",
       "Bash(python3 tests/test_conditions.py)",
       "Bash(python3 tests/test_selection.py)",
-      "Bash(python3 tests/test_drivers.py)"
+      "Bash(python3 tests/test_drivers.py)",
+      "Bash(ls /home/bc/repos/github/bonomani/mac-mini-setup/tests/*.py)",
+      "Bash(ls /home/bc/repos/github/bonomani/mac-mini-setup/lib/drivers/*.sh)",
+      "Bash(python3 tools/validate_targets_manifest.py ucc/software/build-tools.yaml)",
+      "Bash(python3 tools/validate_targets_manifest.py ucc/software/build-tools.yaml --verbose)",
+      "Bash(python3 tools/validate_targets_manifest.py ucc/software/cli-tools.yaml)",
+      "Bash(python3 tools/validate_targets_manifest.py --help)",
+      "Bash(python3 -m pytest tests/ -q)",
+      "Bash(python3 -m pytest tests/ -q -k \"not scheduler and not vscode_settings\")",
+      "Bash(python3 tools/validate_targets_manifest.py --ordered-targets build-tools ucc/)",
+      "Bash(python3 -m pytest tests/test_yaml_schema.py -v)",
+      "Bash(python3 /home/bc/repos/github/bonomani/mac-mini-setup/tools/validate_targets_manifest.py --all-dispatch /home/bc/repos/github/bonomani/mac-mini-setup/ucc)",
+      "WebSearch",
+      "Bash(python3 tools/validate_targets_manifest.py --deps docker-resources ucc/software/docker.yaml)",
+      "Bash(python3 tools/read_config.py --target-get-many ucc/software/docker.yaml docker-resources settings_relpath)",
+      "Bash(xxd)",
+      "Bash(python3 tools/read_config.py --target-get-many ucc/software/docker.yaml docker-resources driver.settings_relpath driver.memory_gb driver.cpu_count)",
+      "Bash(grep -r \"docker-settings-file\\\\|policy/\\\\|settings\\\\.json\" /home/bc/repos/github/bonomani/mac-mini-setup --include=*.yaml --include=*.sh --include=*.py --include=*.md)"
     ],
     "additionalDirectories": [
-      "/tmp"
+      "/home/bc/.claude/plans"
     ]
   }
 }
