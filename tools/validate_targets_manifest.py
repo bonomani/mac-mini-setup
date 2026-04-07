@@ -518,18 +518,77 @@ def _resolve_conditional_dep(entry, host_values=None):
     return target, False
 
 
+# Map a pkg backend name → (implicit dep target, provided_by tool).
+# Mirrors the per-driver entries in DRIVER_META so kind: pkg targets keep
+# the same dependency injection behavior as the per-driver kinds they replaced.
+PKG_BACKEND_META = {
+    "brew":      ("homebrew",        "brew"),
+    "native-pm": ("build-deps",      "native-package-manager"),
+    "npm":       ("node-lts",        "npm"),
+    "pyenv":     ("pyenv",           "pyenv"),
+    "ollama":    ("ollama",          "ollama"),
+    "vscode":    ("vscode-code-cmd", "vscode-marketplace"),
+    "curl":      (None,              "curl"),
+}
+
+
+def _pkg_backend_names(data):
+    """Return the list of backend names declared in driver.backends."""
+    driver = data.get("driver") or {}
+    backends = driver.get("backends") or []
+    names = []
+    for item in backends:
+        if isinstance(item, dict) and len(item) == 1:
+            for k in item.keys():
+                if isinstance(k, str):
+                    names.append(k)
+    return names
+
+
 def _driver_implicit_dep(data):
-    """Return the implicit depends_on target for this target's driver, or None."""
+    """Return *one* implicit depends_on target for this target's driver, or None.
+
+    For kind: pkg, returns the implicit dep of the FIRST backend that declares
+    one. The full list is exposed via _driver_implicit_deps_all() below.
+    """
     driver = data.get("driver") or {}
     kind = driver.get("kind", "")
+    if kind == "pkg":
+        for name in _pkg_backend_names(data):
+            meta = PKG_BACKEND_META.get(name)
+            if meta and meta[0]:
+                return meta[0]
+        return None
     meta = DRIVER_META.get(kind)
     return meta[0] if meta else None
+
+
+def _driver_implicit_deps_all(data):
+    """Union of implicit deps across all declared backends (or single driver)."""
+    driver = data.get("driver") or {}
+    kind = driver.get("kind", "")
+    if kind == "pkg":
+        deps = []
+        for name in _pkg_backend_names(data):
+            meta = PKG_BACKEND_META.get(name)
+            if meta and meta[0] and meta[0] not in deps:
+                deps.append(meta[0])
+        return deps
+    one = _driver_implicit_dep(data)
+    return [one] if one else []
 
 
 def _driver_provided_by(data):
     """Return the implicit provided_by_tool for this target's driver, or None."""
     driver = data.get("driver") or {}
     kind = driver.get("kind", "")
+    if kind == "pkg":
+        # First backend's tool wins; the dispatcher logs the actual one at runtime.
+        for name in _pkg_backend_names(data):
+            meta = PKG_BACKEND_META.get(name)
+            if meta and meta[1]:
+                return meta[1]
+        return None
     meta = DRIVER_META.get(kind)
     return meta[1] if meta else None
 
@@ -541,10 +600,10 @@ def _target_dep_union(data):
         if isinstance(entry, str):
             target, _ = _resolve_conditional_dep(entry, host_values=None)  # union mode
             resolved.append(target)
-    # Inject implicit driver dependency
-    implicit = _driver_implicit_dep(data)
-    if implicit and implicit not in resolved:
-        resolved.insert(0, implicit)
+    # Inject implicit driver dependencies (multiple, e.g. one per pkg backend).
+    for implicit in _driver_implicit_deps_all(data):
+        if implicit not in resolved:
+            resolved.insert(0, implicit)
     # Legacy: depends_on_by_platform (backward compat until fully migrated)
     platform_deps = data.get("depends_on_by_platform") or {}
     if isinstance(platform_deps, dict):
