@@ -25,7 +25,7 @@ The assessed scope is the one declared in [`../BGS.md`](../BGS.md):
 Primary governance and model artifacts:
 
 - [`../BGS.md`](../BGS.md)
-- [`bgs-decision.md`](./bgs-decision.md)
+- [`bgs-decision.yaml`](./bgs-decision.yaml)
 - [`biss-classification.md`](./biss-classification.md)
 - [`setup-state-model.md`](./setup-state-model.md)
 - [`setup-state-artifact.yaml`](./setup-state-artifact.yaml)
@@ -79,7 +79,7 @@ Status: compliant
 
 ### 2. Decision record is present and materially complete
 
-The decision record in [`bgs-decision.md`](./bgs-decision.md) includes:
+The decision record in [`bgs-decision.yaml`](./bgs-decision.yaml) includes:
 
 - pinned suite and member refs
 - claimed members and overlay

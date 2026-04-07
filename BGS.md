@@ -14,12 +14,14 @@ applies_to_scope: "AI workstation setup — 10 governed components (10 active):
   software layer (software-bootstrap, cli-tools, node-stack, vscode-stack,
   docker, ai-python-stack, ai-apps, build-tools),
   system layer (system), verification (verify)"
-decision_record_path: "./docs/bgs-decision.md"
+decision_record_path: "./docs/bgs-decision.yaml"
 inventory_path: "./README.md#repository-inventory"
 orchestration_root: "./ucc/"
 verification_root: "./tic/"
-last_reviewed: 2026-04-03
-last_validated: 2026-04-02
+last_reviewed: 2026-04-07
+last_validated: 2026-04-07
+bgs_version_ref: bgs@58c1467
+bgs_canonical: ../BGSPrivate/bgs
 read_next:
   - "./README.md"
   - "./DRIVER_ARCHITECTURE.md"
