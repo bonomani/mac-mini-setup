@@ -179,17 +179,21 @@ _pkg_native_pm_activate() { :; }
 _pkg_native_pm_observe() {
   local ref="$1" be ver
   be="$(_pkg_native_backend)"
-  if _pkg_native_is_installed "$be" "$ref"; then
-    ver="$(_pkg_native_version "$be" "$ref")"
-    printf '%s' "${ver:-installed}"
-  else
+  if ! _pkg_native_is_installed "$be" "$ref"; then
     printf 'absent'
+    return
   fi
+  if _pkg_native_is_outdated "$be" "$ref"; then
+    printf 'outdated'
+    return
+  fi
+  ver="$(_pkg_native_version "$be" "$ref")"
+  printf '%s' "${ver:-installed}"
 }
 _pkg_native_pm_install()  { _pkg_native_install "$(_pkg_native_backend)" "$1"; }
 _pkg_native_pm_update()   { _pkg_native_upgrade "$(_pkg_native_backend)" "$1"; }
 _pkg_native_pm_version()  { _pkg_native_version "$(_pkg_native_backend)" "$1"; }
-_pkg_native_pm_outdated() { return 1; }  # native PM has no uniform outdated check
+_pkg_native_pm_outdated() { _pkg_native_is_outdated "$(_pkg_native_backend)" "$1"; }
 
 # pyenv-version
 _pyenv_ensure_path() {

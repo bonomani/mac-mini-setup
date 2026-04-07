@@ -154,3 +154,53 @@ _pkg_native_upgrade() {
   esac
 }
 
+# ── Per-PM outdated detection (used by pkg native-pm backend) ────────────────
+# Cache populated lazily on first call. Each backend has its own cache var.
+# Gated on UIC_PREF_BREW_LIVECHECK=1 (network call, can be slow).
+_pkg_native_outdated_cache_load() {
+  local backend="$1"
+  [[ "${UIC_PREF_BREW_LIVECHECK:-0}" == "1" ]] || return 1
+  case "$backend" in
+    apt)
+      [[ -n "${_PKG_APT_OUTDATED_CACHE+x}" ]] && return 0
+      export _PKG_APT_OUTDATED_CACHE
+      _PKG_APT_OUTDATED_CACHE="$(apt list --upgradable 2>/dev/null \
+        | awk -F'/' 'NR>1 && $1!=""{print $1}' || true)"
+      ;;
+    dnf)
+      [[ -n "${_PKG_DNF_OUTDATED_CACHE+x}" ]] && return 0
+      export _PKG_DNF_OUTDATED_CACHE
+      _PKG_DNF_OUTDATED_CACHE="$(dnf check-update --quiet 2>/dev/null \
+        | awk 'NF>=3 && $1 !~ /^(Last|Obsoleting)/{print $1}' || true)"
+      ;;
+    pacman)
+      [[ -n "${_PKG_PACMAN_OUTDATED_CACHE+x}" ]] && return 0
+      export _PKG_PACMAN_OUTDATED_CACHE
+      _PKG_PACMAN_OUTDATED_CACHE="$(pacman -Qu 2>/dev/null \
+        | awk '{print $1}' || true)"
+      ;;
+    zypper)
+      [[ -n "${_PKG_ZYPPER_OUTDATED_CACHE+x}" ]] && return 0
+      export _PKG_ZYPPER_OUTDATED_CACHE
+      _PKG_ZYPPER_OUTDATED_CACHE="$(zypper -n list-updates 2>/dev/null \
+        | awk -F'|' 'NR>4 && $3!=""{gsub(/ /,"",$3); print $3}' || true)"
+      ;;
+    *) return 1 ;;
+  esac
+}
+
+# Return 0 if <pkg> is in <backend>'s outdated cache.
+_pkg_native_is_outdated() {
+  local backend="$1" pkg="$2"
+  _pkg_native_outdated_cache_load "$backend" || return 1
+  local cache_var
+  case "$backend" in
+    apt)    cache_var=_PKG_APT_OUTDATED_CACHE ;;
+    dnf)    cache_var=_PKG_DNF_OUTDATED_CACHE ;;
+    pacman) cache_var=_PKG_PACMAN_OUTDATED_CACHE ;;
+    zypper) cache_var=_PKG_ZYPPER_OUTDATED_CACHE ;;
+    *)      return 1 ;;
+  esac
+  printf '%s\n' "${!cache_var}" | grep -qxF "$pkg"
+}
+
