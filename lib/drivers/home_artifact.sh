@@ -44,6 +44,7 @@ _ucc_driver_home_artifact_action() {
       bin_dir="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.bin_dir")"
       [[ -n "$script_name" && -n "$bin_dir" ]] || return 1
       mkdir -p "$HOME/$bin_dir"
+      _cfg_backup "$HOME/$bin_dir/$script_name"
       install -m 755 "$cfg_dir/scripts/$script_name" "$HOME/$bin_dir/$script_name"
       ;;
     symlink)

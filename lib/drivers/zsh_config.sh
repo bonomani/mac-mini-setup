@@ -26,6 +26,7 @@ _ucc_driver_zsh_config_action() {
   config_file="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.config_file")"
   [[ -n "$key" && -n "$value" && -n "$config_file" ]] || return 1
   local file="$HOME/$config_file"
+  _cfg_backup "$file"
   if grep -q "^${key}=" "$file" 2>/dev/null; then
     if [[ "$(uname)" == "Darwin" ]]; then
       sed -i '' "s/^${key}=.*/${key}=\"${value}\"/" "$file"

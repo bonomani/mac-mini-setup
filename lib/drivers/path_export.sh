@@ -23,6 +23,7 @@ _ucc_driver_path_export_action() {
   shell_profile="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.shell_profile")"
   [[ -n "$bin_dir" && -n "$shell_profile" ]] || return 1
   mkdir -p "$HOME/$bin_dir"
+  _cfg_backup "$HOME/$shell_profile"
   printf '\nexport PATH="%s:$PATH"\n' "$HOME/$bin_dir" >> "$HOME/$shell_profile"
   export PATH="$HOME/$bin_dir:$PATH"
 }

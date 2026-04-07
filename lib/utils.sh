@@ -288,6 +288,22 @@ desktop_app_handle_unmanaged_cask() {
     brew_cask_migrate_install "$cask_id"
 }
 
+# ── Config backup helper ──────────────────────────────────────────────────────
+# _cfg_backup <file>
+# If <file> exists and hasn't been backed up in the last hour, copies it to
+# <file>.bak.<YYYYMMDD-HHMMSS>. Idempotent on hot loops; cheap when nothing
+# to back up. Used by config-writer drivers before they edit a tracked file
+# under $HOME (.zshrc, .zprofile, settings.json, etc.).
+_cfg_backup() {
+  local file="$1"
+  [[ -n "$file" && -f "$file" ]] || return 0
+  local recent
+  recent="$(find "${file}.bak."* -newer "$file" -mmin -60 2>/dev/null | head -1)"
+  [[ -n "$recent" ]] && return 0
+  local stamp; stamp="$(date +%Y%m%d-%H%M%S)"
+  cp -p "$file" "${file}.bak.${stamp}" 2>/dev/null || true
+}
+
 # ── Migration safety probes ───────────────────────────────────────────────────
 # Per-process cache: lines of "<owner>:<ref>\t<verdict>\t<evidence>"
 _MIGRATION_SAFETY_CACHE=""

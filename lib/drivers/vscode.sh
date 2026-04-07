@@ -35,6 +35,7 @@ _ucc_driver_json_merge_apply() {
   settings_path="$HOME/$rel_settings"
   if [[ "$rel_patch" == /* ]]; then patch_path="$rel_patch"; else patch_path="$cfg_dir/$rel_patch"; fi
   ucc_run mkdir -p "$(dirname "$settings_path")"
+  _cfg_backup "$settings_path"
   ucc_run python3 "$cfg_dir/tools/drivers/json_merge.py" apply "$settings_path" "$patch_path"
 }
 
