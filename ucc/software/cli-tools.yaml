@@ -325,11 +325,13 @@ targets:
     state_model: package
     display_name: iTerm2
     requires: macos
+    provided_by_tool: pkg
     driver:
-      kind: package
-      cask: true
-      ref: iterm2
-      greedy_auto_updates: true
+      kind: pkg
+      backends:
+      - brew-cask: iterm2
+      bin: iterm2
+      greedy_auto_updates: 'true'
   lm-studio:
     component: cli-tools
     profile: configured
@@ -337,11 +339,13 @@ targets:
     state_model: package
     display_name: LM Studio
     requires: macos
+    provided_by_tool: pkg
     driver:
-      kind: package
-      cask: true
-      ref: lm-studio
-      greedy_auto_updates: true
+      kind: pkg
+      backends:
+      - brew-cask: lm-studio
+      bin: lm-studio
+      greedy_auto_updates: 'true'
 cli_tools:
 - cli-jq
 - cli-wget

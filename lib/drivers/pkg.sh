@@ -94,6 +94,18 @@ _pkg_curl_update()  { _pkg_curl_install "$1"; }
 _pkg_curl_version() { :; }
 _pkg_curl_outdated() { return 1; }  # no upstream signal
 
+# brew-cask: macOS GUI apps via Homebrew Cask. Greedy mode (auto-update casks)
+# is opt-in via driver.greedy_auto_updates: true at the YAML level.
+_pkg_brew_cask_available() { command -v brew >/dev/null 2>&1; }
+_pkg_brew_cask_activate()  { :; }
+_pkg_brew_cask_observe()   {
+  brew_cask_observe "$1" "${_PKG_GREEDY:-false}"
+}
+_pkg_brew_cask_install()   { brew_cask_install "$1"; }
+_pkg_brew_cask_update()    { brew_cask_upgrade "$1" "${_PKG_GREEDY:-false}"; }
+_pkg_brew_cask_version()   { _brew_cask_cached_version "$1"; }
+_pkg_brew_cask_outdated()  { [[ "$(brew_cask_observe "$1" "${_PKG_GREEDY:-false}")" == "outdated" ]]; }
+
 # native-pm: Linux/WSL2 platform-aware package manager (apt/dnf/pacman/zypper).
 # Delegates to the helpers in lib/drivers/package.sh which already implement
 # per-PM is_installed/install/upgrade/version. The backend is "available" only
@@ -228,6 +240,7 @@ _ucc_driver_pkg_observe() {
   _pkg_load_backends "$cfg_dir" "$yaml" "$target"
   _pkg_select_backend || { printf 'absent'; return; }
   _PKG_BIN="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.bin" 2>/dev/null || true)"
+  _PKG_GREEDY="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.greedy_auto_updates" 2>/dev/null || true)"
   local fn="_pkg_${_PKG_PICKED_NAME//-/_}_observe"
   declare -f "$fn" >/dev/null 2>&1 || return 1
   "$fn" "$_PKG_PICKED_REF"
@@ -237,8 +250,9 @@ _ucc_driver_pkg_action() {
   local cfg_dir="$1" yaml="$2" target="$3" action="$4"
   _pkg_load_backends "$cfg_dir" "$yaml" "$target"
   _pkg_select_backend || { log_warn "pkg/${target}: no available backend"; return 1; }
-  # Per-backend extras (currently only curl_args).
+  # Per-backend extras.
   _PKG_CURL_ARGS="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.curl_args" 2>/dev/null || true)"
+  _PKG_GREEDY="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.greedy_auto_updates" 2>/dev/null || true)"
   local act_fn="_pkg_${_PKG_PICKED_NAME//-/_}_${action}"
   declare -f "$act_fn" >/dev/null 2>&1 || return 1
   # Optional activation
