@@ -44,7 +44,7 @@ re-run the generator after any driver change.
 | `brew_unlink.sh` | `brew-unlink` | ✅ | ✅ | — | ✅ | — | — | — |
 | `build_deps.sh` | `build-deps` | ✅ | ✅ | — | ✅ | — | — | — |
 | `compose_file.sh` | `compose-file` | ✅ | ✅ | — | ✅ | — | — | — |
-| `custom_daemon.sh` | `custom-daemon` | ✅ | ✅ | — | ✅ | — | — | — |
+| `custom_daemon.sh` | `custom-daemon` | ✅ | ✅ | — | ✅ | ✅ | — | — |
 | `docker_compose_service.sh` | `docker-compose-service` | ✅ | ✅ | — | ✅ | — | — | — |
 | `git_global.sh` | `git-global` | ✅ | ✅ | — | ✅ | — | — | — |
 | `git_repo.sh` | `git-repo` | ✅ | ✅ | — | ✅ | ✅ | — | — |

@@ -18,9 +18,31 @@ _ucc_driver_custom_daemon_observe() {
     printf 'absent'
     return
   fi
-  local process
+  # Determine running state.
+  local process running=0
   process="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.process")"
   if [[ -n "$process" ]] && pgrep -f "$process" >/dev/null 2>&1; then
+    running=1
+  fi
+  # Outdated check: when driver.github_repo is set and the binary reports
+  # a parseable version, compare against the latest GitHub release tag.
+  # Reuses _pkg_github_latest_tag + _pkg_version_lt helpers from pkg.sh.
+  if [[ "${UIC_PREF_BREW_LIVECHECK:-0}" == "1" ]]; then
+    local repo; repo="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.github_repo" 2>/dev/null || true)"
+    if [[ -n "$repo" ]] && declare -f _pkg_github_latest_tag >/dev/null 2>&1; then
+      local installed latest
+      installed="$("$bin" --version 2>/dev/null | head -1 \
+        | grep -oE '[0-9]+(\.[0-9]+){1,3}' | head -1)"
+      latest="$(_pkg_github_latest_tag "$repo" 2>/dev/null)"
+      if [[ -n "$installed" && -n "$latest" ]] \
+         && declare -f _pkg_version_lt >/dev/null 2>&1 \
+         && _pkg_version_lt "$installed" "$latest"; then
+        printf 'outdated'
+        return
+      fi
+    fi
+  fi
+  if (( running )); then
     printf 'running'
   else
     printf 'stopped'
