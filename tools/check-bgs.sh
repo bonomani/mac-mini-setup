@@ -30,3 +30,8 @@ fi
 
 cd "$REPO_ROOT"
 python3 "$VALIDATOR" BGS.md
+
+# Auto-generated docs drift check — fail if SPEC.md or driver-feature-matrix.md
+# are out of date relative to source. Cheap (~50ms each), no network.
+python3 tools/build-driver-matrix.py --check
+python3 tools/build-spec.py --check
