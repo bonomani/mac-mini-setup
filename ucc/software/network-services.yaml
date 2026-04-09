@@ -30,6 +30,7 @@ targets:
     type: runtime
     display_name: Ariaflow Server
     depends_on:
+    - homebrew
     - networkquality-available
     driver:
       kind: service
