@@ -1,0 +1,64 @@
+component: network-services
+primary_profile: runtime
+libs: network_services
+runner: run_network_services_from_yaml
+platforms:
+- macos
+- linux
+- wsl2
+aria2_port: 6800
+ariaflow_port: 8000
+ariaflow_web_port: 8001
+targets:
+  networkquality-available:
+    component: network-services
+    profile: capability
+    type: capability
+    display_name: networkQuality
+    requires: macos
+    driver:
+      kind: custom
+    runtime_manager: capability
+    probe_kind: command
+    oracle:
+      runtime: networkquality_is_available
+    evidence:
+      path: bin_path networkQuality
+  ariaflow:
+    component: network-services
+    profile: runtime
+    type: runtime
+    display_name: Ariaflow
+    depends_on:
+    - networkquality-available
+    driver:
+      kind: service
+      backend: brew
+      ref: bonomani/ariaflow/ariaflow
+    endpoints:
+    - name: aria2 RPC
+      scheme: http
+      host: 127.0.0.1
+      port: ${aria2_port}
+      note: managed by ariaflow
+    - name: ariaflow API
+      scheme: http
+      host: 127.0.0.1
+      port: ${ariaflow_port}
+      path: /api/status
+  ariaflow-web:
+    component: network-services
+    profile: runtime
+    type: runtime
+    display_name: Ariaflow Web
+    depends_on:
+    - ariaflow
+    driver:
+      kind: service
+      backend: brew
+      ref: bonomani/ariaflow/ariaflow-web
+    endpoints:
+    - name: ariaflow web UI
+      scheme: http
+      host: 127.0.0.1
+      port: ${ariaflow_web_port}

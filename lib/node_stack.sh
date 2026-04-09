@@ -7,16 +7,12 @@ run_node_stack_from_yaml() {
   local cfg_dir="$1" yaml="$2"
 
   local _NODE_VER="24" _NVM_DIR=".nvm"
-  local _ARIAFLOW_TAP="bonomani/ariaflow" _ARIAFLOW_FORMULA _ARIAFLOW_WEB_FORMULA
   while IFS=$'\t' read -r -d '' key value; do
     case "$key" in
       node_version) [[ -n "$value" ]] && _NODE_VER="$value" ;;
-      ariaflow_tap) [[ -n "$value" ]] && _ARIAFLOW_TAP="$value" ;;
       nvm_dir)      [[ -n "$value" ]] && _NVM_DIR="$value" ;;
     esac
-  done < <(yaml_get_many "$cfg_dir" "$yaml" node_version ariaflow_tap nvm_dir)
-  _ARIAFLOW_FORMULA="${_ARIAFLOW_TAP}/ariaflow"
-  _ARIAFLOW_WEB_FORMULA="${_ARIAFLOW_TAP}/ariaflow-web"
+  done < <(yaml_get_many "$cfg_dir" "$yaml" node_version nvm_dir)
 
   # ---- nvm + Node.js LTS ----
   ucc_yaml_simple_target "$cfg_dir" "$yaml" "nvm"
@@ -35,8 +31,4 @@ run_node_stack_from_yaml() {
     [[ -n "$_target" ]] && ucc_yaml_simple_target "$cfg_dir" "$yaml" "$_target"
   done < <(yaml_list "$cfg_dir" "$yaml" npm_packages)
 
-  # ---- Ariaflow ----
-  ucc_yaml_capability_target "$cfg_dir" "$yaml" "networkquality-available"
-  ucc_brew_runtime_formula_target "ariaflow" "ariaflow" "$_ARIAFLOW_FORMULA" "$cfg_dir" "$yaml"
-  ucc_brew_runtime_formula_target "ariaflow-web" "ariaflow-web" "$_ARIAFLOW_WEB_FORMULA" "$cfg_dir" "$yaml"
 }

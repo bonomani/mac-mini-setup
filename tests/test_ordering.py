@@ -100,10 +100,10 @@ def test_cross_component_deps_resolved():
            "HOST_PACKAGE_MANAGER": "brew", "HOST_OS_ID": "macos-15.4",
            "HOST_FINGERPRINT": "macos/15.4/arm64/brew"}
 
-    # ariaflow (node-stack) depends on homebrew (software-bootstrap)
-    stdout, _, _ = run_query("--dep-targets", "ariaflow", env_extra=env)
+    # ariaflow-web (network-services) depends on ariaflow (same component)
+    stdout, _, _ = run_query("--dep-targets", "ariaflow-web", env_extra=env)
     deps = stdout.splitlines()
-    assert "homebrew" in deps, f"ariaflow should depend on homebrew, got: {deps}"
+    assert "ariaflow" in deps, f"ariaflow-web should depend on ariaflow, got: {deps}"
 
     # git-global-config (cli-tools) depends on git (cli-tools) — same component
     stdout, _, _ = run_query("--dep-targets", "git-global-config", env_extra=env)

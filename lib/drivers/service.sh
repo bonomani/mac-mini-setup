@@ -36,7 +36,15 @@ _ucc_driver_service_observe() {
   case "$_SVC_BACKEND" in
     brew)
       [[ -n "$_SVC_REF" ]] || return 1
-      brew list "$_SVC_REF" >/dev/null 2>&1 || { printf 'absent'; return; }
+      local pkg_state
+      pkg_state="$(brew_observe "$_SVC_REF")"
+      if [[ "$pkg_state" == "absent" ]]; then
+        printf 'absent'; return
+      fi
+      # outdated formula: trigger update even if service is running
+      if [[ "$pkg_state" == "outdated" ]]; then
+        printf 'stopped'; return
+      fi
       if brew_service_is_started "$_SVC_REF"; then
         printf 'running'
       else
@@ -63,8 +71,8 @@ _ucc_driver_service_action() {
     brew)
       [[ -n "$_SVC_REF" ]] || return 1
       case "$action" in
-        install) ucc_run brew services start   "$_SVC_REF" ;;
-        update)  ucc_run brew services restart "$_SVC_REF" ;;
+        install) brew_install "$_SVC_REF" && ucc_run brew services start   "$_SVC_REF" ;;
+        update)  brew_upgrade "$_SVC_REF" && ucc_run brew services restart "$_SVC_REF" ;;
       esac
       ;;
     launchd)
@@ -92,10 +100,10 @@ _ucc_driver_service_evidence() {
       ver="$(_brew_cached_version "$_SVC_REF")"
       [[ -n "$ver" ]] && out="version=$ver"
       # Conventional brew services log location
-      local prefix log
+      local prefix log short_ref="${_SVC_REF##*/}"
       prefix="$(brew --prefix 2>/dev/null)"
       if [[ -n "$prefix" ]]; then
-        for log in "$prefix/var/log/${_SVC_REF}.log" "$HOME/Library/Logs/${_SVC_REF}.log"; do
+        for log in "$prefix/var/log/${short_ref}.log" "$HOME/Library/Logs/${short_ref}.log"; do
           if [[ -f "$log" ]]; then
             out="${out:+$out  }log=$log"
             break

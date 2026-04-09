@@ -9,10 +9,6 @@ platforms:
 node_version: 24
 nvm_dir: .nvm
 node_formula: node
-ariaflow_tap: bonomani/ariaflow
-aria2_port: 6800
-ariaflow_port: 8000
-ariaflow_web_port: 8001
 targets:
   nvm:
     component: node-stack
@@ -87,56 +83,6 @@ targets:
       backends:
       - npm: bmad-method
       bin: bmad-method
-  networkquality-available:
-    component: node-stack
-    profile: capability
-    type: capability
-    display_name: networkQuality
-    requires: macos
-    driver:
-      kind: custom
-    runtime_manager: capability
-    probe_kind: command
-    oracle:
-      runtime: networkquality_is_available
-    evidence:
-      path: bin_path networkQuality
-  ariaflow:
-    component: node-stack
-    profile: runtime
-    type: runtime
-    display_name: Ariaflow
-    depends_on:
-    - networkquality-available
-    driver:
-      kind: service
-      backend: brew
-      ref: ariaflow
-    endpoints:
-    - name: aria2 RPC
-      scheme: http
-      host: 127.0.0.1
-      port: ${aria2_port}
-      note: managed by ariaflow
-    - name: ariaflow API
-      scheme: http
-      host: 127.0.0.1
-      port: ${ariaflow_port}
-      path: /api/status
-  ariaflow-web:
-    component: node-stack
-    profile: runtime
-    type: runtime
-    display_name: Ariaflow Web
-    driver:
-      kind: service
-      backend: brew
-      ref: ariaflow-web
-    endpoints:
-    - name: ariaflow web UI
-      scheme: http
-      host: 127.0.0.1
-      port: ${ariaflow_web_port}
 npm_packages:
 - npm-global-@openai/codex
 - npm-global-@anthropic-ai/claude-code

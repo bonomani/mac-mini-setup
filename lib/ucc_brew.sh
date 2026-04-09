@@ -68,8 +68,10 @@ _brew_cask_is_outdated() {
 
 # Return 0 if the given brew service is in 'started' state.
 # Usage: brew_service_is_started <service_name>
+# Accepts full tap refs (e.g. bonomani/ariaflow/ariaflow → ariaflow).
 brew_service_is_started() {
-  brew services list 2>/dev/null | awk -v svc="$1" '$1==svc {print $2}' | grep -q '^started$'
+  local svc="${1##*/}"
+  brew services list 2>/dev/null | awk -v svc="$svc" '$1==svc {print $2}' | grep -q '^started$'
 }
 
 # Generic observe helpers — return: absent | outdated | current
