@@ -31,7 +31,7 @@ targets:
     display_name: Ariaflow Server
     depends_on:
     - networkquality-available
-    provided_by_tool: brew-installer
+
     driver:
       kind: service
       backend: brew
@@ -54,7 +54,7 @@ targets:
     display_name: Ariaflow Dashboard
     depends_on:
     - ariaflow-server
-    provided_by_tool: brew-installer
+
     driver:
       kind: service
       backend: brew
