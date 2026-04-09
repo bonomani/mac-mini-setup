@@ -869,6 +869,10 @@ _ucc_observe_yaml_runtime_target() {
     case "$_driver_state" in
       absent)  ucc_asm_state --installation Absent --runtime NeverStarted --health Unavailable --admin Enabled --dependencies DepsUnknown ;;
       running) ucc_asm_runtime_desired ;;
+      outdated-running)
+        ucc_asm_state --installation Installed --runtime Running --health Degraded --admin Enabled --dependencies DepsDegraded ;;
+      outdated-stopped)
+        ucc_asm_state --installation Installed --runtime Stopped --health Degraded --admin Enabled --dependencies DepsDegraded ;;
       stopped)
         local _sh _sd _v
         _v="_UCC_RT_STOPPED_HEALTH_${fn}"; _sh="${!_v:-Degraded}"

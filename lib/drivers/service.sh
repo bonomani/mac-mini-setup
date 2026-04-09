@@ -36,16 +36,23 @@ _ucc_driver_service_observe() {
   case "$_SVC_BACKEND" in
     brew)
       [[ -n "$_SVC_REF" ]] || return 1
-      local pkg_state
+      local pkg_state svc_running=false
       pkg_state="$(brew_observe "$_SVC_REF")"
       if [[ "$pkg_state" == "absent" ]]; then
         printf 'absent'; return
       fi
-      # outdated formula: trigger update even if service is running
+      brew_service_is_started "$_SVC_REF" && svc_running=true
+      # outdated formula: report Installed/Degraded to trigger update
+      # regardless of service running state
       if [[ "$pkg_state" == "outdated" ]]; then
-        printf 'stopped'; return
+        if $svc_running; then
+          printf 'outdated-running'
+        else
+          printf 'outdated-stopped'
+        fi
+        return
       fi
-      if brew_service_is_started "$_SVC_REF"; then
+      if $svc_running; then
         printf 'running'
       else
         printf 'stopped'
