@@ -71,8 +71,12 @@ _ucc_driver_service_action() {
     brew)
       [[ -n "$_SVC_REF" ]] || return 1
       case "$action" in
-        install) brew_install "$_SVC_REF" && ucc_run brew services start   "$_SVC_REF" ;;
-        update)  brew_upgrade "$_SVC_REF" && ucc_run brew services restart "$_SVC_REF" ;;
+        install) brew_install "$_SVC_REF" && ucc_run brew services start "$_SVC_REF" ;;
+        update)
+          ucc_run brew services stop "$_SVC_REF" 2>/dev/null || true
+          brew_upgrade "$_SVC_REF"
+          ucc_run brew services start "$_SVC_REF"
+          ;;
       esac
       ;;
     launchd)
