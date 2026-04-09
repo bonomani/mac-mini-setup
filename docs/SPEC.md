@@ -51,7 +51,8 @@ not specified). Counts are real (`type` distribution per component).
 | `build-tools` | 3 | 3 | 0 | 0 | 0 |
 | `cli-tools` | 26 | 21 | 5 | 0 | 0 |
 | `docker` | 3 | 0 | 1 | 1 | 1 |
-| `node-stack` | 9 | 5 | 1 | 2 | 1 |
+| `network-services` | 3 | 0 | 0 | 2 | 1 |
+| `node-stack` | 6 | 5 | 1 | 0 | 0 |
 | `software-bootstrap` | 5 | 3 | 1 | 0 | 1 |
 | `system` | 15 | 0 | 14 | 0 | 1 |
 | `vscode-stack` | 10 | 8 | 2 | 0 | 0 |
@@ -163,14 +164,19 @@ not specified). Counts are real (`type` distribution per component).
 | `docker-desktop` | `custom` | `runtime` | Docker Desktop |  | `homebrew` |
 | `docker-resources` | `custom` | `config` | Docker resources |  | `docker-desktop` |
 
-### node-stack  (9 targets)
+### network-services  (3 targets)
 
 | Target | Kind | Type | Display name | requires | depends_on |
 |---|---|---|---|---|---|
-| `ariaflow-server` | `service` | `runtime` | Ariaflow Server |  | `networkquality-available` |
 | `ariaflow-dashboard` | `service` | `runtime` | Ariaflow Dashboard |  | `ariaflow-server` |
-| `brew-node-unlinked` | `brew-unlink` | `config` | Brew node unlinked |  | `node-lts` |
+| `ariaflow-server` | `service` | `runtime` | Ariaflow Server |  | `networkquality-available` |
 | `networkquality-available` | `custom` | `capability` | networkQuality | macos |  |
+
+### node-stack  (6 targets)
+
+| Target | Kind | Type | Display name | requires | depends_on |
+|---|---|---|---|---|---|
+| `brew-node-unlinked` | `brew-unlink` | `config` | Brew node unlinked |  | `node-lts` |
 | `node-lts` | `nvm-version` | `package` | Node.js LTS |  |  |
 | `npm-global-@anthropic-ai/claude-code` | `pkg` | `package` | Claude Code CLI |  | `node-lts` |
 | `npm-global-@openai/codex` | `pkg` | `package` | Codex CLI |  | `node-lts` |
@@ -316,7 +322,7 @@ See [`docs/driver-feature-matrix.md`](driver-feature-matrix.md) — auto-generat
 
 ## 11. Counts (live)
 
-- Components: **9**
+- Components: **10**
 - Targets: **108**
 - Distinct driver kinds: **24**
 - Preferences: **6**
