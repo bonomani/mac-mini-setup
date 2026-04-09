@@ -8,7 +8,7 @@ platforms:
 - wsl2
 aria2_port: 6800
 ariaflow_port: 8000
-ariaflow_web_port: 8001
+ariaflow_dashboard_port: 8001
 targets:
   networkquality-available:
     component: network-services
@@ -24,17 +24,17 @@ targets:
       runtime: networkquality_is_available
     evidence:
       path: bin_path networkQuality
-  ariaflow:
+  ariaflow-server:
     component: network-services
     profile: runtime
     type: runtime
-    display_name: Ariaflow
+    display_name: Ariaflow Server
     depends_on:
     - networkquality-available
     driver:
       kind: service
       backend: brew
-      ref: bonomani/ariaflow/ariaflow
+      ref: bonomani/ariaflow/ariaflow-server
     endpoints:
     - name: aria2 RPC
       scheme: http
@@ -46,19 +46,19 @@ targets:
       host: 127.0.0.1
       port: ${ariaflow_port}
       path: /api/status
-  ariaflow-web:
+  ariaflow-dashboard:
     component: network-services
     profile: runtime
     type: runtime
-    display_name: Ariaflow Web
+    display_name: Ariaflow Dashboard
     depends_on:
-    - ariaflow
+    - ariaflow-server
     driver:
       kind: service
       backend: brew
-      ref: bonomani/ariaflow/ariaflow-web
+      ref: bonomani/ariaflow/ariaflow-dashboard
     endpoints:
-    - name: ariaflow web UI
+    - name: ariaflow dashboard
       scheme: http
       host: 127.0.0.1
-      port: ${ariaflow_web_port}
+      port: ${ariaflow_dashboard_port}

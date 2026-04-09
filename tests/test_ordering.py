@@ -76,7 +76,7 @@ def test_dep_targets_is_subset_of_ordered():
            "HOST_FINGERPRINT": "macos/15.4/arm64/brew"}
 
     # Get a few targets to test
-    test_targets = ["homebrew", "ariaflow", "ollama", "pip-group-pytorch", "git-global-config"]
+    test_targets = ["homebrew", "ariaflow-server", "ollama", "pip-group-pytorch", "git-global-config"]
     for target in test_targets:
         stdout, stderr, rc = run_query("--dep-targets", target, env_extra=env)
         if rc != 0:
@@ -100,10 +100,10 @@ def test_cross_component_deps_resolved():
            "HOST_PACKAGE_MANAGER": "brew", "HOST_OS_ID": "macos-15.4",
            "HOST_FINGERPRINT": "macos/15.4/arm64/brew"}
 
-    # ariaflow-web (network-services) depends on ariaflow (same component)
-    stdout, _, _ = run_query("--dep-targets", "ariaflow-web", env_extra=env)
+    # ariaflow-dashboard (network-services) depends on ariaflow-server (same component)
+    stdout, _, _ = run_query("--dep-targets", "ariaflow-dashboard", env_extra=env)
     deps = stdout.splitlines()
-    assert "ariaflow" in deps, f"ariaflow-web should depend on ariaflow, got: {deps}"
+    assert "ariaflow-server" in deps, f"ariaflow-dashboard should depend on ariaflow-server, got: {deps}"
 
     # git-global-config (cli-tools) depends on git (cli-tools) — same component
     stdout, _, _ = run_query("--dep-targets", "git-global-config", env_extra=env)
@@ -126,8 +126,8 @@ def test_dep_components_derived_from_dep_targets():
            "HOST_PACKAGE_MANAGER": "brew", "HOST_OS_ID": "macos-15.4",
            "HOST_FINGERPRINT": "macos/15.4/arm64/brew"}
 
-    targets_stdout, _, _ = run_query("--dep-targets", "ariaflow", env_extra=env)
-    comps_stdout, _, _ = run_query("--dep-components", "ariaflow", env_extra=env)
+    targets_stdout, _, _ = run_query("--dep-targets", "ariaflow-server", env_extra=env)
+    comps_stdout, _, _ = run_query("--dep-components", "ariaflow-server", env_extra=env)
 
     dep_targets = targets_stdout.splitlines()
     dep_components = comps_stdout.splitlines()
