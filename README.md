@@ -207,7 +207,7 @@ whole installer.
 The `skip-display-mode` preference controls output verbosity:
 - `full` (default): every target is shown with its current state
 - `fast`: hides non-selected targets and unrelated components — good for
-  targeted runs like `./install.sh ariaflow`
+  targeted runs like `./install.sh ariaflow-server`
 
 ### Preferred driver policy
 
@@ -262,7 +262,7 @@ Expected checkpoints:
 | Qdrant | http://localhost:6333 |
 | aria2 RPC | http://127.0.0.1:6800 |
 | ariaflow API | http://127.0.0.1:8000 |
-| ariaflow web UI | http://127.0.0.1:8001 |
+| ariaflow dashboard | http://127.0.0.1:8001 |
 
 ## Requirements
 

@@ -110,7 +110,7 @@ YAML `depends_on` entries track dependencies that no single package manager can 
 **Use `depends_on`**:
 
 - Cross-driver: `python` → `xz` (pyenv-version needs package driver)
-- Cross-ecosystem: `ariaflow` → `networkquality-available` (OS binary)
+- Cross-ecosystem: `ariaflow-server` → `networkquality-available` (OS binary)
 - Phase ordering: `git-global-config` → `git` (config needs package)
 - Composition: `system-composition` → all system targets
 

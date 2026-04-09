@@ -152,7 +152,7 @@ Meaning:
 - stack-definition example:
   `marker=# ai-stack v2 services=flowise,n8n,open-webui,openhands,qdrant`
 - system-composition example:
-  `kind=host-composition targets=ariaflow,ariaflow-web,docker-desktop,docker-resources,flowise-runtime,finder-show-hidden=1,git,git-global-config,homebrew,n8n-runtime,ollama,open-webui-runtime,openhands-runtime,pmset-ac-sleep=0,python,qdrant-runtime,unsloth-studio`
+  `kind=host-composition targets=ariaflow-server,ariaflow-dashboard,docker-desktop,docker-resources,flowise-runtime,finder-show-hidden=1,git,git-global-config,homebrew,n8n-runtime,ollama,open-webui-runtime,openhands-runtime,pmset-ac-sleep=0,python,qdrant-runtime,unsloth-studio`
 
 ### Package specialization (project-local mapping onto the ASM software profile)
 

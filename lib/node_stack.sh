@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# lib/node_stack.sh — nvm, Node.js, ariaflow runner
+# lib/node_stack.sh — nvm, Node.js, npm global packages runner
 # Note: npm_global_* helpers moved to lib/drivers/npm.sh (always loaded).
 
 # Usage: run_node_stack_from_yaml <cfg_dir> <yaml_path>

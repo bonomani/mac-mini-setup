@@ -167,8 +167,8 @@ not specified). Counts are real (`type` distribution per component).
 
 | Target | Kind | Type | Display name | requires | depends_on |
 |---|---|---|---|---|---|
-| `ariaflow` | `service` | `runtime` | Ariaflow |  | `networkquality-available` |
-| `ariaflow-web` | `service` | `runtime` | Ariaflow Web |  |  |
+| `ariaflow-server` | `service` | `runtime` | Ariaflow Server |  | `networkquality-available` |
+| `ariaflow-dashboard` | `service` | `runtime` | Ariaflow Dashboard |  | `ariaflow-server` |
 | `brew-node-unlinked` | `brew-unlink` | `config` | Brew node unlinked |  | `node-lts` |
 | `networkquality-available` | `custom` | `capability` | networkQuality | macos |  |
 | `node-lts` | `nvm-version` | `package` | Node.js LTS |  |  |
