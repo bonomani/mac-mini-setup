@@ -1081,6 +1081,9 @@ ucc_yaml_runtime_target() {
       driver.greedy_auto_updates stopped_installation stopped_runtime \
       stopped_health stopped_dependencies)
   [[ -z "$update_cmd" ]] && update_cmd="$install_cmd"
+  # A dispatched driver handles install/update even when actions.* are absent from YAML
+  local driver_dispatched=0
+  [[ -n "$obs_driver" && "$obs_driver" != "custom" ]] && driver_dispatched=1
 
   export "_UCC_OBS_CACHED_${fn}=1"
   export "_UCC_OBS_EVIDENCE_${fn}=${_ev_b64}"
@@ -1098,7 +1101,7 @@ ucc_yaml_runtime_target() {
 
   eval "_uyrt_obs_${fn}() { _ucc_observe_yaml_runtime_target '${cfg_dir}' '${yaml}' '${target}'; }"
   eval "_uyrt_evd_${fn}() { ucc_eval_evidence_from_yaml '${cfg_dir}' '${yaml}' '${target}'; }"
-  if [[ -z "$install_fn" && -n "$install_cmd" ]]; then
+  if [[ -z "$install_fn" && ( -n "$install_cmd" || "$driver_dispatched" == "1" ) ]]; then
     eval "_uyrt_ins_${fn}() {
       local rc=0 runtime_cmd=''
       _ucc_run_yaml_action '${cfg_dir}' '${yaml}' '${target}' install || rc=\$?
@@ -1110,7 +1113,7 @@ ucc_yaml_runtime_target() {
     }"
     install_fn="_uyrt_ins_${fn}"
   fi
-  if [[ -z "$update_fn" && ( -n "$update_cmd" || -n "$install_cmd" ) ]]; then
+  if [[ -z "$update_fn" && ( -n "$update_cmd" || -n "$install_cmd" || "$driver_dispatched" == "1" ) ]]; then
     eval "_uyrt_upd_${fn}() {
       local rc=0 runtime_cmd=''
       _ucc_run_yaml_action '${cfg_dir}' '${yaml}' '${target}' update || rc=\$?
