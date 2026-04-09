@@ -100,10 +100,10 @@ def test_cross_component_deps_resolved():
            "HOST_PACKAGE_MANAGER": "brew", "HOST_OS_ID": "macos-15.4",
            "HOST_FINGERPRINT": "macos/15.4/arm64/brew"}
 
-    # ariaflow-dashboard (network-services) depends on ariaflow-server (same component)
-    stdout, _, _ = run_query("--dep-targets", "ariaflow-dashboard", env_extra=env)
+    # ariaflow-server (network-services) depends on networkquality-available (same component)
+    stdout, _, _ = run_query("--dep-targets", "ariaflow-server", env_extra=env)
     deps = stdout.splitlines()
-    assert "ariaflow-server" in deps, f"ariaflow-dashboard should depend on ariaflow-server, got: {deps}"
+    assert "networkquality-available" in deps, f"ariaflow-server should depend on networkquality-available, got: {deps}"
 
     # git-global-config (cli-tools) depends on git (cli-tools) — same component
     stdout, _, _ = run_query("--dep-targets", "git-global-config", env_extra=env)

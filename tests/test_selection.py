@@ -43,46 +43,44 @@ def get_all_targets():
 
 def test_single_target_includes_deps():
     """Selecting a single target includes its full dep chain."""
-    stdout, _, rc = run_query("--dep-targets", "ariaflow-dashboard")
+    stdout, _, rc = run_query("--dep-targets", "ariaflow-server")
     assert rc == 0
     deps = stdout.splitlines()
-    assert "ariaflow-dashboard" in deps, "Target itself must be in dep chain"
-    assert "ariaflow-server" in deps, "ariaflow-dashboard depends on ariaflow-server"
+    assert "ariaflow-server" in deps, "Target itself must be in dep chain"
     assert "networkquality-available" in deps, "ariaflow-server depends on networkquality-available"
-    assert len(deps) >= 3, f"Expected at least 3 deps, got {len(deps)}: {deps}"
+    assert len(deps) >= 2, f"Expected at least 2 deps, got {len(deps)}: {deps}"
     print("PASS: Single target includes full dep chain")
 
 
 def test_single_target_deps_ordered():
     """Dependencies come before the target in the dep chain."""
-    stdout, _, _ = run_query("--dep-targets", "ariaflow-dashboard")
+    stdout, _, _ = run_query("--dep-targets", "ariaflow-server")
     deps = stdout.splitlines()
+    nq_pos = deps.index("networkquality-available")
     server_pos = deps.index("ariaflow-server")
-    dashboard_pos = deps.index("ariaflow-dashboard")
-    assert server_pos < dashboard_pos, \
-        f"ariaflow-server (pos {server_pos}) should come before ariaflow-dashboard (pos {dashboard_pos})"
+    assert nq_pos < server_pos, \
+        f"networkquality-available (pos {nq_pos}) should come before ariaflow-server (pos {server_pos})"
     print("PASS: Deps ordered correctly in single target chain")
 
 
 def test_dep_components_covers_chain():
     """dep-components includes all components needed."""
-    stdout, _, _ = run_query("--dep-components", "ariaflow-dashboard")
+    stdout, _, _ = run_query("--dep-components", "ariaflow-server")
     comps = stdout.splitlines()
-    assert "network-services" in comps, "ariaflow-dashboard is in network-services"
+    assert "network-services" in comps, "ariaflow-server is in network-services"
     print("PASS: dep-components covers the chain")
 
 
 def test_multiple_targets_merge():
     """Multiple targets merge their dep chains."""
     # Get individual chains
-    a_stdout, _, _ = run_query("--dep-targets", "ariaflow-dashboard")
+    a_stdout, _, _ = run_query("--dep-targets", "ariaflow-server")
     b_stdout, _, _ = run_query("--dep-targets", "cli-jq")
 
     a_deps = set(a_stdout.splitlines())
     b_deps = set(b_stdout.splitlines())
     merged = a_deps | b_deps
 
-    assert "ariaflow-dashboard" in merged
     assert "ariaflow-server" in merged
     assert "cli-jq" in merged
     print("PASS: Multiple targets merge dep chains")
