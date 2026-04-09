@@ -65,7 +65,6 @@ targets:
     display_name: VS Code Python
     depends_on:
     - vscode-code-cmd
-    provided_by_tool: pkg
     driver:
       kind: pkg
       backends:
@@ -78,7 +77,6 @@ targets:
     display_name: VS Code Pylance
     depends_on:
     - vscode-code-cmd
-    provided_by_tool: pkg
     driver:
       kind: pkg
       backends:
@@ -91,7 +89,6 @@ targets:
     display_name: VS Code Jupyter
     depends_on:
     - vscode-code-cmd
-    provided_by_tool: pkg
     driver:
       kind: pkg
       backends:
@@ -104,7 +101,6 @@ targets:
     display_name: VS Code C/C++
     depends_on:
     - vscode-code-cmd
-    provided_by_tool: pkg
     driver:
       kind: pkg
       backends:
@@ -117,7 +113,6 @@ targets:
     display_name: VS Code Continue
     depends_on:
     - vscode-code-cmd
-    provided_by_tool: pkg
     driver:
       kind: pkg
       backends:
@@ -130,7 +125,6 @@ targets:
     display_name: VS Code GitLens
     depends_on:
     - vscode-code-cmd
-    provided_by_tool: pkg
     driver:
       kind: pkg
       backends:
@@ -143,7 +137,6 @@ targets:
     display_name: VS Code Dev Containers
     depends_on:
     - vscode-code-cmd
-    provided_by_tool: pkg
     driver:
       kind: pkg
       backends:

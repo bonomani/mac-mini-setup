@@ -13,7 +13,6 @@ targets:
     type: package
     state_model: package
     display_name: rustup
-    provided_by_tool: pkg
     driver:
       kind: pkg
       backends:
@@ -41,7 +40,6 @@ targets:
     state_model: package
     display_name: xrdp
     requires: linux,wsl2
-    provided_by_tool: pkg
     driver:
       kind: pkg
       backends:

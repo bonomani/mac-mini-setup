@@ -51,7 +51,6 @@ targets:
     type: package
     state_model: package
     display_name: XZ Utils
-    provided_by_tool: pkg
     driver:
       kind: pkg
       backends:
@@ -66,7 +65,6 @@ targets:
     display_name: Python
     depends_on:
     - xz
-    provided_by_tool: pkg
     driver:
       kind: pkg
       backends:

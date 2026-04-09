@@ -174,7 +174,6 @@ targets:
     display_name: Ollama llama3.2
     depends_on:
     - ollama
-    provided_by_tool: pkg
     driver:
       kind: pkg
       backends:
@@ -187,7 +186,6 @@ targets:
     display_name: Ollama nomic-embed-text
     depends_on:
     - ollama
-    provided_by_tool: pkg
     driver:
       kind: pkg
       backends:
@@ -200,7 +198,6 @@ targets:
     display_name: Ollama qwen3:latest
     depends_on:
     - ollama
-    provided_by_tool: pkg
     driver:
       kind: pkg
       backends:
@@ -213,7 +210,6 @@ targets:
     display_name: Ollama llama3.1:8b
     depends_on:
     - ollama
-    provided_by_tool: pkg
     driver:
       kind: pkg
       backends:
@@ -226,7 +222,6 @@ targets:
     display_name: Ollama mistral:7b
     depends_on:
     - ollama
-    provided_by_tool: pkg
     driver:
       kind: pkg
       backends:
@@ -239,7 +234,6 @@ targets:
     display_name: Ollama qwen2.5-coder:32b
     depends_on:
     - ollama
-    provided_by_tool: pkg
     driver:
       kind: pkg
       backends:
@@ -252,7 +246,6 @@ targets:
     display_name: Ollama llama3.1:70b
     depends_on:
     - ollama
-    provided_by_tool: pkg
     driver:
       kind: pkg
       backends:
