@@ -143,6 +143,12 @@ _docker_privileged_helper_installed() {
     || [[ -f /Library/LaunchDaemons/com.docker.vmnetd.plist ]]
 }
 
+# Return 0 if a valid sudo credential is cached (or NOPASSWD configured).
+# Caller is expected to have run `sudo -v` beforehand if needed.
+_docker_sudo_cached() {
+  sudo -n true 2>/dev/null
+}
+
 # Ensure cask is installed/up-to-date via brew, skipping if already present via app-bundle.
 _docker_cask_ensure() {
   local cask_id="$1" app_path="$2" greedy="$3"
@@ -184,22 +190,42 @@ _docker_desktop_install_and_start() {
   # First-time Docker Desktop setup on macOS needs admin/sudo at two points:
   #   1. brew cask install docker-desktop symlinks CLI plugins into
   #      /usr/local/cli-plugins (not user-writable), which prompts sudo.
+  #      Cached sudo credentials ('sudo -v' beforehand) satisfy this
+  #      non-interactively.
   #   2. On first launch, Docker Desktop installs a privileged helper
   #      (vmnetd) under /Library/PrivilegedHelperTools via a macOS
-  #      Authorization Services prompt.
-  # Both prompts block on human input and have no CLI bypass. If the
-  # helper is missing and the run is non-interactive, bail out before
-  # the cask install so we don't hang on the very first sudo prompt.
+  #      Authorization Services Cocoa dialog. Cached sudo does NOT
+  #      satisfy this — it is a separate authentication subsystem.
+  #
+  # Three non-interactive sub-modes based on machine state:
+  #   - helper present:          proceed normally.
+  #   - helper missing, sudo -n: install the cask + strip quarantine +
+  #                              patch settings, but skip daemon start so
+  #                              we don't hang on the Cocoa dialog. Leaves
+  #                              the box one step closer; an interactive
+  #                              run finishes the vmnetd approval.
+  #   - helper missing, no sudo: bail out before anything runs.
   if ! _docker_privileged_helper_installed; then
     if [[ "${UCC_INTERACTIVE:-1}" != "1" ]]; then
+      if _docker_sudo_cached; then
+        log_info "Non-interactive mode with cached sudo: installing Docker Desktop cask only."
+        log_info "Daemon start will be skipped — Docker's first-launch Authorization Services"
+        log_info "dialog for the privileged helper (vmnetd) is not a sudo prompt and cannot"
+        log_info "be satisfied with cached credentials."
+        _docker_desktop_install || return $?
+        log_warn "Docker Desktop cask installed but daemon not started."
+        log_warn "Privileged helper (vmnetd) still needs to be registered via Docker Desktop's"
+        log_warn "first-launch dialog. Re-run interactively to complete setup:"
+        log_warn "  ./install.sh docker-desktop"
+        return 1
+      fi
       log_warn "Docker Desktop privileged helper (vmnetd) is not installed."
-      log_warn "First-time Docker Desktop setup requires an interactive run: the"
-      log_warn "brew cask install needs sudo for /usr/local/cli-plugins symlinks,"
-      log_warn "and Docker Desktop itself prompts for your admin password on first"
-      log_warn "launch to install its privileged helper. Neither prompt can be"
-      log_warn "satisfied in --no-interactive mode."
-      log_warn "Re-run install.sh without --no-interactive to complete initial setup,"
-      log_warn "then subsequent --no-interactive runs will work normally."
+      log_warn "First-time Docker Desktop setup requires either:"
+      log_warn "  - an interactive run (./install.sh docker-desktop), or"
+      log_warn "  - sudo -v before a non-interactive run, which lets this script"
+      log_warn "    install the cask silently but still stops short of launching"
+      log_warn "    Docker (the vmnetd Cocoa dialog cannot be bypassed)."
+      log_warn "Subsequent --no-interactive runs will work normally once vmnetd is registered."
       return 1
     fi
     log_info "Docker Desktop will prompt for your admin password twice during first-time setup (cask install + privileged helper)."
