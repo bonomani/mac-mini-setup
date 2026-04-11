@@ -545,46 +545,55 @@ state if seeding goes wrong (`launchctl bootout system/com.docker.vmnetd
 
 #### Execution plan (commit-by-commit)
 
-Split the implementation into 11 concrete steps, each either
-WSL-implementable + testable or explicitly flagged as Mac-mini-only.
-Steps 2-7 commit real code; Step 0 is a pre-flight gate; Steps 1, 8,
-9, 10 are book-ends.
+Split the implementation into 11 concrete steps, interleaved with
+**three Mac mini checkpoints** (A/B/C) so we validate early and don't
+stack 6 commits of unverified code before the first runtime test. Steps
+2-7 commit real code; Step 0 is a pre-flight gate; Steps 1, 9, 10 are
+book-ends.
 
 | Step | Work | Environment | Commit? |
 |---|---|---|---|
 | 0 | Pre-flight: validate `SUDO_ASKPASS` shim intercepts brew's sudo calls | WSL (static analysis of Homebrew source) | No |
 | 1 | Baseline capture: pytest green, validator clean, git state clean, scout docker.yaml preferences block shape + json_merge.py interface | WSL | No |
 | 2 | Add `docker-first-install` preference to `ucc/software/docker.yaml`, regenerate `docs/SPEC.md` | WSL | ✅ Commit 1 |
+| **A** | **Mac mini Checkpoint A — sanity check.** User runs `./install.sh --no-interactive docker-desktop` and pastes the [docker] + [PREF] sections. Confirms: (a) the new preference is visible in the PREF report, (b) default `manual` is selected, (c) existing Docker behavior is unchanged (no regressions from adding the YAML entry). ~2 min on Mac mini. | Mac mini | No |
 | 3 | New `lib/docker_unattended.sh` with three helpers: `_docker_assisted_get_password`, `_docker_assisted_setup_askpass`, `_docker_assisted_cleanup`. Source from `lib/ucc.sh`. Add `tests/test_docker_unattended.py` with ~5 WSL-runnable unit tests (env-var path, tty-absent failure, askpass creates expected files with correct perms, cleanup wipes + removes workdir, cleanup is idempotent). | WSL | ✅ Commit 2 |
 | 4 | Add `_docker_assisted_prewrite_eula` helper. Add 2-3 tests (creates file if missing, merges into existing file preserving other keys, 3 required keys end up set). | WSL | ✅ Commit 3 |
-| 5 | Add `_docker_assisted_seed_vmnetd` helper. Python extraction logic is partially WSL-testable (run the `<?xml>`/`</plist>` scan against a canned sample); the `sudo cp` + `launchctl bootstrap` steps are Mac-mini-only. Commit with an explicit "unverified end-to-end on Mac mini until Step 8" note in the message. | WSL (extraction only) | ✅ Commit 4 |
+| 5 | Add `_docker_assisted_seed_vmnetd` helper. Python extraction logic is partially WSL-testable (run the `<?xml>`/`</plist>` scan against a canned sample); the `sudo cp` + `launchctl bootstrap` steps are Mac-mini-only. Commit with an explicit "unverified end-to-end on Mac mini until Checkpoint C" note in the message. | WSL (extraction only) | ✅ Commit 4 |
 | 6 | Add `_docker_assisted_install` top-level orchestrator. Delegates to the existing `lib/docker.sh` helpers (`_docker_strip_quarantine`, `_docker_launch`) wherever possible. No standalone tests — orchestration is tested end-to-end on the Mac mini. | WSL (static only) | ✅ Commit 5 |
 | 7 | Wire dispatch in `lib/docker.sh`. Add the `UIC_PREF_DOCKER_FIRST_INSTALL=assisted` branch to `_docker_desktop_install_and_start` before the existing gate. ~10 LOC. bash -n + pytest + hook validate, but runtime behavior only meaningfully testable on Mac mini. | WSL | ✅ Commit 6 |
-| — | **STOP HERE. HAND OFF TO MAC MINI.** WSL work complete. Next session must be Mac mini interactive. | — | — |
-| 8 | Mac mini test matrix — 7 tests from the "Test plan" section, each from a fully-clean Docker state. Total ~45-60 min on Mac mini. User runs; Claude reads paste and diagnoses per test. | Mac mini | No |
-| 9 | Triage and fix any test failures from Step 8. Each failure = 1-2 more commits. Expected iterations: 0-3. | WSL (code) + Mac mini (verify) | ✅ Commits 7+ |
+| **B** | **Mac mini Checkpoint B — regression check.** User runs `./install.sh --no-interactive docker-desktop` (still with default `manual` pref). Confirms: the `assisted` branch is fully inert when the pref is `manual` — no change in existing Docker behavior, no stray askpass files, no permissions surprises. ~2 min on Mac mini. | Mac mini | No |
+| — | **STOP HERE. HAND OFF TO MAC MINI for Checkpoint C.** WSL work complete. | — | — |
+| **C** | **Mac mini Checkpoint C — full matrix.** 7 tests from the "Test plan" section, each from a fully-clean Docker state, with `UIC_PREF_DOCKER_FIRST_INSTALL=assisted`. Total ~45-60 min on Mac mini. User runs; Claude reads paste and diagnoses per test. | Mac mini | No |
+| 9 | Triage and fix any test failures from Checkpoint C. Each failure = 1-2 more commits. Expected iterations: 0-3. | WSL (code) + Mac mini (verify) | ✅ Commits 7+ |
 | 10 | Move Docker Desktop unattended entry from Open to Closed in `docs/PLAN.md`. Final commit. | WSL | ✅ Final commit |
 
 **WSL work (Steps 2-7)**: ~6 commits, ~2-3 hours of focused work, no
 Mac mini required. Every commit passes through the pre-commit hook.
 
-**Mac mini handoff (Step 8)**: Claude pauses here, user runs the
-7-test matrix on the Mac mini and pastes output back. Claude reads
-each test's output, flags failures, proposes fixes (Step 9).
+**Mac mini handoffs**: three short checkpoints instead of one long
+test matrix. Checkpoint A (~2 min) catches YAML/pref regressions
+before we stack 5 more commits. Checkpoint B (~2 min) catches any
+`manual`-path regression introduced by the dispatch wiring. Checkpoint
+C (~45-60 min) is the end-to-end `assisted`-path validation.
 
 **Abort criteria** (stop and check with the user if any of these
 happen):
 
-1. Step 5 vmnetd extraction fails on WSL partial test — the Python
+1. Checkpoint A surfaces any PREF/validator regression from the YAML
+   edit — roll back Commit 1, don't proceed to Step 3.
+2. Step 5 vmnetd extraction fails on WSL partial test — the Python
    logic can't find the plist in a real vmnetd binary extracted from
    an earlier Mac mini session. May mean Docker changed the Mach-O
    layout since 2026-04-11.
-2. Step 8 Test 4 (the "true non-interactive with `UCC_SUDO_PASS`"
+3. Checkpoint B shows the `manual`-path has regressed — the dispatch
+   wiring leaked. Roll back Commit 6, reinspect Step 7.
+4. Checkpoint C Test 4 (the "true non-interactive with `UCC_SUDO_PASS`"
    test) fails twice in a row even after Step 9 iteration — we're
    chasing a moving target.
-3. Any Step 8 test accidentally breaks the Mac mini's existing
+5. Any Checkpoint C test accidentally breaks the Mac mini's existing
    working Docker install — roll back immediately, do not proceed.
-4. Step 9 exceeds 3 iterations — the approach isn't converging,
+6. Step 9 exceeds 3 iterations — the approach isn't converging,
    take a break and re-plan.
 
 ## Closed
