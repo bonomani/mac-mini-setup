@@ -296,6 +296,34 @@ state if seeding goes wrong (`launchctl bootout system/com.docker.vmnetd
 All driver-tier work that had a real consumer: D2, D3, D4, B2, C2, B3,
 X2. See git log for details.
 
+**Capability driver refactor (2026-04-11)** — Replaced the legacy
+`profile: capability + driver.kind: custom + runtime_manager: capability
++ probe_kind: command + oracle.runtime: <fn>` verbose shape with a
+single `driver.kind: capability + driver.probe: <fn>` declaration.
+7 targets migrated across 5 YAML files (network-available,
+networkquality-available, mdns-available, mps-available, cuda-available,
+docker-available, sudo-available). New `KNOWN_CAPABILITY_DRIVERS` set
+in the validator. Legacy fields (`runtime_manager`, `probe_kind`,
+`oracle.runtime` on capability profile) hard-rejected so authors
+cannot reintroduce the dead boilerplate. `ucc_yaml_capability_target`
+and `_ucc_observe_yaml_capability_target` now read `driver.probe`
+instead of `oracle.runtime`. `install.sh`'s `_UCC_YAML_BATCH_KEYS`
+pre-fetch list updated to include `driver.probe`. Two pre-existing
+miscalls (`lib/homebrew.sh` and `lib/docker.sh` dispatched
+`network-available` / `docker-available` through
+`ucc_yaml_runtime_target` instead of the capability dispatcher) fixed
+along the way — a latent bug that only surfaced once the dispatchers
+diverged. New `tests/test_capability_driver.py` adds 15 regression
+tests (validator positive + 5 negatives + dispatcher round-trip).
+Verified end-to-end on the Mac mini: all 7 capability targets report
+`[ok]` in `--no-interactive` mode with matching evidence. Runtime-
+profile targets (`unsloth-studio`, `docker-desktop`, etc.) not
+migrated — their `kind: custom` declarations remain; a separate
+follow-up if desired.
+
+Commits: e48da96 (atomic cutover), 2863044 (batch-keys fix), d17a16c
+(runner dispatch fix), a637074 (tests), 3d5759b (regen docs).
+
 Three items honestly skipped:
 - **C3** (desired-value comparison in observe) — already handled by
   the parametric framework.
