@@ -236,12 +236,16 @@ _docker_kill_zombies() {
 # socket to appear. We do NOT use `docker desktop start` here because that
 # subcommand is a CLI plugin which the brew cask install does not link into
 # any standard cli-plugins directory — on a fresh install the docker CLI
-# reports `unknown command: docker desktop` and the launch fails. `open -g`
-# launches the .app bundle in the background without stealing focus and
-# works regardless of which CLI plugins are present.
+# reports `unknown command: docker desktop` and the launch fails.
+#
+# We also do NOT pass `-g` (background launch). Empirically, `open -g -a
+# /Applications/Docker.app` returns 0 but does not actually start Docker on
+# Apple Silicon — no processes appear, no socket is created, no log entries
+# are written. Some interaction between macOS, Electron, and Docker.app's
+# nested .app structure breaks background launches. Plain `open -a` works.
 _docker_launch() {
   log_info "Starting Docker Desktop..."
-  open -g -a /Applications/Docker.app || return $?
+  open -a /Applications/Docker.app || return $?
   local i
   for i in $(seq 1 45); do
     [[ -S "$HOME/.docker/run/docker.sock" ]] && {
