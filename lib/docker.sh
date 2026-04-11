@@ -206,6 +206,14 @@ _docker_desktop_install_and_start() {
   #                              run finishes the vmnetd approval.
   #   - helper missing, no sudo: bail out before anything runs.
   if ! _docker_privileged_helper_installed; then
+    # Temporary debug: show the state the gate is reading. Remove once we
+    # understand why the cached-sudo branch is not being taken in runs where
+    # `sudo -v` was issued immediately before install.sh.
+    local _dbg_tty _dbg_sudo_out _dbg_sudo_rc
+    _dbg_tty="$(tty 2>&1 || true)"
+    _dbg_sudo_out="$(sudo -n true 2>&1 || true)"
+    sudo -n true 2>/dev/null; _dbg_sudo_rc=$?
+    log_info "docker-gate debug: EUID=$EUID UCC_INTERACTIVE=${UCC_INTERACTIVE:-unset} tty=$_dbg_tty sudo_rc=$_dbg_sudo_rc sudo_out='${_dbg_sudo_out}'"
     if [[ "${UCC_INTERACTIVE:-1}" != "1" ]]; then
       if _docker_sudo_cached; then
         log_info "Non-interactive mode with cached sudo: installing Docker Desktop cask only."
