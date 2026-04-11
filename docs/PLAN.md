@@ -556,57 +556,102 @@ state if seeding goes wrong (`launchctl bootout system/com.docker.vmnetd
 
 ## Closed
 
-All driver-tier work that had a real consumer: D2, D3, D4, B2, C2, B3,
-X2. See git log for details.
+### 2026-04-11 session
 
-**Capability driver refactor (2026-04-11)** — Replaced the legacy
-`profile: capability + driver.kind: custom + runtime_manager: capability
-+ probe_kind: command + oracle.runtime: <fn>` verbose shape with a
+Two items closed in one long session that started with a Docker
+Desktop bootstrap recovery and ended with a pre-commit hook install.
+
+**Capability driver refactor** — Replaced the legacy verbose shape
+(`profile: capability + driver.kind: custom + runtime_manager:
+capability + probe_kind: command + oracle.runtime: <fn>`) with a
 single `driver.kind: capability + driver.probe: <fn>` declaration.
-7 targets migrated across 5 YAML files (network-available,
-networkquality-available, mdns-available, mps-available, cuda-available,
-docker-available, sudo-available). New `KNOWN_CAPABILITY_DRIVERS` set
-in the validator. Legacy fields (`runtime_manager`, `probe_kind`,
-`oracle.runtime` on capability profile) hard-rejected so authors
-cannot reintroduce the dead boilerplate. `ucc_yaml_capability_target`
-and `_ucc_observe_yaml_capability_target` now read `driver.probe`
-instead of `oracle.runtime`. `install.sh`'s `_UCC_YAML_BATCH_KEYS`
-pre-fetch list updated to include `driver.probe`. Two pre-existing
-miscalls (`lib/homebrew.sh` and `lib/docker.sh` dispatched
-`network-available` / `docker-available` through
-`ucc_yaml_runtime_target` instead of the capability dispatcher) fixed
-along the way — a latent bug that only surfaced once the dispatchers
-diverged. New `tests/test_capability_driver.py` adds 15 regression
-tests (validator positive + 5 negatives + dispatcher round-trip).
-Verified end-to-end on the Mac mini: all 7 capability targets report
-`[ok]` in `--no-interactive` mode with matching evidence. Runtime-
-profile targets (`unsloth-studio`, `docker-desktop`, etc.) not
-migrated — their `kind: custom` declarations remain; a separate
-follow-up if desired.
+7 targets migrated across 5 YAML files (`network-available`,
+`networkquality-available`, `mdns-available`, `mps-available`,
+`cuda-available`, `docker-available`, `sudo-available`). New
+`KNOWN_CAPABILITY_DRIVERS` set in the validator; legacy fields
+(`runtime_manager`, `probe_kind`, `oracle.runtime` on capability
+profile) hard-rejected so authors cannot reintroduce the dead
+boilerplate. `ucc_yaml_capability_target` and
+`_ucc_observe_yaml_capability_target` now read `driver.probe` instead
+of `oracle.runtime`. `install.sh`'s `_UCC_YAML_BATCH_KEYS` pre-fetch
+list updated to include `driver.probe`. Two pre-existing miscalls
+(`lib/homebrew.sh` and `lib/docker.sh` dispatched `network-available`
+/ `docker-available` through `ucc_yaml_runtime_target` instead of the
+capability dispatcher) fixed along the way — a latent bug that only
+surfaced once the dispatchers diverged. New
+`tests/test_capability_driver.py` adds 15 regression tests (validator
+positive + 5 negatives + dispatcher round-trip). Verified end-to-end
+on the Mac mini: all 7 capability targets report `[ok]` in
+`--no-interactive` mode with matching evidence. Runtime-profile
+targets (`unsloth-studio`, `docker-desktop`) not migrated — their
+`kind: custom` declarations remain; a separate follow-up if desired.
 
-Commits: e48da96 (atomic cutover), 2863044 (batch-keys fix), d17a16c
-(runner dispatch fix), a637074 (tests), 3d5759b (regen docs).
+Commits: `e48da96` (atomic cutover), `2863044` (batch-keys fix),
+`d17a16c` (runner dispatch fix), `a637074` (tests), `3d5759b`
+(regen docs), `3e04358` (PLAN update).
 
-**Phase X1.5 — `--check` drift hook wired into pre-commit (2026-04-11)** —
+**Phase X1.5 — `--check` drift hook wired into pre-commit** —
 `tools/check-bgs.sh` now uses `git rev-parse --show-toplevel` for
-REPO_ROOT (was `$(cd "$(dirname "$0")/.." && pwd)` which broke when the
-script was invoked via a symlink from `.git/hooks/` or `~/.git-hooks/`).
-Added an inert guard so the script exits 0 silently in repos that do not
-carry `tools/build-driver-matrix.py` — safe to install as a global
-pre-commit hook without affecting unrelated repos. BGS validator step
-moved from "skip whole script on missing validator" to "skip only the
-BGS step, still run drift checks" so doc drift is caught even when the
-BGS private repo is not present. Hook installed as symlink at
-`~/.git-hooks/pre-commit` (the user's existing global hooks dir, which
-already contains a commit-msg hook that strips Co-Authored-By lines from
-Anthropic — the two hooks coexist). Verified end-to-end: drift detection
-blocks commits with rc=1 and a clear DRIFT message; clean commits pass.
+REPO_ROOT (was `$(cd "$(dirname "$0")/.." && pwd)` which broke when
+the script was invoked via a symlink from `.git/hooks/` or
+`~/.git-hooks/`). Added an inert guard so the script exits 0
+silently in repos that do not carry `tools/build-driver-matrix.py`
+— safe to install as a global pre-commit hook without affecting
+unrelated repos. BGS validator step moved from "skip whole script on
+missing validator" to "skip only the BGS step, still run drift
+checks" so doc drift is caught even when the BGS private repo is
+not present. Hook installed as symlink at `~/.git-hooks/pre-commit`
+(the user's existing global hooks dir, which already contains a
+`commit-msg` hook that strips `Co-Authored-By: *@anthropic.com`
+lines — the two hooks coexist). Verified end-to-end: drift detection
+blocks commits with `rc=1` and a clear DRIFT message; clean commits
+pass. Every commit on this repo now enforces
+`python3 tools/build-driver-matrix.py --check` +
+`python3 tools/build-spec.py --check`.
+
+Commits: `b74bb8f` (hook + script fix + PLAN update).
+
+**Auxiliary fixes from the same session** — not strictly part of
+either item above, but landed while recovering the Mac mini's Docker
+Desktop install and revealed along the way:
+
+- `ba8f095` — Stop Gatekeeper reinstall loop on Docker Desktop
+  (`greedy_auto_updates: true` + unstrtipped quarantine made brew
+  reinstall the cask on every run, then tripped a macOS dialog).
+- `71c2dee` — Correct the `settings_relpath` YAML key that was
+  never being read because the lib code used a non-existent
+  `docker_settings_store_relpath` key; also always strip quarantine
+  in `_docker_daemon_start` defensively.
+- `5a79a42` — Replace `_docker_privileged_helper_installed` (which
+  looked for `/Library/PrivilegedHelperTools/com.docker.vmnetd` —
+  gone on Apple Silicon Docker 4.x) with `_docker_bootstrap_complete`
+  which checks `LicenseTermsVersion` in `settings-store.json`.
+- `813aa78` + `f08328e` — `_docker_launch` stops calling the
+  nonexistent `docker desktop start` CLI plugin and uses plain
+  `open -a /Applications/Docker.app` (`-g` proven broken on Apple
+  Silicon — returns 0 without starting Docker).
+- `69f47d4` — Escalating recovery feature for failed targets plus
+  `winget` backend for `pkg` + `mdns-available` capability target
+  (originally wired wrong, fixed in the follow-ups below).
+- `ec2d426` + `2261b78` + `5fb5445` — Successive fixes for the new
+  network-services targets: missing `state_model`, invalid
+  `apt_ref/dnf_ref`, wire `mdns-available` + `avahi` into the
+  component runner.
+- `6a07393` + `07b63af` — Document the validated recipe for
+  fully-unattended Docker first install (vmnetd seeding + EULA
+  settings pre-write + SUDO_ASKPASS shim) in PLAN.md as deferred
+  future work.
+
+### Earlier closed work
+
+All driver-tier work that had a real consumer: D2, D3, D4, B2, C2,
+B3, X2. See git log for details.
 
 Three items honestly skipped:
 - **C3** (desired-value comparison in observe) — already handled by
   the parametric framework.
-- **C4** (fold compose-file into home-artifact) — would require a new
-  one-target subkind; premature abstraction.
+- **C4** (fold compose-file into home-artifact) — would require a
+  new one-target subkind; premature abstraction.
 - **B1** (state vocab static check) — can't be enforced at static
   analysis without actually running drivers; belongs to runtime tests.
 
