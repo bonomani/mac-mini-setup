@@ -44,6 +44,7 @@ re-run the generator after any driver change.
 | `brew.sh` | `brew`, `brew-analytics` | ✅ | ✅ | ✅ | ✅ | — | — | — |
 | `brew_unlink.sh` | `brew-unlink` | ✅ | ✅ | — | ✅ | — | — | — |
 | `build_deps.sh` | `build-deps` | ✅ | ✅ | — | ✅ | — | — | — |
+| `compose_apply.sh` | `compose-apply` | ✅ | ✅ | — | ✅ | — | — | — |
 | `compose_file.sh` | `compose-file` | ✅ | ✅ | — | ✅ | — | — | — |
 | `custom_daemon.sh` | `custom-daemon` | ✅ | ✅ | — | ✅ | ✅ | — | — |
 | `docker_compose_service.sh` | `docker-compose-service` | ✅ | ✅ | — | ✅ | — | — | — |
@@ -65,7 +66,7 @@ re-run the generator after any driver change.
 | `vscode.sh` | `json-merge` | ✅ | ✅ | ✅ | ✅ | — | — | — |
 | `zsh_config.sh` | `zsh-config` | ✅ | ✅ | — | ✅ | — | — | — |
 
-**24 driver files**, of which 22 export at least one driver kind. The other 2 host helper functions only.
+**25 driver files**, of which 23 export at least one driver kind. The other 2 host helper functions only.
 
 ## `pkg` backends in detail
 

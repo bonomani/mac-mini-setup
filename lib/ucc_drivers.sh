@@ -24,6 +24,7 @@ for _ucc_drv_file in \
   "$_UCC_DRIVERS_DIR/pkg.sh" \
   "$_UCC_DRIVERS_DIR/custom_daemon.sh" \
   "$_UCC_DRIVERS_DIR/compose_file.sh" \
+  "$_UCC_DRIVERS_DIR/compose_apply.sh" \
   "$_UCC_DRIVERS_DIR/docker_compose_service.sh" \
   "$_UCC_DRIVERS_DIR/package.sh" \
   "$_UCC_DRIVERS_DIR/git_repo.sh" \

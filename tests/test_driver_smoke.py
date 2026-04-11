@@ -50,6 +50,7 @@ FAKE_DRIVER_FIELDS = {
     "brew-analytics":          {},
     "brew-unlink":             {"formula": "xyz-smoke-nonexistent"},
     "build-deps":              {},
+    "compose-apply":           {"path_env": "XYZ_SMOKE_NONEXISTENT"},
     "compose-file":            {"path_env": "XYZ_SMOKE_NONEXISTENT"},
     "custom-daemon":           {"bin": "/opt/xyz-smoke/bin/xyz",
                                 "process": "xyz-smoke-nonexistent-proc"},

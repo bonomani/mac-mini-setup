@@ -90,6 +90,7 @@ DRIVER_SCHEMA = {
     "git-repo":               {"required": ["repo", "dest"], "optional": ["branch", "upstream"]},
     "package":                {"required": ["ref"], "optional": ["cask", "greedy_auto_updates", "previous_ref", "apt_ref", "dnf_ref", "pacman_ref", "fallback_install_url", "fallback_install_args", "update_cmd", "bin", "externally_managed_updates"]},
     "capability":             {"required": ["probe"], "optional": []},
+    "compose-apply":          {"required": ["path_env"], "optional": ["pull_policy_env"]},
 }
 
 KNOWN_PACKAGE_DRIVERS = {
@@ -108,6 +109,7 @@ KNOWN_PACKAGE_DRIVERS = {
     "app-bundle",
 }
 KNOWN_RUNTIME_DRIVERS = {
+    "compose-apply",
     "compose-file",
     "custom",
     "custom-daemon",
