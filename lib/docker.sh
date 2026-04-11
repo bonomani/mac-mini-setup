@@ -155,17 +155,17 @@ _docker_cask_ensure() {
 # Install Docker Desktop cask only (no daemon start).
 # Uses implicit $CFG_DIR/$YAML_PATH/$TARGET_NAME context.
 _docker_desktop_install() {
-  local cask_id app_path settings_store_relpath
+  local cask_id app_path settings_relpath
   while IFS=$'\t' read -r -d '' key value; do
     case "$key" in
       docker_desktop_cask_id) cask_id="$value" ;;
       docker_desktop_app_path) app_path="$value" ;;
-      docker_settings_store_relpath) settings_store_relpath="$value" ;;
+      settings_relpath)       settings_relpath="$value" ;;
     esac
-  done < <(yaml_get_many "$CFG_DIR" "$YAML_PATH" docker_desktop_cask_id docker_desktop_app_path docker_settings_store_relpath)
+  done < <(yaml_get_many "$CFG_DIR" "$YAML_PATH" docker_desktop_cask_id docker_desktop_app_path settings_relpath)
   local greedy; greedy="$(_ucc_yaml_target_get "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME" "driver.greedy_auto_updates")"
   _docker_cask_ensure "$cask_id" "$app_path" "$greedy" || return $?
-  _docker_settings_store_patch "$settings_store_relpath"
+  _docker_settings_store_patch "$settings_relpath"
 }
 
 # Install Docker Desktop cask + start daemon.
@@ -191,14 +191,20 @@ _docker_launch() {
 
 # Uses implicit $CFG_DIR/$YAML_PATH context.
 _docker_daemon_start() {
-  local settings_store_relpath kill_pattern
+  local settings_relpath kill_pattern app_path
   while IFS=$'\t' read -r -d '' key value; do
     case "$key" in
-      docker_settings_store_relpath) settings_store_relpath="$value" ;;
-      docker_kill_pattern) kill_pattern="$value" ;;
+      settings_relpath)          settings_relpath="$value" ;;
+      docker_kill_pattern)       kill_pattern="$value" ;;
+      docker_desktop_app_path)   app_path="$value" ;;
     esac
-  done < <(yaml_get_many "$CFG_DIR" "$YAML_PATH" docker_settings_store_relpath docker_kill_pattern)
-  _docker_settings_store_patch "$settings_store_relpath"
+  done < <(yaml_get_many "$CFG_DIR" "$YAML_PATH" settings_relpath docker_kill_pattern docker_desktop_app_path)
+  # Defensive: strip Gatekeeper quarantine from the existing Docker.app before
+  # launch. Covers pre-existing installs that never went through _docker_cask_ensure,
+  # so `docker desktop start` does not hang on the "downloaded from the Internet"
+  # prompt in --no-interactive runs.
+  _docker_strip_quarantine "$app_path"
+  _docker_settings_store_patch "$settings_relpath"
   _docker_kill_zombies "$kill_pattern"
   _docker_launch
 }
