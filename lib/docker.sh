@@ -181,23 +181,30 @@ _docker_desktop_install() {
 # Install Docker Desktop cask + start daemon.
 # Uses implicit $CFG_DIR/$YAML_PATH/$TARGET_NAME context.
 _docker_desktop_install_and_start() {
-  _docker_desktop_install || return $?
-  # First-time Docker Desktop setup on macOS installs a privileged helper
-  # (vmnetd) via a macOS admin-password prompt. That prompt blocks until
-  # a human types the password — it cannot be satisfied in --no-interactive
-  # mode and there is no CLI/env bypass. Detect the missing helper and
-  # fail loudly with a clear message instead of hanging on the GUI prompt.
+  # First-time Docker Desktop setup on macOS needs admin/sudo at two points:
+  #   1. brew cask install docker-desktop symlinks CLI plugins into
+  #      /usr/local/cli-plugins (not user-writable), which prompts sudo.
+  #   2. On first launch, Docker Desktop installs a privileged helper
+  #      (vmnetd) under /Library/PrivilegedHelperTools via a macOS
+  #      Authorization Services prompt.
+  # Both prompts block on human input and have no CLI bypass. If the
+  # helper is missing and the run is non-interactive, bail out before
+  # the cask install so we don't hang on the very first sudo prompt.
   if ! _docker_privileged_helper_installed; then
     if [[ "${UCC_INTERACTIVE:-1}" != "1" ]]; then
       log_warn "Docker Desktop privileged helper (vmnetd) is not installed."
-      log_warn "First-time Docker Desktop setup requires an interactive run so macOS"
-      log_warn "can prompt for your admin password. Re-run install.sh without"
-      log_warn "--no-interactive to complete the initial setup, then subsequent"
-      log_warn "--no-interactive runs will work normally."
+      log_warn "First-time Docker Desktop setup requires an interactive run: the"
+      log_warn "brew cask install needs sudo for /usr/local/cli-plugins symlinks,"
+      log_warn "and Docker Desktop itself prompts for your admin password on first"
+      log_warn "launch to install its privileged helper. Neither prompt can be"
+      log_warn "satisfied in --no-interactive mode."
+      log_warn "Re-run install.sh without --no-interactive to complete initial setup,"
+      log_warn "then subsequent --no-interactive runs will work normally."
       return 1
     fi
-    log_info "Docker Desktop will prompt for your admin password to install its privileged helper (first-time setup)."
+    log_info "Docker Desktop will prompt for your admin password twice during first-time setup (cask install + privileged helper)."
   fi
+  _docker_desktop_install || return $?
   _docker_daemon_start
 }
 
