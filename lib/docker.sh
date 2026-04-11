@@ -133,6 +133,16 @@ _docker_strip_quarantine() {
   xattr -dr com.apple.quarantine "$app_path" 2>/dev/null || true
 }
 
+# Return 0 if Docker Desktop's privileged helper (vmnetd) is installed.
+# This helper is placed under /Library by Docker Desktop itself on first
+# launch, via a macOS Authorization Services prompt that asks the user
+# for their admin password. Without it, `docker desktop start` cannot
+# bring up the VM/daemon and will either hang or fail.
+_docker_privileged_helper_installed() {
+  [[ -f /Library/PrivilegedHelperTools/com.docker.vmnetd ]] \
+    || [[ -f /Library/LaunchDaemons/com.docker.vmnetd.plist ]]
+}
+
 # Ensure cask is installed/up-to-date via brew, skipping if already present via app-bundle.
 _docker_cask_ensure() {
   local cask_id="$1" app_path="$2" greedy="$3"
@@ -172,6 +182,22 @@ _docker_desktop_install() {
 # Uses implicit $CFG_DIR/$YAML_PATH/$TARGET_NAME context.
 _docker_desktop_install_and_start() {
   _docker_desktop_install || return $?
+  # First-time Docker Desktop setup on macOS installs a privileged helper
+  # (vmnetd) via a macOS admin-password prompt. That prompt blocks until
+  # a human types the password — it cannot be satisfied in --no-interactive
+  # mode and there is no CLI/env bypass. Detect the missing helper and
+  # fail loudly with a clear message instead of hanging on the GUI prompt.
+  if ! _docker_privileged_helper_installed; then
+    if [[ "${UCC_INTERACTIVE:-1}" != "1" ]]; then
+      log_warn "Docker Desktop privileged helper (vmnetd) is not installed."
+      log_warn "First-time Docker Desktop setup requires an interactive run so macOS"
+      log_warn "can prompt for your admin password. Re-run install.sh without"
+      log_warn "--no-interactive to complete the initial setup, then subsequent"
+      log_warn "--no-interactive runs will work normally."
+      return 1
+    fi
+    log_info "Docker Desktop will prompt for your admin password to install its privileged helper (first-time setup)."
+  fi
   _docker_daemon_start
 }
 
