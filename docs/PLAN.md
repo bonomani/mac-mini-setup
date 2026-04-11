@@ -98,19 +98,198 @@ and none of them have a clean CLI bypass:
 5. `open -g -a /Applications/Docker.app` — daemon comes up in seconds,
    no dialogs, no prompts.
 
-Wire this up as an opt-in path behind a preference (e.g.
-`docker-first-install: assisted | manual`, default `manual`) so the
-default behaviour stays the conservative gate that is in
-`_docker_desktop_install_and_start` today. The recipe touches
-`/Library/PrivilegedHelperTools` and `/Library/LaunchDaemons` with
-sudo, depends on Docker.app's internal layout, and could break with
-any Docker Desktop release — opt-in for users who actually need
-unattended setup (CI, fleet provisioning) and accept the maintenance
-cost.
+Wire this up as an opt-in path behind a preference (default = current
+conservative gate). The recipe touches `/Library/PrivilegedHelperTools`
+and `/Library/LaunchDaemons` with sudo, depends on Docker.app's
+internal layout, and could break with any Docker Desktop release —
+opt-in for users who actually need unattended setup (CI, fleet
+provisioning) and accept the maintenance cost.
 
 Bootstrap detection lives in `_docker_bootstrap_complete` (checks
 `LicenseTermsVersion` in settings-store.json). Use the same probe as
 the bypass condition for any future variant.
+
+#### Implementation plan
+
+**Preference (`ucc/software/docker.yaml`)**
+
+Add to the `preferences:` block:
+```yaml
+- name: docker-first-install
+  default: manual
+  options: manual|assisted
+  rationale: manual fails fast in non-interactive mode and requires the
+    user to bootstrap Docker once interactively (sudo + macOS auth dialog
+    + EULA accept); assisted runs the experimental recipe that pre-writes
+    EULA settings, seeds vmnetd to bypass the auth dialog, and uses a
+    SUDO_ASKPASS shim so brew's sudo calls succeed non-interactively
+```
+
+Read in code as `UIC_PREF_DOCKER_FIRST_INSTALL` (existing convention).
+
+**Password sourcing**
+
+The recipe needs sudo. Three sources, in order:
+1. `UCC_SUDO_PASS` env var (CI / scripted use).
+2. Interactive prompt via `read -s` from `/dev/tty` (interactive operator).
+3. Fail with a clear message naming both options.
+
+Never log the password. Never write it to a process arg. Store it in a
+mode-0600 temp file under `mktemp -d` with mode 0700, deleted on EXIT
+trap (with `dd if=/dev/zero` overwrite first).
+
+**SUDO_ASKPASS shim**
+
+brew's internal sudo calls do NOT use `-A`, so plain `SUDO_ASKPASS`
+isn't enough. Shadow `sudo` in PATH with a wrapper that always passes
+`-A`:
+```bash
+$WORKDIR/sudo:
+  #!/bin/bash
+  exec /usr/bin/sudo -A "$@"
+
+$WORKDIR/askpass.sh:
+  #!/bin/bash
+  cat "$WORKDIR/pass"
+
+export SUDO_ASKPASS="$WORKDIR/askpass.sh"
+export PATH="$WORKDIR:$PATH"
+```
+brew's `sudo …` resolves through PATH → wrapper → `/usr/bin/sudo -A` →
+askpass returns the cached password. Open question: validate that brew
+calls `sudo` (PATH-resolved) and not `/usr/bin/sudo` (hardcoded). If the
+latter, the shim is bypassed and we need a different approach (e.g.
+patch sudoers temporarily, or use `expect`).
+
+**File layout**
+
+New file `lib/docker_unattended.sh`. Sourced from `lib/ucc.sh` next to
+`lib/docker.sh`. Functions:
+
+- `_docker_assisted_install` — top-level orchestrator. Returns 0 on
+  full success or non-zero with a logged warning. Steps:
+  1. Read YAML vars (`docker_desktop_cask_id`, `docker_desktop_app_path`,
+     `settings_relpath`).
+  2. Get password via `_docker_assisted_get_password`.
+  3. Set up workdir + askpass + sudo shim, install EXIT trap.
+  4. `sudo -A -v` to validate the password before doing real work.
+  5. `_docker_assisted_prewrite_eula` — write the three EULA keys to
+     `settings-store.json` (creating the parent directory if missing,
+     merging into existing file via `tools/drivers/json_merge.py`).
+  6. `brew install --cask docker-desktop` — relies on the shim.
+  7. `_docker_strip_quarantine` (already exists in `lib/docker.sh`).
+  8. `_docker_assisted_seed_vmnetd` — extract embedded launchd plist
+     from the helper Mach-O, copy binary + write plist to /Library
+     with the correct ownership/perms, `launchctl bootstrap`.
+  9. `open -g -a /Applications/Docker.app`.
+ 10. Poll `~/.docker/run/docker.sock` (max 90s, 2s intervals).
+ 11. Verify by running `/Applications/Docker.app/Contents/Resources/bin/docker version`.
+- `_docker_assisted_get_password` — env var → tty prompt → fail.
+- `_docker_assisted_prewrite_eula` — JSON merge.
+- `_docker_assisted_seed_vmnetd` — extract+copy+bootstrap.
+- `_docker_assisted_cleanup` — wipe workdir on EXIT trap.
+
+**Dispatch (`lib/docker.sh`)**
+
+In `_docker_desktop_install_and_start`, before the existing gate:
+```bash
+if ! _docker_bootstrap_complete; then
+  case "${UIC_PREF_DOCKER_FIRST_INSTALL:-manual}" in
+    assisted)
+      _docker_assisted_install || return $?
+      return 0
+      ;;
+    manual|*)
+      # ... existing gate (fail in non-interactive, info-log in interactive)
+      ;;
+  esac
+fi
+```
+Keeps the default path 100% unchanged.
+
+**Open issues / risks**
+
+1. **kubectl postflight** — `brew install --cask docker-desktop` runs a
+   `postflight do` block that tries to symlink `kubectl.docker` into
+   `/usr/local/bin/`. With the SUDO_ASKPASS shim, the postflight's sudo
+   call should succeed. **Untested.** If brew's Ruby `system` call uses
+   the absolute path `/usr/bin/sudo`, the shim is bypassed.
+2. **vmnetd code-signing churn** — if Docker Inc changes the signing
+   identity, the seeded helper's signature won't match Docker.app's
+   `SMPrivilegedExecutables` requirement and SMJobBless will reject it.
+   We should `codesign -d -r-` the helper at runtime and compare it
+   to the requirement string in `Info.plist`, falling back to the
+   manual path if they don't match.
+3. **Embedded plist parsing** — relies on finding `<?xml` and
+   `</plist>` markers in the Mach-O `__TEXT,__launchd_plist` segment,
+   distinguishing the launchd plist from the helper's `Info.plist`
+   (filter on presence of `Label` and absence of `CFBundleIdentifier`).
+   Brittle if Docker changes the segment layout. Better to use
+   `otool -X -s __TEXT __launchd_plist` and parse the hex.
+4. **EULA `LicenseTermsVersion` value** — currently `2`. Will Docker
+   bump this in a future version, expecting users to re-accept? If
+   yes, our pre-write becomes stale and the EULA dialog reappears.
+   Mitigation: read the value from a Docker-published source if
+   available, or refresh on every assisted run.
+5. **`com.docker.helper` user-domain agent** — modern Docker uses
+   this instead of system-domain vmnetd. Our seed satisfies the legacy
+   SMJobBless check and is then garbage-collected. If Docker drops the
+   SMJobBless code path entirely in a future version, our seed becomes
+   irrelevant — but the dialog might also disappear, in which case
+   the assisted path can drop step (8) entirely.
+6. **Settings JSON merge** — `tools/drivers/json_merge.py` is used
+   elsewhere; reuse it. If `settings-store.json` does not exist yet
+   (fresh install), we create the parent dir and the file with just
+   the three keys. Docker writes the rest on first launch, merging.
+7. **Password security** — temp file is mode 0600, dir is 0700,
+   deleted on EXIT (including SIGINT/SIGTERM). Acceptable for an
+   opt-in advanced flow but document the trade-off.
+
+**Test plan**
+
+Validation runs on a clean Mac mini after each cleanup:
+
+1. `UIC_PREF_DOCKER_FIRST_INSTALL=manual` + non-interactive →
+   gate fires, no work done. (Regression check.)
+2. `UIC_PREF_DOCKER_FIRST_INSTALL=manual` + interactive → manual
+   path runs, all three dialogs appear, user clicks through. (Regression
+   check.)
+3. `UIC_PREF_DOCKER_FIRST_INSTALL=assisted` + interactive →
+   ONE password prompt at start, then no further interaction; Docker
+   daemon up; `docker version` works.
+4. `UIC_PREF_DOCKER_FIRST_INSTALL=assisted` +
+   `UCC_SUDO_PASS=...` + non-interactive → ZERO interaction; Docker
+   daemon up; `docker version` works.
+5. `UIC_PREF_DOCKER_FIRST_INSTALL=assisted` + non-interactive
+   without `UCC_SUDO_PASS` → fails clean with a clear "set
+   `UCC_SUDO_PASS` or run interactively" message.
+6. `UIC_PREF_DOCKER_FIRST_INSTALL=assisted` + WRONG password →
+   fails at the `sudo -A -v` validation step before any real work; no
+   side effects on disk.
+7. After a successful assisted run, re-run `--no-interactive
+   docker-desktop` → `_docker_bootstrap_complete` returns true, gate
+   skipped, daemon already running, no-op `[ok]`.
+
+Each run cleaned up via the existing teardown sequence in PLAN.md
+(`brew uninstall --cask --zap docker-desktop`, `sudo rm -rf
+/Applications/Docker.app /Library/PrivilegedHelperTools/com.docker.*
+/Library/LaunchDaemons/com.docker.*`, `rm -rf
+~/Library/Group Containers/group.com.docker ~/.docker
+~/Library/Containers/com.docker.docker`).
+
+**Estimated effort**
+
+- New `lib/docker_unattended.sh`: ~150 lines.
+- Dispatch in `lib/docker.sh`: ~10 lines.
+- Preference entry in `docker.yaml`: 4 lines.
+- Source line in `lib/ucc.sh`: 1 line.
+- Test cycles on the Mac mini: 6-8 clean+install runs.
+
+Realistically: implement in one focused session, test in another. Do
+not start without a clean Docker uninstall and a way to revert `/Library`
+state if seeding goes wrong (`launchctl bootout system/com.docker.vmnetd
+&& sudo rm /Library/PrivilegedHelperTools/com.docker.vmnetd
+/Library/LaunchDaemons/com.docker.vmnetd.plist`).
 
 ## Closed
 
