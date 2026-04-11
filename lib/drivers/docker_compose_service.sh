@@ -11,15 +11,38 @@ _ucc_driver_docker_compose_service_observe() {
   local svc
   svc="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.service_name")"
   [[ -n "$svc" ]] || return 1
+
+  # Gate 1: container is actually running. Fail fast if not — no retry.
   if ! docker ps --filter "name=${svc}" --filter "status=running" --format '{{.Names}}' 2>/dev/null | grep -q .; then
     printf 'stopped'
     return
   fi
-  if _ucc_http_probe_endpoint "$cfg_dir" "$yaml" "$target"; then
-    printf 'running'
-  else
-    printf 'stopped'
-  fi
+
+  # Gate 2: HTTP endpoint probe with bounded retry-with-backoff.
+  #
+  # On a healthy already-running service the first probe succeeds in
+  # <1s and we return 'running' immediately. On a fresh `docker compose
+  # up -d`, the container is running but the app inside is still
+  # initializing (Open WebUI downloads models, Flowise sets up its DB,
+  # etc.) so the first probe fails. Previously we'd return 'stopped'
+  # here, the runtime target would be reported [fail], and the next
+  # run would find the service healthy — a confusing false-negative
+  # on the first post-bootstrap run of ./install.sh.
+  #
+  # Retry budget: up to ~64s cumulative (delays 0, 2, 5, 10, 15, 20 +
+  # 2s curl max-time per probe). Healthy services pay ~1s; fresh
+  # services get enough slack for typical startup; genuinely-broken
+  # services take the full budget before reporting stopped.
+  local delays=(0 2 5 10 15 20)
+  local d
+  for d in "${delays[@]}"; do
+    [[ $d -gt 0 ]] && sleep "$d"
+    if _ucc_http_probe_endpoint_timeout "$cfg_dir" "$yaml" "$target" "" 2; then
+      printf 'running'
+      return
+    fi
+  done
+  printf 'stopped'
 }
 
 _ucc_driver_docker_compose_service_action() {
