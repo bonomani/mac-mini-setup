@@ -3,8 +3,13 @@
 # Sourced by components/docker.sh
 
 # Observe docker-desktop install state: installed | absent
+# Probe the .app bundle directly. We do not check `command -v docker` because
+# brew cask installs the docker CLI symlink at /usr/local/bin/docker (legacy
+# Intel path), and on Apple Silicon /usr/local/bin is not always in PATH for
+# the framework's observe sub-shells, which would falsely report 'absent'
+# even when Docker.app is fully installed and running.
 docker_desktop_observe() {
-  command -v docker >/dev/null 2>&1 && printf 'installed' || printf 'absent'
+  [[ -d /Applications/Docker.app ]] && printf 'installed' || printf 'absent'
 }
 
 # Resolve Docker settings-store.json full path from YAML.
@@ -227,11 +232,26 @@ _docker_kill_zombies() {
   sleep 2
 }
 
-# Launch Docker Desktop in a clean environment with a PTY (required by docker desktop start).
+# Launch Docker Desktop via macOS `open` and wait for the user-side daemon
+# socket to appear. We do NOT use `docker desktop start` here because that
+# subcommand is a CLI plugin which the brew cask install does not link into
+# any standard cli-plugins directory — on a fresh install the docker CLI
+# reports `unknown command: docker desktop` and the launch fails. `open -g`
+# launches the .app bundle in the background without stealing focus and
+# works regardless of which CLI plugins are present.
 _docker_launch() {
   log_info "Starting Docker Desktop..."
-  env -i HOME="$HOME" PATH="$PATH" USER="$USER" TERM="${TERM:-}" \
-    script -q /dev/null docker desktop start
+  open -g -a /Applications/Docker.app || return $?
+  local i
+  for i in $(seq 1 45); do
+    [[ -S "$HOME/.docker/run/docker.sock" ]] && {
+      log_info "Docker daemon socket up after $((i*2))s"
+      return 0
+    }
+    sleep 2
+  done
+  log_warn "Docker daemon socket did not appear after 90s"
+  return 1
 }
 
 # Uses implicit $CFG_DIR/$YAML_PATH context.
