@@ -8,10 +8,11 @@ re-run the generator after any driver change.
 
 | Kind | Targets |
 |---|---:|
-| `pkg` | 42 |
-| `custom` | 14 |
+| `pkg` | 43 |
 | `pip` | 14 |
 | `setting` | 12 |
+| `custom` | 8 |
+| `capability` | 7 |
 | `docker-compose-service` | 5 |
 | `home-artifact` | 2 |
 | `service` | 2 |
@@ -33,7 +34,7 @@ re-run the generator after any driver change.
 | `softwareupdate-schedule` | 1 |
 | `zsh-config` | 1 |
 
-**108 targets** across **24 distinct kinds**.
+**110 targets** across **25 distinct kinds**.
 
 ## Drivers by file
 
@@ -58,7 +59,7 @@ re-run the generator after any driver change.
 | `pkg.sh` | `pkg` | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ |
 | `pyenv_brew.sh` | `pyenv-brew` | ✅ | ✅ | — | ✅ | — | — | — |
 | `script_installer.sh` | `script-installer` | ✅ | ✅ | — | ✅ | ✅ | — | — |
-| `service.sh` | `service` | ✅ | ✅ | — | ✅ | — | — | — |
+| `service.sh` | `service` | ✅ | ✅ | — | ✅ | ✅ | — | — |
 | `setting.sh` | `setting` | ✅ | ✅ | ✅ | ✅ | — | — | — |
 | `swupdate_schedule.sh` | `softwareupdate-schedule` | ✅ | ✅ | — | ✅ | — | — | — |
 | `vscode.sh` | `json-merge` | ✅ | ✅ | ✅ | ✅ | — | — | — |

@@ -51,7 +51,7 @@ not specified). Counts are real (`type` distribution per component).
 | `build-tools` | 3 | 3 | 0 | 0 | 0 |
 | `cli-tools` | 26 | 21 | 5 | 0 | 0 |
 | `docker` | 3 | 0 | 1 | 1 | 1 |
-| `network-services` | 3 | 0 | 0 | 2 | 1 |
+| `network-services` | 5 | 1 | 0 | 2 | 2 |
 | `node-stack` | 6 | 5 | 1 | 0 | 0 |
 | `software-bootstrap` | 5 | 3 | 1 | 0 | 1 |
 | `system` | 15 | 0 | 14 | 0 | 1 |
@@ -94,8 +94,8 @@ not specified). Counts are real (`type` distribution per component).
 
 | Target | Kind | Type | Display name | requires | depends_on |
 |---|---|---|---|---|---|
-| `cuda-available` | `custom` | `capability` | NVIDIA CUDA | linux,wsl2 | `pip-group-pytorch` |
-| `mps-available` | `custom` | `capability` | Metal MPS | macos | `pip-group-pytorch` |
+| `cuda-available` | `capability` | `capability` | NVIDIA CUDA | linux,wsl2 | `pip-group-pytorch` |
+| `mps-available` | `capability` | `capability` | Metal MPS | macos | `pip-group-pytorch` |
 | `pip-group-data-science` | `pip` | `package` | Data science packages |  |  |
 | `pip-group-dev-tools` | `pip` | `package` | Python dev tools |  |  |
 | `pip-group-huggingface` | `pip` | `package` | Hugging Face packages |  |  |
@@ -160,17 +160,19 @@ not specified). Counts are real (`type` distribution per component).
 
 | Target | Kind | Type | Display name | requires | depends_on |
 |---|---|---|---|---|---|
-| `docker-available` | `custom` | `capability` | Docker daemon |  | `docker-desktop` |
+| `docker-available` | `capability` | `capability` | Docker daemon |  | `docker-desktop` |
 | `docker-desktop` | `custom` | `runtime` | Docker Desktop |  | `homebrew` |
 | `docker-resources` | `custom` | `config` | Docker resources |  | `docker-desktop` |
 
-### network-services  (3 targets)
+### network-services  (5 targets)
 
 | Target | Kind | Type | Display name | requires | depends_on |
 |---|---|---|---|---|---|
-| `ariaflow-dashboard` | `service` | `runtime` | Ariaflow Dashboard |  | `ariaflow-server` |
-| `ariaflow-server` | `service` | `runtime` | Ariaflow Server |  | `networkquality-available` |
-| `networkquality-available` | `custom` | `capability` | networkQuality | macos |  |
+| `ariaflow-dashboard` | `service` | `runtime` | Ariaflow Dashboard |  | `mdns-available` |
+| `ariaflow-server` | `service` | `runtime` | Ariaflow Server |  | `networkquality-available`, `mdns-available`, `avahi` |
+| `avahi` | `pkg` | `package` | Avahi (mDNS) | linux,wsl2 |  |
+| `mdns-available` | `capability` | `capability` | mDNS/Bonjour |  |  |
+| `networkquality-available` | `capability` | `capability` | networkQuality | macos |  |
 
 ### node-stack  (6 targets)
 
@@ -190,7 +192,7 @@ not specified). Counts are real (`type` distribution per component).
 | `brew-analytics=off` | `brew-analytics` | `config` | Homebrew analytics |  | `homebrew` |
 | `build-deps` | `build-deps` | `package` | Build dependencies | linux,wsl2 |  |
 | `homebrew` | `custom` | `package` | Homebrew |  | `network-available`, `xcode-command-line-tools?macos`, `build-deps?!brew` |
-| `network-available` | `custom` | `capability` | Network connectivity |  |  |
+| `network-available` | `capability` | `capability` | Network connectivity |  |  |
 | `xcode-command-line-tools` | `custom` | `package` | Xcode Command Line Tools | macos |  |
 
 ### system  (15 targets)
@@ -210,7 +212,7 @@ not specified). Counts are real (`type` distribution per component).
 | `softwareupdate-config-data=1` | `setting` | `config` | Configuration data updates |  |  |
 | `softwareupdate-critical-updates=1` | `setting` | `config` | Security updates |  |  |
 | `softwareupdate-schedule=on` | `softwareupdate-schedule` | `config` | Software Update schedule |  |  |
-| `sudo-available` | `custom` | `capability` | sudo access |  |  |
+| `sudo-available` | `capability` | `capability` | sudo access |  |  |
 | `system-composition` | `custom` | `config` | System composition |  | `sudo-available`, `pmset-ac-sleep=0`, `pmset-disksleep=0` (+11) |
 
 ### vscode-stack  (10 targets)
@@ -323,8 +325,8 @@ See [`docs/driver-feature-matrix.md`](driver-feature-matrix.md) — auto-generat
 ## 11. Counts (live)
 
 - Components: **10**
-- Targets: **108**
-- Distinct driver kinds: **24**
+- Targets: **110**
+- Distinct driver kinds: **25**
 - Preferences: **6**
 - Gates: **1**
 - TIC tests: **23**
@@ -334,13 +336,13 @@ Top 10 driver kinds by target count:
 
 | Kind | Targets |
 |---|---:|
-| `pkg` | 42 |
-| `custom` | 14 |
+| `pkg` | 43 |
 | `pip` | 14 |
 | `setting` | 12 |
+| `custom` | 8 |
+| `capability` | 7 |
 | `docker-compose-service` | 5 |
 | `home-artifact` | 2 |
 | `service` | 2 |
 | `app-bundle` | 1 |
 | `brew-analytics` | 1 |
-| `brew-unlink` | 1 |
