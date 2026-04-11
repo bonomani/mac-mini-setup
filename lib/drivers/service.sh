@@ -98,6 +98,52 @@ _ucc_driver_service_action() {
   esac
 }
 
+_ucc_driver_service_recover() {
+  local cfg_dir="$1" yaml="$2" target="$3" level="$4"
+  _service_get_fields "$cfg_dir" "$yaml" "$target"
+  case "$_SVC_BACKEND" in
+    brew)
+      [[ -n "$_SVC_REF" ]] || return 1
+      case "$level" in
+        1) # Retry: just restart the service
+          ucc_run brew services stop "$_SVC_REF" 2>/dev/null || true
+          ucc_run brew services start "$_SVC_REF"
+          ;;
+        2) # Reinstall: uninstall + install + start
+          ucc_run brew services stop "$_SVC_REF" 2>/dev/null || true
+          ucc_run brew uninstall "$_SVC_REF" 2>/dev/null || true
+          brew_install "$_SVC_REF"
+          ucc_run brew services start "$_SVC_REF"
+          ;;
+        3) # Clean: untap + retap + install + start
+          ucc_run brew services stop "$_SVC_REF" 2>/dev/null || true
+          ucc_run brew uninstall "$_SVC_REF" 2>/dev/null || true
+          local tap="${_SVC_REF%/*}"
+          if [[ "$tap" == */* ]]; then
+            ucc_run brew untap "$tap" 2>/dev/null || true
+            ucc_run brew tap "$tap"
+          fi
+          brew_install "$_SVC_REF"
+          ucc_run brew services start "$_SVC_REF"
+          ;;
+        *) return 2 ;;  # level not supported
+      esac
+      ;;
+    launchd)
+      [[ -n "$_SVC_PLIST" ]] || return 1
+      local file; file="$(_service_launchd_plist_file)"
+      case "$level" in
+        1) # Retry: unload + load
+          ucc_run launchctl unload "$file" 2>/dev/null || true
+          ucc_run launchctl load "$file"
+          ;;
+        *) return 2 ;;  # level not supported
+      esac
+      ;;
+    *) return 2 ;;  # backend not supported
+  esac
+}
+
 _ucc_driver_service_evidence() {
   local cfg_dir="$1" yaml="$2" target="$3"
   _service_get_fields "$cfg_dir" "$yaml" "$target"

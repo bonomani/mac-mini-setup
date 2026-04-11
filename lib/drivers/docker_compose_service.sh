@@ -28,6 +28,28 @@ _ucc_driver_docker_compose_service_action() {
   _ai_apply_compose_runtime
 }
 
+_ucc_driver_docker_compose_service_recover() {
+  local cfg_dir="$1" yaml="$2" target="$3" level="$4"
+  local svc
+  svc="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.service_name")"
+  [[ -n "$svc" ]] || return 1
+  case "$level" in
+    1) # Restart container
+      docker compose restart "$svc" 2>/dev/null || docker restart "$svc" 2>/dev/null
+      ;;
+    2) # Recreate container
+      docker compose down "$svc" 2>/dev/null || docker stop "$svc" 2>/dev/null
+      docker compose up -d "$svc" 2>/dev/null || return 1
+      ;;
+    3) # Pull fresh image + recreate
+      docker compose pull "$svc" 2>/dev/null || true
+      docker compose down "$svc" 2>/dev/null || docker stop "$svc" 2>/dev/null
+      docker compose up -d "$svc" 2>/dev/null || return 1
+      ;;
+    *) return 2 ;;  # level not supported
+  esac
+}
+
 _ucc_driver_docker_compose_service_evidence() {
   local cfg_dir="$1" yaml="$2" target="$3"
   local svc

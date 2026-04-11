@@ -223,6 +223,40 @@ _pip_update_would_conflict() {
   return 0
 }
 
+_ucc_driver_pip_recover() {
+  local cfg_dir="$1" yaml="$2" target="$3" level="$4"
+  local isolation pkgs
+  isolation="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.isolation" 2>/dev/null || true)"
+  pkgs="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.install_packages")"
+  [[ -n "$pkgs" ]] || return 1
+  if [[ "$isolation" == "pipx" ]]; then
+    _pipx_available || return 1
+    case "$level" in
+      1) _pipx_upgrade_pkgs "$pkgs" ;;
+      2) # Reinstall via pipx
+        local pkg; for pkg in $pkgs; do
+          pipx uninstall "$pkg" 2>/dev/null || true
+        done
+        _pipx_install_pkgs "$pkgs"
+        ;;
+      *) return 2 ;;  # level not supported
+    esac
+    return $?
+  fi
+  _pip_ensure_path || return 1
+  local pip_cmd="pip"
+  command -v pip >/dev/null 2>&1 || pip_cmd="python3 -m pip"
+  case "$level" in
+    1) # Retry install
+      ucc_run $pip_cmd install -q --upgrade-strategy only-if-needed $pkgs
+      ;;
+    2) # Force reinstall without cache
+      ucc_run $pip_cmd install -q --no-cache-dir --force-reinstall $pkgs
+      ;;
+    *) return 2 ;;  # level not supported
+  esac
+}
+
 _ucc_driver_pip_evidence() {
   local cfg_dir="$1" yaml="$2" target="$3"
   local isolation probe ver

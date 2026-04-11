@@ -195,6 +195,56 @@ _pkg_native_pm_update()   { _pkg_native_upgrade "$(_pkg_native_backend)" "$1"; }
 _pkg_native_pm_version()  { _pkg_native_version "$(_pkg_native_backend)" "$1"; }
 _pkg_native_pm_outdated() { _pkg_native_is_outdated "$(_pkg_native_backend)" "$1"; }
 
+# winget: Windows Package Manager. Available on Windows 10/11 and WSL2 via
+# interop (winget.exe). Ref is the winget package ID (e.g. aria2.aria2).
+_pkg_winget_available() {
+  command -v winget >/dev/null 2>&1 || command -v winget.exe >/dev/null 2>&1
+}
+_pkg_winget_activate() { :; }
+_pkg_winget_cmd() {
+  if command -v winget >/dev/null 2>&1; then
+    echo "winget"
+  else
+    echo "winget.exe"
+  fi
+}
+_pkg_winget_observe() {
+  local ref="$1" wcmd ver
+  wcmd="$(_pkg_winget_cmd)"
+  ver="$($wcmd list --id "$ref" --exact --accept-source-agreements 2>/dev/null \
+    | tail -n +2 | awk '{for(i=1;i<=NF;i++) if($i ~ /^[0-9]+\./) {print $i; exit}}')"
+  if [[ -z "$ver" ]]; then
+    printf 'absent'
+    return
+  fi
+  if _pkg_winget_outdated "$ref"; then
+    printf 'outdated'
+  else
+    printf '%s' "$ver"
+  fi
+}
+_pkg_winget_install() {
+  local wcmd; wcmd="$(_pkg_winget_cmd)"
+  ucc_run $wcmd install --id "$1" --exact --accept-source-agreements --accept-package-agreements --silent
+}
+_pkg_winget_update() {
+  local wcmd; wcmd="$(_pkg_winget_cmd)"
+  ucc_run $wcmd upgrade --id "$1" --exact --accept-source-agreements --accept-package-agreements --silent
+}
+_pkg_winget_version() {
+  local ref="$1" wcmd
+  wcmd="$(_pkg_winget_cmd)"
+  $wcmd list --id "$ref" --exact --accept-source-agreements 2>/dev/null \
+    | tail -n +2 | awk '{for(i=1;i<=NF;i++) if($i ~ /^[0-9]+\./) {print $i; exit}}'
+}
+_pkg_winget_outdated() {
+  [[ "${UIC_PREF_BREW_LIVECHECK:-0}" == "1" ]] || return 1
+  local ref="$1" wcmd
+  wcmd="$(_pkg_winget_cmd)"
+  $wcmd upgrade --id "$ref" --exact --accept-source-agreements 2>/dev/null \
+    | grep -qi "$ref"
+}
+
 # pyenv-version
 _pyenv_ensure_path() {
   command -v pyenv >/dev/null 2>&1 || {
@@ -419,6 +469,34 @@ _ucc_driver_pkg_action() {
     fi
   fi
   "$act_fn" "$_PKG_PICKED_REF"
+}
+
+_ucc_driver_pkg_recover() {
+  local cfg_dir="$1" yaml="$2" target="$3" level="$4"
+  _pkg_load_backends "$cfg_dir" "$yaml" "$target"
+  _pkg_select_backend || return 1
+  local ref="$_PKG_PICKED_REF" backend="$_PKG_PICKED_NAME"
+  case "$level" in
+    1) # Retry install via selected backend
+      local act_fn="_pkg_${backend//-/_}_install"
+      declare -f "$act_fn" >/dev/null 2>&1 || return 1
+      "$act_fn" "$ref"
+      ;;
+    2) # Uninstall + reinstall via selected backend
+      local ins_fn="_pkg_${backend//-/_}_install"
+      declare -f "$ins_fn" >/dev/null 2>&1 || return 1
+      # Backend-specific removal before reinstall
+      case "$backend" in
+        brew)      ucc_run brew uninstall "$ref" 2>/dev/null || true ;;
+        brew-cask) ucc_run brew uninstall --cask "$ref" 2>/dev/null || true ;;
+        npm)       ucc_run npm uninstall -g "$ref" 2>/dev/null || true ;;
+        winget)    local wcmd; wcmd="$(_pkg_winget_cmd)"; ucc_run $wcmd uninstall --id "$ref" --exact --silent 2>/dev/null || true ;;
+        *)         ;; # curl/native — no clean uninstall, just re-install over
+      esac
+      "$ins_fn" "$ref"
+      ;;
+    *) return 2 ;;  # level not supported
+  esac
 }
 
 _ucc_driver_pkg_evidence() {

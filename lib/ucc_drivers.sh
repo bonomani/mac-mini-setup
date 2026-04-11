@@ -79,6 +79,18 @@ _ucc_driver_apply() {
   "$fn" "$cfg_dir" "$yaml" "$target"
 }
 
+# _ucc_driver_recover <cfg_dir> <yaml> <target> <level>
+# Returns 0 if driver handled it; returns 1 to fall through.
+_ucc_driver_recover() {
+  local cfg_dir="$1" yaml="$2" target="$3" level="$4"
+  local kind
+  kind="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.kind")"
+  [[ -n "$kind" && "$kind" != "custom" ]] || return 1
+  local fn="_ucc_driver_${kind//-/_}_recover"
+  declare -f "$fn" >/dev/null 2>&1 || return 1
+  "$fn" "$cfg_dir" "$yaml" "$target" "$level"
+}
+
 # _ucc_driver_evidence <cfg_dir> <yaml> <target>
 # Returns 0 and emits evidence text if driver handled it; returns 1 to fall through.
 _ucc_driver_evidence() {

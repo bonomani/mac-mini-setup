@@ -52,6 +52,43 @@ _ucc_driver_brew_action() {
   fi
 }
 
+_ucc_driver_brew_recover() {
+  local cfg_dir="$1" yaml="$2" target="$3" level="$4"
+  local ref cask
+  ref="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.ref")"
+  [[ -n "$ref" ]] || return 1
+  cask="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.cask")"
+  case "$level" in
+    1) # Retry: just re-run install
+      if [[ "$cask" == "true" ]]; then
+        brew_cask_install "$ref"
+      else
+        brew_install "$ref"
+      fi
+      ;;
+    2) # Reinstall: remove + install
+      if [[ "$cask" == "true" ]]; then
+        ucc_run brew uninstall --cask "$ref" 2>/dev/null || true
+        brew_cask_install "$ref"
+      else
+        ucc_run brew uninstall "$ref" 2>/dev/null || true
+        brew_install "$ref"
+      fi
+      ;;
+    3) # Clean: cleanup cache + reinstall
+      ucc_run brew cleanup "$ref" 2>/dev/null || true
+      if [[ "$cask" == "true" ]]; then
+        ucc_run brew uninstall --cask "$ref" 2>/dev/null || true
+        brew_cask_install "$ref"
+      else
+        ucc_run brew uninstall "$ref" 2>/dev/null || true
+        brew_install "$ref"
+      fi
+      ;;
+    *) return 2 ;;  # level not supported
+  esac
+}
+
 _ucc_driver_brew_evidence() {
   local cfg_dir="$1" yaml="$2" target="$3"
   local ref cask ver

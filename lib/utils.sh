@@ -162,6 +162,14 @@ run_elevated() {
 # Return 0 if the networkQuality command exists (macOS only).
 networkquality_is_available() { command -v networkQuality >/dev/null 2>&1; }
 
+# Return 0 if an mDNS/Bonjour backend is available.
+# macOS: dns-sd (built-in). Linux: avahi-publish-service. WSL2: dns-sd.exe via interop.
+mdns_is_available() {
+  command -v dns-sd >/dev/null 2>&1 \
+    || command -v dns-sd.exe >/dev/null 2>&1 \
+    || command -v avahi-publish-service >/dev/null 2>&1
+}
+
 # Return 0 if a file exists at the given path under $HOME.
 # Usage: home_file_exists <relpath>
 home_file_exists() { [[ -f "$HOME/$1" ]]; }

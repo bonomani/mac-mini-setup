@@ -24,6 +24,34 @@ targets:
       runtime: networkquality_is_available
     evidence:
       path: bin_path networkQuality
+  mdns-available:
+    component: network-services
+    profile: capability
+    type: capability
+    display_name: mDNS/Bonjour
+    driver:
+      kind: custom
+    runtime_manager: capability
+    probe_kind: command
+    oracle:
+      runtime: mdns_is_available
+    evidence:
+      path: bin_path dns-sd avahi-publish-service
+
+  avahi:
+    component: network-services
+    profile: configured
+    type: package
+    display_name: Avahi (mDNS)
+    requires: linux,wsl2
+    driver:
+      kind: pkg
+      backends:
+        - native-pm: avahi-utils
+      apt_ref: avahi-daemon avahi-utils
+      dnf_ref: avahi avahi-tools
+    desired_value: "@present"
+
   ariaflow-server:
     component: network-services
     profile: runtime
@@ -31,6 +59,8 @@ targets:
     display_name: Ariaflow Server
     depends_on:
     - networkquality-available
+    - mdns-available
+    - avahi
 
     driver:
       kind: service
@@ -52,6 +82,8 @@ targets:
     profile: runtime
     type: runtime
     display_name: Ariaflow Dashboard
+    depends_on:
+    - mdns-available
     driver:
       kind: service
       backend: brew

@@ -629,10 +629,15 @@ ucc_yaml_simple_target() {
     eval "_uyst_ins_${fn}() { _ucc_run_yaml_action '${cfg_dir}' '${yaml}' '${target}' install; }"
     eval "_uyst_upd_${fn}() { _ucc_run_yaml_action '${cfg_dir}' '${yaml}' '${target}' update; }"
   fi
+  # Escalating recovery: wire _ucc_driver_recover if driver supports it
+  if [[ "$driver_dispatched" == "1" ]]; then
+    eval "_uyst_rec_${fn}() { _ucc_driver_recover '${cfg_dir}' '${yaml}' '${target}' \"\$1\"; }"
+  fi
 
   local args=(--name "$target" --profile "$profile" --observe "_uyst_obs_${fn}" --evidence "_uyst_evd_${fn}")
   [[ -n "$install_cmd" || "$driver_dispatched" == "1" ]] && args+=(--install "_uyst_ins_${fn}")
   [[ -n "$install_cmd" || "$driver_dispatched" == "1" ]] && args+=(--update "_uyst_upd_${fn}")
+  [[ "$driver_dispatched" == "1" ]] && args+=(--recover "_uyst_rec_${fn}")
   [[ "$externally_managed_updates" == "true" || "$externally_managed_updates" == "1" || "$externally_managed_updates" == "yes" ]] && \
     args+=(--warn-on-update-failure)
   ucc_target "${args[@]}"
@@ -1432,7 +1437,7 @@ _ucc_execute_target() {
     eval "$_ucc_snapshot"
   fi
 
-  local name="" observe_fn="" desired="" install_fn="" update_fn="" axes="" profile="" evidence_fn=""
+  local name="" observe_fn="" desired="" install_fn="" update_fn="" axes="" profile="" evidence_fn="" recover_fn=""
   local warn_on_update_failure=0
 
   while [[ $# -gt 0 ]]; do
@@ -1445,6 +1450,7 @@ _ucc_execute_target() {
       --axes)    axes="$2";       shift 2 ;;
       --evidence) evidence_fn="$2"; shift 2 ;;
       --profile) profile="$2";    shift 2 ;;
+      --recover) recover_fn="$2"; shift 2 ;;
       --warn-on-update-failure) warn_on_update_failure=1; shift ;;
       *) shift ;;
     esac
@@ -1525,6 +1531,9 @@ _ucc_execute_target() {
           _ucc_record_outcome "$profile" "$name" "" "warn" "unchanged" "$msg_id" "$started_at" \
             "{}" "{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"policy\",\"message\":\"update must be applied externally\"}"
         else
+          _ucc_attempt_escalation "$observe_fn" "$desired" "$axes" "$recover_fn" \
+            "$display_name" "$profile" "updated" "$name" "$observed" "$msg_id" "$started_at" \
+            && return 0
           _ucc_emit_target_line "$profile" "fail" "$display_name" "verify after update: \"$(_ucc_display_state "${verified:-?}" "$axes")\"  $(_ucc_compose_evidence "$name" "${verified:-$observed}" "$axes" "$evidence_fn")"
           _ucc_record_outcome "$profile" "$name" "FAILED" "failed" "failed" "$msg_id" "$started_at" \
             "{}" "{\"observation\":\"failed\",\"message\":\"post-update verify did not reach desired state\"}"
@@ -1545,6 +1554,9 @@ _ucc_execute_target() {
         _ucc_record_outcome "$profile" "$name" "" "warn" "unchanged" "$msg_id" "$started_at" \
           "{}" "{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"policy\",\"message\":\"update must be applied externally\"}"
       else
+        _ucc_attempt_escalation "$observe_fn" "$desired" "$axes" "$recover_fn" \
+          "$display_name" "$profile" "updated" "$name" "$observed" "$msg_id" "$started_at" \
+          && return 0
         _ucc_emit_target_line "$profile" "fail" "$display_name" "update error state=\"$(_ucc_display_state "$observed" "$axes")\""
         _ucc_record_outcome "$profile" "$name" "FAILED" "failed" "failed" "$msg_id" "$started_at" \
           "{}" "{\"observation\":\"failed\",\"message\":\"update function failed\"}"
@@ -1623,10 +1635,16 @@ _ucc_execute_target() {
       _ucc_record_outcome "$profile" "$name" "" "warn" "unchanged" "$msg_id" "$started_at" \
         "{}" "{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"policy\",\"message\":\"update must be applied externally\"}"
     elif [[ $action_rc -eq 0 ]]; then
+      _ucc_attempt_escalation "$observe_fn" "$desired" "$axes" "$recover_fn" \
+        "$display_name" "$profile" "$action_label" "$name" "$observed" "$msg_id" "$started_at" \
+        && return 0
       _ucc_emit_target_line "$profile" "fail" "$display_name" "verify after ${action_context}: \"$(_ucc_display_state "${verified:-?}" "$axes")\"  $(_ucc_compose_evidence "$name" "${verified:-$observed}" "$axes" "$evidence_fn")"
       _ucc_record_outcome "$profile" "$name" "FAILED" "failed" "failed" "$msg_id" "$started_at" \
         "{}" "{\"observation\":\"failed\",\"message\":\"post-${action_context} verify did not reach desired state\"}"
     else
+      _ucc_attempt_escalation "$observe_fn" "$desired" "$axes" "$recover_fn" \
+        "$display_name" "$profile" "$action_label" "$name" "$observed" "$msg_id" "$started_at" \
+        && return 0
       _ucc_emit_target_line "$profile" "fail" "$display_name" "${action_context} error was=\"$(_ucc_display_state "$observed" "$axes")\"  $(_ucc_compose_evidence "$name" "$observed" "$axes" "$evidence_fn")"
       _ucc_record_outcome "$profile" "$name" "FAILED" "failed" "failed" "$msg_id" "$started_at" \
         "{}" "{\"observation\":\"failed\",\"message\":\"${action_context} function failed; verify also did not reach desired state\"}"
