@@ -156,5 +156,55 @@ class CapabilityDispatcherRoundTripTests(unittest.TestCase):
         self.assertIn('"runtime_state":"Stopped"', out)
 
 
+class InstallShBatchKeysTests(unittest.TestCase):
+    """Static regression tests for the install.sh _UCC_YAML_BATCH_KEYS
+    pre-fetch cache list. This is the exact bug commit 2863044 fixed:
+    the list was missing `driver.probe` so capability targets returned
+    empty runtime_cmd and defaulted to runtime_state=Stopped in the
+    full Mac mini run, even though the dispatcher itself had been
+    correctly updated.
+
+    These tests are intentionally static (grep install.sh for the key
+    list) rather than dynamic. A dynamic test would need to stage a
+    fake manifest, populate env vars, and invoke the dispatcher — but
+    the simpler static check directly documents the invariant: any
+    field the capability dispatcher reads from the cache MUST be in
+    _UCC_YAML_BATCH_KEYS."""
+
+    def test_batch_keys_include_driver_probe(self):
+        """install.sh's _UCC_YAML_BATCH_KEYS must include driver.probe
+        so ucc_yaml_capability_target can read the probe function
+        name from the pre-populated cache. Regression for 2863044."""
+        install_sh = REPO_ROOT / "install.sh"
+        content = install_sh.read_text()
+        self.assertIn(
+            "driver.probe",
+            content,
+            "install.sh must reference driver.probe somewhere (in "
+            "_UCC_YAML_BATCH_KEYS for the capability target cache). "
+            "See commit 2863044 for the regression this test exists "
+            "to catch.",
+        )
+
+    def test_batch_keys_excludes_oracle_runtime(self):
+        """The legacy oracle.runtime key was dropped from _UCC_YAML_BATCH_KEYS
+        in commit 2863044 because no target reads it anymore — the
+        capability dispatcher now uses driver.probe, and validator
+        commit e48da96 hard-rejects oracle.runtime on capability
+        profiles. Having the legacy key still in the batch list would
+        be dead weight but not harmful; this test exists as an
+        explicit reminder of the cleanup."""
+        install_sh = REPO_ROOT / "install.sh"
+        content = install_sh.read_text()
+        self.assertNotIn(
+            "oracle.runtime",
+            content,
+            "install.sh should no longer reference oracle.runtime in "
+            "_UCC_YAML_BATCH_KEYS. All capability targets use "
+            "driver.probe now (commit e48da96 for the cutover, "
+            "commit 2863044 for the batch-keys fix).",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
