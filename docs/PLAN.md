@@ -2,8 +2,14 @@
 
 ## Open
 
-Three items remain — all deferred until there's a real consumer that
-exercises the gap, not because the plan listed them.
+Four items. Three are **waiting-for-consumer** — each has no target
+today that would exercise the gap, so the work would be premature
+abstraction. They are listed here so a future session picks them up
+when (and only when) a real consumer appears. One item (Docker
+Desktop fully unattended first install) is **waiting-for-effort**: it
+has a real user and a validated recipe, but the implementation is
+~150 LOC + a careful test cycle on the Mac mini, and we deferred it
+in favor of the capability refactor that closed faster.
 
 ### Phase B4 — decouple `docker-compose-service` from `ai_apps`
 
