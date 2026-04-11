@@ -17,11 +17,8 @@ targets:
     display_name: networkQuality
     requires: macos
     driver:
-      kind: custom
-    runtime_manager: capability
-    probe_kind: command
-    oracle:
-      runtime: networkquality_is_available
+      kind: capability
+      probe: networkquality_is_available
     evidence:
       path: bin_path networkQuality
   mdns-available:
@@ -30,11 +27,8 @@ targets:
     type: capability
     display_name: mDNS/Bonjour
     driver:
-      kind: custom
-    runtime_manager: capability
-    probe_kind: command
-    oracle:
-      runtime: mdns_is_available
+      kind: capability
+      probe: mdns_is_available
     evidence:
       path: bin_path dns-sd avahi-publish-service
 

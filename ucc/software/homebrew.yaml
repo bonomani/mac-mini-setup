@@ -26,11 +26,8 @@ targets:
     type: capability
     display_name: Network connectivity
     driver:
-      kind: custom
-    runtime_manager: capability
-    probe_kind: command
-    oracle:
-      runtime: network_is_available
+      kind: capability
+      probe: network_is_available
     evidence:
       status: network_status
   build-deps:

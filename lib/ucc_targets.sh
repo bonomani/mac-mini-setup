@@ -651,7 +651,7 @@ _ucc_observe_yaml_capability_target() {
   if [[ -n "${!_cached_var:-}" ]]; then
     local _v="_UCC_CAP_RUNTIME_${fn}"; runtime_cmd="${!_v}"
   else
-    runtime_cmd="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "oracle.runtime")"
+    runtime_cmd="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.probe")"
   fi
   if [[ -n "$runtime_cmd" ]] && _ucc_yaml_expr_succeeds "$cfg_dir" "$yaml" "$target" "$runtime_cmd"; then
     ucc_asm_state --installation Configured --runtime Running --health Healthy --admin Enabled --dependencies DepsReady
@@ -669,9 +669,9 @@ ucc_yaml_capability_target() {
   while IFS=$'\t' read -r -d '' key value; do
     if [[ "$key" == "__evidence__" ]]; then _ev_b64="$value"; continue; fi
     case "$key" in
-      oracle.runtime) runtime_cmd="$value" ;;
+      driver.probe) runtime_cmd="$value" ;;
     esac
-  done < <(_ucc_ytgt_source "$cfg_dir" "$yaml" "$target" oracle.runtime)
+  done < <(_ucc_ytgt_source "$cfg_dir" "$yaml" "$target" driver.probe)
 
   export "_UCC_OBS_CACHED_${fn}=1"
   export "_UCC_OBS_EVIDENCE_${fn}=${_ev_b64}"

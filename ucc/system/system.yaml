@@ -19,11 +19,8 @@ targets:
     display_name: sudo access
 
     driver:
-      kind: custom
-    runtime_manager: capability
-    probe_kind: command
-    oracle:
-      runtime: sudo_is_available
+      kind: capability
+      probe: sudo_is_available
     evidence:
       status: sudo_is_available
   # ── Power management (pmset) ─────────────────────────────────

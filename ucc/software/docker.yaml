@@ -89,10 +89,7 @@ targets:
     depends_on:
     - docker-desktop
     driver:
-      kind: custom
-    runtime_manager: capability
-    probe_kind: command
-    oracle:
-      runtime: docker_daemon_is_running
+      kind: capability
+      probe: docker_daemon_is_running
     evidence:
       status: docker_daemon_status

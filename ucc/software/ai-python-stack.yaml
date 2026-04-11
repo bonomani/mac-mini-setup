@@ -285,11 +285,8 @@ targets:
     depends_on:
     - pip-group-pytorch
     driver:
-      kind: custom
-    runtime_manager: capability
-    probe_kind: command
-    oracle:
-      runtime: torch_mps_available
+      kind: capability
+      probe: torch_mps_available
     evidence:
       gpu: echo_var "${gpu_backend}"
       status: torch_mps_status
@@ -302,11 +299,8 @@ targets:
     depends_on:
     - pip-group-pytorch
     driver:
-      kind: custom
-    runtime_manager: capability
-    probe_kind: command
-    oracle:
-      runtime: torch_cuda_available
+      kind: capability
+      probe: torch_cuda_available
     evidence:
       device: torch_cuda_device_name
       status: torch_cuda_status

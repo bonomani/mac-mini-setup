@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.join(REPO_ROOT, "tools"))
 
 from validate_targets_manifest import (
     DRIVER_SCHEMA, DRIVER_META, KNOWN_PACKAGE_DRIVERS,
-    KNOWN_RUNTIME_DRIVERS, KNOWN_CONFIG_DRIVERS,
+    KNOWN_RUNTIME_DRIVERS, KNOWN_CONFIG_DRIVERS, KNOWN_CAPABILITY_DRIVERS,
 )
 
 UCC_DIR = os.path.join(REPO_ROOT, "ucc")
@@ -47,7 +47,10 @@ def test_all_drivers_have_schema():
 
 def test_all_drivers_in_known_sets():
     """Every driver kind is in one of the KNOWN_*_DRIVERS sets."""
-    all_known = KNOWN_PACKAGE_DRIVERS | KNOWN_RUNTIME_DRIVERS | KNOWN_CONFIG_DRIVERS
+    all_known = (
+        KNOWN_PACKAGE_DRIVERS | KNOWN_RUNTIME_DRIVERS
+        | KNOWN_CONFIG_DRIVERS | KNOWN_CAPABILITY_DRIVERS
+    )
     targets = load_all_targets()
     for t, td in targets.items():
         kind = (td.get("driver") or {}).get("kind", "")

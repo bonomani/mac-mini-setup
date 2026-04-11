@@ -89,6 +89,7 @@ DRIVER_SCHEMA = {
     "build-deps":             {"required": [], "optional": []},
     "git-repo":               {"required": ["repo", "dest"], "optional": ["branch", "upstream"]},
     "package":                {"required": ["ref"], "optional": ["cask", "greedy_auto_updates", "previous_ref", "apt_ref", "dnf_ref", "pacman_ref", "fallback_install_url", "fallback_install_args", "update_cmd", "bin", "externally_managed_updates"]},
+    "capability":             {"required": ["probe"], "optional": []},
 }
 
 KNOWN_PACKAGE_DRIVERS = {
@@ -135,6 +136,9 @@ KNOWN_CONFIG_DRIVERS = {
     "softwareupdate-schedule",
     "symlink-command",
     "zsh-config",
+}
+KNOWN_CAPABILITY_DRIVERS = {
+    "capability",
 }
 CANONICAL_TARGET_KEY_ORDER = [
     "component",
@@ -931,12 +935,33 @@ def validate(manifest, known_gates):
         if profile == "capability":
             if target_type != "capability":
                 errors.append(f"target '{name}' profile '{profile}' requires type 'capability'")
-            if not isinstance(data.get("runtime_manager"), str) or not data.get("runtime_manager", "").strip():
-                errors.append(f"target '{name}' profile '{profile}' requires runtime_manager")
-            if not isinstance(data.get("probe_kind"), str) or not data.get("probe_kind", "").strip():
-                errors.append(f"target '{name}' profile '{profile}' requires probe_kind")
-            if not isinstance((oracle or {}).get("runtime"), str) or not (oracle or {}).get("runtime", "").strip():
-                errors.append(f"target '{name}' profile '{profile}' requires oracle.runtime")
+            driver = data.get("driver") or {}
+            if not isinstance(driver, dict):
+                errors.append(f"target '{name}' profile '{profile}' requires driver mapping")
+                driver = {}
+            cap_kind = driver.get("kind")
+            if cap_kind != "capability":
+                errors.append(
+                    f"target '{name}' profile '{profile}' requires driver.kind 'capability' "
+                    f"(got '{cap_kind}')"
+                )
+            probe = driver.get("probe")
+            if not isinstance(probe, str) or not probe.strip():
+                errors.append(f"target '{name}' profile '{profile}' requires driver.probe (function name)")
+            # Legacy fields — the dispatcher no longer reads them. Reject hard
+            # so authors don't reintroduce dead boilerplate.
+            if "runtime_manager" in data:
+                errors.append(
+                    f"target '{name}' profile '{profile}' must not set runtime_manager (legacy, removed)"
+                )
+            if "probe_kind" in data:
+                errors.append(
+                    f"target '{name}' profile '{profile}' must not set probe_kind (legacy, removed)"
+                )
+            if isinstance(oracle, dict) and oracle.get("runtime"):
+                errors.append(
+                    f"target '{name}' profile '{profile}' must not set oracle.runtime (use driver.probe instead)"
+                )
 
         if state_model == "parametric":
             if profile != "parametric":
