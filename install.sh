@@ -1055,7 +1055,7 @@ done
 # Setup functions read from these vars (base64 -d) instead of spawning python3.
 _UCC_YAML_BATCH_KEYS="profile actions.install actions.update \
   driver.externally_managed_updates type oracle.configured observe_cmd \
-  state_model observe_success observe_failure oracle.runtime \
+  state_model observe_success observe_failure driver.probe \
   desired_cmd desired_value dependency_gate driver.kind \
   driver.service_name driver.package_ref driver.app_path \
   driver.greedy_auto_updates stopped_installation stopped_runtime \
