@@ -30,10 +30,111 @@ framework. None do. Defer until a driver actually wants this.
 ### Phase X1 — per-driver smoke test fixtures
 
 `tests/test_drivers.py` already covers schema/meta sync, and every
-commit runs `bash -n` on touched driver files. A parametrized fixture
-that loads each driver and asserts its hooks are callable would catch
-the marginal "I added a function that fails to source" bug. Worth it
-when a regression actually slips through; not before.
+commit runs `bash -n` on touched driver files via the pre-commit hook
+chain (commit `b74bb8f`). These catch **syntax errors** in driver
+files and **missing entries** in `DRIVER_SCHEMA` / `KNOWN_*_DRIVERS`.
+
+Neither catches the one regression class that has actually bitten:
+**a driver file sources without error (bash -n passes, functions are
+defined) but one of the hook functions has a runtime error on first
+invocation** — a missing `_ucc_yaml_target_get` call, a quoting bug
+in a `while read` loop, a typo in a case branch that only fires on a
+specific YAML shape.
+
+Today's capability refactor hit exactly this class:
+- `ucc_yaml_capability_target` was updated to read `driver.probe`
+  — bash -n passed, validator passed, unit tests (that didn't touch
+  the actual dispatcher path) passed — but the real Mac mini run
+  still returned Stopped because the cache-population path
+  (`_UCC_YAML_BATCH_KEYS`) was missing the new key. Only end-to-end
+  runs caught it.
+
+A static smoke-test fixture that loads each driver and calls its
+hook functions against a known-good fake manifest would have caught
+the cache bug by failing in-process, not 5 minutes into an install.sh
+run on a different machine.
+
+**Proposed layout**: new file `tests/test_driver_smoke.py`
+
+```python
+import os, subprocess, pytest
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+DRIVERS = sorted((REPO_ROOT / "lib" / "drivers").glob("*.sh"))
+
+@pytest.fixture(scope="module")
+def fake_target_yaml(tmp_path_factory):
+    """Stage a fake ucc/ tree with one target per driver kind, filled
+    with the minimum driver fields from DRIVER_SCHEMA. Targets are
+    never executed — they exist only so driver dispatch can run."""
+    ...
+
+@pytest.mark.parametrize("driver_path", DRIVERS, ids=lambda p: p.stem)
+def test_driver_sources_and_dispatches(driver_path, fake_target_yaml):
+    """Source the driver file into a bash subshell, invoke its
+    _ucc_driver_<kind>_observe hook against the fake target, and
+    assert the command runs (exit code 0 or 1 — both are valid
+    'driver dispatched something' outcomes). A bash parse error,
+    unbound variable, or missing function declaration all fail here."""
+    result = subprocess.run(
+        ["bash", "-c", f"""
+            set -u
+            source lib/ucc.sh
+            source lib/utils.sh
+            source {driver_path}
+            kind=$(basename {driver_path} .sh | tr _ -)
+            fn=_ucc_driver_${{kind//-/_}}_observe
+            declare -f "$fn" >/dev/null || exit 2
+            "$fn" "$PWD" "{fake_target_yaml}" "fake-${{kind}}"
+        """],
+        cwd=REPO_ROOT, capture_output=True, text=True, timeout=10,
+    )
+    assert result.returncode in (0, 1), (
+        f"driver {driver_path.stem} crashed:\n"
+        f"rc={result.returncode}\nstdout={result.stdout}\nstderr={result.stderr}"
+    )
+```
+
+**What it catches that current checks don't**:
+
+1. **Missing helper function call** — e.g., a driver that references
+   `_ucc_yaml_target_get` or `yaml_get_many` without first sourcing
+   the file that defines it. `bash -n` doesn't catch this because
+   function references are resolved at runtime. The smoke fixture
+   catches it because actually running the function errors out.
+2. **Quoting bugs in `while read`** — if a driver's NUL-delimited
+   parser misses a `-d ''` or uses `$IFS` wrong, the fixture's
+   minimal-but-real YAML payload trips it.
+3. **Unbound variables under `set -u`** — common regression class
+   when a driver grows a new field but forgets to initialize it
+   before use.
+4. **Typos in case branches** that only match on specific YAML keys,
+   like the one that caused the 2026-04-11 capability bug (reading
+   `driver.probe` from a cache that never contained it).
+
+**What it explicitly does NOT catch**:
+- Correctness of install actions (fixture targets are never executed).
+- Interaction between multiple drivers.
+- YAML validator errors (already covered by `test_yaml_schema.py`).
+- Dispatcher routing through component runners (would need
+  integration tests, which is a separate phase).
+
+**Effort estimate**:
+- New `tests/test_driver_smoke.py`: ~100 lines.
+- Fixture manifest generator: the `fake_target_yaml` fixture walks
+  `DRIVER_SCHEMA`, emits one target per kind with the minimum
+  required fields, writes a synthetic ucc/software/smoke.yaml.
+  ~40 lines.
+- Green threshold: each of the ~22 drivers passes (we exclude
+  `capability` which has no `_observe` hook — the capability
+  dispatch path is tested separately in `test_capability_driver.py`).
+- Runtime: <2 seconds for the whole suite.
+
+**When to build this**: when a driver regression slips past `bash -n`
++ the existing suites AND costs >30 minutes of Mac mini debugging.
+Today's capability refactor was one such case (the cache bug). If a
+second one happens, build the fixture. If not, defer.
 
 ### Docker Desktop — fully unattended first install on macOS
 
