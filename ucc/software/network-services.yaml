@@ -42,6 +42,7 @@ targets:
     component: network-services
     profile: configured
     type: package
+    state_model: package
     display_name: Avahi (mDNS)
     requires: linux,wsl2
     driver:
