@@ -110,7 +110,7 @@ run_docker_from_yaml() {
   ucc_yaml_runtime_target "$cfg_dir" "$yaml" "docker-desktop"
 
   # ---- Capability: docker daemon reachable ----
-  ucc_yaml_runtime_target "$cfg_dir" "$yaml" "docker-available"
+  ucc_yaml_capability_target "$cfg_dir" "$yaml" "docker-available"
 
   # ---- Phase 4: post-runtime config (resources) ----
   ucc_yaml_parametric_target "$cfg_dir" "$yaml" "docker-resources"
