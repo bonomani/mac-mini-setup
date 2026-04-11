@@ -29,13 +29,6 @@ that loads each driver and asserts its hooks are callable would catch
 the marginal "I added a function that fails to source" bug. Worth it
 when a regression actually slips through; not before.
 
-### Phase X1.5 — `--check` mode for `build-driver-matrix.py` in pre-commit
-
-Trivial follow-up: install the BGS pre-commit hook and add
-`python3 tools/build-driver-matrix.py --check` alongside it so a
-silently-stale matrix fails the commit. ~10 minutes when the next
-hook install happens.
-
 ### Docker Desktop — fully unattended first install on macOS
 
 `_docker_desktop_install_and_start` currently fails fast in
@@ -323,6 +316,21 @@ follow-up if desired.
 
 Commits: e48da96 (atomic cutover), 2863044 (batch-keys fix), d17a16c
 (runner dispatch fix), a637074 (tests), 3d5759b (regen docs).
+
+**Phase X1.5 — `--check` drift hook wired into pre-commit (2026-04-11)** —
+`tools/check-bgs.sh` now uses `git rev-parse --show-toplevel` for
+REPO_ROOT (was `$(cd "$(dirname "$0")/.." && pwd)` which broke when the
+script was invoked via a symlink from `.git/hooks/` or `~/.git-hooks/`).
+Added an inert guard so the script exits 0 silently in repos that do not
+carry `tools/build-driver-matrix.py` — safe to install as a global
+pre-commit hook without affecting unrelated repos. BGS validator step
+moved from "skip whole script on missing validator" to "skip only the
+BGS step, still run drift checks" so doc drift is caught even when the
+BGS private repo is not present. Hook installed as symlink at
+`~/.git-hooks/pre-commit` (the user's existing global hooks dir, which
+already contains a commit-msg hook that strips Co-Authored-By lines from
+Anthropic — the two hooks coexist). Verified end-to-end: drift detection
+blocks commits with rc=1 and a clear DRIFT message; clean commits pass.
 
 Three items honestly skipped:
 - **C3** (desired-value comparison in observe) — already handled by
