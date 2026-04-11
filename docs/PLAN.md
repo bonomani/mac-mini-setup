@@ -11,14 +11,132 @@ is **waiting-for-effort**: it has a real user and a validated
 recipe, but the implementation is ~150 LOC + a careful test cycle
 on the Mac mini.
 
-### Phase B4 — decouple `docker-compose-service` from `ai_apps`
+### Phase B4 — hoist compose-up to a first-class target
 
-`_ucc_driver_docker_compose_service_action` calls
-`_ai_apply_compose_runtime`, defined in `lib/ai_apps.sh`. Any other
-component using `kind: docker-compose-service` would silently fail.
-Today **no other component does**, so the decoupling has no current
-consumer. Move the compose-apply primitive into a shared
-`lib/docker_compose.sh` when (and only when) a second component needs it.
+**Current state.** `_ucc_driver_docker_compose_service_action` calls
+`_ai_apply_compose_runtime`, defined in `lib/ai_apps.sh`. The 5
+ai-apps runtime targets each have the same install action, and the
+first one to dispatch runs `docker compose up -d` against the whole
+stack; the remaining 4 skip the apply via an `_AI_APPS_APPLY_SENTINEL`
+file check. This works because `ai-apps` is the only component that
+declares `docker-compose-service` targets and its runner always
+sources `lib/ai_apps.sh`. The moment a second component (monitoring,
+homelab, etc.) declares a `docker-compose-service` target, the
+driver's `declare -f _ai_apply_compose_runtime` guard returns 1 and
+the install silently fails — hidden cross-component coupling.
+
+**Original plan (superseded).** Move `_ai_apply_compose_runtime`
+and helpers into a shared `lib/docker_compose.sh`, source it from
+`lib/ucc.sh` so it's always available. Keep the sentinel trick
+intact, just relocate the shared function.
+
+**Better plan.** Hoist the compose-up action to a **first-class
+target**, eliminate the sentinel trick entirely, and model the
+existing pattern the framework already uses for
+`docker-desktop → docker-available` at a larger scale. The
+framework already knows how to handle "one target installs, many
+pure-observe targets depend on it via `depends_on`" — we'd be
+applying the same primitive at 1→5 instead of 1→1. No new
+architectural concept, no sentinel, no hidden state.
+
+**Precedent in the current manifest**:
+
+| Installer target | Pure-observe dependents | Pattern |
+|---|---|---|
+| `docker-desktop` | `docker-available` (capability) | 1→1 |
+| `pip-group-pytorch` | `mps-available`, `cuda-available` (capabilities) | 1→2 |
+| `unsloth` (pip pkg) | `unsloth-studio`, `unsloth-studio-service` | 1→2 (platform-split) |
+
+Proposed ai-apps shape:
+
+```yaml
+# NEW target — single apply gate for the whole compose stack
+ai-stack-compose-running:
+  profile: runtime
+  type: runtime
+  display_name: AI stack compose up
+  depends_on:
+  - docker-desktop
+  - ai-stack-compose-file
+  driver:
+    kind: compose-apply          # NEW driver, self-contained
+    compose_file: "$HOME/.ai-stack/docker-compose.yml"
+  # observe: all services in the compose file are in status=running
+  # install: docker compose -f <compose_file> up -d
+
+# Existing runtime targets become pure observers
+open-webui-runtime:
+  profile: runtime
+  depends_on:
+  - ai-stack-compose-running     # replaces docker-desktop + compose-file
+  driver:
+    kind: docker-compose-service
+    service_name: open-webui
+    # No install action — observe-only. The upstream apply gate
+    # already brought the service up.
+  endpoints:
+  - name: Open WebUI
+    port: 3000
+
+# ... flowise-runtime, openhands-runtime, n8n-runtime, qdrant-runtime
+# all become pure-observe with depends_on: ai-stack-compose-running
+```
+
+**Files touched by the real refactor**:
+
+1. `lib/drivers/compose_apply.sh` (new, ~60 LOC) — the new driver
+   with `_ucc_driver_compose_apply_observe` (checks all services in
+   the compose file are running) and `_ucc_driver_compose_apply_action`
+   (runs `docker compose -f "$compose_file" up -d`).
+2. `lib/drivers/docker_compose_service.sh` — remove `_action` hook
+   (becomes observe-only). Keep the retry-with-backoff observe from
+   commit `e36a399`. Optionally keep the recover hook for per-service
+   restart.
+3. `lib/ai_apps.sh` — delete `_ai_apply_compose_runtime` and the
+   sentinel logic. `run_ai_apps_from_yaml` gets one new line:
+   `ucc_yaml_runtime_target "$cfg_dir" "$yaml" "ai-stack-compose-running"`
+   before the existing loop over `AI_SERVICES`.
+4. `ucc/software/ai-apps.yaml` — add `ai-stack-compose-running`
+   target, update the 5 existing runtime targets' `depends_on` to
+   point at it, remove the now-unused `actions:` refs (there are
+   none on these targets today, they use `driver.kind:
+   docker-compose-service` which had the hidden action — nothing
+   to remove in YAML).
+5. `lib/ucc.sh` — source the new driver.
+6. `tools/validate_targets_manifest.py` — add `compose-apply` to
+   `DRIVER_SCHEMA` with required=[compose_file], and to
+   `KNOWN_RUNTIME_DRIVERS`.
+7. `tests/test_driver_smoke.py` — add `compose-apply` entry to
+   `FAKE_DRIVER_FIELDS` with a nonexistent compose_file path so the
+   smoke observe returns 'stopped' cleanly.
+8. Docs regen (`build-driver-matrix.py`, `build-spec.py`).
+
+**What this buys over the original plan**:
+
+- **B4 dissolves entirely** — no shared function to decouple, no
+  sentinel to relocate. The apply action lives in its own target
+  with its own driver. Self-contained.
+- **Dep graph tells the truth** — running `./install.sh
+  open-webui-runtime` visibly ordered as `docker-desktop →
+  ai-stack-compose-file → ai-stack-compose-running → open-webui-runtime`.
+  No magic behind the scenes.
+- **Adding a second compose stack is trivial** — declare
+  `monitoring-compose-running` + N `docker-compose-service`
+  observe-only targets that depend on it. Zero lib/ changes.
+- **Failure modes clean up** — if `compose up` fails, the gate
+  target reports `[fail]`, the 5 dependents report `[dep-fail]`,
+  one clear root cause via the framework's existing dep-failure
+  propagation.
+- **Same escalating-recovery story** — the gate target can still
+  have a `_recover` hook (restart, recreate, pull+recreate). The
+  per-service observe-only targets don't need recover hooks
+  because they can't fail independently of the upstream gate.
+
+**Defer trigger**: the same as before — a second component wants to
+run a docker compose stack. Homelab / monitoring / media-server /
+dev-db are the candidates. Until that happens, the current
+sentinel-based implementation works for ai-apps and there's no
+consumer for the refactor.
 
 ### Phase C1 — uniform drift helper
 
