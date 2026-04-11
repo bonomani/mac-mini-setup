@@ -68,15 +68,6 @@ if [[ "${EUID:-$(id -u)}" -eq 0 ]]; then
   exit 1
 fi
 
-# TEMP DEBUG: sudo state at the very start of install.sh, before any real
-# work runs. Compare with the docker-gate debug line later.
-{
-  _dbg_tty_start="$(tty 2>&1 || true)"
-  _dbg_sudo_out_start="$(sudo -n true 2>&1 || true)"
-  sudo -n true 2>/dev/null; _dbg_sudo_rc_start=$?
-  echo "install-start debug: tty=$_dbg_tty_start sudo_rc=$_dbg_sudo_rc_start sudo_out='${_dbg_sudo_out_start}'" >&2
-} 2>&1
-
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 _detect_host_platform() {

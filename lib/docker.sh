@@ -133,20 +133,21 @@ _docker_strip_quarantine() {
   xattr -dr com.apple.quarantine "$app_path" 2>/dev/null || true
 }
 
-# Return 0 if Docker Desktop's privileged helper (vmnetd) is installed.
-# This helper is placed under /Library by Docker Desktop itself on first
-# launch, via a macOS Authorization Services prompt that asks the user
-# for their admin password. Without it, `docker desktop start` cannot
-# bring up the VM/daemon and will either hang or fail.
-_docker_privileged_helper_installed() {
-  [[ -f /Library/PrivilegedHelperTools/com.docker.vmnetd ]] \
-    || [[ -f /Library/LaunchDaemons/com.docker.vmnetd.plist ]]
-}
-
-# Return 0 if a valid sudo credential is cached (or NOPASSWD configured).
-# Caller is expected to have run `sudo -v` beforehand if needed.
-_docker_sudo_cached() {
-  sudo -n true 2>/dev/null
+# Return 0 if Docker Desktop has been bootstrapped on this user account.
+# Detected via the LicenseTermsVersion key in Docker's settings-store.json,
+# which is only written after the user has accepted the EULA on first launch.
+# Acceptance happens after the macOS Authorization Services dialog for the
+# privileged helper, so if LicenseTermsVersion is set, every one-time
+# interactive prompt (brew sudo for cli-plugins, helper auth, EULA) has
+# already been satisfied at least once on this user account.
+#
+# We do NOT check /Library/PrivilegedHelperTools/com.docker.vmnetd: on
+# Apple Silicon Docker Desktop 4.x uses com.docker.helper at user level,
+# not vmnetd at system level, so the path is always missing on a fully
+# working install.
+_docker_bootstrap_complete() {
+  local settings="$HOME/Library/Group Containers/group.com.docker/settings-store.json"
+  [[ -f "$settings" ]] && grep -q '"LicenseTermsVersion"' "$settings" 2>/dev/null
 }
 
 # Ensure cask is installed/up-to-date via brew, skipping if already present via app-bundle.
@@ -187,56 +188,33 @@ _docker_desktop_install() {
 # Install Docker Desktop cask + start daemon.
 # Uses implicit $CFG_DIR/$YAML_PATH/$TARGET_NAME context.
 _docker_desktop_install_and_start() {
-  # First-time Docker Desktop setup on macOS needs admin/sudo at two points:
-  #   1. brew cask install docker-desktop symlinks CLI plugins into
-  #      /usr/local/cli-plugins (not user-writable), which prompts sudo.
-  #      Cached sudo credentials ('sudo -v' beforehand) satisfy this
-  #      non-interactively.
-  #   2. On first launch, Docker Desktop installs a privileged helper
-  #      (vmnetd) under /Library/PrivilegedHelperTools via a macOS
-  #      Authorization Services Cocoa dialog. Cached sudo does NOT
-  #      satisfy this — it is a separate authentication subsystem.
-  #
-  # Three non-interactive sub-modes based on machine state:
-  #   - helper present:          proceed normally.
-  #   - helper missing, sudo -n: install the cask + strip quarantine +
-  #                              patch settings, but skip daemon start so
-  #                              we don't hang on the Cocoa dialog. Leaves
-  #                              the box one step closer; an interactive
-  #                              run finishes the vmnetd approval.
-  #   - helper missing, no sudo: bail out before anything runs.
-  if ! _docker_privileged_helper_installed; then
-    # Temporary debug: show the state the gate is reading. Remove once we
-    # understand why the cached-sudo branch is not being taken in runs where
-    # `sudo -v` was issued immediately before install.sh.
-    local _dbg_tty _dbg_sudo_out _dbg_sudo_rc
-    _dbg_tty="$(tty 2>&1 || true)"
-    _dbg_sudo_out="$(sudo -n true 2>&1 || true)"
-    sudo -n true 2>/dev/null; _dbg_sudo_rc=$?
-    log_info "docker-gate debug: EUID=$EUID UCC_INTERACTIVE=${UCC_INTERACTIVE:-unset} tty=$_dbg_tty sudo_rc=$_dbg_sudo_rc sudo_out='${_dbg_sudo_out}'"
-    if [[ "${UCC_INTERACTIVE:-1}" != "1" ]]; then
-      if _docker_sudo_cached; then
-        log_info "Non-interactive mode with cached sudo: installing Docker Desktop cask only."
-        log_info "Daemon start will be skipped — Docker's first-launch Authorization Services"
-        log_info "dialog for the privileged helper (vmnetd) is not a sudo prompt and cannot"
-        log_info "be satisfied with cached credentials."
-        _docker_desktop_install || return $?
-        log_warn "Docker Desktop cask installed but daemon not started."
-        log_warn "Privileged helper (vmnetd) still needs to be registered via Docker Desktop's"
-        log_warn "first-launch dialog. Re-run interactively to complete setup:"
-        log_warn "  ./install.sh docker-desktop"
-        return 1
-      fi
-      log_warn "Docker Desktop privileged helper (vmnetd) is not installed."
-      log_warn "First-time Docker Desktop setup requires either:"
-      log_warn "  - an interactive run (./install.sh docker-desktop), or"
-      log_warn "  - sudo -v before a non-interactive run, which lets this script"
-      log_warn "    install the cask silently but still stops short of launching"
-      log_warn "    Docker (the vmnetd Cocoa dialog cannot be bypassed)."
-      log_warn "Subsequent --no-interactive runs will work normally once vmnetd is registered."
-      return 1
-    fi
-    log_info "Docker Desktop will prompt for your admin password twice during first-time setup (cask install + privileged helper)."
+  # First-time Docker Desktop setup on macOS requires interactive input at
+  # three points that have no straightforward CLI bypass:
+  #   1. brew cask install symlinks Docker's CLI plugins into
+  #      /usr/local/cli-plugins (a system path), which prompts sudo.
+  #      Cached sudo would satisfy this except Homebrew issue #17915
+  #      invalidates the user's sudo ticket on every brew invocation.
+  #   2. Docker.app's first launch installs a privileged helper via macOS
+  #      Authorization Services (a Cocoa dialog). Not a sudo prompt — a
+  #      separate authentication subsystem with no CLI bypass.
+  #   3. Docker shows the Subscription Service Agreement; if not accepted,
+  #      the daemon shuts itself down.
+  # In non-interactive mode none of these can be satisfied, so the run
+  # would hang or leave Docker half-installed. Bail out cleanly with a
+  # clear message instead. (See docs/PLAN.md for the experimental recipe
+  # to bypass all three for a fully unattended first install.)
+  if ! _docker_bootstrap_complete && [[ "${UCC_INTERACTIVE:-1}" != "1" ]]; then
+    log_warn "Docker Desktop has not been bootstrapped on this user yet."
+    log_warn "First-time setup requires an interactive run for:"
+    log_warn "  - sudo password (brew cask /usr/local/cli-plugins symlinks)"
+    log_warn "  - macOS Authorization Services dialog (privileged helper)"
+    log_warn "  - Docker EULA acceptance dialog"
+    log_warn "Re-run interactively (./install.sh docker-desktop) to complete setup."
+    log_warn "Subsequent --no-interactive runs will work normally."
+    return 1
+  fi
+  if ! _docker_bootstrap_complete; then
+    log_info "First-time Docker Desktop setup will prompt for admin password and EULA acceptance."
   fi
   _docker_desktop_install || return $?
   _docker_daemon_start
