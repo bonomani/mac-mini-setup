@@ -49,8 +49,6 @@ targets:
       kind: pkg
       backends:
         - native-pm: avahi-utils
-      apt_ref: avahi-daemon avahi-utils
-      dnf_ref: avahi avahi-tools
     desired_value: "@present"
 
   ariaflow-server:
