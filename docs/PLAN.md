@@ -170,28 +170,75 @@ Never log the password. Never write it to a process arg. Store it in a
 mode-0600 temp file under `mktemp -d` with mode 0700, deleted on EXIT
 trap (with `dd if=/dev/zero` overwrite first).
 
-**SUDO_ASKPASS shim**
+**SUDO_ASKPASS — native brew support, no PATH shim required**
 
-brew's internal sudo calls do NOT use `-A`, so plain `SUDO_ASKPASS`
-isn't enough. Shadow `sudo` in PATH with a wrapper that always passes
-`-A`:
-```bash
-$WORKDIR/sudo:
-  #!/bin/bash
-  exec /usr/bin/sudo -A "$@"
+An earlier draft of this plan assumed brew's internal sudo calls did
+not pass `-A`, which would have required a PATH-shadowed wrapper
+around `sudo`. A 2026-04-12 static analysis of Homebrew's source code
+(`Library/Homebrew/system_command.rb`, the `sudo_prefix` method used
+by every internal brew sudo call) showed the opposite: **brew already
+injects `-A` automatically** when `SUDO_ASKPASS` is set in the
+environment.
 
-$WORKDIR/askpass.sh:
-  #!/bin/bash
-  cat "$WORKDIR/pass"
-
-export SUDO_ASKPASS="$WORKDIR/askpass.sh"
-export PATH="$WORKDIR:$PATH"
+The relevant Homebrew code:
+```ruby
+def sudo_prefix
+  askpass_flags = ENV.key?("SUDO_ASKPASS") ? ["-A"] : []
+  # ...
+  ["/usr/bin/sudo", *user_flags, *askpass_flags, "-E", *env_args, "--"]
+end
 ```
-brew's `sudo …` resolves through PATH → wrapper → `/usr/bin/sudo -A` →
-askpass returns the cached password. Open question: validate that brew
-calls `sudo` (PATH-resolved) and not `/usr/bin/sudo` (hardcoded). If the
-latter, the shim is bypassed and we need a different approach (e.g.
-patch sudoers temporarily, or use `expect`).
+
+Important details:
+
+1. Homebrew uses the **hardcoded absolute path** `/usr/bin/sudo`. A
+   PATH-shadowing wrapper would NOT be intercepted. This is why the
+   original draft plan would have failed if implemented.
+2. Homebrew **auto-adds `-A`** to the sudo invocation when
+   `SUDO_ASKPASS` is present in the environment. That's exactly the
+   behavior we need: sudo with `-A` reads the askpass helper from
+   `SUDO_ASKPASS` and invokes it instead of prompting the terminal.
+3. Homebrew always passes `-E` in the prefix, which preserves the
+   invoking user's environment through the sudo call (so
+   `HOMEBREW_*` and other env vars still reach whatever runs under
+   sudo).
+4. Cask postflight `do` blocks run in the same brew Ruby process and
+   go through the same `SystemCommand` → `sudo_prefix` path, so the
+   kubectl symlink postflight ALSO benefits from the auto-`-A`.
+5. `sudo` reads `SUDO_ASKPASS` from the outer user's env at startup
+   (before its own env_reset runs), so no sudoers `env_keep +=
+   SUDO_ASKPASS` configuration is required.
+
+**Simplified setup**. Just write a mode-0600 password file and a
+mode-0755 askpass helper that cats the file, then export one env var:
+
+```bash
+# Password file (mode 0600, bc-owned)
+printf '%s' "$password" > "$workdir/pass"
+chmod 600 "$workdir/pass"
+
+# Askpass helper (executable, NOT setuid — sudo refuses setuid askpass)
+cat > "$workdir/askpass.sh" <<EOF
+#!/bin/bash
+cat "$workdir/pass"
+EOF
+chmod 755 "$workdir/askpass.sh"
+
+# Single env var — no PATH manipulation
+export SUDO_ASKPASS="$workdir/askpass.sh"
+```
+
+After that, any `brew install --cask ...` invocation under this
+environment gets auto-wrapped by brew as
+`/usr/bin/sudo -A -E -- <brew's real command>`, which reads the
+askpass helper for the password and proceeds non-interactively.
+
+**What this retires from the earlier design**:
+
+- No `$WORKDIR/sudo` wrapper file
+- No `PATH="$WORKDIR:$PATH"` prepend
+- No "Open question: validate brew uses PATH-resolved sudo" risk
+- No need for a separate `expect` / sudoers patch fallback
 
 **File layout**
 
@@ -203,7 +250,10 @@ New file `lib/docker_unattended.sh`. Sourced from `lib/ucc.sh` next to
   1. Read YAML vars (`docker_desktop_cask_id`, `docker_desktop_app_path`,
      `settings_relpath`).
   2. Get password via `_docker_assisted_get_password`.
-  3. Set up workdir + askpass + sudo shim, install EXIT trap.
+  3. Set up workdir + askpass helper via `_docker_assisted_setup_askpass`,
+     export `SUDO_ASKPASS`, install EXIT trap to shred + unlink on
+     any exit (normal, error, SIGINT). No PATH manipulation — brew's
+     `sudo_prefix` auto-adds `-A` when it sees `SUDO_ASKPASS`.
   4. `sudo -A -v` to validate the password before doing real work.
   5. `_docker_assisted_prewrite_eula` — write the three EULA keys to
      `settings-store.json` (creating the parent directory if missing,
@@ -219,6 +269,8 @@ New file `lib/docker_unattended.sh`. Sourced from `lib/ucc.sh` next to
  10. Poll `~/.docker/run/docker.sock` (max 90s, 2s intervals).
  11. Verify by running `/Applications/Docker.app/Contents/Resources/bin/docker version`.
 - `_docker_assisted_get_password` — env var → tty prompt → fail.
+- `_docker_assisted_setup_askpass` — write password file +
+  askpass helper, export `SUDO_ASKPASS`.
 - `_docker_assisted_prewrite_eula` — JSON merge.
 - `_docker_assisted_seed_vmnetd` — extract+copy+bootstrap.
 - `_docker_assisted_cleanup` — wipe workdir on EXIT trap.
@@ -248,9 +300,13 @@ _docker_assisted_get_password() {
   return 2
 }
 
-# Set up the PATH shim + askpass helper + mode-0600 password file.
+# Set up askpass helper + mode-0600 password file, export SUDO_ASKPASS.
+# Brew's internal sudo calls auto-add -A when SUDO_ASKPASS is set, so
+# no PATH-shadowing sudo wrapper is needed. (Verified 2026-04-12 via
+# static analysis of Homebrew's Library/Homebrew/system_command.rb
+# sudo_prefix method.)
 # Caller captures the workdir path and installs the EXIT trap.
-_docker_assisted_setup_shim() {
+_docker_assisted_setup_askpass() {
   local password="$1"
   local workdir; workdir="$(mktemp -d)" || return 1
   chmod 700 "$workdir"
@@ -261,13 +317,7 @@ _docker_assisted_setup_shim() {
 cat "$workdir/pass"
 ASKPASS
   chmod 755 "$workdir/askpass.sh"
-  cat > "$workdir/sudo" <<SHIM
-#!/bin/bash
-exec /usr/bin/sudo -A "\$@"
-SHIM
-  chmod 755 "$workdir/sudo"
   export SUDO_ASKPASS="$workdir/askpass.sh"
-  export PATH="$workdir:$PATH"
   printf '%s' "$workdir"
 }
 
@@ -375,11 +425,18 @@ Keeps the default path 100% unchanged.
 
 **Open issues / risks**
 
-1. **kubectl postflight** — `brew install --cask docker-desktop` runs a
-   `postflight do` block that tries to symlink `kubectl.docker` into
-   `/usr/local/bin/`. With the SUDO_ASKPASS shim, the postflight's sudo
-   call should succeed. **Untested.** If brew's Ruby `system` call uses
-   the absolute path `/usr/bin/sudo`, the shim is bypassed.
+1. **kubectl postflight** — `brew install --cask docker-desktop` runs
+   a `postflight do` block that tries to symlink `kubectl.docker` into
+   `/usr/local/bin/`. ~~With the SUDO_ASKPASS shim, the postflight's
+   sudo call should succeed. **Untested.**~~ **Update 2026-04-12**:
+   static analysis of Homebrew's `Library/Homebrew/system_command.rb`
+   confirmed that cask postflight `do` blocks go through the same
+   `SystemCommand` → `sudo_prefix` path as other brew sudo calls, and
+   the prefix auto-adds `-A` when `SUDO_ASKPASS` is set. So the
+   kubectl postflight's sudo call should be intercepted by our
+   askpass helper automatically, same as the CLI-plugins symlinks.
+   Still needs end-to-end confirmation on the Mac mini in Test 3 of
+   the test plan, but the mechanism is in place.
 2. **vmnetd code-signing churn** — if Docker Inc changes the signing
    identity, the seeded helper's signature won't match Docker.app's
    `SMPrivilegedExecutables` requirement and SMJobBless will reject it.
