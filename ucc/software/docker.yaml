@@ -43,7 +43,7 @@ targets:
       package_ref: ${docker_desktop_cask_id}
       app_name: ${docker_desktop_app_name}
       app_path: ${docker_desktop_app_path}
-      greedy_auto_updates: true
+      greedy_auto_updates: false
     runtime_manager: desktop-app
     probe_kind: command
     oracle:

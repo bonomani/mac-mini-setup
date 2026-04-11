@@ -125,6 +125,14 @@ _docker_settings_store_patch() {
   fi
 }
 
+# Strip the macOS Gatekeeper quarantine xattr from a freshly installed .app so
+# the first launch does not prompt "downloaded from the Internet, Open/Cancel".
+_docker_strip_quarantine() {
+  local app_path="$1"
+  [[ -d "$app_path" ]] || return 0
+  xattr -dr com.apple.quarantine "$app_path" 2>/dev/null || true
+}
+
 # Ensure cask is installed/up-to-date via brew, skipping if already present via app-bundle.
 _docker_cask_ensure() {
   local cask_id="$1" app_path="$2" greedy="$3"
@@ -137,8 +145,10 @@ _docker_cask_ensure() {
   [[ "$observed" == "absent" && -d "$app_path" ]] && observed="installed"
   if [[ "$observed" == "absent" ]]; then
     brew_cask_install "$cask_id" || return 1
+    _docker_strip_quarantine "$app_path"
   elif [[ "$observed" == "outdated" ]]; then
     brew_cask_upgrade "$cask_id" "$greedy" || return 1
+    _docker_strip_quarantine "$app_path"
   fi
 }
 
