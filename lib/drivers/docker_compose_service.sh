@@ -2,9 +2,16 @@
 # lib/drivers/docker_compose_service.sh — driver.kind: docker-compose-service
 # driver.service_name: <compose service name>  (e.g. flowise)
 #
-# Observe: checks container running state + HTTP endpoint probe (first endpoint).
-# Evidence: version/digest/ref from running container image metadata.
-# Action: delegates to _ai_apply_compose_runtime (defined by ai_apps runner).
+# Observe-only driver: checks container running state + HTTP endpoint
+# probe (first endpoint) with bounded retry-with-backoff for fresh
+# containers. The actual `docker compose up -d` is handled by an
+# upstream compose-apply target that these per-service runtime targets
+# depend on — see lib/drivers/compose_apply.sh and docs/PLAN.md's B4
+# entry. No _action hook here — the framework treats this as "observe
+# only, upstream already applied".
+#
+# Evidence: version/digest/ref from running container image metadata
+# (via evidence functions defined in each component's runner lib).
 
 _ucc_driver_docker_compose_service_observe() {
   local cfg_dir="$1" yaml="$2" target="$3"
@@ -45,11 +52,9 @@ _ucc_driver_docker_compose_service_observe() {
   printf 'stopped'
 }
 
-_ucc_driver_docker_compose_service_action() {
-  local cfg_dir="$1" yaml="$2" target="$3" action="$4"
-  declare -f _ai_apply_compose_runtime >/dev/null 2>&1 || return 1
-  _ai_apply_compose_runtime
-}
+# No _action hook. The apply is owned by the upstream compose-apply
+# target that these runtime targets depend on. The framework's dep
+# ordering ensures the stack is already up by the time observe runs.
 
 _ucc_driver_docker_compose_service_recover() {
   local cfg_dir="$1" yaml="$2" target="$3" level="$4"

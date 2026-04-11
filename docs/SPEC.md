@@ -46,7 +46,7 @@ not specified). Counts are real (`type` distribution per component).
 
 | Component | Targets | type=package | type=config | type=runtime | type=capability |
 |---|---:|---:|---:|---:|---:|
-| `ai-apps` | 15 | 7 | 1 | 6 | 0 |
+| `ai-apps` | 16 | 7 | 1 | 7 | 0 |
 | `ai-python-stack` | 22 | 17 | 1 | 2 | 2 |
 | `build-tools` | 3 | 3 | 0 | 0 | 0 |
 | `cli-tools` | 26 | 21 | 5 | 0 | 0 |
@@ -70,14 +70,15 @@ not specified). Counts are real (`type` distribution per component).
 
 ## 4. Targets by component
 
-### ai-apps  (15 targets)
+### ai-apps  (16 targets)
 
 | Target | Kind | Type | Display name | requires | depends_on |
 |---|---|---|---|---|---|
 | `ai-apps-template` | `custom` | `precondition` | Compose template |  |  |
 | `ai-stack-compose-file` | `compose-file` | `config` | compose file |  | `ai-apps-template` |
-| `flowise-runtime` | `docker-compose-service` | `runtime` | Flowise |  | `ai-stack-compose-file` |
-| `n8n-runtime` | `docker-compose-service` | `runtime` | n8n |  | `ai-stack-compose-file` |
+| `ai-stack-compose-running` | `compose-apply` | `runtime` | AI stack compose up |  | `docker-desktop`, `ai-stack-compose-file` |
+| `flowise-runtime` | `docker-compose-service` | `runtime` | Flowise |  | `ai-stack-compose-running` |
+| `n8n-runtime` | `docker-compose-service` | `runtime` | n8n |  | `ai-stack-compose-running` |
 | `ollama` | `custom-daemon` | `runtime` | Ollama | macos>=14,linux,wsl2 |  |
 | `ollama-model-llama3.1-70b` | `pkg` | `package` | Ollama llama3.1:70b |  | `ollama` |
 | `ollama-model-llama3.1-8b` | `pkg` | `package` | Ollama llama3.1:8b |  | `ollama` |
@@ -86,9 +87,9 @@ not specified). Counts are real (`type` distribution per component).
 | `ollama-model-nomic-embed-text` | `pkg` | `package` | Ollama nomic-embed-text |  | `ollama` |
 | `ollama-model-qwen2.5-coder-32b` | `pkg` | `package` | Ollama qwen2.5-coder:32b |  | `ollama` |
 | `ollama-model-qwen3-latest` | `pkg` | `package` | Ollama qwen3:latest |  | `ollama` |
-| `open-webui-runtime` | `docker-compose-service` | `runtime` | Open WebUI |  | `ai-stack-compose-file` |
-| `openhands-runtime` | `docker-compose-service` | `runtime` | OpenHands |  | `ai-stack-compose-file` |
-| `qdrant-runtime` | `docker-compose-service` | `runtime` | Qdrant |  | `ai-stack-compose-file` |
+| `open-webui-runtime` | `docker-compose-service` | `runtime` | Open WebUI |  | `ai-stack-compose-running` |
+| `openhands-runtime` | `docker-compose-service` | `runtime` | OpenHands |  | `ai-stack-compose-running` |
+| `qdrant-runtime` | `docker-compose-service` | `runtime` | Qdrant |  | `ai-stack-compose-running` |
 
 ### ai-python-stack  (22 targets)
 
@@ -325,8 +326,8 @@ See [`docs/driver-feature-matrix.md`](driver-feature-matrix.md) — auto-generat
 ## 11. Counts (live)
 
 - Components: **10**
-- Targets: **110**
-- Distinct driver kinds: **25**
+- Targets: **111**
+- Distinct driver kinds: **26**
 - Preferences: **6**
 - Gates: **1**
 - TIC tests: **23**

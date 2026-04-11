@@ -20,6 +20,7 @@ re-run the generator after any driver change.
 | `brew-analytics` | 1 |
 | `brew-unlink` | 1 |
 | `build-deps` | 1 |
+| `compose-apply` | 1 |
 | `compose-file` | 1 |
 | `custom-daemon` | 1 |
 | `git-global` | 1 |
@@ -34,7 +35,7 @@ re-run the generator after any driver change.
 | `softwareupdate-schedule` | 1 |
 | `zsh-config` | 1 |
 
-**110 targets** across **25 distinct kinds**.
+**111 targets** across **26 distinct kinds**.
 
 ## Drivers by file
 
@@ -47,7 +48,7 @@ re-run the generator after any driver change.
 | `compose_apply.sh` | `compose-apply` | ✅ | ✅ | — | ✅ | — | — | — |
 | `compose_file.sh` | `compose-file` | ✅ | ✅ | — | ✅ | — | — | — |
 | `custom_daemon.sh` | `custom-daemon` | ✅ | ✅ | — | ✅ | ✅ | — | — |
-| `docker_compose_service.sh` | `docker-compose-service` | ✅ | ✅ | — | ✅ | — | — | — |
+| `docker_compose_service.sh` | `docker-compose-service` | ✅ | — | — | ✅ | — | — | — |
 | `git_global.sh` | `git-global` | ✅ | ✅ | — | ✅ | — | — | — |
 | `git_repo.sh` | `git-repo` | ✅ | ✅ | — | ✅ | ✅ | — | — |
 | `home_artifact.sh` | `home-artifact` | ✅ | ✅ | — | ✅ | — | — | — |

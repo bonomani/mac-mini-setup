@@ -37,7 +37,9 @@ run_ai_apps_from_yaml() {
   IMAGE_POLICY="${UIC_PREF_AI_APPS_IMAGE_POLICY:-reuse-local}"
   _AI_APPS_CFG_DIR="$cfg_dir"
   _AI_APPS_TEMPLATE_FILE="$cfg_dir/${stack_template_rel}"
-  _AI_APPS_APPLY_SENTINEL="${COMPOSE_DIR}/runs/${UCC_CORRELATION_ID:-manual}.ai-apps-compose.applied"
+  # Export COMPOSE_FILE so the compose-file and compose-apply drivers
+  # (both via their driver.path_env: COMPOSE_FILE field) can resolve it.
+  export COMPOSE_FILE
   export _AI_SERVICE_IMAGE_CACHE="" _AI_IMAGE_VERSION_CACHE="" _AI_IMAGE_DIGEST_CACHE=""
   local _AI_CACHE_VALUE="" _AI_SERVICE_IMAGE_VALUE="" _AI_IMAGE_VERSION_VALUE="" _AI_IMAGE_DIGEST_VALUE=""
 
@@ -441,19 +443,24 @@ PY
       fi
     done
   }
-  _ai_apply_compose_runtime() {
-    if [[ -f "$_AI_APPS_APPLY_SENTINEL" ]]; then
-      return 0
-    fi
-    _remove_legacy_containers
-    if [[ "$IMAGE_POLICY" == "always-pull" ]]; then
-      ucc_run docker compose -f "$COMPOSE_FILE" pull
-    fi
-    ucc_run docker compose -f "$COMPOSE_FILE" up -d
-    _ai_warm_metadata_cache
-    mkdir -p "$(dirname "$_AI_APPS_APPLY_SENTINEL")"
-    : > "$_AI_APPS_APPLY_SENTINEL"
-  }
+
+  # Pre-dispatch cleanup: any pre-compose-era containers get removed before
+  # the compose-apply target brings the stack up. Idempotent, no-op on a
+  # machine with no legacy containers.
+  _remove_legacy_containers
+
+  # ---- Compose-apply gate (upstream of all per-service targets) ----
+  # Replaces the older sentinel-based pattern where each per-service target
+  # shared an install action via _AI_APPS_APPLY_SENTINEL. Now a single
+  # first-class target owns `docker compose up -d`; the per-service runtime
+  # targets are observe-only and depend on it. See docs/PLAN.md B4 entry
+  # for the rationale.
+  ucc_yaml_runtime_target "$cfg_dir" "$yaml" "ai-stack-compose-running"
+
+  # Re-warm the metadata cache after the compose-apply target dispatched
+  # (possibly creating new containers whose image metadata needs to be
+  # visible to the per-service evidence functions).
+  _ai_warm_metadata_cache
 
   local svc target
   for svc in "${AI_SERVICES[@]}"; do

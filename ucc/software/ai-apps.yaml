@@ -60,13 +60,25 @@ targets:
     driver:
       kind: compose-file
       path_env: COMPOSE_FILE
+  ai-stack-compose-running:
+    component: ai-apps
+    profile: runtime
+    type: runtime
+    display_name: AI stack compose up
+    depends_on:
+    - docker-desktop
+    - ai-stack-compose-file
+    driver:
+      kind: compose-apply
+      path_env: COMPOSE_FILE
+      pull_policy_env: UIC_PREF_AI_APPS_IMAGE_POLICY
   open-webui-runtime:
     component: ai-apps
     profile: runtime
     type: runtime
     display_name: Open WebUI
     depends_on:
-    - ai-stack-compose-file
+    - ai-stack-compose-running
     driver:
       kind: docker-compose-service
       service_name: open-webui
@@ -83,7 +95,7 @@ targets:
     type: runtime
     display_name: Flowise
     depends_on:
-    - ai-stack-compose-file
+    - ai-stack-compose-running
     driver:
       kind: docker-compose-service
       service_name: flowise
@@ -100,7 +112,7 @@ targets:
     type: runtime
     display_name: OpenHands
     depends_on:
-    - ai-stack-compose-file
+    - ai-stack-compose-running
     driver:
       kind: docker-compose-service
       service_name: openhands
@@ -117,7 +129,7 @@ targets:
     type: runtime
     display_name: n8n
     depends_on:
-    - ai-stack-compose-file
+    - ai-stack-compose-running
     driver:
       kind: docker-compose-service
       service_name: n8n
@@ -134,7 +146,7 @@ targets:
     type: runtime
     display_name: Qdrant
     depends_on:
-    - ai-stack-compose-file
+    - ai-stack-compose-running
     driver:
       kind: docker-compose-service
       service_name: qdrant
