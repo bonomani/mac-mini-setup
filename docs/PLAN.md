@@ -180,13 +180,147 @@ New file `lib/docker_unattended.sh`. Sourced from `lib/ucc.sh` next to
   8. `_docker_assisted_seed_vmnetd` — extract embedded launchd plist
      from the helper Mach-O, copy binary + write plist to /Library
      with the correct ownership/perms, `launchctl bootstrap`.
-  9. `open -g -a /Applications/Docker.app`.
+  9. `open -a /Applications/Docker.app` (NOT `-g` — we proved on
+     2026-04-11 that `-g` returns 0 without actually starting Docker
+     on Apple Silicon; use plain foreground launch).
  10. Poll `~/.docker/run/docker.sock` (max 90s, 2s intervals).
  11. Verify by running `/Applications/Docker.app/Contents/Resources/bin/docker version`.
 - `_docker_assisted_get_password` — env var → tty prompt → fail.
 - `_docker_assisted_prewrite_eula` — JSON merge.
 - `_docker_assisted_seed_vmnetd` — extract+copy+bootstrap.
 - `_docker_assisted_cleanup` — wipe workdir on EXIT trap.
+
+**Helper function sketches**
+
+These are not final code — they're starting points sized so the next
+session can paste them in and iterate.
+
+```bash
+# Three sources, in order: UCC_SUDO_PASS env > interactive read -s > fail.
+_docker_assisted_get_password() {
+  if [[ -n "${UCC_SUDO_PASS:-}" ]]; then
+    printf '%s' "$UCC_SUDO_PASS"
+    return 0
+  fi
+  if [[ "${UCC_INTERACTIVE:-1}" == "1" && -r /dev/tty ]]; then
+    local _p
+    printf 'sudo password for assisted Docker install: ' >/dev/tty
+    IFS= read -r -s _p </dev/tty
+    printf '\n' >/dev/tty
+    [[ -n "$_p" ]] || { log_warn "empty password"; return 2; }
+    printf '%s' "$_p"
+    return 0
+  fi
+  log_warn "Assisted install needs UCC_SUDO_PASS env var in non-interactive mode"
+  return 2
+}
+
+# Set up the PATH shim + askpass helper + mode-0600 password file.
+# Caller captures the workdir path and installs the EXIT trap.
+_docker_assisted_setup_shim() {
+  local password="$1"
+  local workdir; workdir="$(mktemp -d)" || return 1
+  chmod 700 "$workdir"
+  printf '%s' "$password" > "$workdir/pass"
+  chmod 600 "$workdir/pass"
+  cat > "$workdir/askpass.sh" <<ASKPASS
+#!/bin/bash
+cat "$workdir/pass"
+ASKPASS
+  chmod 755 "$workdir/askpass.sh"
+  cat > "$workdir/sudo" <<SHIM
+#!/bin/bash
+exec /usr/bin/sudo -A "\$@"
+SHIM
+  chmod 755 "$workdir/sudo"
+  export SUDO_ASKPASS="$workdir/askpass.sh"
+  export PATH="$workdir:$PATH"
+  printf '%s' "$workdir"
+}
+
+# Called from EXIT trap. Overwrite the password file before unlinking
+# so the password never sits on disk after the run.
+_docker_assisted_cleanup() {
+  local workdir="$1"
+  [[ -n "$workdir" && -d "$workdir" ]] || return 0
+  if [[ -f "$workdir/pass" ]]; then
+    dd if=/dev/zero of="$workdir/pass" bs=1 count="$(wc -c < "$workdir/pass")" 2>/dev/null || true
+  fi
+  rm -rf "$workdir"
+}
+
+# Merge the three EULA-acceptance keys into settings-store.json using
+# the existing tools/drivers/json_merge.py helper. Creates the file if
+# it does not exist yet.
+_docker_assisted_prewrite_eula() {
+  local settings_path="$1"
+  mkdir -p "$(dirname "$settings_path")"
+  [[ -f "$settings_path" ]] || printf '%s\n' '{}' > "$settings_path"
+  local patch_dir="$CFG_DIR/.build"
+  mkdir -p "$patch_dir"
+  local patch="$patch_dir/docker-eula-patch.json"
+  cat > "$patch" <<'JSON'
+{
+  "LicenseTermsVersion": 2,
+  "DisplayedOnboarding": true,
+  "ShowInstallScreen": false
+}
+JSON
+  python3 "$CFG_DIR/tools/drivers/json_merge.py" apply "$settings_path" "$patch"
+}
+
+# Extract the launchd plist embedded in the vmnetd binary, copy both
+# files into /Library, and launchctl-bootstrap the daemon.
+_docker_assisted_seed_vmnetd() {
+  local bin_src="/Applications/Docker.app/Contents/Library/LaunchServices/com.docker.vmnetd"
+  local bin_dst="/Library/PrivilegedHelperTools/com.docker.vmnetd"
+  local plist_dst="/Library/LaunchDaemons/com.docker.vmnetd.plist"
+  [[ -f "$bin_src" ]] || { log_warn "vmnetd binary not found at $bin_src"; return 1; }
+
+  # The Info.plist fields embedded in the binary identify Docker Inc as
+  # the signer (certificate leaf subject CN = "Developer ID Application:
+  # Docker Inc (9BNSXJN65R)"). Verify that the running binary still
+  # matches before seeding — protects against Docker Inc rotating
+  # signing identities in a future release.
+  codesign -v --strict "$bin_src" || { log_warn "vmnetd signature invalid"; return 1; }
+
+  # Scan the helper Mach-O for its embedded launchd_plist segment. The
+  # binary contains two XML plists: the helper's Info.plist (identified
+  # by CFBundleIdentifier) and the launchd plist (identified by Label
+  # and MachServices/Sockets, no CFBundleIdentifier). Use Python to
+  # find and extract the second one.
+  local launchd_plist
+  launchd_plist="$(python3 - "$bin_src" <<'PY'
+import sys
+data = open(sys.argv[1], 'rb').read()
+i = 0
+while True:
+    s = data.find(b'<?xml', i)
+    if s < 0: break
+    e = data.find(b'</plist>', s)
+    if e < 0: break
+    e += len(b'</plist>')
+    chunk = data[s:e].decode('utf-8', errors='replace')
+    if 'Label' in chunk and 'CFBundleIdentifier' not in chunk:
+        sys.stdout.write(chunk)
+        sys.exit(0)
+    i = e
+sys.exit(1)
+PY
+  )" || { log_warn "failed to extract vmnetd launchd plist"; return 1; }
+
+  sudo -A install -d -o root -g wheel -m 755 /Library/PrivilegedHelperTools /Library/LaunchDaemons
+  sudo -A cp "$bin_src" "$bin_dst"
+  sudo -A chown root:wheel "$bin_dst"
+  sudo -A chmod 755 "$bin_dst"
+  printf '%s' "$launchd_plist" | sudo -A tee "$plist_dst" >/dev/null
+  sudo -A chown root:wheel "$plist_dst"
+  sudo -A chmod 644 "$plist_dst"
+  sudo -A launchctl bootstrap system "$plist_dst" 2>&1 || true
+  # bootstrap is idempotent-ish but can fail if already loaded; that's
+  # fine, the existing daemon is the one we want.
+}
+```
 
 **Dispatch (`lib/docker.sh`)**
 
@@ -269,12 +403,41 @@ Validation runs on a clean Mac mini after each cleanup:
    docker-desktop` → `_docker_bootstrap_complete` returns true, gate
    skipped, daemon already running, no-op `[ok]`.
 
-Each run cleaned up via the existing teardown sequence in PLAN.md
-(`brew uninstall --cask --zap docker-desktop`, `sudo rm -rf
-/Applications/Docker.app /Library/PrivilegedHelperTools/com.docker.*
-/Library/LaunchDaemons/com.docker.*`, `rm -rf
-~/Library/Group Containers/group.com.docker ~/.docker
-~/Library/Containers/com.docker.docker`).
+**Per-step rollback** (if the assisted install fails mid-way, clean up
+only the artifacts produced up to the failure point — avoids a full
+wipe when a later step trips):
+
+| Failed at | Cleanup commands |
+|---|---|
+| Step 4 (`sudo -A -v`) | Nothing to clean. Wrong password rejected before any write. |
+| Step 5 (pre-write EULA) | `rm -f ~/Library/Group Containers/group.com.docker/settings-store.json` if we created it; or `git checkout $PATCH_BACKUP` if we backed it up first |
+| Step 6 (`brew install`) | `brew uninstall --cask docker-desktop 2>/dev/null \|\| true` |
+| Step 7 (strip quarantine) | No cleanup needed (xattr removal is safe) |
+| Step 8 (seed vmnetd) | `sudo launchctl bootout system/com.docker.vmnetd 2>/dev/null`; `sudo rm -f /Library/LaunchDaemons/com.docker.vmnetd.plist /Library/PrivilegedHelperTools/com.docker.vmnetd` |
+| Step 9 (`open -a`) | `osascript -e 'quit app "Docker"' 2>/dev/null` |
+| Step 10 (socket poll timeout) | Step 8 cleanup above; also kill Docker.app: `pkill -f 'com\.docker' 2>/dev/null` |
+
+**Full teardown** (if none of the above work or user wants a clean
+slate) — same sequence used by the cleanup script at the top of this
+plan entry:
+
+```bash
+osascript -e 'quit app "Docker"' 2>/dev/null || true
+pkill -f 'com\.docker' 2>/dev/null || true
+brew uninstall --cask --zap docker-desktop 2>/dev/null || true
+sudo launchctl bootout system/com.docker.vmnetd 2>/dev/null || true
+sudo rm -f /Library/LaunchDaemons/com.docker.vmnetd.plist
+sudo rm -f /Library/PrivilegedHelperTools/com.docker.vmnetd
+sudo rm -f /Library/PrivilegedHelperTools/com.docker.socket
+rm -rf ~/Library/Group\ Containers/group.com.docker
+rm -rf ~/Library/Containers/com.docker.docker
+rm -rf ~/Library/Containers/com.docker.helper
+rm -rf ~/.docker
+rm -rf ~/Library/Application\ Support/Docker\ Desktop
+rm -f  ~/Library/Preferences/com.docker.docker.plist
+rm -rf ~/Library/Caches/com.docker.docker
+rm -rf ~/Library/LaunchAgents/com.docker*
+```
 
 **Estimated effort**
 
