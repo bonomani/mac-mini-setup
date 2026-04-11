@@ -76,8 +76,15 @@ and none of them have a clean CLI bypass:
    ```
    Use `tools/drivers/json_merge.py` to add them without touching the
    other settings.
-5. `open -g -a /Applications/Docker.app` — daemon comes up in seconds,
-   no dialogs, no prompts.
+5. `open -a /Applications/Docker.app` — daemon comes up in seconds,
+   no dialogs, no prompts. (Original hand-test on 2026-04-11 used
+   `open -g -a`, which worked there because vmnetd was already
+   seeded so Docker had no dialog to show. But commit `f08328e`
+   later proved `-g` silently returns 0 without actually starting
+   Docker on Apple Silicon in the general case — Docker's
+   launchd-managed inner bundle does not activate under background
+   open. Use plain `open -a` in the implementation to match what
+   `_docker_launch` in `lib/docker.sh` already does.)
 
 Wire this up as an opt-in path behind a preference (default = current
 conservative gate). The recipe touches `/Library/PrivilegedHelperTools`
@@ -89,6 +96,50 @@ provisioning) and accept the maintenance cost.
 Bootstrap detection lives in `_docker_bootstrap_complete` (checks
 `LicenseTermsVersion` in settings-store.json). Use the same probe as
 the bypass condition for any future variant.
+
+#### Existing lib functions to reuse (2026-04-11 bootstrap recovery)
+
+The Docker bootstrap recovery work yesterday added several helpers
+to `lib/docker.sh` that the assisted-install path should call directly
+instead of reimplementing. Listed here so the implementation session
+finds them:
+
+| Function | Purpose | Commit |
+|---|---|---|
+| `_docker_bootstrap_complete` | Check `LicenseTermsVersion` in `settings-store.json` — the definitive "has this user bootstrapped Docker at least once" probe | `5a79a42` |
+| `_docker_strip_quarantine "$app_path"` | Run `xattr -dr com.apple.quarantine` recursively on the bundle. Handles missing xattr gracefully | `ba8f095` / `71c2dee` |
+| `_docker_launch` | `open -a /Applications/Docker.app` + 90s poll on `~/.docker/run/docker.sock`. Use this verbatim for step 9 of the orchestrator; do NOT reimplement | `f08328e` |
+| `_docker_kill_zombies "$kill_pattern"` | `pkill -f "$pattern"` + `sleep 2`. Useful for the pre-apply cleanup step | (existing) |
+| `_docker_settings_store_patch "$relpath"` | Write the silent-start flags to `settings-store.json`. Note: uses the `settings_relpath` YAML key, not the old `docker_settings_store_relpath` (fixed in `71c2dee`) | `71c2dee` |
+| `docker_desktop_observe` | Checks `/Applications/Docker.app` directory existence, not `command -v docker` (which is unreliable on Apple Silicon because brew links to `/usr/local/bin` which isn't always in PATH) | `813aa78` |
+
+The assisted-install orchestrator should call these helpers rather
+than rolling its own `open -a` / `xattr` / `pkill` / `defaults write`
+sequences. They're all in `lib/docker.sh` and already sourced by
+every install.sh run.
+
+**Not a driver, a lib.** The planned file is `lib/docker_unattended.sh`,
+not `lib/drivers/docker_unattended.sh`. It's a helper library called
+from within `_docker_desktop_install_and_start` (in `lib/docker.sh`)
+when `UIC_PREF_DOCKER_FIRST_INSTALL=assisted`. It does NOT declare a
+new `driver.kind`. Consequences:
+
+- No entry needed in `DRIVER_SCHEMA` or `KNOWN_*_DRIVERS` sets.
+- No entry needed in `tests/test_driver_smoke.py::FAKE_DRIVER_FIELDS`.
+- `docs/driver-feature-matrix.md` does not gain a row (and therefore
+  no doc regen is required just for this file).
+- Sourced from `lib/ucc.sh` after `lib/docker.sh` in the same block.
+
+**Implementation-time constraint — pre-commit hook.** Since
+`2026-04-11`, every commit on this repo runs through
+`tools/check-bgs.sh` via `~/.git-hooks/pre-commit`. That runs
+`build-driver-matrix.py --check` + `build-spec.py --check` and blocks
+commits with drift. Implementation commits that touch `ucc/software/docker.yaml`
+(e.g., to add the `docker-first-install` preference) will trip
+`build-spec.py --check` if the preference table isn't regenerated.
+Plan the commit shape accordingly: either regen docs in the same
+commit or split "add preference" into its own commit that also
+regenerates the spec.
 
 #### Implementation plan
 
