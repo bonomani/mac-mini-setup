@@ -21,6 +21,10 @@ preferences:
   default: 204800
   options: 102400|204800|307200|512000
   rationale: 200 GB (204800 MiB) covers large AI models and containers; increase for multi-model or large-dataset setups
+- name: docker-first-install
+  default: manual
+  options: manual|assisted
+  rationale: manual fails fast in non-interactive mode and requires the user to bootstrap Docker once interactively (sudo + macOS auth dialog + EULA accept); assisted runs the experimental recipe that pre-writes EULA settings, seeds vmnetd to bypass the auth dialog, and uses a SUDO_ASKPASS helper so brew's sudo calls succeed non-interactively
 docker_desktop_cask_id: docker-desktop
 docker_desktop_app_name: Docker
 docker_desktop_app_path: /Applications/Docker.app
