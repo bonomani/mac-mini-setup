@@ -1108,10 +1108,12 @@ ucc_yaml_runtime_target() {
   eval "_uyrt_evd_${fn}() { ucc_eval_evidence_from_yaml '${cfg_dir}' '${yaml}' '${target}'; }"
   if [[ -z "$install_fn" && ( -n "$install_cmd" || "$driver_dispatched" == "1" ) ]]; then
     eval "_uyrt_ins_${fn}() {
-      local rc=0
-      # DEBUG: bypass _ucc_run_yaml_action, call action directly
-      local CFG_DIR='${cfg_dir}' YAML_PATH='${yaml}' TARGET_NAME='${target}'
-      _docker_desktop_install || rc=\$?
+      local rc=0 runtime_cmd=''
+      _ucc_run_yaml_action '${cfg_dir}' '${yaml}' '${target}' install || rc=\$?
+      if [[ \$rc -eq 0 ]]; then
+        runtime_cmd=\"\$(_ucc_yaml_target_get '${cfg_dir}' '${yaml}' '${target}' 'oracle.runtime')\"
+        [[ -n \"\$runtime_cmd\" ]] && _ucc_wait_for_yaml_runtime_probe '${cfg_dir}' '${yaml}' '${target}' \"\$runtime_cmd\" || true
+      fi
       return \$rc
     }"
     install_fn="_uyrt_ins_${fn}"
@@ -1430,10 +1432,11 @@ _ucc_require_declared_dependencies_resolved() {
 # ── ucc_target — full UCC Steps 0-6 lifecycle per target ─────────────────────
 
 _ucc_execute_target() {
-  local _ucc_snapshot="${UCC_EXEC_SNAPSHOT:-}"
-  if [[ -n "$_ucc_snapshot" ]]; then
-    eval "$_ucc_snapshot"
-  fi
+  # DEBUG: skip snapshot eval to test if it kills Docker
+  #local _ucc_snapshot="${UCC_EXEC_SNAPSHOT:-}"
+  #if [[ -n "$_ucc_snapshot" ]]; then
+  #  eval "$_ucc_snapshot"
+  #fi
 
   local name="" observe_fn="" desired="" install_fn="" update_fn="" axes="" profile="" evidence_fn="" recover_fn=""
   local warn_on_update_failure=0
