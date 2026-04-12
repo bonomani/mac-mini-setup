@@ -1109,8 +1109,9 @@ ucc_yaml_runtime_target() {
   if [[ -z "$install_fn" && ( -n "$install_cmd" || "$driver_dispatched" == "1" ) ]]; then
     eval "_uyrt_ins_${fn}() {
       local rc=0
-      _ucc_run_yaml_action '${cfg_dir}' '${yaml}' '${target}' install || rc=\$?
-      # DEBUG: skipped _ucc_wait_for_yaml_runtime_probe
+      # DEBUG: bypass _ucc_run_yaml_action, call action directly
+      local CFG_DIR='${cfg_dir}' YAML_PATH='${yaml}' TARGET_NAME='${target}'
+      _docker_desktop_install || rc=\$?
       return \$rc
     }"
     install_fn="_uyrt_ins_${fn}"
