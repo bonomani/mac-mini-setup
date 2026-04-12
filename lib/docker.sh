@@ -333,14 +333,6 @@ _docker_launch() {
       log_info "Docker daemon ready after ~$((i*17))s"
       return 0
     fi
-    # Mid-loop 500 detection: if Docker entered the 500 state during
-    # startup (shouldn't happen on a clean start, but defensive), bail
-    # early rather than burning the remaining budget.
-    _pre="$(docker info 2>&1)"
-    if [[ "$_pre" == *"500 Internal Server Error"* ]]; then
-      log_warn "Docker daemon entered 500 error state during startup"
-      return 1
-    fi
     sleep 2
   done
   log_warn "Docker daemon not reachable after ~200s"
