@@ -116,6 +116,12 @@ _docker_assisted_cleanup() {
 #       Docker Desktop tries to show its UI on startup, and when launched
 #       via `open -g` (background) the startup conflicts and the daemon
 #       never comes up)
+#   RequireVmnetd:            false (disables the "Allow privileged port
+#       mapping" prompt — a macOS Authorization Services dialog that
+#       blocks Docker's startup until dismissed. Privileged ports < 1024
+#       won't work, but all ports >= 1024 are unaffected. If privileged
+#       ports are needed later, the user can enable it in Docker Desktop
+#       Settings > Advanced.)
 #
 # Creates the parent Group Containers directory and the settings file if
 # they do not yet exist (fresh install, before Docker.app's first run).
@@ -138,7 +144,8 @@ _docker_assisted_prewrite_eula() {
   "LicenseTermsVersion": 2,
   "DisplayedOnboarding": true,
   "ShowInstallScreen": false,
-  "OpenUIOnStartupDisabled": true
+  "OpenUIOnStartupDisabled": true,
+  "RequireVmnetd": false
 }
 JSON
   python3 "${CFG_DIR:-.}/tools/drivers/json_merge.py" apply "$settings_path" "$patch"

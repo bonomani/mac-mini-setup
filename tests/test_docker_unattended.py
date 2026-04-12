@@ -174,6 +174,7 @@ def test_prewrite_eula_creates_file_if_missing(tmp_path):
     assert data.get("DisplayedOnboarding") is True, f"got {data!r}"
     assert data.get("ShowInstallScreen") is False, f"got {data!r}"
     assert data.get("OpenUIOnStartupDisabled") is True, f"got {data!r}"
+    assert data.get("RequireVmnetd") is False, f"got {data!r}"
 
 
 def test_prewrite_eula_merges_into_existing_file(tmp_path):
