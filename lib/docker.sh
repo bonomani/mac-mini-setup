@@ -233,13 +233,17 @@ _docker_desktop_install() {
   _docker_settings_store_patch "$settings_relpath"
   log_info "DEBUG: launching Docker Desktop"
   open -g /Applications/Docker.app || true
-  log_info "DEBUG: open -g done, checking if Docker survives 10s..."
-  sleep 10
-  if pgrep -q com.docker.backend 2>/dev/null; then
-    log_info "DEBUG: Docker alive after 10s"
-  else
-    log_warn "DEBUG: Docker DEAD after 10s"
-  fi
+  log_info "DEBUG: open -g done, checking Docker every 10s..."
+  local _d
+  for _d in 10 20 30; do
+    sleep 10
+    if pgrep -q com.docker.backend 2>/dev/null; then
+      log_info "DEBUG: Docker alive after ${_d}s"
+    else
+      log_warn "DEBUG: Docker DEAD after ${_d}s"
+      break
+    fi
+  done
   log_info "DEBUG: _docker_desktop_install done"
 }
 
