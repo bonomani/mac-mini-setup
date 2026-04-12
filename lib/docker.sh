@@ -12,6 +12,14 @@ docker_desktop_observe() {
   [[ -d /Applications/Docker.app ]] && printf 'installed' || printf 'absent'
 }
 
+# Return 0 if Docker Desktop (the macOS app) is running.
+# Checks for the com.docker.backend process, which is the main backend
+# process of Docker Desktop. This is distinct from docker_daemon_is_running
+# which checks if the docker API (daemon inside the VM) is reachable.
+docker_desktop_is_running() {
+  pgrep -q com.docker.backend 2>/dev/null
+}
+
 # Resolve Docker settings-store.json full path from YAML.
 _docker_settings_path() {
   printf '%s/%s' "$HOME" "$(_ucc_yaml_target_get "$CFG_DIR" "$YAML_PATH" "docker-resources" "driver.settings_relpath")"
@@ -219,6 +227,8 @@ _docker_desktop_install() {
   _docker_cask_ensure "$cask_id" "$app_path" "$greedy" || return $?
   log_info "DEBUG: _docker_cask_ensure done, patching settings"
   _docker_settings_store_patch "$settings_relpath"
+  log_info "DEBUG: launching Docker Desktop"
+  open -g /Applications/Docker.app || true
   log_info "DEBUG: _docker_desktop_install done"
 }
 

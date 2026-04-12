@@ -51,7 +51,7 @@ targets:
     probe_kind: command
     oracle:
       configured: docker_desktop_observe
-      runtime: docker_desktop_observe
+      runtime: docker_desktop_is_running
     observe_cmd: docker_desktop_observe
     evidence:
       version: docker_version
