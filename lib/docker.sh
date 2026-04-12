@@ -240,17 +240,18 @@ _docker_kill_zombies() {
   sleep 2
 }
 
-# Launch Docker Desktop via macOS `open` and wait for the user-side daemon
-# socket to appear. We do NOT use `docker desktop start` here because that
-# subcommand is a CLI plugin which the brew cask install does not link into
-# any standard cli-plugins directory — on a fresh install the docker CLI
-# reports `unknown command: docker desktop` and the launch fails.
+# Launch Docker Desktop via macOS `open` and wait for the daemon API.
+# We do NOT use `docker desktop start` because that CLI plugin may not
+# be linked into any standard cli-plugins directory on a fresh install.
 #
-# We pass `-g` (background/don't-bring-to-front) so Docker Desktop
-# launches without stealing focus — better for automated/non-interactive
-# runs. An earlier comment claimed `-g` doesn't work on Apple Silicon;
-# re-tested 2026-04-12 and confirmed it starts Docker correctly with
-# `-g` on Apple Silicon Docker Desktop 4.68.
+# We open the .app bundle directly (`open -g /path/Docker.app`) rather
+# than using `-a` (`open -g -a /path/Docker.app`). The `-a` flag treats
+# the path as an application name lookup, which can put Docker Desktop
+# into a stuck 500-error state where the daemon API never becomes
+# healthy. Opening the bundle directly is equivalent to double-clicking
+# Docker.app in Finder and starts Docker reliably.
+#
+# `-g` launches in background without stealing focus.
 # Probe Docker daemon readiness with a bounded timeout.
 # `docker info` hangs during Docker Desktop's initialization phase
 # (socket exists but API not yet accepting — the connection blocks
@@ -278,7 +279,7 @@ _docker_ready() {
 
 _docker_launch() {
   log_info "Starting Docker Desktop..."
-  open -g -a /Applications/Docker.app || return $?
+  open -g /Applications/Docker.app || return $?
 
   # Wait for the daemon API to respond (max ~140s).
   #
