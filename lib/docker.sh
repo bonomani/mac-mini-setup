@@ -277,25 +277,14 @@ _docker_kill_zombies() {
 # GNU `timeout` is not available on macOS by default, so we use a
 # portable background+kill pattern: run docker info in background,
 # poll its PID for up to 5s, kill if it's still hanging.
+# Probe Docker daemon readiness.
+# Uses `docker ps` instead of `docker info` — docker ps is a lightweight
+# API call that just queries the container list (no plugin enumeration,
+# no full system probe). docker info enumerates ~15 CLI plugins and
+# does a full system probe, which takes 10-20s during cold start and
+# hangs when killed mid-response.
 _docker_ready() {
-  docker info >/dev/null 2>&1 &
-  local _pid=$!
-  local _t=0
-  # 15s timeout per attempt. During Docker Desktop's cold start,
-  # `docker info` can take 10-20s to return — it enumerates all
-  # CLI plugins (~15 of them), connects to the daemon, and probes
-  # container/image state. A 5s timeout killed every attempt before
-  # it could finish, causing 140s of wasted retries.
-  while (( _t++ < 15 )); do
-    if ! kill -0 "$_pid" 2>/dev/null; then
-      wait "$_pid" 2>/dev/null
-      return $?
-    fi
-    sleep 1
-  done
-  kill "$_pid" 2>/dev/null
-  wait "$_pid" 2>/dev/null
-  return 1
+  docker ps -q >/dev/null 2>&1
 }
 
 _docker_launch() {
@@ -325,17 +314,18 @@ _docker_launch() {
   # context routes to the containerized VM socket). `docker info`
   # respects the active context and always finds the right endpoint.
   #
-  # Each _docker_ready call is bounded to ~15s. With 2s sleep between
-  # iterations, each cycle is ~17s max. 12 iterations = ~200s budget.
+  # docker ps -q returns instantly on both success and failure (no
+  # plugin enumeration, no system probe). Poll every 3s, max 60
+  # iterations = ~180s budget.
   local i
-  for i in $(seq 1 12); do
+  for i in $(seq 1 60); do
     if _docker_ready; then
-      log_info "Docker daemon ready after ~$((i*17))s"
+      log_info "Docker daemon ready after $((i*3))s"
       return 0
     fi
-    sleep 2
+    sleep 3
   done
-  log_warn "Docker daemon not reachable after ~200s"
+  log_warn "Docker daemon not reachable after ~180s"
   return 1
 }
 
