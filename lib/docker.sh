@@ -227,11 +227,8 @@ _docker_desktop_install() {
     esac
   done < <(yaml_get_many "$CFG_DIR" "$YAML_PATH" docker_desktop_cask_id docker_desktop_app_path settings_relpath)
   local greedy; greedy="$(_ucc_yaml_target_get "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME" "driver.greedy_auto_updates")"
-  log_info "DEBUG: bootstrap complete, running _docker_cask_ensure cask=$cask_id app=$app_path"
-  _docker_cask_ensure "$cask_id" "$app_path" "$greedy" || return $?
-  log_info "DEBUG: _docker_cask_ensure done, SKIPPING settings patch"
-  # _docker_settings_store_patch "$settings_relpath"
-  log_info "DEBUG: launching Docker Desktop"
+  # DEBUG: skip cask_ensure + settings, just open -g
+  log_info "DEBUG: skipping cask_ensure + settings, ONLY open -g"
   open -g /Applications/Docker.app || true
   log_info "DEBUG: open -g done, checking Docker every 10s..."
   local _d
