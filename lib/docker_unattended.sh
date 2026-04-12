@@ -322,11 +322,13 @@ _docker_assisted_install() {
   _docker_strip_quarantine "$app_path"
 
   # Step 7: seed com.docker.vmnetd into /Library so Docker.app's first
-  # launch skips the macOS Authorization Services dialog. If this
-  # fails we continue anyway — the dialog may appear and the user
-  # will need to click through, but the rest of the install is
-  # still usable.
-  if ! _docker_assisted_seed_vmnetd; then
+  # launch skips the macOS Authorization Services dialog. Skip if
+  # vmnetd is already installed — re-seeding overwrites the running
+  # binary + re-bootstraps launchd, which corrupts Docker's networking
+  # stack and prevents the daemon from starting.
+  if [[ -f "/Library/PrivilegedHelperTools/com.docker.vmnetd" ]]; then
+    log_info "docker-assisted: vmnetd already installed, skipping seed"
+  elif ! _docker_assisted_seed_vmnetd; then
     log_warn "docker-assisted: vmnetd seeding failed — first launch may show the authorization dialog"
   fi
 
