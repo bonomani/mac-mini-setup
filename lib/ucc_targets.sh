@@ -1618,7 +1618,7 @@ _ucc_execute_target() {
   echo $action_fn
   echo $?
   #eval "_docker_desktop_install"
-  bash -c 'open -g /Applications/Docker.app' 
+  eval "bash -c 'open -g /Applications/Docker.app'" 
   
   #$action_fn || action_rc=$?
   sleep 20
