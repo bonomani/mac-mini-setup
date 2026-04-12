@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# lib/docker.sh — Docker Desktop install + daemon startup
-# Sourced by components/docker.sh
+# lib/docker.sh — Docker Desktop app install + daemon lifecycle
+# Sourced via docker.yaml libs: field
 
 # Observe docker-desktop install state: installed | absent
 # Probe the .app bundle directly. We do not check `command -v docker` because
@@ -257,16 +257,9 @@ _docker_kill_zombies() {
 # (socket exists but API not yet accepting — the connection blocks
 # inside the docker CLI for 30s+). Without a timeout, a single hung
 # call eats the entire readiness budget.
-#
-# GNU `timeout` is not available on macOS by default, so we use a
-# portable background+kill pattern: run docker info in background,
-# poll its PID for up to 5s, kill if it's still hanging.
-# Probe Docker daemon readiness.
-# Uses `docker ps` instead of `docker info` — docker ps is a lightweight
-# API call that just queries the container list (no plugin enumeration,
-# no full system probe). docker info enumerates ~15 CLI plugins and
-# does a full system probe, which takes 10-20s during cold start and
-# hangs when killed mid-response.
+# Probe Docker daemon readiness via docker ps -q (lightweight — no
+# plugin enumeration, no full system probe). Returns 0 instantly when
+# daemon is reachable, 1 when not.
 _docker_ready() {
   docker ps -q >/dev/null 2>&1
 }
@@ -289,29 +282,14 @@ _docker_launch() {
 
   open -g /Applications/Docker.app || return $?
 
-  # Debug: verify Docker.app actually launched after open -g
-  sleep 3
-  if pgrep -q com.docker.backend 2>/dev/null; then
-    log_info "Docker backend process detected"
-  else
-    log_warn "Docker backend process NOT detected after open -g"
-  fi
-
-  # docker ps -q returns instantly on both success and failure (no
-  # plugin enumeration, no system probe). Poll every 3s, max 60
-  # iterations = ~180s budget.
+  # Poll docker ps -q for daemon readiness. Returns instantly on both
+  # success and failure (no plugin enumeration, no system probe).
+  # Poll every 3s, max 60 iterations = ~180s budget.
   local i
   for i in $(seq 1 60); do
     if _docker_ready; then
       log_info "Docker daemon ready after $((i*3))s"
       return 0
-    fi
-    if (( i % 10 == 0 )); then
-      if pgrep -q com.docker.backend 2>/dev/null; then
-        log_info "Docker backend still running at $((i*3))s"
-      else
-        log_warn "Docker backend GONE at $((i*3))s"
-      fi
     fi
     sleep 3
   done

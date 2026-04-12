@@ -23,8 +23,9 @@
 #   `read -s` from /dev/tty if `UCC_INTERACTIVE=1`, else fail. No
 #   fallbacks.
 #
-# This file has three helpers only. The EULA pre-write, vmnetd seeding,
-# and the top-level orchestrator land in subsequent commits.
+# Seven helpers: password acquisition, SUDO_ASKPASS setup/cleanup,
+# EULA prewrite, vmnetd extraction/seeding, and the top-level
+# assisted-install orchestrator.
 
 # Three sources, in order of preference:
 #   1. UCC_SUDO_PASS env var (CI/automation mode).
