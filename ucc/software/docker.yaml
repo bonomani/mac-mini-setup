@@ -55,8 +55,6 @@ targets:
       version: docker_version
       install_source: docker_install_source_observe
     stopped_dependencies: DepsReady
-    actions:
-      install: _docker_desktop_install
   docker-daemon:
     component: docker
     profile: runtime
@@ -75,8 +73,6 @@ targets:
       pid: docker_daemon_pid
     stopped_health: Unavailable
     stopped_dependencies: DepsReady
-    actions:
-      install: _docker_daemon_start
   docker-available:
     component: docker
     profile: capability

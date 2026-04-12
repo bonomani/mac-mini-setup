@@ -117,31 +117,34 @@ run_docker_from_yaml() {
   # ---- Phase 1: install Docker Desktop app ----
   ucc_yaml_runtime_target "$cfg_dir" "$yaml" "docker-desktop"
 
-  # ---- Phase 1.5: ensure Docker Desktop is running ----
-  # Docker Desktop must be launched OUTSIDE the _ucc_execute_target
-  # machinery. When launched from inside the dispatch (observe → action
-  # → re-observe), Docker starts but quits after ~15s. Root cause
-  # unknown — every individual component was tested and works, but the
-  # combination fails. Launching here (after dispatch completes) works.
+  # ---- Phase 2: register daemon + capability + resources targets ----
+  ucc_yaml_runtime_target "$cfg_dir" "$yaml" "docker-daemon"
+  ucc_yaml_capability_target "$cfg_dir" "$yaml" "docker-available"
+  ucc_yaml_parametric_target "$cfg_dir" "$yaml" "docker-resources"
+
+  # ---- Phase 3: ensure Docker Desktop is running ----
+  # Docker Desktop must be launched OUTSIDE _ucc_execute_target.
+  # When launched from inside the dispatch machinery (observe → action
+  # → re-observe), Docker starts but quits itself after ~15s. Tested
+  # in isolation: libs, env, bash -c, observe, eval — all work. The
+  # combination inside _ucc_execute_target fails. Root cause unknown.
+  #
+  # Workaround: launch from here (after ucc_flush_registered_targets
+  # returns). This runs in the component's bash -c but outside the
+  # per-target dispatch lifecycle. Docker stays running.
   if [[ -d /Applications/Docker.app ]] && ! pgrep -q com.docker.backend 2>/dev/null; then
+    local _relpath
+    _relpath="$(yaml_get_many "$cfg_dir" "$yaml" settings_relpath 2>/dev/null | head -1 | cut -f2)"
+    [[ -n "$_relpath" ]] && _docker_settings_store_patch "$_relpath"
+    _docker_strip_quarantine /Applications/Docker.app
     log_info "Starting Docker Desktop..."
-    _docker_settings_store_patch "$(yaml_get_many "$cfg_dir" "$yaml" settings_relpath | head -1 | cut -f2)"
     open -g /Applications/Docker.app
     local _i
-    for _i in $(seq 1 10); do
+    for _i in $(seq 1 20); do
       docker ps -q >/dev/null 2>&1 && { log_info "Docker daemon ready after $((3*_i))s"; break; }
       sleep 3
     done
   fi
-
-  # ---- Phase 2: start Docker daemon ----
-  ucc_yaml_runtime_target "$cfg_dir" "$yaml" "docker-daemon"
-
-  # ---- Phase 3: verify daemon reachable ----
-  ucc_yaml_capability_target "$cfg_dir" "$yaml" "docker-available"
-
-  # ---- Phase 4: post-runtime config (resources) ----
-  ucc_yaml_parametric_target "$cfg_dir" "$yaml" "docker-resources"
 }
 
 # Apply silent-start settings to the Docker settings-store JSON.
