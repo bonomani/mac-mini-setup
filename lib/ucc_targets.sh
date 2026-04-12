@@ -1614,6 +1614,8 @@ _ucc_execute_target() {
 
   #local 
   action_rc=0
+  echo $action_fn
+  echo $?
   $action_fn || action_rc=$?
   exit
   # Step 5 – Verify: re-observe after transition.
