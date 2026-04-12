@@ -231,6 +231,8 @@ _docker_desktop_install() {
   _docker_cask_ensure "$cask_id" "$app_path" "$greedy" || return $?
   log_info "DEBUG: _docker_cask_ensure done, patching settings"
   _docker_settings_store_patch "$settings_relpath"
+  log_info "DEBUG: settings patched, waiting 5s before launch..."
+  sleep 5
   log_info "DEBUG: launching Docker Desktop"
   open -g /Applications/Docker.app || true
   log_info "DEBUG: open -g done, checking Docker every 10s..."
