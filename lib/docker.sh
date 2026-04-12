@@ -305,15 +305,14 @@ _docker_launch() {
 
   open -g /Applications/Docker.app || return $?
 
-  # Wait for the daemon API to respond (max ~140s).
-  #
-  # We use `docker info` (via _docker_ready) rather than probing a
-  # specific socket path because Docker Desktop 4.x on Apple Silicon
-  # does NOT always use ~/.docker/run/docker.sock. The actual socket
-  # location depends on the docker CLI context (e.g. "desktop-linux"
-  # context routes to the containerized VM socket). `docker info`
-  # respects the active context and always finds the right endpoint.
-  #
+  # Debug: verify Docker.app actually launched after open -g
+  sleep 3
+  if pgrep -q com.docker.backend 2>/dev/null; then
+    log_info "Docker backend process detected"
+  else
+    log_warn "Docker backend process NOT detected after open -g"
+  fi
+
   # docker ps -q returns instantly on both success and failure (no
   # plugin enumeration, no system probe). Poll every 3s, max 60
   # iterations = ~180s budget.
@@ -322,6 +321,13 @@ _docker_launch() {
     if _docker_ready; then
       log_info "Docker daemon ready after $((i*3))s"
       return 0
+    fi
+    if (( i % 10 == 0 )); then
+      if pgrep -q com.docker.backend 2>/dev/null; then
+        log_info "Docker backend still running at $((i*3))s"
+      else
+        log_warn "Docker backend GONE at $((i*3))s"
+      fi
     fi
     sleep 3
   done
