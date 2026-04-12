@@ -281,7 +281,12 @@ _docker_ready() {
   docker info >/dev/null 2>&1 &
   local _pid=$!
   local _t=0
-  while (( _t++ < 5 )); do
+  # 15s timeout per attempt. During Docker Desktop's cold start,
+  # `docker info` can take 10-20s to return — it enumerates all
+  # CLI plugins (~15 of them), connects to the daemon, and probes
+  # container/image state. A 5s timeout killed every attempt before
+  # it could finish, causing 140s of wasted retries.
+  while (( _t++ < 15 )); do
     if ! kill -0 "$_pid" 2>/dev/null; then
       wait "$_pid" 2>/dev/null
       return $?
@@ -320,12 +325,12 @@ _docker_launch() {
   # context routes to the containerized VM socket). `docker info`
   # respects the active context and always finds the right endpoint.
   #
-  # Each _docker_ready call is bounded to ~5s. With 2s sleep between
-  # iterations, each cycle is ~7s max. 20 iterations = ~140s budget.
+  # Each _docker_ready call is bounded to ~15s. With 2s sleep between
+  # iterations, each cycle is ~17s max. 12 iterations = ~200s budget.
   local i
-  for i in $(seq 1 20); do
+  for i in $(seq 1 12); do
     if _docker_ready; then
-      log_info "Docker daemon ready after ~$((i*7))s"
+      log_info "Docker daemon ready after ~$((i*17))s"
       return 0
     fi
     # Mid-loop 500 detection: if Docker entered the 500 state during
@@ -338,7 +343,7 @@ _docker_launch() {
     fi
     sleep 2
   done
-  log_warn "Docker daemon not reachable after ~140s"
+  log_warn "Docker daemon not reachable after ~200s"
   return 1
 }
 
