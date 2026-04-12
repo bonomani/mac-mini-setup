@@ -344,14 +344,13 @@ _docker_launch() {
 
 # Uses implicit $CFG_DIR/$YAML_PATH context.
 _docker_daemon_start() {
-  local settings_relpath kill_pattern app_path
+  local settings_relpath app_path
   while IFS=$'\t' read -r -d '' key value; do
     case "$key" in
       settings_relpath)          settings_relpath="$value" ;;
-      docker_kill_pattern)       kill_pattern="$value" ;;
       docker_desktop_app_path)   app_path="$value" ;;
     esac
-  done < <(yaml_get_many "$CFG_DIR" "$YAML_PATH" settings_relpath docker_kill_pattern docker_desktop_app_path)
+  done < <(yaml_get_many "$CFG_DIR" "$YAML_PATH" settings_relpath docker_desktop_app_path)
   # Defensive: strip Gatekeeper quarantine from the existing Docker.app before
   # launch. Covers pre-existing installs that never went through _docker_cask_ensure,
   # so `docker desktop start` does not hang on the "downloaded from the Internet"

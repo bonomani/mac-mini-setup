@@ -26,11 +26,9 @@ preferences:
   options: manual|assisted
   rationale: manual fails fast in non-interactive mode and requires the user to bootstrap Docker once interactively (sudo + macOS auth dialog + EULA accept); assisted runs the experimental recipe that pre-writes EULA settings, seeds vmnetd to bypass the auth dialog, and uses a SUDO_ASKPASS helper so brew's sudo calls succeed non-interactively
 docker_desktop_cask_id: docker-desktop
-docker_desktop_app_name: Docker
+docker_desktop_app_name: Docker Desktop
 docker_desktop_app_path: /Applications/Docker.app
-docker_socket: $HOME/.docker/run/docker.sock
 docker_backend_process: com.docker.backend
-docker_kill_pattern: com.docker
 settings_relpath: Library/Group Containers/group.com.docker/settings-store.json
 targets:
   docker-desktop:
@@ -68,7 +66,7 @@ targets:
     - docker-desktop
     driver:
       kind: custom
-    runtime_manager: desktop-app
+    runtime_manager: process
     probe_kind: command
     oracle:
       configured: is_installed docker
