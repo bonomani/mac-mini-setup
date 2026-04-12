@@ -173,10 +173,11 @@ def test_prewrite_eula_creates_file_if_missing(tmp_path):
     assert data.get("LicenseTermsVersion") == 2, f"got {data!r}"
     assert data.get("DisplayedOnboarding") is True, f"got {data!r}"
     assert data.get("ShowInstallScreen") is False, f"got {data!r}"
+    assert data.get("OpenUIOnStartupDisabled") is True, f"got {data!r}"
 
 
 def test_prewrite_eula_merges_into_existing_file(tmp_path):
-    """prewrite_eula should merge the three EULA keys into an existing
+    """prewrite_eula should merge the four keys into an existing
     settings file without clobbering unrelated keys (e.g. keys set by
     _docker_settings_store_patch earlier in the same run)."""
     settings = tmp_path / "settings-store.json"
@@ -196,12 +197,12 @@ def test_prewrite_eula_merges_into_existing_file(tmp_path):
     assert result.returncode == 0, f"stderr={result.stderr!r}"
 
     data = json.loads(settings.read_text())
-    # New EULA keys present:
+    # New keys present:
     assert data.get("LicenseTermsVersion") == 2
     assert data.get("DisplayedOnboarding") is True
     assert data.get("ShowInstallScreen") is False
+    assert data.get("OpenUIOnStartupDisabled") is True
     # Pre-existing keys preserved:
-    assert data.get("OpenUIOnStartupDisabled") is True, f"clobbered: {data!r}"
     assert data.get("MemoryMiB") == 49152, f"clobbered: {data!r}"
     assert data.get("CustomUserKey") == "preserve-me", f"clobbered: {data!r}"
 

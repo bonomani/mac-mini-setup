@@ -105,13 +105,17 @@ _docker_assisted_cleanup() {
   unset SUDO_ASKPASS
 }
 
-# Pre-write the three EULA-acceptance keys into Docker's settings-store.json
-# so Docker.app's first launch skips the onboarding + install screens and
-# the Subscription Service Agreement acceptance dialog:
+# Pre-write EULA-acceptance and headless-mode keys into Docker's
+# settings-store.json so Docker.app's first launch skips all interactive
+# dialogs and starts the daemon in background mode:
 #
-#   LicenseTermsVersion:  2     (acknowledges the current SSA revision)
-#   DisplayedOnboarding:  true  (skips the tour on first launch)
-#   ShowInstallScreen:    false (skips the "Install dependencies" screen)
+#   LicenseTermsVersion:      2     (acknowledges the current SSA revision)
+#   DisplayedOnboarding:      true  (skips the tour on first launch)
+#   ShowInstallScreen:        false (skips the "Install dependencies" screen)
+#   OpenUIOnStartupDisabled:  true  (run headless — without this key,
+#       Docker Desktop tries to show its UI on startup, and when launched
+#       via `open -g` (background) the startup conflicts and the daemon
+#       never comes up)
 #
 # Creates the parent Group Containers directory and the settings file if
 # they do not yet exist (fresh install, before Docker.app's first run).
@@ -133,7 +137,8 @@ _docker_assisted_prewrite_eula() {
 {
   "LicenseTermsVersion": 2,
   "DisplayedOnboarding": true,
-  "ShowInstallScreen": false
+  "ShowInstallScreen": false,
+  "OpenUIOnStartupDisabled": true
 }
 JSON
   python3 "${CFG_DIR:-.}/tools/drivers/json_merge.py" apply "$settings_path" "$patch"
