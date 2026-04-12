@@ -1612,17 +1612,9 @@ _ucc_execute_target() {
     fi
   fi
 
-  #local 
-  #sleep 10
-  action_rc=0
-  echo $action_fn
-  echo $?
-  #eval "_docker_desktop_install"
-  #eval "bash -c 'open -g /Applications/Docker.app'" 
-  eval 'open -g /Applications/Docker.app'
-  #$action_fn || action_rc=$?
-  sleep 20
-  # Step 5 – Verify: re-observe after transition.
+  local action_rc=0
+  $action_fn || action_rc=$?
+    # Step 5 – Verify: re-observe after transition.
   # Always attempt verify when action ran (not a policy exit).  The action may
   # have succeeded even on non-zero exit (e.g. brew exits 1 when a dependency
   # unlinks a conflicting keg, yet the package itself was installed correctly).
