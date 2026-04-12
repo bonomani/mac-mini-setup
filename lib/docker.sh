@@ -300,6 +300,26 @@ _docker_daemon_start() {
   # prompt in --no-interactive runs.
   _docker_strip_quarantine "$app_path"
   _docker_settings_store_patch "$settings_relpath"
+
+  # Try a soft start first — launch Docker.app and wait for the daemon
+  # API to become reachable. Only if the soft start fails (daemon
+  # unreachable after 120s), kill all Docker processes and retry.
+  #
+  # Previously we always ran _docker_kill_zombies before _docker_launch,
+  # which was reliable for existing-and-running Docker (the kill+restart
+  # cleared XPC state). But on a fresh install or cold start, `open -a`
+  # after `pkill -f com.docker` can leave Docker in a half-dead state
+  # where the app opens but the daemon never comes up — macOS's
+  # LaunchServices doesn't always treat a pkill'd app as fully exited,
+  # so `open -a` may not trigger a clean startup.
+  #
+  # Soft-first fixes the common case (Docker not running → open -a
+  # starts it cleanly) while keeping the kill+retry as a fallback for
+  # genuine IPC hangs.
+  if _docker_launch; then
+    return 0
+  fi
+  log_warn "Docker soft start failed — killing processes and retrying"
   _docker_kill_zombies "$kill_pattern"
   _docker_launch
 }
