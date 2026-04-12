@@ -215,6 +215,111 @@ def test_prewrite_eula_rejects_empty_path():
     assert "empty settings_path" in result.stderr, f"stderr={result.stderr!r}"
 
 
+# ── _docker_assisted_extract_launchd_plist ──────────────────────────────────
+#
+# The extraction function is the only WSL-testable piece of vmnetd
+# seeding. The seed_vmnetd orchestrator itself uses sudo + /Library +
+# launchctl, which only make sense on macOS and are verified on the
+# Mac mini in Checkpoint C.
+#
+# We build a synthetic "binary" — just random bytes with two XML plist
+# chunks embedded in it — and assert the extractor walks past the
+# Info.plist (which has CFBundleIdentifier) and returns the launchd
+# plist (which has Label + no CFBundleIdentifier).
+
+_SYNTH_INFO_PLIST = b'''<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleIdentifier</key>
+  <string>com.docker.vmnetd</string>
+  <key>CFBundleVersion</key>
+  <string>1.0</string>
+</dict>
+</plist>'''
+
+_SYNTH_LAUNCHD_PLIST = b'''<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.docker.vmnetd</string>
+  <key>MachServices</key>
+  <dict>
+    <key>com.docker.vmnetd</key>
+    <true/>
+  </dict>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Library/PrivilegedHelperTools/com.docker.vmnetd</string>
+  </array>
+</dict>
+</plist>'''
+
+
+def _make_synthetic_binary(path, plists):
+    """Create a file that looks vaguely like a Mach-O: some garbage
+    bytes, then the plists concatenated with garbage between them."""
+    garbage1 = b"\xcf\xfa\xed\xfe" + b"\x00" * 128  # Mach-O magic + padding
+    garbage2 = b"\xff" * 64
+    with open(path, "wb") as f:
+        f.write(garbage1)
+        for p in plists:
+            f.write(p)
+            f.write(garbage2)
+
+
+def test_extract_launchd_plist_picks_the_right_one(tmp_path):
+    """Binary contains Info.plist (with CFBundleIdentifier) followed
+    by launchd plist (with Label, no CFBundleIdentifier). Extractor
+    should walk past the Info.plist and return the launchd plist."""
+    bin_path = tmp_path / "fake_vmnetd"
+    _make_synthetic_binary(bin_path, [_SYNTH_INFO_PLIST, _SYNTH_LAUNCHD_PLIST])
+
+    script = f'_docker_assisted_extract_launchd_plist "{bin_path}"'
+    result = _run_bash(script)
+    assert result.returncode == 0, f"stderr={result.stderr!r}"
+    assert "Label" in result.stdout
+    assert "com.docker.vmnetd" in result.stdout
+    assert "CFBundleIdentifier" not in result.stdout
+    assert "MachServices" in result.stdout
+
+
+def test_extract_launchd_plist_ordering_doesnt_matter(tmp_path):
+    """Same test but with the plists in reverse order. Extractor finds
+    the first chunk that matches the Label/no-CFBundleIdentifier rule,
+    regardless of byte position."""
+    bin_path = tmp_path / "fake_vmnetd"
+    _make_synthetic_binary(bin_path, [_SYNTH_LAUNCHD_PLIST, _SYNTH_INFO_PLIST])
+
+    script = f'_docker_assisted_extract_launchd_plist "{bin_path}"'
+    result = _run_bash(script)
+    assert result.returncode == 0, f"stderr={result.stderr!r}"
+    assert "Label" in result.stdout
+    assert "CFBundleIdentifier" not in result.stdout
+
+
+def test_extract_launchd_plist_fails_when_no_match(tmp_path):
+    """Binary contains only the Info.plist (no launchd plist). Extractor
+    should exit 1 — catches the case where Docker changes the Mach-O
+    layout and our extraction heuristic no longer finds a match."""
+    bin_path = tmp_path / "fake_vmnetd"
+    _make_synthetic_binary(bin_path, [_SYNTH_INFO_PLIST])
+
+    script = f'_docker_assisted_extract_launchd_plist "{bin_path}"'
+    result = _run_bash(script)
+    assert result.returncode == 1, f"expected rc=1, got {result.returncode}"
+
+
+def test_extract_launchd_plist_fails_on_missing_binary():
+    """Passing a path that doesn't exist should fail with rc=1 and a
+    log_warn message — not crash the shell."""
+    script = '_docker_assisted_extract_launchd_plist "/tmp/nonexistent-docker-vmnetd-xyz-$$"'
+    result = _run_bash(script)
+    assert result.returncode == 1
+    assert "not found" in result.stderr
+
+
 def test_lib_sourced_has_no_side_effects():
     """Sourcing lib/docker_unattended.sh must not touch the filesystem,
     change env vars, or print to stdout/stderr. Sourcing alone should

@@ -138,3 +138,94 @@ _docker_assisted_prewrite_eula() {
 JSON
   python3 "${CFG_DIR:-.}/tools/drivers/json_merge.py" apply "$settings_path" "$patch"
 }
+
+# Scan a Mach-O helper binary for its embedded launchd_plist segment and
+# print the plist XML on stdout. The vmnetd Mach-O contains two XML
+# plists:
+#
+#   1. The helper's Info.plist — identified by a `CFBundleIdentifier`
+#      key. We must NOT match this one.
+#   2. The launchd plist — identified by a top-level `Label` key and
+#      `MachServices` / `Sockets` keys; crucially has no
+#      CFBundleIdentifier. This is what we want.
+#
+# Walks the binary byte-by-byte looking for `<?xml ... </plist>` chunks
+# and returns the first one that has `Label` and does not have
+# `CFBundleIdentifier`. Returns rc=1 if no matching chunk is found.
+#
+# Split out from _docker_assisted_seed_vmnetd so the extraction logic
+# can be unit-tested on WSL with a synthetic binary, without needing
+# a real vmnetd, codesign, or /Library access.
+#
+# Usage: plist="$(_docker_assisted_extract_launchd_plist /path/to/binary)" || return 1
+_docker_assisted_extract_launchd_plist() {
+  local bin_path="$1"
+  [[ -f "$bin_path" ]] || { log_warn "docker-assisted: binary not found: $bin_path"; return 1; }
+  python3 - "$bin_path" <<'PY' || return 1
+import sys
+data = open(sys.argv[1], 'rb').read()
+i = 0
+while True:
+    s = data.find(b'<?xml', i)
+    if s < 0:
+        break
+    e = data.find(b'</plist>', s)
+    if e < 0:
+        break
+    e += len(b'</plist>')
+    chunk = data[s:e].decode('utf-8', errors='replace')
+    if 'Label' in chunk and 'CFBundleIdentifier' not in chunk:
+        sys.stdout.write(chunk)
+        sys.exit(0)
+    i = e
+sys.exit(1)
+PY
+}
+
+# Seed the com.docker.vmnetd privileged helper by copying the embedded
+# binary from /Applications/Docker.app into /Library/PrivilegedHelperTools,
+# extracting the embedded launchd plist into /Library/LaunchDaemons, and
+# bootstrapping the daemon via launchctl. This avoids the macOS
+# Authorization Services dialog that Docker.app would otherwise raise
+# on first launch.
+#
+# Preconditions:
+#   - Docker.app is present at /Applications/Docker.app (brew cask
+#     install must have already run).
+#   - SUDO_ASKPASS is exported (via _docker_assisted_setup_askpass),
+#     so the `sudo -A` calls succeed non-interactively.
+#
+# Mac-only: uses codesign, sudo cp to /Library, and launchctl bootstrap.
+# The extraction logic is split into _docker_assisted_extract_launchd_plist
+# for WSL unit testing.
+#
+# ⚠️ Unverified end-to-end on Mac mini until Checkpoint C.
+_docker_assisted_seed_vmnetd() {
+  local bin_src="/Applications/Docker.app/Contents/Library/LaunchServices/com.docker.vmnetd"
+  local bin_dst="/Library/PrivilegedHelperTools/com.docker.vmnetd"
+  local plist_dst="/Library/LaunchDaemons/com.docker.vmnetd.plist"
+  [[ -f "$bin_src" ]] || { log_warn "docker-assisted: vmnetd binary not found at $bin_src"; return 1; }
+
+  # Verify the binary is still signed by Docker Inc. Protects against
+  # Docker Inc rotating signing identities in a future release — if
+  # codesign -v fails, bail rather than seed an unsigned binary into
+  # /Library/PrivilegedHelperTools/ where it would become a local
+  # privilege-escalation surface.
+  codesign -v --strict "$bin_src" 2>/dev/null \
+    || { log_warn "docker-assisted: vmnetd signature invalid — aborting"; return 1; }
+
+  local launchd_plist
+  launchd_plist="$(_docker_assisted_extract_launchd_plist "$bin_src")" \
+    || { log_warn "docker-assisted: failed to extract vmnetd launchd plist"; return 1; }
+
+  sudo -A install -d -o root -g wheel -m 755 /Library/PrivilegedHelperTools /Library/LaunchDaemons || return 1
+  sudo -A cp "$bin_src" "$bin_dst" || return 1
+  sudo -A chown root:wheel "$bin_dst" || return 1
+  sudo -A chmod 755 "$bin_dst" || return 1
+  printf '%s' "$launchd_plist" | sudo -A tee "$plist_dst" >/dev/null || return 1
+  sudo -A chown root:wheel "$plist_dst" || return 1
+  sudo -A chmod 644 "$plist_dst" || return 1
+  # launchctl bootstrap returns non-zero if the daemon is already
+  # loaded — that's fine, the existing daemon is the one we want.
+  sudo -A launchctl bootstrap system "$plist_dst" 2>/dev/null || true
+}
