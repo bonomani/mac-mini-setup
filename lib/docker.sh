@@ -229,7 +229,7 @@ _docker_desktop_install() {
   local greedy; greedy="$(_ucc_yaml_target_get "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME" "driver.greedy_auto_updates")"
   # DEBUG: skip cask_ensure + settings, just open -g
   log_info "DEBUG: skipping cask_ensure + settings, ONLY open -g"
-  open -g /Applications/Docker.app || true
+  open /Applications/Docker.app || true
   log_info "DEBUG: open -g done, checking Docker every 10s..."
   local _d
   for _d in 10 20 30; do
@@ -307,10 +307,10 @@ _docker_launch() {
     sleep 5
   fi
 
-  log_info "DEBUG: calling open -g /Applications/Docker.app"
-  open -g /Applications/Docker.app
+  log_info "DEBUG: calling open /Applications/Docker.app (no -g)"
+  open /Applications/Docker.app
   local _open_rc=$?
-  log_info "DEBUG: open -g returned rc=$_open_rc, pid=$$"
+  log_info "DEBUG: open returned rc=$_open_rc"
   [[ $_open_rc -eq 0 ]] || return $_open_rc
 
   # Wait up to 30s for daemon readiness. If Docker doesn't respond
