@@ -1613,6 +1613,7 @@ _ucc_execute_target() {
   fi
 
   #local 
+  sleep 10
   action_rc=0
   echo $action_fn
   echo $?
