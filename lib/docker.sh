@@ -122,29 +122,20 @@ run_docker_from_yaml() {
   ucc_yaml_capability_target "$cfg_dir" "$yaml" "docker-available"
   ucc_yaml_parametric_target "$cfg_dir" "$yaml" "docker-resources"
 
-  # ---- Phase 3: ensure Docker Desktop is running ----
-  # Docker Desktop must be launched OUTSIDE _ucc_execute_target.
-  # When launched from inside the dispatch machinery (observe → action
-  # → re-observe), Docker starts but quits itself after ~15s. Tested
-  # in isolation: libs, env, bash -c, observe, eval — all work. The
-  # combination inside _ucc_execute_target fails. Root cause unknown.
+  # ---- Phase 3: check Docker Desktop is running ----
+  # Docker Desktop is a macOS GUI app that cannot be reliably started
+  # from a child process of install.sh. Every launch method tested
+  # (open -g, open, osascript activate, nohup, launchctl kickstart)
+  # results in Docker starting but quitting after ~15s. The same
+  # methods work from standalone scripts or the terminal. Root cause
+  # is an unknown interaction between install.sh's process context and
+  # Docker Desktop's startup lifecycle.
   #
-  # Workaround: launch from here (after ucc_flush_registered_targets
-  # returns). This runs in the component's bash -c but outside the
-  # per-target dispatch lifecycle. Docker stays running.
+  # If Docker is not running, report it and tell the user to start it.
   if [[ -d /Applications/Docker.app ]] && ! pgrep -q com.docker.backend 2>/dev/null; then
-    local _relpath
-    _relpath="$(yaml_get_many "$cfg_dir" "$yaml" settings_relpath 2>/dev/null | head -1 | cut -f2)"
-    [[ -n "$_relpath" ]] && _docker_settings_store_patch "$_relpath"
-    _docker_strip_quarantine /Applications/Docker.app
-    log_info "Starting Docker Desktop via launchctl..."
-    launchctl kickstart -k gui/$(id -u)/application.com.docker.docker 2>/dev/null \
-      || open -g /Applications/Docker.app
-    local _i
-    for _i in $(seq 1 20); do
-      docker ps -q >/dev/null 2>&1 && { log_info "Docker daemon ready after $((3*_i))s"; break; }
-      sleep 3
-    done
+    log_warn "Docker Desktop is installed but not running."
+    log_warn "Start it manually: open -g /Applications/Docker.app"
+    log_warn "Then re-run this script."
   fi
 }
 
