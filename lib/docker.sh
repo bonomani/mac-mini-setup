@@ -233,11 +233,27 @@ _docker_desktop_install_and_start() {
   _docker_daemon_start
 }
 
-# Kill all running Docker processes to avoid XPC/IPC hangs on restart.
+# Gracefully stop Docker Desktop to avoid the stuck 500-error state.
+#
+# `osascript quit "Docker Desktop"` is the only reliable way to fully
+# stop Docker Desktop on Apple Silicon. Alternatives that don't work:
+#   - `pkill -f com.docker` — force-kills processes, leaves the daemon
+#     API in a persistent 500-error state on restart.
+#   - `osascript quit "Docker"` — partially stops it, same 500 result.
+#   - `docker desktop stop` — may not be available on fresh installs.
+#
+# If osascript quit fails (Docker hung/unresponsive), we fall back to
+# pkill as a last resort — the 500 state is better than no stop at all.
+#
 # Usage: _docker_kill_zombies <kill_pattern>
 _docker_kill_zombies() {
-  pkill -f "$1" 2>/dev/null || true
-  sleep 2
+  osascript -e 'quit app "Docker Desktop"' 2>/dev/null || true
+  sleep 5
+  # If Docker Desktop didn't respond to the graceful quit, force-kill
+  if pgrep -f "$1" >/dev/null 2>&1; then
+    pkill -f "$1" 2>/dev/null || true
+    sleep 2
+  fi
 }
 
 # Launch Docker Desktop via macOS `open` and wait for the daemon API.
