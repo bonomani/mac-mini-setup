@@ -117,6 +117,23 @@ run_docker_from_yaml() {
   # ---- Phase 1: install Docker Desktop app ----
   ucc_yaml_runtime_target "$cfg_dir" "$yaml" "docker-desktop"
 
+  # ---- Phase 1.5: ensure Docker Desktop is running ----
+  # Docker Desktop must be launched OUTSIDE the _ucc_execute_target
+  # machinery. When launched from inside the dispatch (observe → action
+  # → re-observe), Docker starts but quits after ~15s. Root cause
+  # unknown — every individual component was tested and works, but the
+  # combination fails. Launching here (after dispatch completes) works.
+  if [[ -d /Applications/Docker.app ]] && ! pgrep -q com.docker.backend 2>/dev/null; then
+    log_info "Starting Docker Desktop..."
+    _docker_settings_store_patch "$(yaml_get_many "$cfg_dir" "$yaml" settings_relpath | head -1 | cut -f2)"
+    open -g /Applications/Docker.app
+    local _i
+    for _i in $(seq 1 10); do
+      docker ps -q >/dev/null 2>&1 && { log_info "Docker daemon ready after $((3*_i))s"; break; }
+      sleep 3
+    done
+  fi
+
   # ---- Phase 2: start Docker daemon ----
   ucc_yaml_runtime_target "$cfg_dir" "$yaml" "docker-daemon"
 
