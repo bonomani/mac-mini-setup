@@ -184,9 +184,11 @@ _docker_cask_ensure() {
 # into /usr/local). The `assisted` preference handles this via SUDO_ASKPASS.
 # The `manual` preference (default) requires an interactive run.
 _docker_desktop_install() {
+  log_info "DEBUG: _docker_desktop_install called"
   # First-time bootstrap gate: brew cask install needs sudo for
   # cli-plugins symlinks, and Docker needs EULA acceptance settings.
   if ! _docker_bootstrap_complete; then
+    log_info "DEBUG: bootstrap NOT complete"
     if [[ "${UIC_PREF_DOCKER_FIRST_INSTALL:-manual}" == "assisted" ]]; then
       _docker_assisted_install
       return $?
@@ -213,8 +215,11 @@ _docker_desktop_install() {
     esac
   done < <(yaml_get_many "$CFG_DIR" "$YAML_PATH" docker_desktop_cask_id docker_desktop_app_path settings_relpath)
   local greedy; greedy="$(_ucc_yaml_target_get "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME" "driver.greedy_auto_updates")"
+  log_info "DEBUG: bootstrap complete, running _docker_cask_ensure cask=$cask_id app=$app_path"
   _docker_cask_ensure "$cask_id" "$app_path" "$greedy" || return $?
+  log_info "DEBUG: _docker_cask_ensure done, patching settings"
   _docker_settings_store_patch "$settings_relpath"
+  log_info "DEBUG: _docker_desktop_install done"
 }
 
 # Gracefully stop Docker Desktop to avoid the stuck 500-error state.
