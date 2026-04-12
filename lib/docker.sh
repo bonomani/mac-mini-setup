@@ -307,11 +307,8 @@ _docker_launch() {
     sleep 5
   fi
 
-  log_info "DEBUG: calling open /Applications/Docker.app (no -g)"
-  open /Applications/Docker.app
-  local _open_rc=$?
-  log_info "DEBUG: open returned rc=$_open_rc"
-  [[ $_open_rc -eq 0 ]] || return $_open_rc
+  log_info "DEBUG: launching Docker via osascript"
+  osascript -e 'tell application "Docker" to activate' 2>/dev/null || true
 
   # Wait up to 30s for daemon readiness. If Docker doesn't respond
   # within 30s, it's not coming up — don't waste minutes retrying.
