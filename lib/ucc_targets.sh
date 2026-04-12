@@ -1108,12 +1108,9 @@ ucc_yaml_runtime_target() {
   eval "_uyrt_evd_${fn}() { ucc_eval_evidence_from_yaml '${cfg_dir}' '${yaml}' '${target}'; }"
   if [[ -z "$install_fn" && ( -n "$install_cmd" || "$driver_dispatched" == "1" ) ]]; then
     eval "_uyrt_ins_${fn}() {
-      local rc=0 runtime_cmd=''
+      local rc=0
       _ucc_run_yaml_action '${cfg_dir}' '${yaml}' '${target}' install || rc=\$?
-      if [[ \$rc -eq 0 ]]; then
-        runtime_cmd=\"\$(_ucc_yaml_target_get '${cfg_dir}' '${yaml}' '${target}' 'oracle.runtime')\"
-        [[ -n \"\$runtime_cmd\" ]] && _ucc_wait_for_yaml_runtime_probe '${cfg_dir}' '${yaml}' '${target}' \"\$runtime_cmd\" || true
-      fi
+      # DEBUG: skipped _ucc_wait_for_yaml_runtime_probe
       return \$rc
     }"
     install_fn="_uyrt_ins_${fn}"
