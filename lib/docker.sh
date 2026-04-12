@@ -137,8 +137,9 @@ run_docker_from_yaml() {
     _relpath="$(yaml_get_many "$cfg_dir" "$yaml" settings_relpath 2>/dev/null | head -1 | cut -f2)"
     [[ -n "$_relpath" ]] && _docker_settings_store_patch "$_relpath"
     _docker_strip_quarantine /Applications/Docker.app
-    log_info "Starting Docker Desktop..."
-    open -g /Applications/Docker.app
+    log_info "Starting Docker Desktop via launchctl..."
+    launchctl kickstart -k gui/$(id -u)/application.com.docker.docker 2>/dev/null \
+      || open -g /Applications/Docker.app
     local _i
     for _i in $(seq 1 20); do
       docker ps -q >/dev/null 2>&1 && { log_info "Docker daemon ready after $((3*_i))s"; break; }
