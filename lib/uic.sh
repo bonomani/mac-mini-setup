@@ -499,14 +499,26 @@ load_uic_preferences() {
 
   # 3. Build set of UIC_PREF_* env vars referenced by selected component lib files
   # (only when explicit targets are given — for full runs, all prefs are relevant)
+  #
+  # `libs:` in component YAML is a space-separated list (e.g.
+  # `libs: ai_apps ollama_models` or `libs: docker docker_unattended`);
+  # install.sh sources them via unquoted word-split `for _lib in $_libs`.
+  # We must use the same whitespace-splitting semantics here — using
+  # `IFS=','` would collapse a multi-lib value into a single array
+  # element like "docker docker_unattended", the file-exists check
+  # would fail, and _referenced_prefs would come back empty. That in
+  # turn filters out every component pref from the [PREF] display
+  # (the pref-not-in-referenced-set branch at line ~546 skips the
+  # declaration entirely when no lib references it).
   local _referenced_prefs=""
   if [[ "${UCC_EXPLICIT_TARGETS:-0}" == "1" ]]; then
     local _comp _libs _lib
     for _comp in ${TO_RUN[@]+"${TO_RUN[@]}"}; do
       [[ "${_sel_comps}" == *"${_comp}|"* ]] || continue
       _libs="$(printf '%s\n' "${_all_dispatch:-}" | awk -F'\t' -v c="$_comp" '$1==c{print $2; exit}')"
-      IFS=',' read -ra _lib_arr <<< "$_libs"
-      for _lib in "${_lib_arr[@]}"; do
+      # Unquoted $_libs to word-split on whitespace — matches install.sh
+      # convention. Space/tab/newline all produce a separate array entry.
+      for _lib in $_libs; do
         [[ -f "$dir/lib/${_lib}.sh" ]] || continue
         _referenced_prefs+="$(grep -oE 'UIC_PREF_[A-Z_]+' "$dir/lib/${_lib}.sh" 2>/dev/null | sort -u | tr '\n' '|' || true)"
       done
