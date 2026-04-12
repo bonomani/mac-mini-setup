@@ -1614,7 +1614,7 @@ _ucc_execute_target() {
 
   local action_rc=0
   $action_fn || action_rc=$?
-
+  exit
   # Step 5 – Verify: re-observe after transition.
   # Always attempt verify when action ran (not a policy exit).  The action may
   # have succeeded even on non-zero exit (e.g. brew exits 1 when a dependency
