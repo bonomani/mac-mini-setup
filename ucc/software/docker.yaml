@@ -1,6 +1,6 @@
 component: docker
 primary_profile: runtime
-libs: docker
+libs: docker docker_unattended
 runner: run_docker_from_yaml
 platforms:
 - macos
