@@ -295,6 +295,20 @@ _docker_ready() {
 
 _docker_launch() {
   log_info "Starting Docker Desktop..."
+
+  # Pre-check: detect the stuck 500-error state from a previous
+  # partial shutdown. In this state, the daemon API accepts connections
+  # but always returns HTTP 500. No amount of open -g fixes it — only
+  # a full `quit app "Docker Desktop"` + fresh start recovers.
+  # Check before opening so we don't waste 140s polling a broken daemon.
+  local _pre
+  _pre="$(docker info 2>&1)"
+  if [[ "$_pre" == *"500 Internal Server Error"* ]]; then
+    log_warn "Docker daemon in 500 error state — quitting Docker Desktop"
+    osascript -e 'quit app "Docker Desktop"' 2>/dev/null || true
+    sleep 5
+  fi
+
   open -g /Applications/Docker.app || return $?
 
   # Wait for the daemon API to respond (max ~140s).
@@ -311,8 +325,16 @@ _docker_launch() {
   local i
   for i in $(seq 1 20); do
     if _docker_ready; then
-      log_info "Docker daemon ready after $((i*7))s"
+      log_info "Docker daemon ready after ~$((i*7))s"
       return 0
+    fi
+    # Mid-loop 500 detection: if Docker entered the 500 state during
+    # startup (shouldn't happen on a clean start, but defensive), bail
+    # early rather than burning the remaining budget.
+    _pre="$(docker info 2>&1)"
+    if [[ "$_pre" == *"500 Internal Server Error"* ]]; then
+      log_warn "Docker daemon entered 500 error state during startup"
+      return 1
     fi
     sleep 2
   done
