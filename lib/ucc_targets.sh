@@ -1219,9 +1219,21 @@ _ucc_wait_for_runtime_probe() {
 }
 
 _ucc_wait_for_yaml_runtime_probe() {
-  # DEBUG: temporarily disabled to isolate Docker quit issue
-  log_info "DEBUG: _ucc_wait_for_yaml_runtime_probe SKIPPED"
-  return 0
+  local cfg_dir="$1" yaml="$2" target="$3" runtime_cmd="$4"
+  local attempts="${UCC_RUNTIME_WAIT_ATTEMPTS:-20}"
+  local interval="${UCC_RUNTIME_WAIT_INTERVAL:-1}"
+  local i
+
+  [[ -n "$runtime_cmd" ]] || return 0
+
+  for ((i = 1; i <= attempts; i++)); do
+    if _ucc_yaml_expr_succeeds "$cfg_dir" "$yaml" "$target" "$runtime_cmd"; then
+      return 0
+    fi
+    [[ "$i" -lt "$attempts" ]] && sleep "$interval"
+  done
+
+  return 1
 }
 
 # ucc_brew_runtime_formula_target <target-name> <brew-pkg> [brew-ref] [cfg_dir] [yaml] [service-name]
