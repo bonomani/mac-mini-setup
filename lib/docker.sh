@@ -253,47 +253,34 @@ _docker_kill_zombies() {
 # nested .app structure breaks background launches. Plain `open -a` works.
 _docker_launch() {
   log_info "Starting Docker Desktop..."
-
-  # Remove any stale socket left behind by a previous kill/crash.
-  # _docker_kill_zombies pkills Docker processes but doesn't clean up the
-  # socket file. If a stale socket exists, the phase-1 check below would
-  # immediately declare "socket up" even though Docker hasn't started yet,
-  # and the phase-2 docker-info poll would waste its entire budget trying
-  # to talk to a dead socket.
-  local _sock="$HOME/.docker/run/docker.sock"
-  rm -f "$_sock" 2>/dev/null || true
-
   open -a /Applications/Docker.app || return $?
 
-  # Phase 1: wait for a fresh socket file to appear (max 90s).
+  # Wait for the daemon to be reachable via the Docker API (max 120s).
+  #
+  # We poll Docker's lightweight /_ping endpoint via curl on the unix
+  # socket. This is better than `docker info` because:
+  #   - /_ping returns "OK" in <1ms when ready; docker info does a full
+  #     system probe that can take seconds even on a healthy daemon.
+  #   - curl --max-time bounds each attempt so a half-open socket can't
+  #     hang the loop indefinitely.
+  #   - curl is always present on macOS (unlike `timeout` from GNU
+  #     coreutils, which is not available by default).
+  #
+  # We do NOT remove the socket file before launching — after a
+  # _docker_kill_zombies + open -a cycle, Docker Desktop may reuse the
+  # existing socket path rather than creating a new one. Removing it
+  # causes a 90s wait for a socket that never reappears.
+  local _sock="$HOME/.docker/run/docker.sock"
   local i
-  for i in $(seq 1 45); do
-    [[ -S "$_sock" ]] && break
-    sleep 2
-  done
-  if [[ ! -S "$_sock" ]]; then
-    log_warn "Docker daemon socket did not appear after 90s"
-    return 1
-  fi
-  log_info "Docker daemon socket up after $((i*2))s"
-
-  # Phase 2: wait for the daemon API to respond (max 60s more).
-  # On a fresh install or cold start, the daemon needs 10-30s after the
-  # socket appears before `docker info` succeeds. Without this wait, the
-  # framework's post-launch re-observe fires immediately and catches
-  # Docker in the "socket exists but API not ready" window, which makes
-  # the target report [fail] even though the daemon is coming up normally.
-  # Each docker info attempt is bounded to 5s via --timeout (Docker CLI
-  # flag, not coreutils) so a hang on a half-open socket doesn't eat the
-  # whole budget.
-  for i in $(seq 1 30); do
-    timeout 5 docker info >/dev/null 2>&1 && {
-      log_info "Docker daemon API ready after $((i*2))s"
+  for i in $(seq 1 60); do
+    if [[ -S "$_sock" ]] \
+       && curl -s --unix-socket "$_sock" --max-time 2 http://localhost/_ping 2>/dev/null | grep -q OK; then
+      log_info "Docker daemon ready after $((i*2))s"
       return 0
-    }
+    fi
     sleep 2
   done
-  log_warn "Docker daemon socket up but API not responding after 60s"
+  log_warn "Docker daemon not reachable after 120s"
   return 1
 }
 
