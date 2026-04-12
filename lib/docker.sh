@@ -128,16 +128,20 @@ run_docker_from_yaml() {
 }
 
 # Apply silent-start settings to the Docker settings-store JSON.
+# RequireVmnetd: false suppresses the "privileged port mapping" macOS
+# auth dialog that blocks Docker Desktop's startup in non-interactive
+# mode. Ports >= 1024 work without vmnetd. If privileged ports are
+# needed, the docker-privileged-ports-available target handles it.
 # Usage: _docker_settings_store_patch <settings_store_relpath>
 _docker_settings_store_patch() {
   local store="$HOME/$1"
   if [[ -f "$store" ]]; then
     local tmp; tmp="$(mktemp)"
-    jq '. + {"OpenUIOnStartupDisabled": true, "DisplayedOnboarding": true, "ShowInstallScreen": false}' \
+    jq '. + {"OpenUIOnStartupDisabled": true, "DisplayedOnboarding": true, "ShowInstallScreen": false, "RequireVmnetd": false}' \
       "$store" > "$tmp" && mv "$tmp" "$store" || rm -f "$tmp"
   else
     mkdir -p "$(dirname "$store")"
-    printf '{"OpenUIOnStartupDisabled":true,"DisplayedOnboarding":true,"ShowInstallScreen":false}\n' > "$store"
+    printf '{"OpenUIOnStartupDisabled":true,"DisplayedOnboarding":true,"ShowInstallScreen":false,"RequireVmnetd":false}\n' > "$store"
   fi
 }
 
