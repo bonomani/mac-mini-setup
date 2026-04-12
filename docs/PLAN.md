@@ -729,6 +729,86 @@ Consumer + sudo → vmnetd seeded, `RequireVmnetd: true` written.
 **Prewrite keeps `RequireVmnetd: false`** — safe default for
 headless launch. This target flips it to `true` when needed.
 
+#### Step 12 — Separate docker-desktop (app install) from docker-available (daemon lifecycle)
+
+The current `docker-desktop` target conflates app installation and
+daemon startup. This causes the 25s-quit issue in install.sh: the
+install action does brew + settings + launch + readiness probe all
+in one function, making it hard to debug and maintain.
+
+**Refactoring:**
+
+```yaml
+docker-desktop:
+  component: docker
+  profile: configured        # was: runtime
+  type: package              # was: runtime
+  state_model: package
+  display_name: Docker Desktop
+  depends_on: [homebrew]
+  driver:
+    kind: app-bundle
+    app_path: ${docker_desktop_app_path}
+    brew_cask: ${docker_desktop_cask_id}
+  # Install action: brew install --cask + strip quarantine + EULA prewrite
+  # NO daemon start, NO open -g, NO readiness probe
+
+docker-available:
+  component: docker
+  profile: capability
+  type: capability
+  display_name: Docker daemon
+  depends_on: [docker-desktop]
+  driver:
+    kind: capability
+    probe: docker_daemon_is_running
+  actions:
+    start: _docker_daemon_start    # open -g + readiness probe
+  # Daemon lifecycle is HERE, not in docker-desktop
+  # This is where _docker_launch belongs
+
+docker-resources:
+  # unchanged, but depends_on: docker-available (needs running daemon)
+  depends_on: [docker-available]
+```
+
+**What moves where:**
+
+| Current location | New location |
+|---|---|
+| `_docker_desktop_install_and_start` (install + start) | Split into two functions |
+| `_docker_desktop_install` (brew + settings) | Stays in `docker-desktop` action |
+| `_docker_daemon_start` (kill + launch) | Moves to `docker-available` action |
+| `_docker_launch` (open -g + probe) | Called from `docker-available` action |
+| `_docker_assisted_install` (full orchestrator) | Split: brew part in docker-desktop, launch part in docker-available |
+
+**Impact on assisted install:**
+
+The assisted orchestrator simplifies. Instead of doing everything:
+1. `docker-desktop` install action: get password → setup askpass →
+   EULA prewrite → `brew install --cask` → strip quarantine
+2. `docker-available` action (framework auto-dispatches via dependency):
+   `open -g` + readiness probe (same for assisted and manual)
+
+The daemon launch is no longer inside the assisted orchestrator — the
+framework handles it through the dependency graph. The assisted path
+only needs to handle what's different about a first-time brew install
+(SUDO_ASKPASS for brew's sudo calls).
+
+**Benefits:**
+- Clean separation of concerns (app install ≠ daemon lifecycle)
+- The 25s quit issue is isolated to docker-available's action
+- Assisted install becomes simpler (just the brew step)
+- docker-resources naturally depends on docker-available (running daemon)
+- Matches the pattern: `docker-desktop` → `docker-available` like
+  `ollama` → `ollama` already has (binary install → daemon probe)
+
+**Needs:**
+- Capability driver to support an action hook (currently observe-only)
+- Or change docker-available to a runtime target with custom driver
+- Update `run_docker_from_yaml` dispatch order
+- Update tests
+
 ## Closed
 
 ### 2026-04-12 session
