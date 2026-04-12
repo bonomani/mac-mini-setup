@@ -1611,7 +1611,7 @@ _ucc_execute_target() {
       return 0
     fi
   fi
-
+exit
   local action_rc=0
   $action_fn || action_rc=$?
   exit
