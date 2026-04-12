@@ -280,7 +280,11 @@ _docker_launch() {
     sleep 5
   fi
 
-  open -g /Applications/Docker.app || return $?
+  log_info "DEBUG: calling open -g /Applications/Docker.app"
+  open -g /Applications/Docker.app
+  local _open_rc=$?
+  log_info "DEBUG: open -g returned rc=$_open_rc, pid=$$"
+  [[ $_open_rc -eq 0 ]] || return $_open_rc
 
   # Wait up to 30s for daemon readiness. If Docker doesn't respond
   # within 30s, it's not coming up — don't waste minutes retrying.
