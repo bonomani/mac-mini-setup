@@ -50,7 +50,7 @@ not specified). Counts are real (`type` distribution per component).
 | `ai-python-stack` | 22 | 17 | 1 | 2 | 2 |
 | `build-tools` | 3 | 3 | 0 | 0 | 0 |
 | `cli-tools` | 26 | 21 | 5 | 0 | 0 |
-| `docker` | 3 | 0 | 1 | 1 | 1 |
+| `docker` | 4 | 1 | 1 | 1 | 1 |
 | `network-services` | 5 | 1 | 0 | 2 | 2 |
 | `node-stack` | 6 | 5 | 1 | 0 | 0 |
 | `software-bootstrap` | 5 | 3 | 1 | 0 | 1 |
@@ -76,7 +76,7 @@ not specified). Counts are real (`type` distribution per component).
 |---|---|---|---|---|---|
 | `ai-apps-template` | `custom` | `precondition` | Compose template |  |  |
 | `ai-stack-compose-file` | `compose-file` | `config` | compose file |  | `ai-apps-template` |
-| `ai-stack-compose-running` | `compose-apply` | `runtime` | AI stack compose up |  | `docker-desktop`, `ai-stack-compose-file` |
+| `ai-stack-compose-running` | `compose-apply` | `runtime` | AI stack compose up |  | `docker-available`, `ai-stack-compose-file` |
 | `flowise-runtime` | `docker-compose-service` | `runtime` | Flowise |  | `ai-stack-compose-running` |
 | `n8n-runtime` | `docker-compose-service` | `runtime` | n8n |  | `ai-stack-compose-running` |
 | `ollama` | `custom-daemon` | `runtime` | Ollama | macos>=14,linux,wsl2 |  |
@@ -157,13 +157,14 @@ not specified). Counts are real (`type` distribution per component).
 | `oh-my-zsh` | `script-installer` | `config` | Oh My Zsh |  |  |
 | `omz-theme-agnoster` | `zsh-config` | `config` | Agnoster theme |  | `oh-my-zsh` |
 
-### docker  (3 targets)
+### docker  (4 targets)
 
 | Target | Kind | Type | Display name | requires | depends_on |
 |---|---|---|---|---|---|
-| `docker-available` | `capability` | `capability` | Docker daemon |  | `docker-desktop` |
-| `docker-desktop` | `custom` | `runtime` | Docker Desktop |  | `homebrew` |
-| `docker-resources` | `custom` | `config` | Docker resources |  | `docker-desktop` |
+| `docker-available` | `capability` | `capability` | Docker available |  | `docker-daemon` |
+| `docker-daemon` | `custom` | `runtime` | Docker daemon |  | `docker-desktop` |
+| `docker-desktop` | `app-bundle` | `package` | Docker Desktop |  | `homebrew` |
+| `docker-resources` | `custom` | `config` | Docker resources |  | `docker-available` |
 
 ### network-services  (5 targets)
 
@@ -326,7 +327,7 @@ See [`docs/driver-feature-matrix.md`](driver-feature-matrix.md) — auto-generat
 ## 11. Counts (live)
 
 - Components: **10**
-- Targets: **111**
+- Targets: **112**
 - Distinct driver kinds: **26**
 - Preferences: **6**
 - Gates: **1**
@@ -343,7 +344,7 @@ Top 10 driver kinds by target count:
 | `custom` | 8 |
 | `capability` | 7 |
 | `docker-compose-service` | 5 |
+| `app-bundle` | 2 |
 | `home-artifact` | 2 |
 | `service` | 2 |
-| `app-bundle` | 1 |
 | `brew-analytics` | 1 |

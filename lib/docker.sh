@@ -106,10 +106,13 @@ docker_daemon_pid() {
 run_docker_from_yaml() {
   local cfg_dir="$1" yaml="$2"
 
-  # ---- Phase 1-3: install + runtime ----
-  ucc_yaml_runtime_target "$cfg_dir" "$yaml" "docker-desktop"
+  # ---- Phase 1: install Docker Desktop app ----
+  ucc_yaml_configured_target "$cfg_dir" "$yaml" "docker-desktop"
 
-  # ---- Capability: docker daemon reachable ----
+  # ---- Phase 2: start Docker daemon ----
+  ucc_yaml_runtime_target "$cfg_dir" "$yaml" "docker-daemon"
+
+  # ---- Phase 3: verify daemon reachable ----
   ucc_yaml_capability_target "$cfg_dir" "$yaml" "docker-available"
 
   # ---- Phase 4: post-runtime config (resources) ----
@@ -174,9 +177,33 @@ _docker_cask_ensure() {
   fi
 }
 
-# Install Docker Desktop cask only (no daemon start).
+# Install Docker Desktop app (no daemon start — that's docker-daemon's job).
 # Uses implicit $CFG_DIR/$YAML_PATH/$TARGET_NAME context.
+#
+# First-time install requires sudo for brew cask symlinks (cli-plugins
+# into /usr/local). The `assisted` preference handles this via SUDO_ASKPASS.
+# The `manual` preference (default) requires an interactive run.
 _docker_desktop_install() {
+  # First-time bootstrap gate: brew cask install needs sudo for
+  # cli-plugins symlinks, and Docker needs EULA acceptance settings.
+  if ! _docker_bootstrap_complete; then
+    if [[ "${UIC_PREF_DOCKER_FIRST_INSTALL:-manual}" == "assisted" ]]; then
+      _docker_assisted_install
+      return $?
+    fi
+    if [[ "${UCC_INTERACTIVE:-1}" != "1" ]]; then
+      log_warn "Docker Desktop has not been bootstrapped on this user yet."
+      log_warn "First-time setup requires an interactive run for:"
+      log_warn "  - sudo password (brew cask /usr/local/cli-plugins symlinks)"
+      log_warn "  - Docker EULA acceptance dialog"
+      log_warn "Re-run interactively (./install.sh docker-desktop) to complete setup,"
+      log_warn "or opt into the experimental assisted recipe via:"
+      log_warn "  UCC_SUDO_PASS='...' ./install.sh --pref docker-first-install=assisted --no-interactive docker-desktop"
+      log_warn "Subsequent --no-interactive runs will work normally."
+      return 1
+    fi
+    log_info "First-time Docker Desktop setup will prompt for admin password and EULA acceptance."
+  fi
   local cask_id app_path settings_relpath
   while IFS=$'\t' read -r -d '' key value; do
     case "$key" in
@@ -188,49 +215,6 @@ _docker_desktop_install() {
   local greedy; greedy="$(_ucc_yaml_target_get "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME" "driver.greedy_auto_updates")"
   _docker_cask_ensure "$cask_id" "$app_path" "$greedy" || return $?
   _docker_settings_store_patch "$settings_relpath"
-}
-
-# Install Docker Desktop cask + start daemon.
-# Uses implicit $CFG_DIR/$YAML_PATH/$TARGET_NAME context.
-_docker_desktop_install_and_start() {
-  # First-time Docker Desktop setup on macOS requires interactive input at
-  # three points that have no straightforward CLI bypass:
-  #   1. brew cask install symlinks Docker's CLI plugins into
-  #      /usr/local/cli-plugins (a system path), which prompts sudo.
-  #      Cached sudo would satisfy this except Homebrew issue #17915
-  #      invalidates the user's sudo ticket on every brew invocation.
-  #   2. Docker.app's first launch installs a privileged helper via macOS
-  #      Authorization Services (a Cocoa dialog). Not a sudo prompt — a
-  #      separate authentication subsystem with no CLI bypass.
-  #   3. Docker shows the Subscription Service Agreement; if not accepted,
-  #      the daemon shuts itself down.
-  # In non-interactive mode none of these can be satisfied under the
-  # default (manual) preference, so the run would hang or leave Docker
-  # half-installed. Bail out cleanly with a clear message instead.
-  # The experimental `assisted` preference (see lib/docker_unattended.sh)
-  # bypasses all three with an askpass shim + EULA pre-write + vmnetd
-  # seeding — opted into via UIC_PREF_DOCKER_FIRST_INSTALL=assisted.
-  if ! _docker_bootstrap_complete; then
-    if [[ "${UIC_PREF_DOCKER_FIRST_INSTALL:-manual}" == "assisted" ]]; then
-      _docker_assisted_install
-      return $?
-    fi
-    if [[ "${UCC_INTERACTIVE:-1}" != "1" ]]; then
-      log_warn "Docker Desktop has not been bootstrapped on this user yet."
-      log_warn "First-time setup requires an interactive run for:"
-      log_warn "  - sudo password (brew cask /usr/local/cli-plugins symlinks)"
-      log_warn "  - macOS Authorization Services dialog (privileged helper)"
-      log_warn "  - Docker EULA acceptance dialog"
-      log_warn "Re-run interactively (./install.sh docker-desktop) to complete setup,"
-      log_warn "or opt into the experimental assisted recipe via:"
-      log_warn "  UCC_SUDO_PASS='...' ./install.sh --pref docker-first-install=assisted --no-interactive docker-desktop"
-      log_warn "Subsequent --no-interactive runs will work normally."
-      return 1
-    fi
-    log_info "First-time Docker Desktop setup will prompt for admin password and EULA acceptance."
-  fi
-  _docker_desktop_install || return $?
-  _docker_daemon_start
 }
 
 # Gracefully stop Docker Desktop to avoid the stuck 500-error state.

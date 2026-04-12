@@ -14,9 +14,9 @@ re-run the generator after any driver change.
 | `custom` | 8 |
 | `capability` | 7 |
 | `docker-compose-service` | 5 |
+| `app-bundle` | 2 |
 | `home-artifact` | 2 |
 | `service` | 2 |
-| `app-bundle` | 1 |
 | `brew-analytics` | 1 |
 | `brew-unlink` | 1 |
 | `build-deps` | 1 |
@@ -35,7 +35,7 @@ re-run the generator after any driver change.
 | `softwareupdate-schedule` | 1 |
 | `zsh-config` | 1 |
 
-**111 targets** across **26 distinct kinds**.
+**112 targets** across **26 distinct kinds**.
 
 ## Drivers by file
 

@@ -35,33 +35,55 @@ settings_relpath: Library/Group Containers/group.com.docker/settings-store.json
 targets:
   docker-desktop:
     component: docker
-    profile: runtime
-    type: runtime
+    profile: configured
+    type: package
+    state_model: package
     display_name: Docker Desktop
-
     depends_on:
     - homebrew
     provided_by_tool: brew-cask
     driver:
-      kind: custom
-      package_ref: ${docker_desktop_cask_id}
-      app_name: ${docker_desktop_app_name}
+      kind: app-bundle
       app_path: ${docker_desktop_app_path}
-      greedy_auto_updates: false
+      brew_cask: ${docker_desktop_cask_id}
+    observe_cmd: docker_desktop_observe
+    evidence:
+      version: docker_version
+      install_source: docker_install_source_observe
+    actions:
+      install: _docker_desktop_install
+  docker-daemon:
+    component: docker
+    profile: runtime
+    type: runtime
+    display_name: Docker daemon
+    depends_on:
+    - docker-desktop
+    driver:
+      kind: custom
     runtime_manager: desktop-app
     probe_kind: command
     oracle:
       configured: is_installed docker
       runtime: docker_daemon_is_running
-    observe_cmd: docker_desktop_observe
     evidence:
-      version: docker_version
-      install_source: docker_install_source_observe
-      socket: echo_var "${docker_socket}"
       pid: docker_daemon_pid
+    stopped_health: Unavailable
     stopped_dependencies: DepsReady
     actions:
-      install: _docker_desktop_install_and_start
+      install: _docker_daemon_start
+  docker-available:
+    component: docker
+    profile: capability
+    type: capability
+    display_name: Docker available
+    depends_on:
+    - docker-daemon
+    driver:
+      kind: capability
+      probe: docker_daemon_is_running
+    evidence:
+      status: docker_daemon_status
   docker-resources:
     component: docker
     profile: parametric
@@ -69,7 +91,7 @@ targets:
     state_model: parametric
     display_name: Docker resources
     depends_on:
-    - docker-desktop
+    - docker-available
     driver:
       kind: custom
       settings_relpath: ${settings_relpath}
@@ -84,16 +106,3 @@ targets:
     actions:
       install: docker_resources_apply
       update: docker_resources_apply
-  docker-available:
-    component: docker
-    profile: capability
-    type: capability
-    display_name: Docker daemon
-
-    depends_on:
-    - docker-desktop
-    driver:
-      kind: capability
-      probe: docker_daemon_is_running
-    evidence:
-      status: docker_daemon_status
