@@ -1616,7 +1616,7 @@ _ucc_execute_target() {
   action_rc=0
   echo $action_fn
   echo $?
-  _docker_desktop_install
+  eval "_docker_desktop_install"
   #$action_fn || action_rc=$?
   exit
   # Step 5 – Verify: re-observe after transition.
