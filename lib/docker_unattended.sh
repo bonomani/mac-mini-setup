@@ -229,3 +229,103 @@ _docker_assisted_seed_vmnetd() {
   # loaded — that's fine, the existing daemon is the one we want.
   sudo -A launchctl bootstrap system "$plist_dst" 2>/dev/null || true
 }
+
+# Top-level orchestrator for the assisted (unattended) Docker Desktop
+# first-install recipe. Only called when `_docker_bootstrap_complete`
+# returns false AND `UIC_PREF_DOCKER_FIRST_INSTALL=assisted`.
+#
+# The whole point of this function is to get through a Docker Desktop
+# first-install end-to-end without any interactive prompts. Steps:
+#
+#   1. Get the sudo password from UCC_SUDO_PASS or /dev/tty.
+#   2. Set up the SUDO_ASKPASS workdir and install the EXIT trap so
+#      the password is shredded no matter how we leave the function.
+#   3. Validate the password with `sudo -A -v` — fail fast before
+#      doing anything destructive.
+#   4. Pre-write the EULA-acceptance keys into settings-store.json
+#      so Docker.app's first launch skips the SSA dialog.
+#   5. `brew install --cask docker-desktop` — brew's internal sudo
+#      calls pick up SUDO_ASKPASS automatically (verified in Step 0).
+#   6. Strip the Gatekeeper quarantine xattr from the newly installed
+#      Docker.app so the first launch doesn't hit the "downloaded
+#      from the Internet" dialog.
+#   7. Seed com.docker.vmnetd into /Library so Docker.app's first
+#      launch skips the macOS Authorization Services dialog.
+#   8. Launch Docker.app via `open -a` and poll the daemon socket
+#      (max 90s) — same helper as the manual path.
+#
+# Uses the implicit $CFG_DIR/$YAML_PATH/$TARGET_NAME framework context
+# set up by the caller (`_docker_desktop_install_and_start`).
+#
+# ⚠️ End-to-end behavior is Mac-only and unverified until Checkpoint C.
+_docker_assisted_install() {
+  log_info "Docker: assisted first-install path (UIC_PREF_DOCKER_FIRST_INSTALL=assisted)"
+
+  # Read YAML config. Uses the implicit framework context from the
+  # caller's scope; both $CFG_DIR and $YAML_PATH are set by the
+  # component runner before dispatch.
+  local cask_id app_path settings_relpath
+  while IFS=$'\t' read -r -d '' key value; do
+    case "$key" in
+      docker_desktop_cask_id) cask_id="$value" ;;
+      docker_desktop_app_path) app_path="$value" ;;
+      settings_relpath)       settings_relpath="$value" ;;
+    esac
+  done < <(yaml_get_many "$CFG_DIR" "$YAML_PATH" docker_desktop_cask_id docker_desktop_app_path settings_relpath)
+  [[ -n "$cask_id" && -n "$app_path" && -n "$settings_relpath" ]] \
+    || { log_warn "docker-assisted: missing YAML config (cask_id/app_path/settings_relpath)"; return 1; }
+
+  local settings_path="$HOME/$settings_relpath"
+
+  # Step 1: resolve password from env var or tty. Fails fast (rc=2) in
+  # non-interactive mode with no UCC_SUDO_PASS set.
+  local _pw
+  _pw="$(_docker_assisted_get_password)" || return $?
+
+  # Step 2: set up askpass workdir, export SUDO_ASKPASS, install the
+  # EXIT trap. The trap fires on normal return, errors, and SIGINT —
+  # so the password never sits on disk after this function returns.
+  _docker_assisted_setup_askpass "$_pw" || { _pw=""; return 1; }
+  _pw=""  # scrub the local copy; the file on disk is the source of truth now
+  local _workdir="$_DOCKER_ASSISTED_WORKDIR"
+  # shellcheck disable=SC2064  # intentional early expansion of $_workdir
+  trap "_docker_assisted_cleanup '$_workdir'" EXIT
+
+  # Step 3: validate the password before doing anything destructive.
+  # `sudo -A -v` refreshes the sudo ticket using the askpass helper;
+  # if the password is wrong, this fails with a clear rc without
+  # having touched /Library yet.
+  if ! sudo -A -v 2>/dev/null; then
+    log_warn "docker-assisted: password validation failed (sudo -A -v)"
+    return 1
+  fi
+
+  # Step 4: pre-write EULA keys so Docker.app's first launch skips
+  # the Subscription Service Agreement dialog.
+  _docker_assisted_prewrite_eula "$settings_path" \
+    || { log_warn "docker-assisted: EULA pre-write failed"; return 1; }
+
+  # Step 5: brew install the cask. brew's internal sudo calls
+  # (cli-plugins symlinks, kubectl postflight) pick up SUDO_ASKPASS
+  # automatically — no PATH manipulation needed.
+  brew_cask_install "$cask_id" \
+    || { log_warn "docker-assisted: brew install --cask $cask_id failed"; return 1; }
+
+  # Step 6: strip Gatekeeper quarantine so first launch doesn't hit
+  # the "downloaded from the Internet" dialog. _docker_strip_quarantine
+  # is defined in lib/docker.sh (sourced alongside this file).
+  _docker_strip_quarantine "$app_path"
+
+  # Step 7: seed com.docker.vmnetd into /Library so Docker.app's first
+  # launch skips the macOS Authorization Services dialog. If this
+  # fails we continue anyway — the dialog may appear and the user
+  # will need to click through, but the rest of the install is
+  # still usable.
+  if ! _docker_assisted_seed_vmnetd; then
+    log_warn "docker-assisted: vmnetd seeding failed — first launch may show the authorization dialog"
+  fi
+
+  # Step 8: launch Docker.app and wait for the daemon socket.
+  # _docker_launch is defined in lib/docker.sh (sourced alongside).
+  _docker_launch
+}
