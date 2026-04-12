@@ -251,33 +251,55 @@ _docker_kill_zombies() {
 # runs. An earlier comment claimed `-g` doesn't work on Apple Silicon;
 # re-tested 2026-04-12 and confirmed it starts Docker correctly with
 # `-g` on Apple Silicon Docker Desktop 4.68.
+# Probe Docker daemon readiness with a bounded timeout.
+# `docker info` hangs during Docker Desktop's initialization phase
+# (socket exists but API not yet accepting — the connection blocks
+# inside the docker CLI for 30s+). Without a timeout, a single hung
+# call eats the entire readiness budget.
+#
+# GNU `timeout` is not available on macOS by default, so we use a
+# portable background+kill pattern: run docker info in background,
+# poll its PID for up to 5s, kill if it's still hanging.
+_docker_ready() {
+  docker info >/dev/null 2>&1 &
+  local _pid=$!
+  local _t=0
+  while (( _t++ < 5 )); do
+    if ! kill -0 "$_pid" 2>/dev/null; then
+      wait "$_pid" 2>/dev/null
+      return $?
+    fi
+    sleep 1
+  done
+  kill "$_pid" 2>/dev/null
+  wait "$_pid" 2>/dev/null
+  return 1
+}
+
 _docker_launch() {
   log_info "Starting Docker Desktop..."
   open -g -a /Applications/Docker.app || return $?
 
-  # Wait for the daemon API to respond (max 120s).
+  # Wait for the daemon API to respond (max ~140s).
   #
-  # We use `docker info` rather than probing a specific socket path
-  # because Docker Desktop 4.x on Apple Silicon does NOT always use
-  # ~/.docker/run/docker.sock. The actual socket location depends on
-  # the docker CLI context (e.g. "desktop-linux" context points to
-  # ~/Library/Containers/com.docker.docker/Data/docker-cli.sock).
-  # `docker info` respects the active context and always finds the
-  # right endpoint.
+  # We use `docker info` (via _docker_ready) rather than probing a
+  # specific socket path because Docker Desktop 4.x on Apple Silicon
+  # does NOT always use ~/.docker/run/docker.sock. The actual socket
+  # location depends on the docker CLI context (e.g. "desktop-linux"
+  # context routes to the containerized VM socket). `docker info`
+  # respects the active context and always finds the right endpoint.
   #
-  # `docker info` returns quickly on both success (rc=0) and failure
-  # (rc=1, "Cannot connect to the Docker daemon"), so we don't need
-  # a timeout wrapper (which would require GNU coreutils `timeout`,
-  # not available on macOS by default).
+  # Each _docker_ready call is bounded to ~5s. With 2s sleep between
+  # iterations, each cycle is ~7s max. 20 iterations = ~140s budget.
   local i
-  for i in $(seq 1 60); do
-    if docker info >/dev/null 2>&1; then
-      log_info "Docker daemon ready after $((i*2))s"
+  for i in $(seq 1 20); do
+    if _docker_ready; then
+      log_info "Docker daemon ready after $((i*7))s"
       return 0
     fi
     sleep 2
   done
-  log_warn "Docker daemon not reachable after 120s"
+  log_warn "Docker daemon not reachable after ~140s"
   return 1
 }
 
