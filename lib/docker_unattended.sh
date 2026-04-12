@@ -104,3 +104,37 @@ _docker_assisted_cleanup() {
   rm -rf "$workdir"
   unset SUDO_ASKPASS
 }
+
+# Pre-write the three EULA-acceptance keys into Docker's settings-store.json
+# so Docker.app's first launch skips the onboarding + install screens and
+# the Subscription Service Agreement acceptance dialog:
+#
+#   LicenseTermsVersion:  2     (acknowledges the current SSA revision)
+#   DisplayedOnboarding:  true  (skips the tour on first launch)
+#   ShowInstallScreen:    false (skips the "Install dependencies" screen)
+#
+# Creates the parent Group Containers directory and the settings file if
+# they do not yet exist (fresh install, before Docker.app's first run).
+# Uses tools/drivers/json_merge.py to merge the three keys into the file
+# without clobbering any other keys that may already be present (e.g. from
+# an earlier _docker_settings_store_patch call).
+#
+# Usage: _docker_assisted_prewrite_eula "$HOME/Library/Group Containers/group.com.docker/settings-store.json"
+_docker_assisted_prewrite_eula() {
+  local settings_path="$1"
+  [[ -n "$settings_path" ]] || { log_warn "docker-assisted: empty settings_path"; return 1; }
+  local settings_dir; settings_dir="$(dirname "$settings_path")"
+  mkdir -p "$settings_dir" || return 1
+  [[ -f "$settings_path" ]] || printf '%s\n' '{}' > "$settings_path"
+  local patch_dir="${CFG_DIR:-.}/.build"
+  mkdir -p "$patch_dir" || return 1
+  local patch="$patch_dir/docker-eula-patch.json"
+  cat > "$patch" <<'JSON'
+{
+  "LicenseTermsVersion": 2,
+  "DisplayedOnboarding": true,
+  "ShowInstallScreen": false
+}
+JSON
+  python3 "${CFG_DIR:-.}/tools/drivers/json_merge.py" apply "$settings_path" "$patch"
+}

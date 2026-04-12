@@ -153,6 +153,68 @@ def test_cleanup_is_idempotent_on_empty_or_nonexistent():
     assert "IDEMPOTENT_OK" in result.stdout, f"stdout={result.stdout!r}"
 
 
+def test_prewrite_eula_creates_file_if_missing(tmp_path):
+    """prewrite_eula should create the parent dir + settings file when
+    neither exists yet (fresh install scenario), and the resulting file
+    should contain all three EULA keys with the expected values."""
+    settings = tmp_path / "Library" / "Group Containers" / "group.com.docker" / "settings-store.json"
+    assert not settings.parent.exists(), "pre-test: parent dir should not exist"
+
+    script = textwrap.dedent(f'''\
+        export CFG_DIR="{REPO_ROOT}"
+        _docker_assisted_prewrite_eula "{settings}"
+    ''')
+    result = _run_bash(script)
+    assert result.returncode == 0, f"stderr={result.stderr!r}"
+    assert settings.exists(), f"settings file not created at {settings}"
+
+    import json
+    data = json.loads(settings.read_text())
+    assert data.get("LicenseTermsVersion") == 2, f"got {data!r}"
+    assert data.get("DisplayedOnboarding") is True, f"got {data!r}"
+    assert data.get("ShowInstallScreen") is False, f"got {data!r}"
+
+
+def test_prewrite_eula_merges_into_existing_file(tmp_path):
+    """prewrite_eula should merge the three EULA keys into an existing
+    settings file without clobbering unrelated keys (e.g. keys set by
+    _docker_settings_store_patch earlier in the same run)."""
+    settings = tmp_path / "settings-store.json"
+    import json
+    pre_existing = {
+        "OpenUIOnStartupDisabled": True,  # from _docker_settings_store_patch
+        "MemoryMiB": 49152,               # from a prior docker_resources_apply
+        "CustomUserKey": "preserve-me",   # operator-set
+    }
+    settings.write_text(json.dumps(pre_existing))
+
+    script = textwrap.dedent(f'''\
+        export CFG_DIR="{REPO_ROOT}"
+        _docker_assisted_prewrite_eula "{settings}"
+    ''')
+    result = _run_bash(script)
+    assert result.returncode == 0, f"stderr={result.stderr!r}"
+
+    data = json.loads(settings.read_text())
+    # New EULA keys present:
+    assert data.get("LicenseTermsVersion") == 2
+    assert data.get("DisplayedOnboarding") is True
+    assert data.get("ShowInstallScreen") is False
+    # Pre-existing keys preserved:
+    assert data.get("OpenUIOnStartupDisabled") is True, f"clobbered: {data!r}"
+    assert data.get("MemoryMiB") == 49152, f"clobbered: {data!r}"
+    assert data.get("CustomUserKey") == "preserve-me", f"clobbered: {data!r}"
+
+
+def test_prewrite_eula_rejects_empty_path():
+    """Empty settings_path should fail cleanly with rc=1 and a log_warn
+    message — catches caller bugs rather than silently mkdir-ing ''."""
+    script = 'export CFG_DIR="{}"\n_docker_assisted_prewrite_eula ""'.format(REPO_ROOT)
+    result = _run_bash(script)
+    assert result.returncode == 1, f"expected rc=1, got {result.returncode}; stderr={result.stderr!r}"
+    assert "empty settings_path" in result.stderr, f"stderr={result.stderr!r}"
+
+
 def test_lib_sourced_has_no_side_effects():
     """Sourcing lib/docker_unattended.sh must not touch the filesystem,
     change env vars, or print to stdout/stderr. Sourcing alone should
