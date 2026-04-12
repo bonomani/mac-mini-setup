@@ -255,26 +255,23 @@ _docker_launch() {
   log_info "Starting Docker Desktop..."
   open -a /Applications/Docker.app || return $?
 
-  # Wait for the daemon to be reachable via the Docker API (max 120s).
+  # Wait for the daemon API to respond (max 120s).
   #
-  # We poll Docker's lightweight /_ping endpoint via curl on the unix
-  # socket. This is better than `docker info` because:
-  #   - /_ping returns "OK" in <1ms when ready; docker info does a full
-  #     system probe that can take seconds even on a healthy daemon.
-  #   - curl --max-time bounds each attempt so a half-open socket can't
-  #     hang the loop indefinitely.
-  #   - curl is always present on macOS (unlike `timeout` from GNU
-  #     coreutils, which is not available by default).
+  # We use `docker info` rather than probing a specific socket path
+  # because Docker Desktop 4.x on Apple Silicon does NOT always use
+  # ~/.docker/run/docker.sock. The actual socket location depends on
+  # the docker CLI context (e.g. "desktop-linux" context points to
+  # ~/Library/Containers/com.docker.docker/Data/docker-cli.sock).
+  # `docker info` respects the active context and always finds the
+  # right endpoint.
   #
-  # We do NOT remove the socket file before launching — after a
-  # _docker_kill_zombies + open -a cycle, Docker Desktop may reuse the
-  # existing socket path rather than creating a new one. Removing it
-  # causes a 90s wait for a socket that never reappears.
-  local _sock="$HOME/.docker/run/docker.sock"
+  # `docker info` returns quickly on both success (rc=0) and failure
+  # (rc=1, "Cannot connect to the Docker daemon"), so we don't need
+  # a timeout wrapper (which would require GNU coreutils `timeout`,
+  # not available on macOS by default).
   local i
   for i in $(seq 1 60); do
-    if [[ -S "$_sock" ]] \
-       && curl -s --unix-socket "$_sock" --max-time 2 http://localhost/_ping 2>/dev/null | grep -q OK; then
+    if docker info >/dev/null 2>&1; then
       log_info "Docker daemon ready after $((i*2))s"
       return 0
     fi
