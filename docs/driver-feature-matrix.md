@@ -11,12 +11,12 @@ re-run the generator after any driver change.
 | `pkg` | 43 |
 | `pip` | 14 |
 | `setting` | 12 |
-| `custom` | 8 |
+| `custom` | 9 |
 | `capability` | 7 |
 | `docker-compose-service` | 5 |
-| `app-bundle` | 2 |
 | `home-artifact` | 2 |
 | `service` | 2 |
+| `app-bundle` | 1 |
 | `brew-analytics` | 1 |
 | `brew-unlink` | 1 |
 | `build-deps` | 1 |

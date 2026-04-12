@@ -107,7 +107,7 @@ run_docker_from_yaml() {
   local cfg_dir="$1" yaml="$2"
 
   # ---- Phase 1: install Docker Desktop app ----
-  ucc_yaml_configured_target "$cfg_dir" "$yaml" "docker-desktop"
+  ucc_yaml_runtime_target "$cfg_dir" "$yaml" "docker-desktop"
 
   # ---- Phase 2: start Docker daemon ----
   ucc_yaml_runtime_target "$cfg_dir" "$yaml" "docker-daemon"

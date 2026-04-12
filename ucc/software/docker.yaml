@@ -35,21 +35,28 @@ settings_relpath: Library/Group Containers/group.com.docker/settings-store.json
 targets:
   docker-desktop:
     component: docker
-    profile: configured
-    type: package
-    state_model: package
+    profile: runtime
+    type: runtime
     display_name: Docker Desktop
     depends_on:
     - homebrew
     provided_by_tool: brew-cask
     driver:
-      kind: app-bundle
+      kind: custom
+      package_ref: ${docker_desktop_cask_id}
+      app_name: ${docker_desktop_app_name}
       app_path: ${docker_desktop_app_path}
-      brew_cask: ${docker_desktop_cask_id}
+      greedy_auto_updates: false
+    runtime_manager: desktop-app
+    probe_kind: command
+    oracle:
+      configured: docker_desktop_observe
+      runtime: docker_desktop_observe
     observe_cmd: docker_desktop_observe
     evidence:
       version: docker_version
       install_source: docker_install_source_observe
+    stopped_dependencies: DepsReady
     actions:
       install: _docker_desktop_install
   docker-daemon:

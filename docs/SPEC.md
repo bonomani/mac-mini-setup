@@ -50,7 +50,7 @@ not specified). Counts are real (`type` distribution per component).
 | `ai-python-stack` | 22 | 17 | 1 | 2 | 2 |
 | `build-tools` | 3 | 3 | 0 | 0 | 0 |
 | `cli-tools` | 26 | 21 | 5 | 0 | 0 |
-| `docker` | 4 | 1 | 1 | 1 | 1 |
+| `docker` | 4 | 0 | 1 | 2 | 1 |
 | `network-services` | 5 | 1 | 0 | 2 | 2 |
 | `node-stack` | 6 | 5 | 1 | 0 | 0 |
 | `software-bootstrap` | 5 | 3 | 1 | 0 | 1 |
@@ -163,7 +163,7 @@ not specified). Counts are real (`type` distribution per component).
 |---|---|---|---|---|---|
 | `docker-available` | `capability` | `capability` | Docker available |  | `docker-daemon` |
 | `docker-daemon` | `custom` | `runtime` | Docker daemon |  | `docker-desktop` |
-| `docker-desktop` | `app-bundle` | `package` | Docker Desktop |  | `homebrew` |
+| `docker-desktop` | `custom` | `runtime` | Docker Desktop |  | `homebrew` |
 | `docker-resources` | `custom` | `config` | Docker resources |  | `docker-available` |
 
 ### network-services  (5 targets)
@@ -341,10 +341,10 @@ Top 10 driver kinds by target count:
 | `pkg` | 43 |
 | `pip` | 14 |
 | `setting` | 12 |
-| `custom` | 8 |
+| `custom` | 9 |
 | `capability` | 7 |
 | `docker-compose-service` | 5 |
-| `app-bundle` | 2 |
 | `home-artifact` | 2 |
 | `service` | 2 |
+| `app-bundle` | 1 |
 | `brew-analytics` | 1 |
