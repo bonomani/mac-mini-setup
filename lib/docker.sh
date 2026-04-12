@@ -227,11 +227,10 @@ _docker_desktop_install() {
     esac
   done < <(yaml_get_many "$CFG_DIR" "$YAML_PATH" docker_desktop_cask_id docker_desktop_app_path settings_relpath)
   local greedy; greedy="$(_ucc_yaml_target_get "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME" "driver.greedy_auto_updates")"
-  # DEBUG: dump state before open
-  env | sort > /tmp/env-install.txt
-  ls /dev/fd > /tmp/fd-install.txt 2>/dev/null
-  log_info "DEBUG: env dumped to /tmp/env-install.txt, fd to /tmp/fd-install.txt"
-  open /Applications/Docker.app || true
+  # DEBUG: unset massive env var before open
+  unset UCC_EXEC_SNAPSHOT
+  log_info "DEBUG: UCC_EXEC_SNAPSHOT unset, launching"
+  open -g /Applications/Docker.app || true
   log_info "DEBUG: open -g done, checking Docker every 10s..."
   local _d
   for _d in 10 20 30; do
