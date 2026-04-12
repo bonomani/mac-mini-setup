@@ -204,21 +204,29 @@ _docker_desktop_install_and_start() {
   #      separate authentication subsystem with no CLI bypass.
   #   3. Docker shows the Subscription Service Agreement; if not accepted,
   #      the daemon shuts itself down.
-  # In non-interactive mode none of these can be satisfied, so the run
-  # would hang or leave Docker half-installed. Bail out cleanly with a
-  # clear message instead. (See docs/PLAN.md for the experimental recipe
-  # to bypass all three for a fully unattended first install.)
-  if ! _docker_bootstrap_complete && [[ "${UCC_INTERACTIVE:-1}" != "1" ]]; then
-    log_warn "Docker Desktop has not been bootstrapped on this user yet."
-    log_warn "First-time setup requires an interactive run for:"
-    log_warn "  - sudo password (brew cask /usr/local/cli-plugins symlinks)"
-    log_warn "  - macOS Authorization Services dialog (privileged helper)"
-    log_warn "  - Docker EULA acceptance dialog"
-    log_warn "Re-run interactively (./install.sh docker-desktop) to complete setup."
-    log_warn "Subsequent --no-interactive runs will work normally."
-    return 1
-  fi
+  # In non-interactive mode none of these can be satisfied under the
+  # default (manual) preference, so the run would hang or leave Docker
+  # half-installed. Bail out cleanly with a clear message instead.
+  # The experimental `assisted` preference (see lib/docker_unattended.sh)
+  # bypasses all three with an askpass shim + EULA pre-write + vmnetd
+  # seeding — opted into via UIC_PREF_DOCKER_FIRST_INSTALL=assisted.
   if ! _docker_bootstrap_complete; then
+    if [[ "${UIC_PREF_DOCKER_FIRST_INSTALL:-manual}" == "assisted" ]]; then
+      _docker_assisted_install
+      return $?
+    fi
+    if [[ "${UCC_INTERACTIVE:-1}" != "1" ]]; then
+      log_warn "Docker Desktop has not been bootstrapped on this user yet."
+      log_warn "First-time setup requires an interactive run for:"
+      log_warn "  - sudo password (brew cask /usr/local/cli-plugins symlinks)"
+      log_warn "  - macOS Authorization Services dialog (privileged helper)"
+      log_warn "  - Docker EULA acceptance dialog"
+      log_warn "Re-run interactively (./install.sh docker-desktop) to complete setup,"
+      log_warn "or opt into the experimental assisted recipe via:"
+      log_warn "  UCC_SUDO_PASS='...' ./install.sh --pref docker-first-install=assisted --no-interactive docker-desktop"
+      log_warn "Subsequent --no-interactive runs will work normally."
+      return 1
+    fi
     log_info "First-time Docker Desktop setup will prompt for admin password and EULA acceptance."
   fi
   _docker_desktop_install || return $?
