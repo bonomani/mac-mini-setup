@@ -254,15 +254,36 @@ _docker_kill_zombies() {
 _docker_launch() {
   log_info "Starting Docker Desktop..."
   open -a /Applications/Docker.app || return $?
+
+  # Phase 1: wait for the socket file to appear (max 90s).
+  # Docker Desktop creates the socket almost immediately after launch, but
+  # the daemon inside isn't ready to answer API calls yet — phase 2 covers
+  # that. If the socket never appears, the app failed to start outright.
   local i
   for i in $(seq 1 45); do
-    [[ -S "$HOME/.docker/run/docker.sock" ]] && {
-      log_info "Docker daemon socket up after $((i*2))s"
+    [[ -S "$HOME/.docker/run/docker.sock" ]] && break
+    sleep 2
+  done
+  if [[ ! -S "$HOME/.docker/run/docker.sock" ]]; then
+    log_warn "Docker daemon socket did not appear after 90s"
+    return 1
+  fi
+  log_info "Docker daemon socket up after $((i*2))s"
+
+  # Phase 2: wait for the daemon API to respond (max 60s more).
+  # On a fresh install or cold start, the daemon needs 10-30s after the
+  # socket appears before `docker info` succeeds. Without this wait, the
+  # framework's post-launch re-observe fires immediately and catches
+  # Docker in the "socket exists but API not ready" window, which makes
+  # the target report [fail] even though the daemon is coming up normally.
+  for i in $(seq 1 30); do
+    docker info >/dev/null 2>&1 && {
+      log_info "Docker daemon API ready after $((i*2))s"
       return 0
     }
     sleep 2
   done
-  log_warn "Docker daemon socket did not appear after 90s"
+  log_warn "Docker daemon socket up but API not responding after 60s"
   return 1
 }
 
