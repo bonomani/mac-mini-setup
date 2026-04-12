@@ -1618,8 +1618,8 @@ _ucc_execute_target() {
   echo $action_fn
   echo $?
   #eval "_docker_desktop_install"
-  eval "bash -c 'open -g /Applications/Docker.app'" 
-  
+  #eval "bash -c 'open -g /Applications/Docker.app'" 
+  eval 'open -g /Applications/Docker.app'
   #$action_fn || action_rc=$?
   sleep 20
   # Step 5 – Verify: re-observe after transition.
