@@ -2,13 +2,10 @@
 
 ## Open
 
-Two items. One is **waiting-for-consumer** (Phase C1) — no driver
-today would exercise the gap, so building it would be premature
-abstraction. It is listed here so a future session picks it up when
-(and only when) a real consumer appears. One item (Docker Desktop
-fully unattended first install) is **waiting-for-effort**: it has a
-real user and a validated recipe, but the implementation is ~150 LOC
-+ a careful test cycle on the Mac mini.
+Three items. Phase C1 is **waiting-for-consumer**. Docker Desktop
+unattended first install is **in-progress** (core recipe works,
+Step 9 triage ongoing). Docker privileged ports target is
+**ready-to-implement** (design validated, functions exist).
 
 ### Phase C1 — uniform drift helper
 
@@ -16,6 +13,67 @@ real user and a validated recipe, but the implementation is ~150 LOC
 parametric target. A `_cfg_drift` helper would only matter if drivers
 themselves needed to short-circuit on drift before reaching the
 framework. None do. Defer until a driver actually wants this.
+
+### `docker-privileged-ports-available` — vmnetd as a first-class target
+
+Docker Desktop uses `com.docker.vmnetd` (a privileged LaunchDaemon)
+to bind ports below 1024. Since Docker Desktop 4.15, vmnetd is NOT
+installed on first launch — it's installed on-demand when a user
+first enables "Allow privileged port mapping" in Settings > Advanced.
+Without vmnetd, Docker shows a macOS Authorization Services dialog
+that blocks startup in non-interactive mode.
+
+The assisted install prewrite sets `RequireVmnetd: false` to suppress
+this dialog (safe default — all current services use ports >= 1024).
+This target would flip it to `true` and seed vmnetd when needed.
+
+**Target:** `docker-privileged-ports-available`
+
+```yaml
+docker-privileged-ports-available:
+  component: docker
+  profile: configured
+  type: config
+  state_model: parametric
+  display_name: Privileged port mapping
+  depends_on:
+  - docker-desktop
+  - sudo-available
+  driver:
+    kind: custom
+  observe_cmd: docker_privileged_ports_observe
+  desired_cmd: docker_privileged_ports_desired
+  actions:
+    install: docker_privileged_ports_apply
+```
+
+**Observe** (3 conditions, all must be true for "configured"):
+1. Binary exists: `/Library/PrivilegedHelperTools/com.docker.vmnetd`
+2. Launchd service loaded: `launchctl list | grep -q vmnetd`
+3. Settings key: `RequireVmnetd: true` in `settings-store.json`
+
+**Action** (fix whichever condition is missing):
+- Binary missing → seed from Docker.app (existing
+  `_docker_assisted_seed_vmnetd` + `_docker_assisted_extract_launchd_plist`)
+- Binary exists but not loaded → `launchctl bootstrap system ...`
+  (fixes the broken state where binary is present but service crashed)
+- `RequireVmnetd` not set → write to settings via `json_merge.py`
+
+**Dependency pattern:** always dispatched in `run_docker_from_yaml`
+(always try to enable when sudo is available). Services needing
+port < 1024 add `depends_on: docker-privileged-ports-available`.
+
+**Functions already exist:** `_docker_assisted_seed_vmnetd`,
+`_docker_assisted_extract_launchd_plist` in `lib/docker_unattended.sh`.
+Need new: `docker_privileged_ports_observe`,
+`docker_privileged_ports_desired`, `docker_privileged_ports_apply`.
+
+**Key discovery (2026-04-12):** the settings-store.json key that
+controls the dialog is `RequireVmnetd` (found by toggling
+Docker Desktop > Settings > Advanced > "Allow privileged port mapping"
+and diffing the JSON).
+
+---
 
 ### Docker Desktop — fully unattended first install on macOS
 
@@ -595,6 +653,81 @@ happen):
    working Docker install — roll back immediately, do not proceed.
 6. Step 9 exceeds 3 iterations — the approach isn't converging,
    take a break and re-plan.
+
+#### Step 9 triage findings (2026-04-12, 15 iterations)
+
+Key discoveries during Checkpoint C testing:
+
+- **`RequireVmnetd`** is the `settings-store.json` key controlling
+  the privileged port dialog (found by toggling Docker Desktop >
+  Settings > Advanced > "Allow privileged port mapping" and diffing
+  JSON). Setting `RequireVmnetd: false` suppresses the dialog.
+- **Docker Desktop 4.15+** does NOT install vmnetd on first launch
+  (principle of least privilege). vmnetd is on-demand only, for
+  ports < 1024.
+- **`docker info` hangs** for 30s+ during Docker startup (CLI plugin
+  enumeration blocks on socket). `docker ps -q` returns instantly.
+- **`open -g -a /path`** puts Docker in a stuck 500 state.
+  `open -g /path` (bundle direct, no `-a`) works reliably.
+- **`osascript quit "Docker"` ≠ `osascript quit "Docker Desktop"`** —
+  only the latter cleanly stops Docker Desktop. The shorter name
+  leaves a persistent 500 error state.
+- **`~/.docker/run/docker.sock`** does not exist on Docker Desktop
+  4.x Apple Silicon. The docker CLI uses the context
+  (`desktop-linux`) to route to the actual socket at
+  `~/Library/Containers/com.docker.docker/Data/docker-cli.sock`.
+- **EULA prewrite now writes 5 keys**: `LicenseTermsVersion`,
+  `DisplayedOnboarding`, `ShowInstallScreen`,
+  `OpenUIOnStartupDisabled`, `RequireVmnetd`.
+
+#### Step 11 — `docker-privileged-ports-available` target
+
+vmnetd seeding should be a first-class UCC target, not embedded
+in the assisted orchestrator. Design:
+
+```yaml
+docker-privileged-ports-available:
+  component: docker
+  profile: configured
+  type: config
+  state_model: parametric
+  display_name: Privileged port mapping
+  depends_on:
+  - docker-desktop
+  - sudo-available
+  driver:
+    kind: custom
+  observe_cmd: docker_privileged_ports_observe
+  desired_cmd: docker_privileged_ports_desired
+  actions:
+    install: docker_privileged_ports_apply
+```
+
+**Two auto conditions** (both handled by the dependency graph):
+1. **Consumer needs it** — service target with port < 1024 adds
+   `depends_on: docker-privileged-ports-available`
+2. **Sudo is available** — target depends on `sudo-available`
+
+No consumer + no sudo → target skipped.
+Consumer + sudo → vmnetd seeded, `RequireVmnetd: true` written.
+
+**Observe** (3 conditions, all must be true):
+1. Binary exists: `/Library/PrivilegedHelperTools/com.docker.vmnetd`
+2. Launchd service loaded: `launchctl list | grep -q vmnetd`
+3. Settings key: `RequireVmnetd: true` in `settings-store.json`
+
+**Action** (fix whichever condition is missing):
+- Binary missing → seed (existing `_docker_assisted_seed_vmnetd`)
+- Binary exists but not loaded → `launchctl bootstrap system ...`
+- `RequireVmnetd` not set → write via `json_merge.py`
+
+**Functions already exist**: `_docker_assisted_seed_vmnetd`,
+`_docker_assisted_extract_launchd_plist` in `lib/docker_unattended.sh`.
+**Need new**: `docker_privileged_ports_observe`,
+`docker_privileged_ports_desired`, `docker_privileged_ports_apply`.
+
+**Prewrite keeps `RequireVmnetd: false`** — safe default for
+headless launch. This target flips it to `true` when needed.
 
 ## Closed
 
