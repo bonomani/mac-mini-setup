@@ -1616,7 +1616,7 @@ _ucc_execute_target() {
   action_rc=0
   echo $action_fn
   echo $?
-  $action_fn || action_rc=$?
+  #$action_fn || action_rc=$?
   exit
   # Step 5 – Verify: re-observe after transition.
   # Always attempt verify when action ran (not a policy exit).  The action may
