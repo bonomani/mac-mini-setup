@@ -253,18 +253,25 @@ _docker_kill_zombies() {
 # nested .app structure breaks background launches. Plain `open -a` works.
 _docker_launch() {
   log_info "Starting Docker Desktop..."
+
+  # Remove any stale socket left behind by a previous kill/crash.
+  # _docker_kill_zombies pkills Docker processes but doesn't clean up the
+  # socket file. If a stale socket exists, the phase-1 check below would
+  # immediately declare "socket up" even though Docker hasn't started yet,
+  # and the phase-2 docker-info poll would waste its entire budget trying
+  # to talk to a dead socket.
+  local _sock="$HOME/.docker/run/docker.sock"
+  rm -f "$_sock" 2>/dev/null || true
+
   open -a /Applications/Docker.app || return $?
 
-  # Phase 1: wait for the socket file to appear (max 90s).
-  # Docker Desktop creates the socket almost immediately after launch, but
-  # the daemon inside isn't ready to answer API calls yet — phase 2 covers
-  # that. If the socket never appears, the app failed to start outright.
+  # Phase 1: wait for a fresh socket file to appear (max 90s).
   local i
   for i in $(seq 1 45); do
-    [[ -S "$HOME/.docker/run/docker.sock" ]] && break
+    [[ -S "$_sock" ]] && break
     sleep 2
   done
-  if [[ ! -S "$HOME/.docker/run/docker.sock" ]]; then
+  if [[ ! -S "$_sock" ]]; then
     log_warn "Docker daemon socket did not appear after 90s"
     return 1
   fi
@@ -276,8 +283,11 @@ _docker_launch() {
   # framework's post-launch re-observe fires immediately and catches
   # Docker in the "socket exists but API not ready" window, which makes
   # the target report [fail] even though the daemon is coming up normally.
+  # Each docker info attempt is bounded to 5s via --timeout (Docker CLI
+  # flag, not coreutils) so a hang on a half-open socket doesn't eat the
+  # whole budget.
   for i in $(seq 1 30); do
-    docker info >/dev/null 2>&1 && {
+    timeout 5 docker info >/dev/null 2>&1 && {
       log_info "Docker daemon API ready after $((i*2))s"
       return 0
     }
