@@ -229,10 +229,8 @@ _docker_desktop_install() {
   local greedy; greedy="$(_ucc_yaml_target_get "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME" "driver.greedy_auto_updates")"
   log_info "DEBUG: bootstrap complete, running _docker_cask_ensure cask=$cask_id app=$app_path"
   _docker_cask_ensure "$cask_id" "$app_path" "$greedy" || return $?
-  log_info "DEBUG: _docker_cask_ensure done, patching settings"
-  _docker_settings_store_patch "$settings_relpath"
-  log_info "DEBUG: settings patched, waiting 5s before launch..."
-  sleep 5
+  log_info "DEBUG: _docker_cask_ensure done, SKIPPING settings patch"
+  # _docker_settings_store_patch "$settings_relpath"
   log_info "DEBUG: launching Docker Desktop"
   open -g /Applications/Docker.app || true
   log_info "DEBUG: open -g done, checking Docker every 10s..."
