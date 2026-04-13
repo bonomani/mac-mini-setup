@@ -614,14 +614,14 @@ ucc_yaml_simple_target() {
   local driver_dispatched=0
   [[ -n "$driver_kind" && "$driver_kind" != "custom" ]] && driver_dispatched=1
 
-  declare -g "_UCC_OBS_CACHED_${fn}=1"
-  declare -g "_UCC_OBS_TYPE_${fn}=${obs_type}"
-  declare -g "_UCC_OBS_ORACLE_${fn}=${obs_oracle}"
-  declare -g "_UCC_OBS_CMD_${fn}=${obs_cmd}"
-  declare -g "_UCC_OBS_MODEL_${fn}=${obs_model}"
-  declare -g "_UCC_OBS_SUCCESS_${fn}=${obs_success}"
-  declare -g "_UCC_OBS_FAILURE_${fn}=${obs_failure}"
-  declare -g "_UCC_OBS_EVIDENCE_${fn}=${_ev_b64}"
+  export "_UCC_OBS_CACHED_${fn}=1"
+  export "_UCC_OBS_TYPE_${fn}=${obs_type}"
+  export "_UCC_OBS_ORACLE_${fn}=${obs_oracle}"
+  export "_UCC_OBS_CMD_${fn}=${obs_cmd}"
+  export "_UCC_OBS_MODEL_${fn}=${obs_model}"
+  export "_UCC_OBS_SUCCESS_${fn}=${obs_success}"
+  export "_UCC_OBS_FAILURE_${fn}=${obs_failure}"
+  export "_UCC_OBS_EVIDENCE_${fn}=${_ev_b64}"
 
   eval "_uyst_obs_${fn}() { _ucc_observe_yaml_simple_target '${cfg_dir}' '${yaml}' '${target}'; }"
   eval "_uyst_evd_${fn}() { ucc_eval_evidence_from_yaml '${cfg_dir}' '${yaml}' '${target}'; }"
@@ -673,9 +673,9 @@ ucc_yaml_capability_target() {
     esac
   done < <(_ucc_ytgt_source "$cfg_dir" "$yaml" "$target" driver.probe)
 
-  declare -g "_UCC_OBS_CACHED_${fn}=1"
-  declare -g "_UCC_OBS_EVIDENCE_${fn}=${_ev_b64}"
-  declare -g "_UCC_CAP_RUNTIME_${fn}=${runtime_cmd}"
+  export "_UCC_OBS_CACHED_${fn}=1"
+  export "_UCC_OBS_EVIDENCE_${fn}=${_ev_b64}"
+  export "_UCC_CAP_RUNTIME_${fn}=${runtime_cmd}"
 
   eval "_uyct_obs_${fn}() { _ucc_observe_yaml_capability_target '${cfg_dir}' '${yaml}' '${target}'; }"
   eval "_uyct_evd_${fn}() { ucc_eval_evidence_from_yaml '${cfg_dir}' '${yaml}' '${target}'; }"
@@ -832,11 +832,11 @@ ucc_yaml_parametric_target() {
   gate="$obs_gate"
   dep_state="$(_ucc_yaml_gate_dependency_state "$gate")"
 
-  declare -g "_UCC_OBS_CACHED_${fn}=1"
-  declare -g "_UCC_OBS_EVIDENCE_${fn}=${_ev_b64}"
-  declare -g "_UCC_PARAM_OBS_CMD_${fn}=${obs_cmd}"
-  declare -g "_UCC_PARAM_GATE_${fn}=${gate}"
-  declare -g "_UCC_PARAM_DESIRED_${fn}=${desired}"
+  export "_UCC_OBS_CACHED_${fn}=1"
+  export "_UCC_OBS_EVIDENCE_${fn}=${_ev_b64}"
+  export "_UCC_PARAM_OBS_CMD_${fn}=${obs_cmd}"
+  export "_UCC_PARAM_GATE_${fn}=${gate}"
+  export "_UCC_PARAM_DESIRED_${fn}=${desired}"
 
   eval "_uypt_obs_${fn}() { _ucc_observe_yaml_parametric_target '${cfg_dir}' '${yaml}' '${target}'; }"
   eval "_uypt_evd_${fn}() { _ucc_evidence_yaml_parametric_target '${cfg_dir}' '${yaml}' '${target}'; }"
@@ -1090,19 +1090,19 @@ ucc_yaml_runtime_target() {
   local driver_dispatched=0
   [[ -n "$obs_driver" && "$obs_driver" != "custom" ]] && driver_dispatched=1
 
-  declare -g "_UCC_OBS_CACHED_${fn}=1"
-  declare -g "_UCC_OBS_EVIDENCE_${fn}=${_ev_b64}"
-  declare -g "_UCC_RT_CONFIGURED_${fn}=${obs_configured}"
-  declare -g "_UCC_RT_RUNTIME_${fn}=${obs_runtime}"
-  declare -g "_UCC_RT_DRIVER_${fn}=${obs_driver}"
-  declare -g "_UCC_RT_SERVICE_${fn}=${obs_service}"
-  declare -g "_UCC_RT_PKG_${fn}=${obs_pkg}"
-  declare -g "_UCC_RT_APP_${fn}=${obs_app}"
-  declare -g "_UCC_RT_GREEDY_${fn}=${obs_greedy}"
-  declare -g "_UCC_RT_STOPPED_INST_${fn}=${obs_stopped_inst}"
-  declare -g "_UCC_RT_STOPPED_RT_${fn}=${obs_stopped_rt}"
-  declare -g "_UCC_RT_STOPPED_HEALTH_${fn}=${obs_stopped_health}"
-  declare -g "_UCC_RT_STOPPED_DEPS_${fn}=${obs_stopped_deps}"
+  export "_UCC_OBS_CACHED_${fn}=1"
+  export "_UCC_OBS_EVIDENCE_${fn}=${_ev_b64}"
+  export "_UCC_RT_CONFIGURED_${fn}=${obs_configured}"
+  export "_UCC_RT_RUNTIME_${fn}=${obs_runtime}"
+  export "_UCC_RT_DRIVER_${fn}=${obs_driver}"
+  export "_UCC_RT_SERVICE_${fn}=${obs_service}"
+  export "_UCC_RT_PKG_${fn}=${obs_pkg}"
+  export "_UCC_RT_APP_${fn}=${obs_app}"
+  export "_UCC_RT_GREEDY_${fn}=${obs_greedy}"
+  export "_UCC_RT_STOPPED_INST_${fn}=${obs_stopped_inst}"
+  export "_UCC_RT_STOPPED_RT_${fn}=${obs_stopped_rt}"
+  export "_UCC_RT_STOPPED_HEALTH_${fn}=${obs_stopped_health}"
+  export "_UCC_RT_STOPPED_DEPS_${fn}=${obs_stopped_deps}"
 
   eval "_uyrt_obs_${fn}() { _ucc_observe_yaml_runtime_target '${cfg_dir}' '${yaml}' '${target}'; }"
   eval "_uyrt_evd_${fn}() { ucc_eval_evidence_from_yaml '${cfg_dir}' '${yaml}' '${target}'; }"
@@ -1303,6 +1303,15 @@ ucc_reset_registered_targets() {
   _UCC_REGISTERED_NAMES=()
   _UCC_REGISTERED_ARGS=()
   _UCC_REGISTERED_ENV=()
+  # Purge _UCC_* exports from the previous component to prevent env
+  # bloat. These vars are intra-component cache only — they're set by
+  # ucc_yaml_*_target and read via ${!_v} indirection within the same
+  # bash -c session. Without this cleanup, a full run accumulates 500+
+  # vars / 145+ KB which causes Docker Desktop to silently fail to start.
+  local _var
+  while IFS= read -r _var; do
+    unset "$_var"
+  done < <(compgen -A variable _UCC_OBS_ _UCC_RT_ _UCC_CAP_ _UCC_PARAM_)
 }
 
 _ucc_should_snapshot_var() {
