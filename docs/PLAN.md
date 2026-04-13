@@ -15,8 +15,8 @@ Three items remain. Docker install/launch is fully functional
 | 6 | Docker unattended first install — Checkpoint C | Core works, needs clean-state end-to-end tests | Medium |
 | 7 | ~~Fix test suite — 43 failing integration tests~~ | ✅ DONE 2026-04-13 — 159 pass, 1 skipped, 0 failed | — |
 | 8 | ~~Driver convention: `_<driver>_state()` helper~~ | ✅ DONE 2026-04-13 — 7 drivers extracted, 12 share only cached YAML reads (no duplication) | — |
-| 9 | Extract install.sh functions to lib/ | Planned | Medium |
-| 10 | Unify batch cache access in `_ucc_yaml_target_get_many` | Planned | Low |
+| 9 | ~~Extract install.sh functions to lib/~~ | ✅ DONE 2026-04-13 — install.sh 1225→991 lines (`c463e5c`) | — |
+| 10 | ~~Unify batch cache access~~ | ✅ DONE 2026-04-13 — `_ucc_yaml_target_get_many` uses `_UCC_YTGT_*` cache (`3647ee4`) | — |
 
 ### Driver convention: `_<driver>_state()` helper
 
