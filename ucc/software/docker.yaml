@@ -112,3 +112,21 @@ targets:
     actions:
       install: docker_resources_apply
       update: docker_resources_apply
+  docker-privileged-ports:
+    component: docker
+    profile: parametric
+    type: config
+    state_model: parametric
+    display_name: Privileged port mapping
+    depends_on:
+    - docker-desktop
+    requires: macos
+    driver:
+      kind: custom
+    observe_cmd: docker_privileged_ports_observe
+    desired_cmd: docker_privileged_ports_desired
+    evidence:
+      value: docker_privileged_ports_observe
+    actions:
+      install: docker_privileged_ports_apply
+      update: docker_privileged_ports_apply

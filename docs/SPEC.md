@@ -50,7 +50,7 @@ not specified). Counts are real (`type` distribution per component).
 | `ai-python-stack` | 22 | 17 | 1 | 2 | 2 |
 | `build-tools` | 3 | 3 | 0 | 0 | 0 |
 | `cli-tools` | 26 | 21 | 5 | 0 | 0 |
-| `docker` | 4 | 0 | 1 | 2 | 1 |
+| `docker` | 5 | 0 | 2 | 2 | 1 |
 | `network-services` | 5 | 1 | 0 | 2 | 2 |
 | `node-stack` | 6 | 5 | 1 | 0 | 0 |
 | `software-bootstrap` | 5 | 3 | 1 | 0 | 1 |
@@ -157,13 +157,14 @@ not specified). Counts are real (`type` distribution per component).
 | `oh-my-zsh` | `script-installer` | `config` | Oh My Zsh |  |  |
 | `omz-theme-agnoster` | `zsh-config` | `config` | Agnoster theme |  | `oh-my-zsh` |
 
-### docker  (4 targets)
+### docker  (5 targets)
 
 | Target | Kind | Type | Display name | requires | depends_on |
 |---|---|---|---|---|---|
 | `docker-available` | `capability` | `capability` | Docker available |  | `docker-daemon` |
 | `docker-daemon` | `custom` | `runtime` | Docker daemon |  | `docker-desktop` |
 | `docker-desktop` | `custom` | `runtime` | Docker Desktop |  | `homebrew` |
+| `docker-privileged-ports` | `custom` | `config` | Privileged port mapping | macos | `docker-desktop` |
 | `docker-resources` | `custom` | `config` | Docker resources |  | `docker-available` |
 
 ### network-services  (5 targets)
@@ -327,7 +328,7 @@ See [`docs/driver-feature-matrix.md`](driver-feature-matrix.md) — auto-generat
 ## 11. Counts (live)
 
 - Components: **10**
-- Targets: **112**
+- Targets: **113**
 - Distinct driver kinds: **26**
 - Preferences: **6**
 - Gates: **1**
@@ -341,7 +342,7 @@ Top 10 driver kinds by target count:
 | `pkg` | 43 |
 | `pip` | 14 |
 | `setting` | 12 |
-| `custom` | 9 |
+| `custom` | 10 |
 | `capability` | 7 |
 | `docker-compose-service` | 5 |
 | `home-artifact` | 2 |

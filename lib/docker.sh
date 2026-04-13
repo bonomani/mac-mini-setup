@@ -129,6 +129,88 @@ docker_resources_apply() {
   log_warn "Restart Docker Desktop to apply new resource settings"
 }
 
+# Observe privileged port mapping state. Returns a string describing
+# the current state of vmnetd + RequireVmnetd setting.
+# Uses implicit $CFG_DIR/$YAML_PATH context.
+docker_privileged_ports_observe() {
+  local settings_relpath app_path
+  while IFS=$'\t' read -r -d '' key value; do
+    case "$key" in
+      settings_relpath)        settings_relpath="$value" ;;
+      docker_desktop_app_path) app_path="$value" ;;
+    esac
+  done < <(yaml_get_many "$CFG_DIR" "$YAML_PATH" settings_relpath docker_desktop_app_path)
+  local settings_path="$HOME/$settings_relpath"
+
+  local bin_ok="false" svc_ok="false" cfg_ok="false"
+
+  # 1. Binary exists
+  [[ -f /Library/PrivilegedHelperTools/com.docker.vmnetd ]] && bin_ok="true"
+
+  # 2. Launchd service loaded
+  sudo -n launchctl list 2>/dev/null | grep -q vmnetd && svc_ok="true"
+
+  # 3. RequireVmnetd: true in settings
+  if [[ -f "$settings_path" ]]; then
+    python3 -c "
+import json, sys
+d = json.loads(open(sys.argv[1]).read())
+sys.exit(0 if d.get('RequireVmnetd') is True else 1)
+" "$settings_path" 2>/dev/null && cfg_ok="true"
+  fi
+
+  if [[ "$bin_ok" == "true" && "$svc_ok" == "true" && "$cfg_ok" == "true" ]]; then
+    printf 'binary=seeded service=loaded setting=enabled'
+  elif [[ "$bin_ok" == "false" && "$cfg_ok" == "false" ]]; then
+    printf 'absent'
+  else
+    printf 'binary=%s service=%s setting=%s' \
+      "$( [[ "$bin_ok" == "true" ]] && echo seeded || echo missing )" \
+      "$( [[ "$svc_ok" == "true" ]] && echo loaded || echo unloaded )" \
+      "$( [[ "$cfg_ok" == "true" ]] && echo enabled || echo disabled )"
+  fi
+}
+
+# Print desired privileged port mapping state.
+docker_privileged_ports_desired() {
+  printf 'binary=seeded service=loaded setting=enabled'
+}
+
+# Apply privileged port mapping: seed vmnetd + set RequireVmnetd: true.
+# Requires sudo. Uses implicit $CFG_DIR/$YAML_PATH context.
+docker_privileged_ports_apply() {
+  local settings_relpath app_path
+  while IFS=$'\t' read -r -d '' key value; do
+    case "$key" in
+      settings_relpath)        settings_relpath="$value" ;;
+      docker_desktop_app_path) app_path="$value" ;;
+    esac
+  done < <(yaml_get_many "$CFG_DIR" "$YAML_PATH" settings_relpath docker_desktop_app_path)
+  local settings_path="$HOME/$settings_relpath"
+
+  # Seed vmnetd binary + launchd plist (reuses assisted-install helper)
+  if [[ ! -f /Library/PrivilegedHelperTools/com.docker.vmnetd ]]; then
+    _docker_assisted_seed_vmnetd "$app_path" \
+      || { log_warn "vmnetd seeding failed"; return 1; }
+  else
+    # Binary exists but service may not be loaded
+    local plist="/Library/LaunchDaemons/com.docker.vmnetd.plist"
+    if [[ -f "$plist" ]] && ! sudo -n launchctl list 2>/dev/null | grep -q vmnetd; then
+      sudo launchctl bootstrap system "$plist" 2>/dev/null || true
+    fi
+  fi
+
+  # Set RequireVmnetd: true in settings-store.json
+  if [[ -f "$settings_path" ]]; then
+    local patch_dir="$CFG_DIR/.build"
+    mkdir -p "$patch_dir"
+    printf '{"RequireVmnetd": true}\n' > "$patch_dir/docker-vmnetd-patch.json"
+    python3 "$CFG_DIR/tools/drivers/json_merge.py" apply \
+      "$settings_path" "$patch_dir/docker-vmnetd-patch.json"
+    log_warn "Restart Docker Desktop to apply privileged port mapping"
+  fi
+}
+
 # Print Docker CLI version string (e.g. "27.3.1").
 # Queries the daemon API via socket to avoid PATH dependency.
 # Falls back to docker --version if socket is unavailable.
@@ -191,6 +273,7 @@ run_docker_from_yaml() {
   ucc_yaml_runtime_target "$cfg_dir" "$yaml" "docker-daemon"
   ucc_yaml_capability_target "$cfg_dir" "$yaml" "docker-available"
   ucc_yaml_parametric_target "$cfg_dir" "$yaml" "docker-resources"
+  ucc_yaml_parametric_target "$cfg_dir" "$yaml" "docker-privileged-ports"
 }
 
 # Apply silent-start settings to the Docker settings-store JSON.

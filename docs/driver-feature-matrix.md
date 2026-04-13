@@ -11,7 +11,7 @@ re-run the generator after any driver change.
 | `pkg` | 43 |
 | `pip` | 14 |
 | `setting` | 12 |
-| `custom` | 9 |
+| `custom` | 10 |
 | `capability` | 7 |
 | `docker-compose-service` | 5 |
 | `home-artifact` | 2 |
@@ -35,7 +35,7 @@ re-run the generator after any driver change.
 | `softwareupdate-schedule` | 1 |
 | `zsh-config` | 1 |
 
-**112 targets** across **26 distinct kinds**.
+**113 targets** across **26 distinct kinds**.
 
 ## Drivers by file
 
