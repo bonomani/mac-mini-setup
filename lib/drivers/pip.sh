@@ -69,6 +69,8 @@ _pip_venv_ensure() {
   [[ -n "$py_ver" ]] || { log_warn "pip/venv: no pyenv global version set"; return 1; }
   log_info "pip/venv: creating venv '$name' (python $py_ver)"
   ucc_run pyenv virtualenv "$py_ver" "$name" || return 1
+  # Upgrade pip inside the fresh venv to suppress repeated upgrade notices
+  "$pip_path" install -q --upgrade pip 2>/dev/null || true
 }
 
 # True if the venv exists and has a working pip.
