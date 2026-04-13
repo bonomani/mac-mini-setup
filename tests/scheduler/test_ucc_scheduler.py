@@ -30,6 +30,27 @@ def _write_manifest(root: Path, body: str) -> Path:
     return root / "ucc"
 
 
+def _ucc_env(tmp_path: Path, **extra: str) -> str:
+    """Build the common bash preamble for UCC integration tests.
+
+    Returns shell export lines for UCC output files + source ucc.sh.
+    Pass extra='value' for additional exports (e.g. HOME, HOST_PLATFORM).
+    """
+    lines = ['set -euo pipefail']
+    for k, v in extra.items():
+        lines.append(f'export {k}="{v}"')
+    lines += [
+        f'export UCC_DECLARATION_FILE="{tmp_path / "decl.jsonl"}"',
+        f'export UCC_RESULT_FILE="{tmp_path / "result.jsonl"}"',
+        f'export UCC_SUMMARY_FILE="{tmp_path / "summary.txt"}"',
+        f'export UCC_PROFILE_SUMMARY_FILE="{tmp_path / "profile.txt"}"',
+        f'export UCC_TARGET_STATUS_FILE="{tmp_path / "status.txt"}"',
+        f'export UCC_CORRELATION_ID="test-run"',
+        f'source "{ROOT / "lib/ucc.sh"}"',
+    ]
+    return '\n'.join(lines)
+
+
 # ---------------------------------------------------------------------------
 # Python-only validation tests — run on all platforms (no bash, no UCC shell)
 # ---------------------------------------------------------------------------
@@ -1226,13 +1247,7 @@ class UccSchedulerTests(unittest.TestCase):
                         export PATH="{fake_bin}:$PATH"
                         export HOST_PLATFORM="macos"
                         export HOST_PLATFORM_VARIANT="macos"
-                        export UCC_DECLARATION_FILE="{tmp_path / 'decl.jsonl'}"
-                        export UCC_RESULT_FILE="{tmp_path / 'result.jsonl'}"
-                        export UCC_SUMMARY_FILE="{tmp_path / 'summary.txt'}"
-                        export UCC_PROFILE_SUMMARY_FILE="{tmp_path / 'profile.txt'}"
-                        export UCC_TARGET_STATUS_FILE="{tmp_path / 'status.txt'}"
-                        export UCC_CORRELATION_ID="test-run"
-                        source "{ROOT / 'lib/ucc.sh'}"
+                        {_ucc_env(tmp_path)}
                         source "{ROOT / 'lib/utils.sh'}"
                         source "{ROOT / 'lib/homebrew.sh'}"
                         ucc_yaml_simple_target "{ROOT}" "{ROOT / 'ucc/software/homebrew.yaml'}" "xcode-command-line-tools"
@@ -1297,13 +1312,7 @@ class UccSchedulerTests(unittest.TestCase):
                         export PATH="{fake_bin}:$PATH"
                         export HOST_PLATFORM="macos"
                         export HOST_PLATFORM_VARIANT="macos"
-                        export UCC_DECLARATION_FILE="{tmp_path / 'decl.jsonl'}"
-                        export UCC_RESULT_FILE="{tmp_path / 'result.jsonl'}"
-                        export UCC_SUMMARY_FILE="{tmp_path / 'summary.txt'}"
-                        export UCC_PROFILE_SUMMARY_FILE="{tmp_path / 'profile.txt'}"
-                        export UCC_TARGET_STATUS_FILE="{tmp_path / 'status.txt'}"
-                        export UCC_CORRELATION_ID="test-run"
-                        source "{ROOT / 'lib/ucc.sh'}"
+                        {_ucc_env(tmp_path)}
                         source "{ROOT / 'lib/utils.sh'}"
                         source "{ROOT / 'lib/homebrew.sh'}"
                         ucc_yaml_simple_target "{ROOT}" "{ROOT / 'ucc/software/homebrew.yaml'}" "xcode-command-line-tools"
@@ -1360,13 +1369,7 @@ class UccSchedulerTests(unittest.TestCase):
                         f"""\
                         set -euo pipefail
                         export UIC_GATE_FAILED_SUDO_AVAILABLE=1
-                        export UCC_DECLARATION_FILE="{tmp_path / 'decl.jsonl'}"
-                        export UCC_RESULT_FILE="{tmp_path / 'result.jsonl'}"
-                        export UCC_SUMMARY_FILE="{tmp_path / 'summary.txt'}"
-                        export UCC_PROFILE_SUMMARY_FILE="{tmp_path / 'profile.txt'}"
-                        export UCC_TARGET_STATUS_FILE="{tmp_path / 'status.txt'}"
-                        export UCC_CORRELATION_ID="test-run"
-                        source "{ROOT / 'lib/ucc.sh'}"
+                        {_ucc_env(tmp_path)}
                         ucc_yaml_parametric_target "{ROOT}" "{manifest}" "gated"
                         """
                     ),
@@ -1425,13 +1428,7 @@ class UccSchedulerTests(unittest.TestCase):
                         f"""\
                         set -euo pipefail
                         export PATH="{fake_bin}:$PATH"
-                        export UCC_DECLARATION_FILE="{tmp_path / 'decl.jsonl'}"
-                        export UCC_RESULT_FILE="{tmp_path / 'result.jsonl'}"
-                        export UCC_SUMMARY_FILE="{tmp_path / 'summary.txt'}"
-                        export UCC_PROFILE_SUMMARY_FILE="{tmp_path / 'profile.txt'}"
-                        export UCC_TARGET_STATUS_FILE="{tmp_path / 'status.txt'}"
-                        export UCC_CORRELATION_ID="test-run"
-                        source "{ROOT / 'lib/ucc.sh'}"
+                        {_ucc_env(tmp_path)}
                         source "{ROOT / 'lib/utils.sh'}"
                         ucc_yaml_simple_target "{ROOT}" "{manifest}" "gated"
                         """
@@ -1594,13 +1591,7 @@ class UccSchedulerTests(unittest.TestCase):
                         set -euo pipefail
                         export PYTHONPATH="{_REAL_PYUSERSITE}:${{PYTHONPATH:-}}"
                         export HOME="{home_dir}"
-                        export UCC_DECLARATION_FILE="{tmp_path / 'decl.jsonl'}"
-                        export UCC_RESULT_FILE="{tmp_path / 'result.jsonl'}"
-                        export UCC_SUMMARY_FILE="{tmp_path / 'summary.txt'}"
-                        export UCC_PROFILE_SUMMARY_FILE="{tmp_path / 'profile.txt'}"
-                        export UCC_TARGET_STATUS_FILE="{tmp_path / 'status.txt'}"
-                        export UCC_CORRELATION_ID="test-run"
-                        source "{ROOT / 'lib/ucc.sh'}"
+                        {_ucc_env(tmp_path)}
 
                         ucc_yaml_parametric_target "{ROOT}" "{manifest}" setting
                         ucc_yaml_parametric_target "{ROOT}" "{manifest}" setting
@@ -1656,13 +1647,7 @@ class UccSchedulerTests(unittest.TestCase):
                         set -euo pipefail
                         export PYTHONPATH="{_REAL_PYUSERSITE}:${{PYTHONPATH:-}}"
                         export HOME="{home_dir}"
-                        export UCC_DECLARATION_FILE="{tmp_path / 'decl.jsonl'}"
-                        export UCC_RESULT_FILE="{tmp_path / 'result.jsonl'}"
-                        export UCC_SUMMARY_FILE="{tmp_path / 'summary.txt'}"
-                        export UCC_PROFILE_SUMMARY_FILE="{tmp_path / 'profile.txt'}"
-                        export UCC_TARGET_STATUS_FILE="{tmp_path / 'status.txt'}"
-                        export UCC_CORRELATION_ID="test-run"
-                        source "{ROOT / 'lib/ucc.sh'}"
+                        {_ucc_env(tmp_path)}
 
                         ucc_yaml_parametric_target "{ROOT}" "{manifest}" setting
                         """
@@ -1738,13 +1723,7 @@ class UccSchedulerTests(unittest.TestCase):
                         export PYTHONPATH="{_REAL_PYUSERSITE}:${{PYTHONPATH:-}}"
                         export HOME="{home_dir}"
                         export TEST_SETTING_MODE="on"
-                        export UCC_DECLARATION_FILE="{tmp_path / 'decl.jsonl'}"
-                        export UCC_RESULT_FILE="{tmp_path / 'result.jsonl'}"
-                        export UCC_SUMMARY_FILE="{tmp_path / 'summary.txt'}"
-                        export UCC_PROFILE_SUMMARY_FILE="{tmp_path / 'profile.txt'}"
-                        export UCC_TARGET_STATUS_FILE="{tmp_path / 'status.txt'}"
-                        export UCC_CORRELATION_ID="test-run"
-                        source "{ROOT / 'lib/ucc.sh'}"
+                        {_ucc_env(tmp_path)}
 
                         ucc_yaml_parametric_target "{ROOT}" "{manifest}" setting
                         """
@@ -1797,13 +1776,7 @@ class UccSchedulerTests(unittest.TestCase):
                         export PYTHONPATH="{_REAL_PYUSERSITE}:${{PYTHONPATH:-}}"
                         export HOME="{home_dir}"
                         export UCC_MODE=update
-                        export UCC_DECLARATION_FILE="{tmp_path / 'decl.jsonl'}"
-                        export UCC_RESULT_FILE="{tmp_path / 'result.jsonl'}"
-                        export UCC_SUMMARY_FILE="{tmp_path / 'summary.txt'}"
-                        export UCC_PROFILE_SUMMARY_FILE="{tmp_path / 'profile.txt'}"
-                        export UCC_TARGET_STATUS_FILE="{tmp_path / 'status.txt'}"
-                        export UCC_CORRELATION_ID="test-run"
-                        source "{ROOT / 'lib/ucc.sh'}"
+                        {_ucc_env(tmp_path)}
 
                         ucc_yaml_parametric_target "{ROOT}" "{manifest}" setting
                         """
@@ -1855,13 +1828,7 @@ class UccSchedulerTests(unittest.TestCase):
                         set -euo pipefail
                         export PYTHONPATH="{_REAL_PYUSERSITE}:${{PYTHONPATH:-}}"
                         export HOME="{home_dir}"
-                        export UCC_DECLARATION_FILE="{tmp_path / 'decl.jsonl'}"
-                        export UCC_RESULT_FILE="{tmp_path / 'result.jsonl'}"
-                        export UCC_SUMMARY_FILE="{tmp_path / 'summary.txt'}"
-                        export UCC_PROFILE_SUMMARY_FILE="{tmp_path / 'profile.txt'}"
-                        export UCC_TARGET_STATUS_FILE="{tmp_path / 'status.txt'}"
-                        export UCC_CORRELATION_ID="test-run"
-                        source "{ROOT / 'lib/ucc.sh'}"
+                        {_ucc_env(tmp_path)}
 
                         install_app() {{ touch "$HOME/app.installed" "$HOME/app.ready"; }}
                         ucc_yaml_runtime_target "{ROOT}" "{manifest}" app install_app install_app
@@ -2050,13 +2017,7 @@ class UccSchedulerTests(unittest.TestCase):
                     textwrap.dedent(
                         f"""\
                         set -euo pipefail
-                        export UCC_DECLARATION_FILE="{tmp_path / 'decl.jsonl'}"
-                        export UCC_RESULT_FILE="{tmp_path / 'result.jsonl'}"
-                        export UCC_SUMMARY_FILE="{tmp_path / 'summary.txt'}"
-                        export UCC_PROFILE_SUMMARY_FILE="{tmp_path / 'profile.txt'}"
-                        export UCC_TARGET_STATUS_FILE="{tmp_path / 'status.txt'}"
-                        export UCC_CORRELATION_ID="test-run"
-                        source "{ROOT / 'lib/ucc.sh'}"
+                        {_ucc_env(tmp_path)}
                         source "{ROOT / 'lib/utils.sh'}"
                         ucc_yaml_runtime_target "{ROOT}" "{manifest}" app
                         """
@@ -2110,13 +2071,7 @@ class UccSchedulerTests(unittest.TestCase):
                         f"""\
                         set -euo pipefail
                         export UIC_PREF_PREFERRED_DRIVER_POLICY=warn
-                        export UCC_DECLARATION_FILE="{tmp_path / 'decl.jsonl'}"
-                        export UCC_RESULT_FILE="{tmp_path / 'result.jsonl'}"
-                        export UCC_SUMMARY_FILE="{tmp_path / 'summary.txt'}"
-                        export UCC_PROFILE_SUMMARY_FILE="{tmp_path / 'profile.txt'}"
-                        export UCC_TARGET_STATUS_FILE="{tmp_path / 'status.txt'}"
-                        export UCC_CORRELATION_ID="test-run"
-                        source "{ROOT / 'lib/ucc.sh'}"
+                        {_ucc_env(tmp_path)}
                         source "{ROOT / 'lib/utils.sh'}"
                         brew_cask_is_installed() {{ return 1; }}
                         ucc_yaml_runtime_target "{ROOT}" "{manifest}" app
@@ -3207,13 +3162,7 @@ class UccSchedulerTests(unittest.TestCase):
                     textwrap.dedent(
                         f"""\
                         set -euo pipefail
-                        export UCC_DECLARATION_FILE="{tmp_path / 'decl.jsonl'}"
-                        export UCC_RESULT_FILE="{tmp_path / 'result.jsonl'}"
-                        export UCC_SUMMARY_FILE="{tmp_path / 'summary.txt'}"
-                        export UCC_PROFILE_SUMMARY_FILE="{tmp_path / 'profile.txt'}"
-                        export UCC_TARGET_STATUS_FILE="{tmp_path / 'status.txt'}"
-                        export UCC_CORRELATION_ID="test-run"
-                        source "{ROOT / 'lib/ucc.sh'}"
+                        {_ucc_env(tmp_path)}
 
                         brew_observe() {{ printf '1.2.3'; }}
                         brew_service_is_started() {{ return 0; }}
@@ -3287,13 +3236,7 @@ class UccSchedulerTests(unittest.TestCase):
                     textwrap.dedent(
                         f"""\
                         set -euo pipefail
-                        export UCC_DECLARATION_FILE="{tmp_path / 'decl.jsonl'}"
-                        export UCC_RESULT_FILE="{tmp_path / 'result.jsonl'}"
-                        export UCC_SUMMARY_FILE="{tmp_path / 'summary.txt'}"
-                        export UCC_PROFILE_SUMMARY_FILE="{tmp_path / 'profile.txt'}"
-                        export UCC_TARGET_STATUS_FILE="{tmp_path / 'status.txt'}"
-                        export UCC_CORRELATION_ID="test-run"
-                        source "{ROOT / 'lib/ucc.sh'}"
+                        {_ucc_env(tmp_path)}
 
                         brew_observe() {{ printf '1.2.3'; }}
                         brew_service_is_started() {{ return 0; }}
@@ -3519,13 +3462,7 @@ class UccSchedulerTests(unittest.TestCase):
                     textwrap.dedent(
                         f"""\
                         set -euo pipefail
-                        export UCC_DECLARATION_FILE="{tmp_path / 'decl.jsonl'}"
-                        export UCC_RESULT_FILE="{tmp_path / 'result.jsonl'}"
-                        export UCC_SUMMARY_FILE="{tmp_path / 'summary.txt'}"
-                        export UCC_PROFILE_SUMMARY_FILE="{tmp_path / 'profile.txt'}"
-                        export UCC_TARGET_STATUS_FILE="{tmp_path / 'status.txt'}"
-                        export UCC_CORRELATION_ID="test-run"
-                        source "{ROOT / 'lib/ucc.sh'}"
+                        {_ucc_env(tmp_path)}
 
                         brew_observe() {{ printf '1.2.3'; }}
                         brew_service_is_started() {{ return 0; }}
@@ -3582,13 +3519,7 @@ class UccSchedulerTests(unittest.TestCase):
                     textwrap.dedent(
                         f"""\
                         set -euo pipefail
-                        export UCC_DECLARATION_FILE="{tmp_path / 'decl.jsonl'}"
-                        export UCC_RESULT_FILE="{tmp_path / 'result.jsonl'}"
-                        export UCC_SUMMARY_FILE="{tmp_path / 'summary.txt'}"
-                        export UCC_PROFILE_SUMMARY_FILE="{tmp_path / 'profile.txt'}"
-                        export UCC_TARGET_STATUS_FILE="{tmp_path / 'status.txt'}"
-                        export UCC_CORRELATION_ID="test-run"
-                        source "{ROOT / 'lib/ucc.sh'}"
+                        {_ucc_env(tmp_path)}
 
                         brew_observe() {{ [[ -f "{marker}" ]] && printf '2.0.0' || printf 'outdated'; }}
                         brew_service_is_started() {{ return 0; }}
