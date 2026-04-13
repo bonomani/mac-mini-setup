@@ -14,7 +14,7 @@ Three items remain. Docker install/launch is fully functional
 | 5 | ~~`docker-privileged-ports` target~~ | ✅ DONE 2026-04-13 (`f064f39`, `d50b28f`) | — |
 | 6 | Docker unattended first install — Checkpoint C | Core works, needs clean-state end-to-end tests | Medium |
 | 7 | ~~Fix test suite — 43 failing integration tests~~ | ✅ DONE 2026-04-13 — 159 pass, 1 skipped, 0 failed | — |
-| 8 | Driver convention: `_<driver>_state()` helper | Convention established in `setting.sh`, `swupdate_schedule.sh` | Low |
+| 8 | ~~Driver convention: `_<driver>_state()` helper~~ | ✅ DONE 2026-04-13 — 7 drivers extracted, 12 share only cached YAML reads (no duplication) | — |
 
 ### Driver convention: `_<driver>_state()` helper
 
@@ -23,37 +23,21 @@ state" logic. Rather than changing the dispatch protocol, each driver
 that shares logic should extract a `_<driver>_state()` helper. Observe
 calls it directly; evidence wraps it as `key=value`.
 
-**Convention established in (2/21):**
+**Extracted helpers (7/7 with real command duplication):**
 - `setting.sh` → `_setting_read_value()` (`5e4a86d`)
 - `swupdate_schedule.sh` → `_swupdate_schedule_state()` (`1bfeff6`)
+- `pip_bootstrap.sh` → `_pip_bootstrap_version()` (`63d775e`)
+- `git_global.sh` → `_git_global_read()` (`63d775e`)
+- `compose_file.sh` → `_compose_file_resolve_path()` (`63d775e`)
+- `nvm.sh` → `_nvm_resolve_dir()` + `_nvm_self_version()` (`63d775e`)
+- `app_bundle.sh` → `_app_bundle_plist_version()` (`63d775e`)
 
-**Remaining drivers to extract (19):**
+**Not extracted (12 — share only cached YAML field reads, no command duplication):**
+brew, build_deps, compose_apply, custom_daemon, git_repo, home_artifact,
+path_export, pip, script_installer, service, vscode/json-merge, zsh_config.
 
-| Driver | Shared read logic |
-|---|---|
-| app_bundle.sh | app_path + defaults plist read |
-| brew.sh | driver.ref + brew_observe/brew_cask_observe |
-| build_deps.sh | `_build_deps_distro_family` call |
-| compose_apply.sh | `_resolve_path` + docker compose config |
-| compose_file.sh | path_env + env var lookup |
-| custom_daemon.sh | `<bin> --version` + pgrep |
-| git_global.sh | `git config --global` reads |
-| git_repo.sh | git -C fetch/rev-parse |
-| home_artifact.sh | subkind dispatch + field reads |
-| nvm.sh (nvm) | source nvm.sh + `nvm --version` |
-| nvm.sh (nvm-version) | nvm_dir + nvm version check |
-| path_export.sh | bin_dir + shell_profile grep |
-| pip.sh | isolation + probe_pkg + version |
-| pip_bootstrap.sh | `pip --version` |
-| script_installer.sh | install_dir + git tag/hash |
-| service.sh | `_service_get_fields` + backend |
-| vscode.sh (json-merge) | settings_relpath + patch_relpath |
-| zsh_config.sh | key + value + config_file grep |
-
-**Not applicable (different logic):** brew_unlink, docker_compose_service.
-**Dispatchers (no observe/evidence pair):** npm, package, pkg.
-
-No framework change needed — this is a driver authoring convention.
+**Not applicable:** brew_unlink, docker_compose_service (different logic);
+npm, package, pkg (dispatchers).
 
 ### Fix test suite — 43 failing integration tests (DONE)
 
