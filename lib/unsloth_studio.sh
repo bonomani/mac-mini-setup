@@ -5,8 +5,14 @@
 
 # Resolve absolute path to the unsloth binary — fails fast if not found.
 # launchd/systemd do not load pyenv shims so we must bake in the absolute path.
+# Checks the 'unsloth' venv first (isolation.kind: venv), then falls back to
+# pyenv global and PATH for backward compat.
 _unsloth_bin() {
-  local bin
+  local bin pyenv_root="${PYENV_ROOT:-$HOME/.pyenv}"
+  # Venv path (preferred — matches isolation.kind: venv, name: unsloth)
+  bin="${pyenv_root}/versions/unsloth/bin/unsloth"
+  [[ -x "$bin" ]] && { printf '%s' "$bin"; return; }
+  # Fallback: pyenv global / PATH
   bin="$(pyenv which unsloth 2>/dev/null || command -v unsloth 2>/dev/null)"
   if [[ -z "$bin" ]]; then
     log_error "unsloth binary not found — is the unsloth package installed?"
