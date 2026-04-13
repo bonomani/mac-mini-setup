@@ -43,67 +43,31 @@ for _ucc_drv_file in \
 done
 unset _ucc_drv_file
 
-# _ucc_driver_observe <cfg_dir> <yaml> <target>
-# Returns 0 and emits ASM state if driver handled it; returns 1 to fall through.
-_ucc_driver_observe() {
-  local cfg_dir="$1" yaml="$2" target="$3"
+# _ucc_driver_dispatch <cfg_dir> <yaml> <target> <operation> [extra_args...]
+# Central dispatch: resolves driver.kind, finds _ucc_driver_<kind>_<op>,
+# calls it if defined. Returns 0 if handled, 1 to fall through.
+_ucc_driver_dispatch() {
+  local cfg_dir="$1" yaml="$2" target="$3" op="$4"
+  shift 4
   local kind
   kind="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.kind")"
   [[ -n "$kind" && "$kind" != "custom" ]] || return 1
-  local fn="_ucc_driver_${kind//-/_}_observe"
+  local fn="_ucc_driver_${kind//-/_}_${op}"
   declare -f "$fn" >/dev/null 2>&1 || return 1
-  "$fn" "$cfg_dir" "$yaml" "$target"
+  "$fn" "$cfg_dir" "$yaml" "$target" "$@"
 }
 
-# _ucc_driver_action <cfg_dir> <yaml> <target> <install|update>
-# Returns 0 and executes action if driver handled it; returns 1 to fall through.
-_ucc_driver_action() {
-  local cfg_dir="$1" yaml="$2" target="$3" action="$4"
-  local kind
-  kind="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.kind")"
-  [[ -n "$kind" && "$kind" != "custom" ]] || return 1
-  local fn="_ucc_driver_${kind//-/_}_action"
-  declare -f "$fn" >/dev/null 2>&1 || return 1
-  "$fn" "$cfg_dir" "$yaml" "$target" "$action"
-}
-
-# _ucc_driver_apply <cfg_dir> <yaml> <target>
-# For config/bool targets: routes to _ucc_driver_<kind>_apply instead of _action.
-# Returns 0 if driver handled it; returns 1 to fall through.
-_ucc_driver_apply() {
-  local cfg_dir="$1" yaml="$2" target="$3"
-  local kind
-  kind="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.kind")"
-  [[ -n "$kind" && "$kind" != "custom" ]] || return 1
-  local fn="_ucc_driver_${kind//-/_}_apply"
-  declare -f "$fn" >/dev/null 2>&1 || return 1
-  "$fn" "$cfg_dir" "$yaml" "$target"
-}
-
-# _ucc_driver_recover <cfg_dir> <yaml> <target> <level>
-# Returns 0 if driver handled it; returns 1 to fall through.
-_ucc_driver_recover() {
-  local cfg_dir="$1" yaml="$2" target="$3" level="$4"
-  local kind
-  kind="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.kind")"
-  [[ -n "$kind" && "$kind" != "custom" ]] || return 1
-  local fn="_ucc_driver_${kind//-/_}_recover"
-  declare -f "$fn" >/dev/null 2>&1 || return 1
-  "$fn" "$cfg_dir" "$yaml" "$target" "$level"
-}
+_ucc_driver_observe() { _ucc_driver_dispatch "$1" "$2" "$3" observe; }
+_ucc_driver_action()  { _ucc_driver_dispatch "$1" "$2" "$3" action "$4"; }
+_ucc_driver_apply()   { _ucc_driver_dispatch "$1" "$2" "$3" apply; }
+_ucc_driver_recover() { _ucc_driver_dispatch "$1" "$2" "$3" recover "$4"; }
 
 # _ucc_driver_evidence <cfg_dir> <yaml> <target>
 # Returns 0 and emits evidence text if driver handled it; returns 1 to fall through.
 _ucc_driver_evidence() {
-  local cfg_dir="$1" yaml="$2" target="$3"
-  local kind
-  kind="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.kind")"
-  [[ -n "$kind" && "$kind" != "custom" ]] || return 1
-  local fn="_ucc_driver_${kind//-/_}_evidence"
-  declare -f "$fn" >/dev/null 2>&1 || return 1
-  "$fn" "$cfg_dir" "$yaml" "$target" || return 1
+  _ucc_driver_dispatch "$1" "$2" "$3" evidence || return 1
   # Generic: append latest version from GitHub if driver.github_repo is set
-  _ucc_driver_github_latest "$cfg_dir" "$yaml" "$target"
+  _ucc_driver_github_latest "$1" "$2" "$3"
 }
 
 # Check GitHub releases for latest version (generic, works with any driver).
