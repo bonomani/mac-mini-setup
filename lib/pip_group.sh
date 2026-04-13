@@ -50,6 +50,84 @@ for t in (data.get('targets') or {}).values():
 " 2>/dev/null || true
 }
 
+# ── pip-global-policy enforcement ─────────────────────────────────────────────
+# Run after all venv installs. Checks global pip for packages with conflicting
+# upper-version constraints. Actions depend on UIC_PREF_PIP_GLOBAL_POLICY:
+#   permissive — do nothing
+#   strict     — warn on conflicting packages
+#   migrate    — auto-remove conflicting packages from global if they exist
+#                in a venv or are orphaned transitive deps
+_pip_global_policy_enforce() {
+  local cfg_dir="$1" yaml="$2"
+  local policy="${UIC_PREF_PIP_GLOBAL_POLICY:-permissive}"
+  [[ "$policy" == "permissive" ]] && return 0
+
+  _pip_ensure_path || return 0
+  local pip_cmd="pip"
+  command -v pip >/dev/null 2>&1 || pip_cmd="python3 -m pip"
+
+  # Run pip check and parse conflict sources.
+  # pip check output format:
+  #   <pkg> <ver> requires <dep><constraint>, which is not installed.
+  #   <pkg> <ver> has requirement <dep><constraint>, but you have <dep> <ver>.
+  local check_output
+  check_output="$($pip_cmd check 2>/dev/null || true)"
+  [[ -n "$check_output" ]] || return 0
+
+  # Extract package names that impose conflicting constraints.
+  # These are the first word on each line of pip check output.
+  local conflict_pkgs
+  conflict_pkgs="$(printf '%s\n' "$check_output" \
+    | awk '{print tolower($1)}' | sort -u)"
+  [[ -n "$conflict_pkgs" ]] || return 0
+
+  # Collect venv package names for "exists in a venv" check.
+  local venv_pkgs=""
+  local _vn
+  for _vn in $(_pip_list_venv_names "$cfg_dir" "$yaml"); do
+    _pip_venv_available "$_vn" || continue
+    local _vp
+    _vp="$("$(_pip_venv_pip_cmd "$_vn")" list --format=json 2>/dev/null \
+      | python3 -c "
+import sys, json
+for p in json.load(sys.stdin):
+    print(p['name'].lower().replace('-','_'))
+" 2>/dev/null || true)"
+    venv_pkgs="${venv_pkgs}${_vp}"$'\n'
+  done
+
+  local pkg in_venv
+  while IFS= read -r pkg; do
+    [[ -n "$pkg" ]] || continue
+    local norm="${pkg//-/_}"
+    # Check if package exists in any venv
+    in_venv=0
+    printf '%s\n' "$venv_pkgs" | grep -qx "$norm" && in_venv=1
+
+    case "$policy" in
+      strict)
+        if [[ "$in_venv" == "1" ]]; then
+          log_warn "pip-global-policy: '$pkg' conflicts in global pip and exists in a venv — run: pip uninstall -y $pkg"
+        else
+          log_warn "pip-global-policy: '$pkg' conflicts in global pip — consider: pip uninstall -y $pkg"
+        fi
+        ;;
+      migrate)
+        if [[ "$in_venv" == "1" ]]; then
+          log_info "pip-global-policy: removing '$pkg' from global pip (exists in venv)"
+          $pip_cmd uninstall -y "$pkg" 2>/dev/null || true
+        else
+          # Orphaned transitive dep: try to uninstall; pip refuses if something
+          # in global still depends on it.
+          log_info "pip-global-policy: removing orphaned '$pkg' from global pip"
+          $pip_cmd uninstall -y "$pkg" 2>/dev/null || \
+            log_warn "pip-global-policy: cannot remove '$pkg' — still required by another global package"
+        fi
+        ;;
+    esac
+  done <<< "$conflict_pkgs"
+}
+
 # Runner: load all pip group targets from a YAML config file.
 # Usage: load_pip_groups_from_yaml <cfg_dir> <yaml_path>
 load_pip_groups_from_yaml() {
@@ -93,6 +171,9 @@ run_ai_python_stack_from_yaml() {
 
   # ---- Unsloth package (all platforms) ----
   ucc_yaml_simple_target "$cfg_dir" "$yaml" "unsloth"
+
+  # ---- Global pip conflict cleanup ----
+  _pip_global_policy_enforce "$cfg_dir" "$yaml"
 
   # ---- Unsloth Studio runtime (platform-specific) ----
   case "${HOST_PLATFORM:-}" in

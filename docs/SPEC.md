@@ -245,6 +245,7 @@ not specified). Counts are real (`type` distribution per component).
 | `destructive-updates` | `off` | `on|off` | off prevents destructive container/package replacement without explicit operator intent; on allows full reimaging on update |
 | `service-policy` | `autostart` | `manual|autostart` | autostart: script starts required services (Docker, Ollama) when not running; manual: operator starts services before running the script |
 | `update-policy` | `balanced` | `conservative|balanced|aggressive` | conservative: install only, no upstream checks; balanced: auto-upgrade tools, hold libs stable, upstream checks on; aggressive: upgrade everything including libs |
+| `pip-global-policy` | `permissive` | `permissive|strict|migrate` | permissive: keep all packages in global pip; strict: warn on packages with conflicting upper-version constraints; migrate: auto-remove conflicting packages from global when they exist in a venv or are orphaned |
 | `preferred-driver-policy` | `warn` | `ignore|warn|migrate` | ignore accepts software found outside the preferred install driver; warn reports drift without changing it; migrate allows supported targets to converve to the preferred driver |
 
 ## 6. Gates  (`defaults/gates.yaml`)
@@ -333,7 +334,7 @@ See [`docs/driver-feature-matrix.md`](driver-feature-matrix.md) — auto-generat
 - Components: **10**
 - Targets: **113**
 - Distinct driver kinds: **26**
-- Preferences: **6**
+- Preferences: **7**
 - Gates: **1**
 - TIC tests: **23**
 - Globally disabled targets: **11**

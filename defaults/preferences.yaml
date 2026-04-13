@@ -19,6 +19,10 @@ preferences:
     default: balanced
     options: conservative|balanced|aggressive
     rationale: 'conservative: install only, no upstream checks; balanced: auto-upgrade tools, hold libs stable, upstream checks on; aggressive: upgrade everything including libs'
+  - name: pip-global-policy
+    default: permissive
+    options: permissive|strict|migrate
+    rationale: 'permissive: keep all packages in global pip; strict: warn on packages with conflicting upper-version constraints; migrate: auto-remove conflicting packages from global when they exist in a venv or are orphaned'
   - name: preferred-driver-policy
     default: warn
     options: ignore|warn|migrate
