@@ -2,13 +2,16 @@
 # lib/drivers/swupdate_schedule.sh — driver.kind: softwareupdate-schedule
 # Manages the macOS automatic software update schedule (on/off).
 
-_ucc_driver_softwareupdate_schedule_observe() {
-  local cfg_dir="$1" yaml="$2" target="$3"
+_swupdate_schedule_state() {
   if softwareupdate --schedule 2>/dev/null | grep -qiE 'is (on|turned on)\.?$'; then
     printf 'on'
   else
     printf 'off'
   fi
+}
+
+_ucc_driver_softwareupdate_schedule_observe() {
+  _swupdate_schedule_state
 }
 
 _ucc_driver_softwareupdate_schedule_action() {
@@ -18,12 +21,5 @@ _ucc_driver_softwareupdate_schedule_action() {
 }
 
 _ucc_driver_softwareupdate_schedule_evidence() {
-  local cfg_dir="$1" yaml="$2" target="$3"
-  local state
-  if softwareupdate --schedule 2>/dev/null | grep -qiE 'is (on|turned on)\.?$'; then
-    state="on"
-  else
-    state="off"
-  fi
-  printf 'schedule=%s' "$state"
+  printf 'schedule=%s' "$(_swupdate_schedule_state)"
 }
