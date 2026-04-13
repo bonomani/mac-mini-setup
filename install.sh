@@ -713,7 +713,11 @@ fi
 _ucc_sudo_refresh() {
   [[ "${_UCC_SUDO_AVAILABLE:-0}" == "1" ]] || return 0
   # sudo -v in the main shell (foreground, with tty) refreshes the ticket.
-  sudo -v 2>/dev/null || true
+  # If the ticket expired and can't be renewed, clear the flag so
+  # admin_required targets get [policy] instead of [fail].
+  if ! sudo -v -n 2>/dev/null; then
+    export _UCC_SUDO_AVAILABLE=0
+  fi
 }
 
 # Warm Brew caches before any component runs. Version caches are needed in all
