@@ -300,6 +300,10 @@ _docker_desktop_install() {
   local greedy; greedy="$(_ucc_yaml_target_get "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME" "driver.greedy_auto_updates")"
   _docker_cask_ensure "$cask_id" "$app_path" "$greedy" "Docker Desktop"
   _docker_settings_store_patch "$settings_relpath"
+  # Ensure Docker Desktop is running — the framework expects a runtime
+  # target's install action to reach Running state, not just Configured.
+  _docker_strip_quarantine "$app_path"
+  _docker_launch
 }
 
 # Gracefully stop Docker Desktop to avoid the stuck 500-error state.
