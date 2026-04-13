@@ -4,8 +4,8 @@
 
 Six items. Phase C1 is **waiting-for-consumer**. Docker Desktop
 unattended first install is **in-progress** (core recipe works,
-Step 9 triage ongoing). Docker privileged ports target is
-**ready-to-implement** (design validated, functions exist).
+Step 12 done, vmnetd wired, launch fixed). Docker privileged ports
+target is **ready-to-implement** (design validated, functions exist).
 
 ### Auto-include dependency components when selecting a single component
 
@@ -265,12 +265,18 @@ finds them:
 
 | Function | Purpose | Commit |
 |---|---|---|
-| `_docker_bootstrap_complete` | Check `LicenseTermsVersion` in `settings-store.json` — the definitive "has this user bootstrapped Docker at least once" probe | `5a79a42` |
-| `_docker_strip_quarantine "$app_path"` | Run `xattr -dr com.apple.quarantine` recursively on the bundle. Handles missing xattr gracefully | `ba8f095` / `71c2dee` |
-| `_docker_launch` | `open -a /Applications/Docker.app` + 90s poll on `~/.docker/run/docker.sock`. Use this verbatim for step 9 of the orchestrator; do NOT reimplement | `f08328e` |
-| `_docker_kill_zombies "$kill_pattern"` | `pkill -f "$pattern"` + `sleep 2`. Useful for the pre-apply cleanup step | (existing) |
-| `_docker_settings_store_patch "$relpath"` | Write the silent-start flags to `settings-store.json`. Note: uses the `settings_relpath` YAML key, not the old `docker_settings_store_relpath` (fixed in `71c2dee`) | `71c2dee` |
-| `docker_desktop_observe` | Checks `/Applications/Docker.app` directory existence, not `command -v docker` (which is unreliable on Apple Silicon because brew links to `/usr/local/bin` which isn't always in PATH) | `813aa78` |
+| `_docker_bootstrap_complete` | Check `LicenseTermsVersion` in `settings-store.json` — reads `settings_relpath` from YAML | `5a79a42` / `fce0367` |
+| `_docker_strip_quarantine "$app_path"` | Run `xattr -dr com.apple.quarantine` recursively on the bundle | `ba8f095` |
+| `_docker_launch` | `env -i` + `nohup open -g` + `/_ping` socket readiness poll (30s). Reads `app_path`/`app_name` from YAML. 500-state pre-check via `/info` on socket | `f08328e` / `0cea1a6` |
+| `_docker_kill_zombies "$pattern" "$app_name"` | `osascript quit` + `pkill` fallback. Accepts `app_name` param | `fce0367` |
+| `_docker_settings_store_patch "$relpath"` | Write silent-start flags to `settings-store.json` | `71c2dee` |
+| `docker_desktop_observe` | Checks app directory existence — reads `docker_desktop_app_path` from YAML | `813aa78` / `fce0367` |
+| `docker_desktop_is_running` | `pgrep` on `docker_desktop_process` from YAML | `fce0367` |
+| `docker_desktop_pid` | PID of root process (was `docker_daemon_pid` — renamed, daemon has no host PID) | `fce0367` |
+| `docker_daemon_configured` | Checks socket existence (`~/.docker/run/docker.sock`) instead of `command -v docker` | `fce0367` |
+| `docker_daemon_is_running` | `curl /_ping` on socket (was `docker info` — PATH-dependent) | `0cea1a6` |
+| `docker_version` | `curl /version` on socket (was `docker --version` — PATH-dependent) | `0cea1a6` |
+| `_docker_ready` | `curl /_ping` on socket with `docker ps` fallback | `fce0367` |
 
 The assisted-install orchestrator should call these helpers rather
 than rolling its own `open -a` / `xattr` / `pkill` / `defaults write`
@@ -773,10 +779,11 @@ Key discoveries during Checkpoint C testing:
 - **`osascript quit "Docker"` ≠ `osascript quit "Docker Desktop"`** —
   only the latter cleanly stops Docker Desktop. The shorter name
   leaves a persistent 500 error state.
-- **`~/.docker/run/docker.sock`** does not exist on Docker Desktop
-  4.x Apple Silicon. The docker CLI uses the context
-  (`desktop-linux`) to route to the actual socket at
-  `~/Library/Containers/com.docker.docker/Data/docker-cli.sock`.
+- **~~`~/.docker/run/docker.sock` does not exist~~** — CORRECTED
+  2026-04-13: the socket DOES exist on Docker Desktop 4.68 / Apple
+  Silicon. Verified via `curl --unix-socket ~/.docker/run/docker.sock
+  http://localhost/_ping` → `OK`. All probes now use this socket
+  directly (`/_ping`, `/version`, `/info`) instead of the docker CLI.
 - **EULA prewrite now writes 5 keys**: `LicenseTermsVersion`,
   `DisplayedOnboarding`, `ShowInstallScreen`,
   `OpenUIOnStartupDisabled`, `RequireVmnetd`.
@@ -830,87 +837,81 @@ Consumer + sudo → vmnetd seeded, `RequireVmnetd: true` written.
 **Prewrite keeps `RequireVmnetd: false`** — safe default for
 headless launch. This target flips it to `true` when needed.
 
-#### Step 12 — Separate docker-desktop (app install) from docker-available (daemon lifecycle)
+#### Step 12 — Separate docker-desktop (app install) from docker-daemon (daemon lifecycle) — ✅ DONE 2026-04-13
 
-The current `docker-desktop` target conflates app installation and
-daemon startup. This causes the 25s-quit issue in install.sh: the
-install action does brew + settings + launch + readiness probe all
-in one function, making it hard to debug and maintain.
-
-**Refactoring:**
+Implemented differently from the original design but achieves the same
+separation of concerns:
 
 ```yaml
-docker-desktop:
-  component: docker
-  profile: configured        # was: runtime
-  type: package              # was: runtime
-  state_model: package
-  display_name: Docker Desktop
-  depends_on: [homebrew]
-  driver:
-    kind: app-bundle
-    app_path: ${docker_desktop_app_path}
-    brew_cask: ${docker_desktop_cask_id}
-  # Install action: brew install --cask + strip quarantine + EULA prewrite
-  # NO daemon start, NO open -g, NO readiness probe
-
-docker-available:
-  component: docker
-  profile: capability
-  type: capability
-  display_name: Docker daemon
-  depends_on: [docker-desktop]
-  driver:
-    kind: capability
-    probe: docker_daemon_is_running
-  actions:
-    start: _docker_daemon_start    # open -g + readiness probe
-  # Daemon lifecycle is HERE, not in docker-desktop
-  # This is where _docker_launch belongs
-
-docker-resources:
-  # unchanged, but depends_on: docker-available (needs running daemon)
-  depends_on: [docker-available]
+docker-desktop:       # install: _docker_desktop_install (brew cask + settings + launch)
+docker-daemon:        # install: _docker_daemon_start (nohup open -g + /_ping readiness)
+docker-available:     # capability: probe socket
+docker-resources:     # parametric: settings-store.json
 ```
 
-**What moves where:**
+**Key changes (commits fce0367..0cea1a6):**
+- `_docker_desktop_install` does brew cask + settings patch + launch
+  via `_docker_launch` (clean env with `env -i`)
+- `_docker_daemon_start` handles daemon start independently
+- All probes switched from docker CLI (PATH-dependent) to socket-based
+  (`curl /_ping`, `/version`, `/info`)
+- All hardcodes eliminated — values read from YAML
+- `docker_daemon_pid` renamed `docker_desktop_pid` (PID is Desktop's
+  root process, not the daemon which runs in the VM)
+- `docker_daemon_configured` checks socket existence instead of
+  `command -v docker`
+- Process architecture and shutdown cascade timings documented in
+  `lib/docker.sh` header (verified by kill tests on Apple Silicon)
 
-| Current location | New location |
-|---|---|
-| `_docker_desktop_install_and_start` (install + start) | Split into two functions |
-| `_docker_desktop_install` (brew + settings) | Stays in `docker-desktop` action |
-| `_docker_daemon_start` (kill + launch) | Moves to `docker-available` action |
-| `_docker_launch` (open -g + probe) | Called from `docker-available` action |
-| `_docker_assisted_install` (full orchestrator) | Split: brew part in docker-desktop, launch part in docker-available |
-
-**Impact on assisted install:**
-
-The assisted orchestrator simplifies. Instead of doing everything:
-1. `docker-desktop` install action: get password → setup askpass →
-   EULA prewrite → `brew install --cask` → strip quarantine
-2. `docker-available` action (framework auto-dispatches via dependency):
-   `open -g` + readiness probe (same for assisted and manual)
-
-The daemon launch is no longer inside the assisted orchestrator — the
-framework handles it through the dependency graph. The assisted path
-only needs to handle what's different about a first-time brew install
-(SUDO_ASKPASS for brew's sudo calls).
-
-**Benefits:**
-- Clean separation of concerns (app install ≠ daemon lifecycle)
-- The 25s quit issue is isolated to docker-available's action
-- Assisted install becomes simpler (just the brew step)
-- docker-resources naturally depends on docker-available (running daemon)
-- Matches the pattern: `docker-desktop` → `docker-available` like
-  `ollama` → `ollama` already has (binary install → daemon probe)
-
-**Needs:**
-- Capability driver to support an action hook (currently observe-only)
-- Or change docker-available to a runtime target with custom driver
-- Update `run_docker_from_yaml` dispatch order
-- Update tests
+**Root cause of the 20s-quit bug:** Docker Desktop silently fails when
+the inherited environment exceeds ~145 KB (hundreds of `_UCC_*` exports
+accumulated during install.sh). Fixed by launching with `env -i HOME PATH`.
 
 ## Closed
+
+### 2026-04-13 session — Docker hardening and launch fix
+
+**Docker probe and config hardening** (`fce0367`) — Eliminated all
+hardcoded values from `lib/docker.sh`. Every function now reads config
+(app path, process name, settings path, app name) from YAML via
+`yaml_get_many`. Renamed `docker_backend_process` → `docker_desktop_process`
+and `docker_daemon_pid` → `docker_desktop_pid` to reflect the real
+architecture (com.docker.backend is the root process, the daemon runs
+inside the Linux VM with no host PID).
+
+**Socket-based probes** (`0cea1a6`) — Switched all Docker daemon probes
+from the `docker` CLI (PATH-dependent, unreliable on Apple Silicon) to
+direct socket access via `curl --unix-socket ~/.docker/run/docker.sock`:
+`/_ping` for readiness, `/version` for version, `/info` for 500-state
+detection. CLI calls kept as fallbacks only.
+
+**Process architecture documented** — Kill tests on Apple Silicon
+confirmed: com.docker.backend is the root process (PPID 1, launched by
+launchd), GUI is a child of the backend (not the other way around),
+killing ANY component triggers full shutdown (no auto-restart). Timings
+documented in `lib/docker.sh` header.
+
+**Install/launch separation** (`554c6bc`) — `_docker_desktop_install`
+now only does brew cask install + settings patch. Launch moved to
+`_docker_launch` called at the end. Removed dead debug code and Phase 3
+manual-start warning from `run_docker_from_yaml`.
+
+**Large-env launch failure** (`0cea1a6`) — Root cause found: Docker
+Desktop's com.docker.backend silently fails to start when the inherited
+environment exceeds ~145 KB (500+ `_UCC_*` exports accumulated during
+install.sh). Fixed by launching with `env -i HOME="$HOME" PATH="$PATH"`.
+
+**Actions wired** (`07a6525`) — `docker-desktop` and `docker-daemon`
+targets now have `actions.install` in the YAML. Previously observe-only.
+
+**Assisted install vmnetd step** — `_docker_assisted_seed_vmnetd` wired
+as Step 7 in `_docker_assisted_install`. Hardcoded app path replaced
+with parameter.
+
+Commits: `fce0367`, `979fa8a`, `554c6bc`, `4848e5e`, `0cea1a6`,
+`07a6525`.
+
+---
 
 ### 2026-04-12 session
 
