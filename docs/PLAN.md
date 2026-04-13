@@ -2,7 +2,7 @@
 
 ## Open
 
-Four items. Phase C1 is **waiting-for-consumer**. Docker Desktop
+Five items. Phase C1 is **waiting-for-consumer**. Docker Desktop
 unattended first install is **in-progress** (core recipe works,
 Step 9 triage ongoing). Docker privileged ports target is
 **ready-to-implement** (design validated, functions exist).
@@ -23,6 +23,32 @@ In this case, selecting `docker` should auto-include `software-bootstrap`
 
 **Current workaround**: `./install.sh software-bootstrap docker` or
 run without component filter (`./install.sh`).
+
+### Minimize exported environment size across the framework
+
+install.sh accumulates hundreds of `_UCC_*` exported variables during
+convergence (target state, evidence, runtime probes, etc.). On a full
+run this reaches 500+ vars / 145+ KB. This pollutes child processes
+and caused Docker Desktop to silently fail to start (com.docker.backend
+crashes when inherited env is too large — confirmed 2026-04-13).
+
+**Current workaround**: `_docker_launch` uses `env -i` to strip vars
+before `open -g`. But other external processes launched via `bash -c`
+(brew services, docker-compose, launchctl) inherit the same bloated
+env and could hit similar limits.
+
+**Actions**:
+1. Audit `_UCC_*` exports — use shell variables (not exported) where
+   the value is only needed in the current shell, not in child processes.
+2. Where exports are required (cross-`bash -c` communication), unset
+   them as soon as they're consumed.
+3. Consider a single serialized snapshot (one var or tempfile) instead
+   of hundreds of individual exports.
+4. Add `env -i` or `env --unset='_UCC_*'` to all external process
+   launches (brew, docker-compose, launchctl, open) as defense in depth.
+
+**Principle**: the framework's internal bookkeeping must never leak
+into external tools. Keep the exported env as small as possible.
 
 ### Phase C1 — uniform drift helper
 
