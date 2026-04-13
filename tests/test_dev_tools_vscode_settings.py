@@ -57,7 +57,7 @@ class VsCodeSettingsTargetTests(unittest.TestCase):
                         set -euo pipefail
                         export HOME="{home_dir}"
                         source "{ROOT / 'lib/ucc.sh'}"
-                        source "{ROOT / 'lib/dev_tools.sh'}"
+                        source "{ROOT / 'lib/vscode_ext.sh'}"
                         cfg_dir="{cfg_dir}"
                         _vscode_settings_match_patch() {{
                           local settings_file="$1" patch_file="$2"
