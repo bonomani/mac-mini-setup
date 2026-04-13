@@ -161,12 +161,13 @@ sudo_is_available() { [[ $EUID -eq 0 ]] || [[ "${_UCC_SUDO_AVAILABLE:-}" == "1" 
 sudo_not_available() { ! sudo_is_available; }
 
 # Run a command with elevated privileges (sudo when not root, direct when root).
+# Uses sudo -n (non-interactive) to avoid password prompts in automated runs.
 # Usage: run_elevated <cmd> [args...]
 run_elevated() {
   if [[ $EUID -eq 0 ]]; then
     "$@"
   else
-    sudo "$@"
+    sudo -n "$@"
   fi
 }
 
