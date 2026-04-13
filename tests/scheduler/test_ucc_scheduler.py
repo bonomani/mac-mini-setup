@@ -10,6 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 QUERY = ROOT / "tools" / "validate_targets_manifest.py"
+READ_CONFIG = ROOT / "tools" / "read_config.py"
 
 # When tests override $HOME to a temp dir, Python's user site-packages
 # (where PyYAML lives on dev machines) becomes invisible.  The bash -lc
@@ -20,27 +21,23 @@ _REAL_PYUSERSITE = subprocess.run(
     text=True, capture_output=True,
 ).stdout.strip()
 
-# These integration tests execute the full UCC framework in bash -c subshells
-# and depend on macOS-specific tools (brew, pgrep patterns, osascript) and
-# platform-specific behavior (LaunchAgents, .app bundles). They pass on macOS
-# but fail on Linux/WSL where these tools are absent or behave differently.
-# Integration tests belong on the target platform — run them on macOS CI or
-# directly on the Mac mini.
-@unittest.skipUnless(
-    os.uname().sysname == "Darwin",
-    "UCC scheduler integration tests require macOS (brew, pgrep, launchd)"
-)
-class UccSchedulerTests(unittest.TestCase):
-    def _write_manifest(self, root: Path, body: str) -> Path:
-        manifest = root / "ucc" / "software"
-        manifest.mkdir(parents=True, exist_ok=True)
-        path = manifest / "fake.yaml"
-        path.write_text(body, encoding="utf-8")
-        return root / "ucc"
+
+def _write_manifest(root: Path, body: str) -> Path:
+    manifest = root / "ucc" / "software"
+    manifest.mkdir(parents=True, exist_ok=True)
+    path = manifest / "fake.yaml"
+    path.write_text(body, encoding="utf-8")
+    return root / "ucc"
+
+
+# ---------------------------------------------------------------------------
+# Python-only validation tests — run on all platforms (no bash, no UCC shell)
+# ---------------------------------------------------------------------------
+class UccManifestValidationTests(unittest.TestCase):
 
     def test_manifest_orders_component_targets_topologically(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            ucc_dir = self._write_manifest(
+            ucc_dir = _write_manifest(
                 Path(tmp),
                 textwrap.dedent(
                     """\
@@ -92,10 +89,641 @@ class UccSchedulerTests(unittest.TestCase):
             ).strip().splitlines()
             self.assertEqual(output, ["a", "b", "c"])
 
+    def test_runtime_endpoints_query_reads_nested_endpoint_records(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            ucc_dir = _write_manifest(
+                Path(tmp),
+                textwrap.dedent(
+                    """\
+                    component: fake
+                    primary_profile: runtime
+                    libs: fake
+                    runner: run_fake
+                    probe_host: 127.0.0.1
+                    probe_port: 9999
+                    targets:
+                      fake-package:
+                        component: fake
+                        profile: configured
+                        type: package
+                        state_model: package
+                        display_name: Fake Package
+                        provided_by_tool: fake
+                        driver:
+                          kind: brew
+                          ref: fake-ref
+                        observe_cmd: "printf present"
+                        evidence:
+                          version: "printf 1.0.0"
+                        actions:
+                          install: "true"
+                          update: "true"
+                      fake-runtime:
+                        component: fake
+                        profile: runtime
+                        type: runtime
+                        display_name: Fake Runtime
+                        depends_on:
+                          - fake-package
+                        driver:
+                          kind: service
+                          backend: brew
+                          ref: fake-ref
+                        runtime_manager: brew-service
+                        probe_kind: http
+                        oracle:
+                          runtime: "curl -fsS http://${probe_host}:${probe_port} >/dev/null 2>&1"
+                        evidence:
+                          version: "printf 1.0.0"
+                        endpoints:
+                          - name: Fake API
+                            url: http://${probe_host}:${probe_port}
+                            note: primary
+                    """
+                ),
+            )
+            output = subprocess.check_output(
+                ["python3", str(QUERY), "--runtime-endpoints", str(ucc_dir)],
+                text=True,
+            ).strip()
+            self.assertEqual(output, "fake-runtime\tFake API\thttp://127.0.0.1:9999\tprimary")
+
+    def test_runtime_endpoints_query_derives_url_from_structured_endpoint_fields(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            ucc_dir = _write_manifest(
+                Path(tmp),
+                textwrap.dedent(
+                    """\
+                    component: fake
+                    primary_profile: runtime
+                    libs: fake
+                    runner: run_fake
+                    probe_host: 127.0.0.1
+                    probe_port: 9999
+                    probe_path: /health
+                    targets:
+                      fake-runtime:
+                        component: fake
+                        profile: runtime
+                        type: runtime
+                        display_name: Fake Runtime
+                        driver:
+                          kind: custom-daemon
+                          bin: /usr/bin/true
+                          process: fake-process
+                        runtime_manager: custom
+                        probe_kind: http
+                        oracle:
+                          runtime: "true"
+                        evidence:
+                          version: "printf 1.0.0"
+                        endpoints:
+                          - name: Fake API
+                            scheme: http
+                            host: ${probe_host}
+                            port: ${probe_port}
+                            path: ${probe_path}
+                            note: primary
+                    """
+                ),
+            )
+            output = subprocess.check_output(
+                ["python3", str(QUERY), "--runtime-endpoints", str(ucc_dir)],
+                text=True,
+            ).strip()
+            self.assertEqual(output, "fake-runtime\tFake API\thttp://127.0.0.1:9999/health\tprimary")
+
+    def test_display_name_query_reads_target_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            ucc_dir = _write_manifest(
+                Path(tmp),
+                textwrap.dedent(
+                    """\
+                    component: fake
+                    primary_profile: runtime
+                    libs: fake
+                    runner: run_fake
+                    targets:
+                      fake-runtime:
+                        component: fake
+                        profile: runtime
+                        type: runtime
+                        display_name: Fake Runtime
+                        driver:
+                          kind: custom-daemon
+                          bin: /usr/bin/true
+                          process: fake-process
+                        runtime_manager: custom
+                        probe_kind: command
+                        oracle:
+                          runtime: "true"
+                        evidence:
+                          version: "printf 1.0.0"
+                    """
+                ),
+            )
+            output = subprocess.check_output(
+                ["python3", str(QUERY), "--display-name", "fake-runtime", str(ucc_dir)],
+                text=True,
+            ).strip()
+            self.assertEqual(output, "Fake Runtime")
+
+    def test_read_config_get_many_returns_multiple_scalar_rows(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest = _write_manifest(
+                Path(tmp),
+                textwrap.dedent(
+                    """\
+                    component: fake
+                    primary_profile: configured
+                    libs: fake
+                    runner: run_fake
+                    api_host: 127.0.0.1
+                    api_port: 9999
+                    endpoint_url: http://${api_host}:${api_port}
+                    targets: {}
+                    """
+                ),
+            ) / "software" / "fake.yaml"
+            rows = subprocess.check_output(
+                [
+                    "python3",
+                    str(READ_CONFIG),
+                    "--get-many",
+                    str(manifest),
+                    "api_host",
+                    "endpoint_url",
+                ],
+                text=True,
+            ).strip("\0").split("\0")
+            self.assertEqual(rows, ["api_host\t127.0.0.1", "endpoint_url\thttp://127.0.0.1:9999"])
+
+    def test_read_config_target_get_many_substitutes_target_scalars(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest = _write_manifest(
+                Path(tmp),
+                textwrap.dedent(
+                    """\
+                    component: fake
+                    primary_profile: configured
+                    libs: fake
+                    runner: run_fake
+                    root_dir: demo
+                    targets:
+                      pkg:
+                        component: fake
+                        profile: configured
+                        type: package
+                        state_model: package
+                        provided_by_tool: fake
+                        driver:
+                          kind: brew-formula
+                          ref: demo
+                        observe_cmd: "printf '%s' '${driver.ref}'"
+                        evidence:
+                          version: "printf '%s' '${driver.ref}'"
+                        actions:
+                          install: "printf '%s/%s' '${root_dir}' '${driver.ref}'"
+                    """
+                ),
+            ) / "software" / "fake.yaml"
+            rows = subprocess.check_output(
+                [
+                    "python3",
+                    str(READ_CONFIG),
+                    "--target-get-many",
+                    str(manifest),
+                    "pkg",
+                    "observe_cmd",
+                    "actions.install",
+                ],
+                text=True,
+            ).strip("\0").split("\0")
+            self.assertEqual(rows, ["observe_cmd\tprintf '%s' 'demo'", "actions.install\tprintf '%s/%s' 'demo' 'demo'"])
+
+    def test_manifest_validation_rejects_non_string_display_name(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            ucc_dir = _write_manifest(
+                Path(tmp),
+                textwrap.dedent(
+                    """\
+                    component: fake
+                    primary_profile: configured
+                    libs: fake
+                    runner: run_fake
+                    targets:
+                      bad:
+                        component: fake
+                        profile: configured
+                        type: config
+                        display_name:
+                          nested: nope
+                    """
+                ),
+            )
+            result = subprocess.run(
+                ["python3", str(QUERY), str(ucc_dir)],
+                text=True,
+                capture_output=True,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("field 'display_name' must be a non-empty string", result.stderr)
+
+    def test_manifest_validation_rejects_sparse_generated_targets(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            ucc_dir = _write_manifest(
+                Path(tmp),
+                textwrap.dedent(
+                    """\
+                    component: fake
+                    primary_profile: configured
+                    libs: fake
+                    runner: run_fake
+                    targets:
+                      vscode-ext-test.example:
+                        component: fake
+                        profile: configured
+                        type: package
+                        state_model: package
+                        depends_on:
+                          - vscode-code-cmd
+                      vscode-code-cmd:
+                        component: fake
+                        profile: configured
+                        type: config
+                        state_model: config
+                    vscode_extensions:
+                      - vscode-ext-test.example
+                    """
+                ),
+            )
+            result = subprocess.run(
+                ["python3", str(QUERY), str(ucc_dir)],
+                text=True,
+                capture_output=True,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("generated target 'vscode-ext-test.example' in section 'vscode_extensions' requires provided_by_tool", result.stderr)
+
+    def test_manifest_validation_rejects_sparse_cli_generated_targets(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            ucc_dir = _write_manifest(
+                Path(tmp),
+                textwrap.dedent(
+                    """\
+                    component: fake
+                    primary_profile: configured
+                    libs: fake
+                    runner: run_fake
+                    targets:
+                      homebrew:
+                        component: fake
+                        profile: configured
+                        type: package
+                        state_model: package
+                      cli-fake:
+                        component: fake
+                        profile: configured
+                        type: package
+                        state_model: package
+                        depends_on:
+                          - homebrew
+                    cli_tools:
+                      - cli-fake
+                    """
+                ),
+            )
+            result = subprocess.run(
+                ["python3", str(QUERY), str(ucc_dir)],
+                text=True,
+                capture_output=True,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("generated target 'cli-fake' in section 'cli_tools' requires provided_by_tool", result.stderr)
+
+    def test_validator_requires_state_model_for_package_targets(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            ucc_dir = _write_manifest(
+                Path(tmp),
+                textwrap.dedent(
+                    """\
+                    component: fake
+                    primary_profile: configured
+                    libs: fake
+                    runner: run_fake
+                    targets:
+                      pkg:
+                        component: fake
+                        profile: configured
+                        type: package
+                    """
+                ),
+            )
+            result = subprocess.run(
+                ["python3", str(QUERY), str(ucc_dir)],
+                text=True,
+                capture_output=True,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("type 'package' requires state_model 'package'", result.stderr)
+
+    def test_validator_enforces_canonical_target_key_order(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            ucc_dir = _write_manifest(
+                Path(tmp),
+                textwrap.dedent(
+                    """\
+                    component: fake
+                    primary_profile: configured
+                    libs: fake
+                    runner: run_fake
+                    targets:
+                      pkg:
+                        component: fake
+                        profile: configured
+                        type: package
+                        oracle:
+                          configured: "true"
+                        state_model: package
+                    """
+                ),
+            )
+            result = subprocess.run(
+                ["python3", str(QUERY), str(ucc_dir)],
+                text=True,
+                capture_output=True,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("keys must follow canonical order", result.stderr)
+
+    def test_read_config_records_substitutes_top_level_scalars(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest = _write_manifest(
+                Path(tmp),
+                textwrap.dedent(
+                    """\
+                    component: fake
+                    primary_profile: runtime
+                    libs: fake
+                    runner: run_fake
+                    probe_host: 127.0.0.1
+                    probe_port: 9999
+                    targets:
+                      fake-runtime:
+                        component: fake
+                        profile: runtime
+                        type: runtime
+                        driver:
+                          kind: docker-compose-service
+                          service_name: fake
+                        endpoints:
+                          - name: Fake API
+                            url: http://${probe_host}:${probe_port}
+                            note: primary
+                    """
+                ),
+            ) / "software" / "fake.yaml"
+            output = subprocess.check_output(
+                [
+                    "python3",
+                    str(READ_CONFIG),
+                    "--records",
+                    str(manifest),
+                    "targets.fake-runtime.endpoints",
+                    "name",
+                    "url",
+                    "note",
+                ],
+                text=True,
+            ).strip()
+            self.assertEqual(output, "Fake API\thttp://127.0.0.1:9999\tprimary")
+
+    def test_read_config_get_substitutes_top_level_scalars(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest = _write_manifest(
+                Path(tmp),
+                textwrap.dedent(
+                    """\
+                    component: fake
+                    primary_profile: runtime
+                    libs: fake
+                    runner: run_fake
+                    probe_port: 9999
+                    targets:
+                      fake-runtime:
+                        component: fake
+                        profile: runtime
+                        type: runtime
+                        driver:
+                          kind: custom-daemon
+                          bin: /usr/bin/true
+                          process: fake-process
+                        oracle:
+                          runtime: 'curl -fsS http://127.0.0.1:${probe_port} >/dev/null 2>&1'
+                    """
+                ),
+            ) / "software" / "fake.yaml"
+            output = subprocess.check_output(
+                ["python3", str(READ_CONFIG), "--get", str(manifest), "targets.fake-runtime.oracle.runtime"],
+                text=True,
+            ).strip()
+            self.assertEqual(output, 'curl -fsS http://127.0.0.1:9999 >/dev/null 2>&1')
+
+    def test_read_config_target_get_substitutes_target_local_scalars(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest = _write_manifest(
+                Path(tmp),
+                textwrap.dedent(
+                    """\
+                    component: fake
+                    primary_profile: configured
+                    libs: fake
+                    runner: run_fake
+                    targets:
+                      pkg.with.dot:
+                        component: fake
+                        profile: configured
+                        type: package
+                        state_model: package
+                        provided_by_tool: fake
+                        driver:
+                          kind: brew-formula
+                          ref: demo
+                        observe_cmd: "printf '%s' '${driver.ref}'"
+                        evidence:
+                          version: "printf '%s' '${driver.ref}'"
+                        actions:
+                          install: "printf '%s' '${driver.ref}'"
+                    """
+                ),
+            ) / "software" / "fake.yaml"
+            observe_cmd = subprocess.check_output(
+                ["python3", str(READ_CONFIG), "--target-get", str(manifest), "pkg.with.dot", "observe_cmd"],
+                text=True,
+            ).strip()
+            install_cmd = subprocess.check_output(
+                ["python3", str(READ_CONFIG), "--target-get", str(manifest), "pkg.with.dot", "actions.install"],
+                text=True,
+            ).strip()
+            evidence = subprocess.check_output(
+                ["python3", str(READ_CONFIG), "--evidence", str(manifest), "pkg.with.dot"],
+                text=True,
+            ).strip("\0")
+            self.assertEqual(observe_cmd, "printf '%s' 'demo'")
+            self.assertEqual(install_cmd, "printf '%s' 'demo'")
+            self.assertEqual(evidence, "version\tprintf '%s' 'demo'")
+
+    def test_platform_specific_dependencies_follow_host_variant(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            ucc_dir = _write_manifest(
+                Path(tmp),
+                textwrap.dedent(
+                    """\
+                    component: fake
+                    primary_profile: configured
+                    libs: fake
+                    runner: run_fake
+                    platforms:
+                      - macos
+                      - linux
+                      - wsl2
+                    platform_tool_preferences:
+                      macos:
+                        - brew-installer
+                      linux:
+                        - native-package-manager
+                        - brew-installer
+                      wsl2:
+                        - native-package-manager
+                        - brew-installer
+                    targets:
+                      xcode:
+                        component: fake
+                        profile: configured
+                        type: precondition
+                        state_model: config
+                        display_name: Xcode
+                        driver:
+                          kind: platform-check
+                        oracle:
+                          configured: "true"
+                        evidence:
+                          state: "printf supported"
+                      pkg:
+                        component: fake
+                        profile: configured
+                        type: package
+                        state_model: package
+                        display_name: Pkg
+                        depends_on_by_platform:
+                          macos:
+                            - xcode
+                        provided_by_tool: fake
+                        driver:
+                          kind: brew
+                          ref: fake-ref
+                        observe_cmd: "printf present"
+                        evidence:
+                          version: "printf 1.0.0"
+                        actions:
+                          install: "true"
+                          update: "true"
+                    """
+                ),
+            )
+            macos_output = subprocess.check_output(
+                ["python3", str(QUERY), "--deps", "pkg", str(ucc_dir)],
+                text=True,
+                env={**os.environ, **{"HOST_PLATFORM": "macos", "HOST_PLATFORM_VARIANT": "macos"}},
+            ).strip().splitlines()
+            linux_output = subprocess.check_output(
+                ["python3", str(QUERY), "--deps", "pkg", str(ucc_dir)],
+                text=True,
+                env={**os.environ, **{"HOST_PLATFORM": "linux", "HOST_PLATFORM_VARIANT": "linux"}},
+            ).strip()
+            wsl2_output = subprocess.check_output(
+                ["python3", str(QUERY), "--deps", "pkg", str(ucc_dir)],
+                text=True,
+                env={**os.environ, **{"HOST_PLATFORM": "wsl", "HOST_PLATFORM_VARIANT": "wsl2"}},
+            ).strip()
+            self.assertIn("xcode", macos_output)
+            self.assertNotIn("xcode", linux_output)
+            self.assertNotIn("xcode", wsl2_output)
+
+    def test_softwareupdate_config_drivers_validate(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            ucc_dir = _write_manifest(
+                Path(tmp),
+                textwrap.dedent(
+                    """\
+                    component: fake
+                    primary_profile: parametric
+                    libs: fake
+                    runner: run_fake
+                    softwareupdate_domain: /Library/Preferences/com.apple.SoftwareUpdate
+                    targets:
+                      softwareupdate-schedule=on:
+                        component: fake
+                        profile: parametric
+                        type: config
+                        state_model: parametric
+                        display_name: Software Update schedule
+                        driver:
+                          kind: softwareupdate-schedule
+                        observe_cmd: "printf on"
+                        desired_value: "on"
+                        evidence:
+                          schedule: "printf on"
+                        actions:
+                          install: "printf on"
+                      softwareupdate-auto-check=1:
+                        component: fake
+                        profile: parametric
+                        type: config
+                        state_model: parametric
+                        display_name: Automatic update checks
+                        driver:
+                          kind: setting
+                          backend: defaults
+                          domain: ${softwareupdate_domain}
+                          key: AutomaticCheckEnabled
+                          value: "1"
+                        observe_cmd: "printf 1"
+                        desired_value: "1"
+                        evidence:
+                          AutomaticCheckEnabled: "printf 1"
+                        actions:
+                          install: "printf 1"
+                    """
+                ),
+            )
+            result = subprocess.run(
+                ["python3", str(QUERY), str(ucc_dir)],
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+
+
+# ---------------------------------------------------------------------------
+# Integration tests — require macOS (bash -lc + UCC framework shell libs)
+# ---------------------------------------------------------------------------
+# These integration tests execute the full UCC framework in bash -c subshells
+# and depend on macOS-specific tools (brew, pgrep patterns, osascript) and
+# platform-specific behavior (LaunchAgents, .app bundles). They pass on macOS
+# but fail on Linux/WSL where these tools are absent or behave differently.
+# Integration tests belong on the target platform — run them on macOS CI or
+# directly on the Mac mini.
+@unittest.skipUnless(
+    os.uname().sysname == "Darwin",
+    "UCC scheduler integration tests require macOS (brew, pgrep, launchd)"
+)
+class UccSchedulerTests(unittest.TestCase):
+
     def test_registered_targets_execute_in_topological_order(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
-            ucc_dir = self._write_manifest(
+            ucc_dir = _write_manifest(
                 tmp_path,
                 textwrap.dedent(
                     """\
@@ -189,7 +817,7 @@ class UccSchedulerTests(unittest.TestCase):
     def test_soft_dependencies_influence_order_without_becoming_blocking(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
-            ucc_dir = self._write_manifest(
+            ucc_dir = _write_manifest(
                 tmp_path,
                 textwrap.dedent(
                     """\
@@ -268,149 +896,10 @@ class UccSchedulerTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, msg=result.stderr)
             self.assertEqual(order_file.read_text(encoding="utf-8").splitlines(), ["app"])
 
-    def test_runtime_endpoints_query_reads_nested_endpoint_records(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            ucc_dir = self._write_manifest(
-                Path(tmp),
-                textwrap.dedent(
-                    """\
-                    component: fake
-                    primary_profile: runtime
-                    libs: fake
-                    runner: run_fake
-                    probe_host: 127.0.0.1
-                    probe_port: 9999
-                    targets:
-                      fake-package:
-                        component: fake
-                        profile: configured
-                        type: package
-                        state_model: package
-                        display_name: Fake Package
-                        provided_by_tool: fake
-                        driver:
-                          kind: brew
-                          ref: fake-ref
-                        observe_cmd: "printf present"
-                        evidence:
-                          version: "printf 1.0.0"
-                        actions:
-                          install: "true"
-                          update: "true"
-                      fake-runtime:
-                        component: fake
-                        profile: runtime
-                        type: runtime
-                        display_name: Fake Runtime
-                        depends_on:
-                          - fake-package
-                        driver:
-                          kind: service
-                          backend: brew
-                          ref: fake-ref
-                        runtime_manager: brew-service
-                        probe_kind: http
-                        oracle:
-                          runtime: "curl -fsS http://${probe_host}:${probe_port} >/dev/null 2>&1"
-                        evidence:
-                          version: "printf 1.0.0"
-                        endpoints:
-                          - name: Fake API
-                            url: http://${probe_host}:${probe_port}
-                            note: primary
-                    """
-                ),
-            )
-            output = subprocess.check_output(
-                ["python3", str(QUERY), "--runtime-endpoints", str(ucc_dir)],
-                text=True,
-            ).strip()
-            self.assertEqual(output, "fake-runtime\tFake API\thttp://127.0.0.1:9999\tprimary")
-
-    def test_runtime_endpoints_query_derives_url_from_structured_endpoint_fields(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            ucc_dir = self._write_manifest(
-                Path(tmp),
-                textwrap.dedent(
-                    """\
-                    component: fake
-                    primary_profile: runtime
-                    libs: fake
-                    runner: run_fake
-                    probe_host: 127.0.0.1
-                    probe_port: 9999
-                    probe_path: /health
-                    targets:
-                      fake-runtime:
-                        component: fake
-                        profile: runtime
-                        type: runtime
-                        display_name: Fake Runtime
-                        driver:
-                          kind: custom-daemon
-                          bin: /usr/bin/true
-                          process: fake-process
-                        runtime_manager: custom
-                        probe_kind: http
-                        oracle:
-                          runtime: "true"
-                        evidence:
-                          version: "printf 1.0.0"
-                        endpoints:
-                          - name: Fake API
-                            scheme: http
-                            host: ${probe_host}
-                            port: ${probe_port}
-                            path: ${probe_path}
-                            note: primary
-                    """
-                ),
-            )
-            output = subprocess.check_output(
-                ["python3", str(QUERY), "--runtime-endpoints", str(ucc_dir)],
-                text=True,
-            ).strip()
-            self.assertEqual(output, "fake-runtime\tFake API\thttp://127.0.0.1:9999/health\tprimary")
-
-    def test_display_name_query_reads_target_metadata(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            ucc_dir = self._write_manifest(
-                Path(tmp),
-                textwrap.dedent(
-                    """\
-                    component: fake
-                    primary_profile: runtime
-                    libs: fake
-                    runner: run_fake
-                    targets:
-                      fake-runtime:
-                        component: fake
-                        profile: runtime
-                        type: runtime
-                        display_name: Fake Runtime
-                        driver:
-                          kind: custom-daemon
-                          bin: /usr/bin/true
-                          process: fake-process
-                        runtime_manager: custom
-                        probe_kind: command
-                        oracle:
-                          runtime: "true"
-                        evidence:
-                          version: "printf 1.0.0"
-                    """
-                ),
-            )
-            output = subprocess.check_output(
-                ["python3", str(QUERY), "--display-name", "fake-runtime", str(ucc_dir)],
-                text=True,
-            ).strip()
-            self.assertEqual(output, "Fake Runtime")
-
     def test_yaml_simple_target_executes_manifest_declared_commands(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
-            ucc_dir = self._write_manifest(
+            ucc_dir = _write_manifest(
                 tmp_path,
                 textwrap.dedent(
                     """\
@@ -478,7 +967,7 @@ class UccSchedulerTests(unittest.TestCase):
     def test_yaml_simple_target_supports_dotted_target_names_and_target_local_scalars(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
-            ucc_dir = self._write_manifest(
+            ucc_dir = _write_manifest(
                 tmp_path,
                 textwrap.dedent(
                     """\
@@ -544,84 +1033,11 @@ class UccSchedulerTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, msg=result.stderr)
             self.assertTrue((home_dir / "demo.txt").exists())
 
-    def test_read_config_get_many_returns_multiple_scalar_rows(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            manifest = self._write_manifest(
-                Path(tmp),
-                textwrap.dedent(
-                    """\
-                    component: fake
-                    primary_profile: configured
-                    libs: fake
-                    runner: run_fake
-                    api_host: 127.0.0.1
-                    api_port: 9999
-                    endpoint_url: http://${api_host}:${api_port}
-                    targets: {}
-                    """
-                ),
-            ) / "software" / "fake.yaml"
-            rows = subprocess.check_output(
-                [
-                    "python3",
-                    str(ROOT / "tools" / "read_config.py"),
-                    "--get-many",
-                    str(manifest),
-                    "api_host",
-                    "endpoint_url",
-                ],
-                text=True,
-            ).strip("\0").split("\0")
-            self.assertEqual(rows, ["api_host\t127.0.0.1", "endpoint_url\thttp://127.0.0.1:9999"])
-
-    def test_read_config_target_get_many_substitutes_target_scalars(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            manifest = self._write_manifest(
-                Path(tmp),
-                textwrap.dedent(
-                    """\
-                    component: fake
-                    primary_profile: configured
-                    libs: fake
-                    runner: run_fake
-                    root_dir: demo
-                    targets:
-                      pkg:
-                        component: fake
-                        profile: configured
-                        type: package
-                        state_model: package
-                        provided_by_tool: fake
-                        driver:
-                          kind: brew-formula
-                          ref: demo
-                        observe_cmd: "printf '%s' '${driver.ref}'"
-                        evidence:
-                          version: "printf '%s' '${driver.ref}'"
-                        actions:
-                          install: "printf '%s/%s' '${root_dir}' '${driver.ref}'"
-                    """
-                ),
-            ) / "software" / "fake.yaml"
-            rows = subprocess.check_output(
-                [
-                    "python3",
-                    str(ROOT / "tools" / "read_config.py"),
-                    "--target-get-many",
-                    str(manifest),
-                    "pkg",
-                    "observe_cmd",
-                    "actions.install",
-                ],
-                text=True,
-            ).strip("\0").split("\0")
-            self.assertEqual(rows, ["observe_cmd\tprintf '%s' 'demo'", "actions.install\tprintf '%s/%s' 'demo' 'demo'"])
-
     def test_yaml_simple_target_handles_multiline_observe_cmd_after_batched_lookup(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
             marker = tmp_path / "installed.txt"
-            ucc_dir = self._write_manifest(
+            ucc_dir = _write_manifest(
                 tmp_path,
                 textwrap.dedent(
                     f"""\
@@ -906,7 +1322,7 @@ class UccSchedulerTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
             side_effect = tmp_path / "side-effect"
-            ucc_dir = self._write_manifest(
+            ucc_dir = _write_manifest(
                 tmp_path,
                 textwrap.dedent(
                     f"""\
@@ -973,7 +1389,7 @@ class UccSchedulerTests(unittest.TestCase):
             fake_bin.mkdir()
             (fake_bin / "sudo").write_text("#!/bin/bash\nexit 1\n", encoding="utf-8")
             os.chmod(fake_bin / "sudo", 0o755)
-            ucc_dir = self._write_manifest(
+            ucc_dir = _write_manifest(
                 tmp_path,
                 textwrap.dedent(
                     f"""\
@@ -1028,110 +1444,10 @@ class UccSchedulerTests(unittest.TestCase):
             self.assertFalse(side_effect.exists())
             self.assertIn("[policy", result.stdout)
 
-    def test_manifest_validation_rejects_non_string_display_name(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            ucc_dir = self._write_manifest(
-                Path(tmp),
-                textwrap.dedent(
-                    """\
-                    component: fake
-                    primary_profile: configured
-                    libs: fake
-                    runner: run_fake
-                    targets:
-                      bad:
-                        component: fake
-                        profile: configured
-                        type: config
-                        display_name:
-                          nested: nope
-                    """
-                ),
-            )
-            result = subprocess.run(
-                ["python3", str(QUERY), str(ucc_dir)],
-                text=True,
-                capture_output=True,
-            )
-            self.assertNotEqual(result.returncode, 0)
-            self.assertIn("field 'display_name' must be a non-empty string", result.stderr)
-
-    def test_manifest_validation_rejects_sparse_generated_targets(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            ucc_dir = self._write_manifest(
-                Path(tmp),
-                textwrap.dedent(
-                    """\
-                    component: fake
-                    primary_profile: configured
-                    libs: fake
-                    runner: run_fake
-                    targets:
-                      vscode-ext-test.example:
-                        component: fake
-                        profile: configured
-                        type: package
-                        state_model: package
-                        depends_on:
-                          - vscode-code-cmd
-                      vscode-code-cmd:
-                        component: fake
-                        profile: configured
-                        type: config
-                        state_model: config
-                    vscode_extensions:
-                      - vscode-ext-test.example
-                    """
-                ),
-            )
-            result = subprocess.run(
-                ["python3", str(QUERY), str(ucc_dir)],
-                text=True,
-                capture_output=True,
-            )
-            self.assertNotEqual(result.returncode, 0)
-            self.assertIn("generated target 'vscode-ext-test.example' in section 'vscode_extensions' requires provided_by_tool", result.stderr)
-
-    def test_manifest_validation_rejects_sparse_cli_generated_targets(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            ucc_dir = self._write_manifest(
-                Path(tmp),
-                textwrap.dedent(
-                    """\
-                    component: fake
-                    primary_profile: configured
-                    libs: fake
-                    runner: run_fake
-                    targets:
-                      homebrew:
-                        component: fake
-                        profile: configured
-                        type: package
-                        state_model: package
-                      cli-fake:
-                        component: fake
-                        profile: configured
-                        type: package
-                        state_model: package
-                        depends_on:
-                          - homebrew
-                    cli_tools:
-                      - cli-fake
-                    """
-                ),
-            )
-            result = subprocess.run(
-                ["python3", str(QUERY), str(ucc_dir)],
-                text=True,
-                capture_output=True,
-            )
-            self.assertNotEqual(result.returncode, 0)
-            self.assertIn("generated target 'cli-fake' in section 'cli_tools' requires provided_by_tool", result.stderr)
-
     def test_yaml_capability_target_uses_runtime_oracle_and_yaml_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
-            ucc_dir = self._write_manifest(
+            ucc_dir = _write_manifest(
                 tmp_path,
                 textwrap.dedent(
                     """\
@@ -1187,7 +1503,7 @@ class UccSchedulerTests(unittest.TestCase):
     def test_yaml_capability_target_sets_yaml_context_for_runtime_oracle(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
-            ucc_dir = self._write_manifest(
+            ucc_dir = _write_manifest(
                 tmp_path,
                 textwrap.dedent(
                     f"""\
@@ -1240,7 +1556,7 @@ class UccSchedulerTests(unittest.TestCase):
     def test_yaml_parametric_target_uses_observe_cmd_and_desired_value(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
-            ucc_dir = self._write_manifest(
+            ucc_dir = _write_manifest(
                 tmp_path,
                 textwrap.dedent(
                     """\
@@ -1302,7 +1618,7 @@ class UccSchedulerTests(unittest.TestCase):
     def test_yaml_parametric_target_sets_yaml_context_for_observe_and_desired_cmd(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
-            ucc_dir = self._write_manifest(
+            ucc_dir = _write_manifest(
                 tmp_path,
                 textwrap.dedent(
                     f"""\
@@ -1380,65 +1696,10 @@ class UccSchedulerTests(unittest.TestCase):
         self.assertIn('"health_state":"Degraded"', result.stdout)
         self.assertIn('"config_value":"off"', result.stdout)
 
-    def test_validator_requires_state_model_for_package_targets(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            ucc_dir = self._write_manifest(
-                Path(tmp),
-                textwrap.dedent(
-                    """\
-                    component: fake
-                    primary_profile: configured
-                    libs: fake
-                    runner: run_fake
-                    targets:
-                      pkg:
-                        component: fake
-                        profile: configured
-                        type: package
-                    """
-                ),
-            )
-            result = subprocess.run(
-                ["python3", str(QUERY), str(ucc_dir)],
-                text=True,
-                capture_output=True,
-            )
-            self.assertNotEqual(result.returncode, 0)
-            self.assertIn("type 'package' requires state_model 'package'", result.stderr)
-
-    def test_validator_enforces_canonical_target_key_order(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            ucc_dir = self._write_manifest(
-                Path(tmp),
-                textwrap.dedent(
-                    """\
-                    component: fake
-                    primary_profile: configured
-                    libs: fake
-                    runner: run_fake
-                    targets:
-                      pkg:
-                        component: fake
-                        profile: configured
-                        type: package
-                        oracle:
-                          configured: "true"
-                        state_model: package
-                    """
-                ),
-            )
-            result = subprocess.run(
-                ["python3", str(QUERY), str(ucc_dir)],
-                text=True,
-                capture_output=True,
-            )
-            self.assertNotEqual(result.returncode, 0)
-            self.assertIn("keys must follow canonical order", result.stderr)
-
     def test_yaml_parametric_target_supports_desired_cmd_and_yaml_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
-            ucc_dir = self._write_manifest(
+            ucc_dir = _write_manifest(
                 tmp_path,
                 textwrap.dedent(
                     """\
@@ -1500,7 +1761,7 @@ class UccSchedulerTests(unittest.TestCase):
     def test_yaml_parametric_target_reuses_install_cmd_for_update_when_update_cmd_missing(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
-            ucc_dir = self._write_manifest(
+            ucc_dir = _write_manifest(
                 tmp_path,
                 textwrap.dedent(
                     """\
@@ -1557,7 +1818,7 @@ class UccSchedulerTests(unittest.TestCase):
     def test_yaml_runtime_target_uses_yaml_oracles_and_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
-            ucc_dir = self._write_manifest(
+            ucc_dir = _write_manifest(
                 tmp_path,
                 textwrap.dedent(
                     """\
@@ -1618,7 +1879,7 @@ class UccSchedulerTests(unittest.TestCase):
     def test_yaml_runtime_target_waits_for_probe_after_install(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
-            ucc_dir = self._write_manifest(
+            ucc_dir = _write_manifest(
                 tmp_path,
                 textwrap.dedent(
                     """\
@@ -1683,7 +1944,7 @@ class UccSchedulerTests(unittest.TestCase):
             marker = tmp_path / "runtime.ok"
             compose_file = tmp_path / "docker-compose.yml"
             compose_file.write_text("services: {}\n", encoding="utf-8")
-            ucc_dir = self._write_manifest(
+            ucc_dir = _write_manifest(
                 tmp_path,
                 textwrap.dedent(
                     f"""\
@@ -1754,7 +2015,7 @@ class UccSchedulerTests(unittest.TestCase):
             app_dir = tmp_path / "Demo.app"
             app_dir.mkdir()
             ready = tmp_path / "ready"
-            manifest = self._write_manifest(
+            manifest = _write_manifest(
                 tmp_path,
                 textwrap.dedent(
                     f"""\
@@ -1812,7 +2073,7 @@ class UccSchedulerTests(unittest.TestCase):
             tmp_path = Path(tmp)
             app_dir = tmp_path / "Demo.app"
             app_dir.mkdir()
-            manifest = self._write_manifest(
+            manifest = _write_manifest(
                 tmp_path,
                 textwrap.dedent(
                     f"""\
@@ -1868,127 +2129,10 @@ class UccSchedulerTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, msg=result.stderr)
             self.assertIn("install_source=app-bundle", result.stdout)
 
-    def test_read_config_records_substitutes_top_level_scalars(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            manifest = self._write_manifest(
-                Path(tmp),
-                textwrap.dedent(
-                    """\
-                    component: fake
-                    primary_profile: runtime
-                    libs: fake
-                    runner: run_fake
-                    probe_host: 127.0.0.1
-                    probe_port: 9999
-                    targets:
-                      fake-runtime:
-                        component: fake
-                        profile: runtime
-                        type: runtime
-                        driver:
-                          kind: docker-compose-service
-                          service_name: fake
-                        endpoints:
-                          - name: Fake API
-                            url: http://${probe_host}:${probe_port}
-                            note: primary
-                    """
-                ),
-            ) / "software" / "fake.yaml"
-            output = subprocess.check_output(
-                [
-                    "python3",
-                    str(ROOT / "tools" / "read_config.py"),
-                    "--records",
-                    str(manifest),
-                    "targets.fake-runtime.endpoints",
-                    "name",
-                    "url",
-                    "note",
-                ],
-                text=True,
-            ).strip()
-            self.assertEqual(output, "Fake API\thttp://127.0.0.1:9999\tprimary")
-
-    def test_read_config_get_substitutes_top_level_scalars(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            manifest = self._write_manifest(
-                Path(tmp),
-                textwrap.dedent(
-                    """\
-                    component: fake
-                    primary_profile: runtime
-                    libs: fake
-                    runner: run_fake
-                    probe_port: 9999
-                    targets:
-                      fake-runtime:
-                        component: fake
-                        profile: runtime
-                        type: runtime
-                        driver:
-                          kind: custom-daemon
-                          bin: /usr/bin/true
-                          process: fake-process
-                        oracle:
-                          runtime: 'curl -fsS http://127.0.0.1:${probe_port} >/dev/null 2>&1'
-                    """
-                ),
-            ) / "software" / "fake.yaml"
-            output = subprocess.check_output(
-                ["python3", str(ROOT / "tools" / "read_config.py"), "--get", str(manifest), "targets.fake-runtime.oracle.runtime"],
-                text=True,
-            ).strip()
-            self.assertEqual(output, 'curl -fsS http://127.0.0.1:9999 >/dev/null 2>&1')
-
-    def test_read_config_target_get_substitutes_target_local_scalars(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            manifest = self._write_manifest(
-                Path(tmp),
-                textwrap.dedent(
-                    """\
-                    component: fake
-                    primary_profile: configured
-                    libs: fake
-                    runner: run_fake
-                    targets:
-                      pkg.with.dot:
-                        component: fake
-                        profile: configured
-                        type: package
-                        state_model: package
-                        provided_by_tool: fake
-                        driver:
-                          kind: brew-formula
-                          ref: demo
-                        observe_cmd: "printf '%s' '${driver.ref}'"
-                        evidence:
-                          version: "printf '%s' '${driver.ref}'"
-                        actions:
-                          install: "printf '%s' '${driver.ref}'"
-                    """
-                ),
-            ) / "software" / "fake.yaml"
-            observe_cmd = subprocess.check_output(
-                ["python3", str(ROOT / "tools" / "read_config.py"), "--target-get", str(manifest), "pkg.with.dot", "observe_cmd"],
-                text=True,
-            ).strip()
-            install_cmd = subprocess.check_output(
-                ["python3", str(ROOT / "tools" / "read_config.py"), "--target-get", str(manifest), "pkg.with.dot", "actions.install"],
-                text=True,
-            ).strip()
-            evidence = subprocess.check_output(
-                ["python3", str(ROOT / "tools" / "read_config.py"), "--evidence", str(manifest), "pkg.with.dot"],
-                text=True,
-            ).strip("\0")
-            self.assertEqual(observe_cmd, "printf '%s' 'demo'")
-            self.assertEqual(install_cmd, "printf '%s' 'demo'")
-            self.assertEqual(evidence, "version\tprintf '%s' 'demo'")
-
     def test_brew_cached_version_works_with_driver_ref_substitution(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
-            manifest = self._write_manifest(
+            manifest = _write_manifest(
                 tmp_path,
                 textwrap.dedent(
                     """\
@@ -2143,7 +2287,7 @@ class UccSchedulerTests(unittest.TestCase):
     def test_pip_cached_version_works_with_driver_ref_substitution(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
-            manifest = self._write_manifest(
+            manifest = _write_manifest(
                 tmp_path,
                 textwrap.dedent(
                     """\
@@ -2736,7 +2880,7 @@ class UccSchedulerTests(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
-            ucc_dir = self._write_manifest(
+            ucc_dir = _write_manifest(
                 tmp_path,
                 textwrap.dedent(
                     """\
@@ -3005,89 +3149,12 @@ class UccSchedulerTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, msg=result.stderr)
             self.assertEqual(result.stdout.strip(), "0")
 
-    def test_platform_specific_dependencies_follow_host_variant(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            ucc_dir = self._write_manifest(
-                Path(tmp),
-                textwrap.dedent(
-                    """\
-                    component: fake
-                    primary_profile: configured
-                    libs: fake
-                    runner: run_fake
-                    platforms:
-                      - macos
-                      - linux
-                      - wsl2
-                    platform_tool_preferences:
-                      macos:
-                        - brew-installer
-                      linux:
-                        - native-package-manager
-                        - brew-installer
-                      wsl2:
-                        - native-package-manager
-                        - brew-installer
-                    targets:
-                      xcode:
-                        component: fake
-                        profile: configured
-                        type: precondition
-                        state_model: config
-                        display_name: Xcode
-                        driver:
-                          kind: platform-check
-                        oracle:
-                          configured: "true"
-                        evidence:
-                          state: "printf supported"
-                      pkg:
-                        component: fake
-                        profile: configured
-                        type: package
-                        state_model: package
-                        display_name: Pkg
-                        depends_on_by_platform:
-                          macos:
-                            - xcode
-                        provided_by_tool: fake
-                        driver:
-                          kind: brew
-                          ref: fake-ref
-                        observe_cmd: "printf present"
-                        evidence:
-                          version: "printf 1.0.0"
-                        actions:
-                          install: "true"
-                          update: "true"
-                    """
-                ),
-            )
-            macos_output = subprocess.check_output(
-                ["python3", str(QUERY), "--deps", "pkg", str(ucc_dir)],
-                text=True,
-                env={**os.environ, **{"HOST_PLATFORM": "macos", "HOST_PLATFORM_VARIANT": "macos"}},
-            ).strip().splitlines()
-            linux_output = subprocess.check_output(
-                ["python3", str(QUERY), "--deps", "pkg", str(ucc_dir)],
-                text=True,
-                env={**os.environ, **{"HOST_PLATFORM": "linux", "HOST_PLATFORM_VARIANT": "linux"}},
-            ).strip()
-            wsl2_output = subprocess.check_output(
-                ["python3", str(QUERY), "--deps", "pkg", str(ucc_dir)],
-                text=True,
-                env={**os.environ, **{"HOST_PLATFORM": "wsl", "HOST_PLATFORM_VARIANT": "wsl2"}},
-            ).strip()
-            self.assertIn("xcode", macos_output)
-            self.assertNotIn("xcode", linux_output)
-            self.assertNotIn("xcode", wsl2_output)
-
     def test_brew_runtime_target_uses_yaml_probe_and_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
             marker = tmp_path / "runtime.ok"
             marker.write_text("ok", encoding="utf-8")
-            ucc_dir = self._write_manifest(
+            ucc_dir = _write_manifest(
                 tmp_path,
                 textwrap.dedent(
                     f"""\
@@ -3169,7 +3236,7 @@ class UccSchedulerTests(unittest.TestCase):
             tmp_path = Path(tmp)
             marker = tmp_path / "runtime.ok"
             commands = tmp_path / "commands.txt"
-            ucc_dir = self._write_manifest(
+            ucc_dir = _write_manifest(
                 tmp_path,
                 textwrap.dedent(
                     f"""\
@@ -3252,7 +3319,7 @@ class UccSchedulerTests(unittest.TestCase):
             marker = tmp_path / "runtime.ok"
             started = tmp_path / "service.started"
             commands = tmp_path / "commands.txt"
-            ucc_dir = self._write_manifest(
+            ucc_dir = _write_manifest(
                 tmp_path,
                 textwrap.dedent(
                     f"""\
@@ -3332,7 +3399,7 @@ class UccSchedulerTests(unittest.TestCase):
             tmp_path = Path(tmp)
             marker = tmp_path / "runtime.ok"
             commands = tmp_path / "commands.txt"
-            ucc_dir = self._write_manifest(
+            ucc_dir = _write_manifest(
                 tmp_path,
                 textwrap.dedent(
                     f"""\
@@ -3416,7 +3483,7 @@ class UccSchedulerTests(unittest.TestCase):
             tmp_path = Path(tmp)
             marker = tmp_path / "runtime.ok"
             marker.write_text("ok", encoding="utf-8")
-            ucc_dir = self._write_manifest(
+            ucc_dir = _write_manifest(
                 tmp_path,
                 textwrap.dedent(
                     f"""\
@@ -3481,7 +3548,7 @@ class UccSchedulerTests(unittest.TestCase):
             tmp_path = Path(tmp)
             marker = tmp_path / "runtime.ok"
             commands = tmp_path / "commands.txt"
-            ucc_dir = self._write_manifest(
+            ucc_dir = _write_manifest(
                 tmp_path,
                 textwrap.dedent(
                     f"""\
@@ -3545,7 +3612,7 @@ class UccSchedulerTests(unittest.TestCase):
     def test_missing_declared_dependency_raises_execution_error(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
-            ucc_dir = self._write_manifest(
+            ucc_dir = _write_manifest(
                 tmp_path,
                 textwrap.dedent(
                     """\
@@ -3611,57 +3678,3 @@ class UccSchedulerTests(unittest.TestCase):
             )
             self.assertEqual(result.returncode, 0, msg=result.stderr)
             self.assertIn("[fail", result.stdout)
-
-    def test_softwareupdate_config_drivers_validate(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            ucc_dir = self._write_manifest(
-                Path(tmp),
-                textwrap.dedent(
-                    """\
-                    component: fake
-                    primary_profile: parametric
-                    libs: fake
-                    runner: run_fake
-                    softwareupdate_domain: /Library/Preferences/com.apple.SoftwareUpdate
-                    targets:
-                      softwareupdate-schedule=on:
-                        component: fake
-                        profile: parametric
-                        type: config
-                        state_model: parametric
-                        display_name: Software Update schedule
-                        driver:
-                          kind: softwareupdate-schedule
-                        observe_cmd: "printf on"
-                        desired_value: "on"
-                        evidence:
-                          schedule: "printf on"
-                        actions:
-                          install: "printf on"
-                      softwareupdate-auto-check=1:
-                        component: fake
-                        profile: parametric
-                        type: config
-                        state_model: parametric
-                        display_name: Automatic update checks
-                        driver:
-                          kind: setting
-                          backend: defaults
-                          domain: ${softwareupdate_domain}
-                          key: AutomaticCheckEnabled
-                          value: "1"
-                        observe_cmd: "printf 1"
-                        desired_value: "1"
-                        evidence:
-                          AutomaticCheckEnabled: "printf 1"
-                        actions:
-                          install: "printf 1"
-                    """
-                ),
-            )
-            result = subprocess.run(
-                ["python3", str(QUERY), str(ucc_dir)],
-                text=True,
-                capture_output=True,
-            )
-            self.assertEqual(result.returncode, 0, msg=result.stderr)
