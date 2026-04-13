@@ -228,7 +228,7 @@ _component_supported_for() {
     [[ -n "$item" ]] && supported+=("$item")
   done < <(yaml_list "$DIR" "$config" platforms)
   [[ ${#supported[@]} -eq 0 ]] && return 0
-  for platform in "${supported[@]}"; do
+  for platform in ${supported[@]+"${supported[@]}"}; do
     [[ "$platform" == "${HOST_PLATFORM_VARIANT:-unknown}" ]] && return 0
     [[ "$platform" == "$HOST_PLATFORM" ]] && return 0
     [[ "$HOST_PLATFORM" == "wsl" && "$platform" == "linux" ]] && return 0
@@ -681,7 +681,7 @@ if [[ "${UCC_INTERACTIVE:-0}" == "1" && -c /dev/tty && -z "$UCC_TARGET_SET" ]]; 
 
   _get_comp_targets() {
     local _idx=0
-    for _cc in "${_BROWSE_COMPS[@]}"; do
+    for _cc in ${_BROWSE_COMPS[@]+"${_BROWSE_COMPS[@]}"}; do
       [[ "$_cc" == "$1" ]] && { echo "${_COMP_TARGETS_DATA[$_idx]}"; return; }
       _idx=$((_idx + 1))
     done
@@ -691,7 +691,7 @@ if [[ "${UCC_INTERACTIVE:-0}" == "1" && -c /dev/tty && -z "$UCC_TARGET_SET" ]]; 
     local _idx=1 _tcount _selected _t
     echo ""
     echo "    a) All"
-    for _c in "${_BROWSE_COMPS[@]}"; do
+    for _c in ${_BROWSE_COMPS[@]+"${_BROWSE_COMPS[@]}"}; do
       _tcount=0; _disabled_count=0; _selected=0
       while IFS= read -r _t; do
         [[ -z "$_t" ]] && continue
@@ -765,7 +765,7 @@ if [[ "${UCC_INTERACTIVE:-0}" == "1" && -c /dev/tty && -z "$UCC_TARGET_SET" ]]; 
         while IFS= read -r _t; do
           [[ -n "$_t" ]] && _targets_arr+=("$_t")
         done <<< "$(_get_comp_targets "$_sel_comp")"
-        for _sp in "${_sub_picks[@]}"; do
+        for _sp in ${_sub_picks[@]+"${_sub_picks[@]}"}; do
           _sp="${_sp// /}"
           if [[ "$_sp" =~ ^[0-9]+$ && "$_sp" -ge 1 && "$_sp" -le "${#_targets_arr[@]}" ]]; then
             _pick="${_targets_arr[$((_sp - 1))]}"
