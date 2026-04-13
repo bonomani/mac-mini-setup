@@ -4,7 +4,7 @@
 
 _ucc_driver_softwareupdate_schedule_observe() {
   local cfg_dir="$1" yaml="$2" target="$3"
-  if softwareupdate --schedule 2>/dev/null | grep -qiE 'Automatic check is on\.?$'; then
+  if softwareupdate --schedule 2>/dev/null | grep -qiE 'is (on|turned on)\.?$'; then
     printf 'on'
   else
     printf 'off'
@@ -20,7 +20,7 @@ _ucc_driver_softwareupdate_schedule_action() {
 _ucc_driver_softwareupdate_schedule_evidence() {
   local cfg_dir="$1" yaml="$2" target="$3"
   local state
-  if softwareupdate --schedule 2>/dev/null | grep -qiE 'Automatic check is on\.?$'; then
+  if softwareupdate --schedule 2>/dev/null | grep -qiE 'is (on|turned on)\.?$'; then
     state="on"
   else
     state="off"
