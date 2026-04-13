@@ -1828,10 +1828,8 @@ class UccSchedulerTests(unittest.TestCase):
                         display_name: App
                         provided_by_tool: brew-cask
                         driver:
-                          kind: desktop-app
-                          package_ref: demo
-                          app_path: {app_dir}
-                        runtime_manager: desktop-app
+                          kind: custom
+                        runtime_manager: custom
                         probe_kind: command
                         oracle:
                           configured: '[[ -d "{app_dir}" ]]'
@@ -1888,7 +1886,8 @@ class UccSchedulerTests(unittest.TestCase):
                         profile: runtime
                         type: runtime
                         driver:
-                          kind: docker-compose
+                          kind: docker-compose-service
+                          service_name: fake
                         endpoints:
                           - name: Fake API
                             url: http://${probe_host}:${probe_port}
@@ -2488,16 +2487,12 @@ class UccSchedulerTests(unittest.TestCase):
                         - ai-stack-compose-file
                         provided_by_tool: docker-compose
                         driver:
-                          kind: docker-compose
+                          kind: docker-compose-service
                           service_name: open-webui
                         runtime_manager: docker-compose
                         probe_kind: http
                         oracle:
                           runtime: "true"
-                        evidence:
-                          version: _ai_service_runtime_version '${driver.service_name}'
-                          digest: _ai_service_runtime_digest '${driver.service_name}'
-                          ref: _ai_service_runtime_ref '${driver.service_name}'
                         actions:
                           install: _ai_apply_compose_runtime
                     """

@@ -115,8 +115,6 @@ KNOWN_RUNTIME_DRIVERS = {
     "compose-file",
     "custom",
     "custom-daemon",
-    "desktop-app",
-    "docker-compose",
     "docker-compose-service",
     "service",
 }
