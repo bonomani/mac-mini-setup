@@ -101,7 +101,7 @@ _ucc_driver_evidence() {
   [[ -n "$kind" && "$kind" != "custom" ]] || return 1
   local fn="_ucc_driver_${kind//-/_}_evidence"
   declare -f "$fn" >/dev/null 2>&1 || return 1
-  "$fn" "$cfg_dir" "$yaml" "$target"
+  "$fn" "$cfg_dir" "$yaml" "$target" || return 1
   # Generic: append latest version from GitHub if driver.github_repo is set
   _ucc_driver_github_latest "$cfg_dir" "$yaml" "$target"
 }
