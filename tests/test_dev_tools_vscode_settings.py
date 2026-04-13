@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import subprocess
 import tempfile
 import textwrap
@@ -10,6 +11,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
+@unittest.skipUnless(
+    os.uname().sysname == "Darwin",
+    "VS Code settings test requires macOS (code CLI + UCC framework)"
+)
 class VsCodeSettingsTargetTests(unittest.TestCase):
     def test_vscode_settings_merge_and_observe(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

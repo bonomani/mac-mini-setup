@@ -11,7 +11,16 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 QUERY = ROOT / "tools" / "validate_targets_manifest.py"
 
-
+# These integration tests execute the full UCC framework in bash -c subshells
+# and depend on macOS-specific tools (brew, pgrep patterns, osascript) and
+# platform-specific behavior (LaunchAgents, .app bundles). They pass on macOS
+# but fail on Linux/WSL where these tools are absent or behave differently.
+# A future improvement would be to mock platform-specific commands so the
+# dispatch logic can be tested universally.
+@unittest.skipUnless(
+    os.uname().sysname == "Darwin",
+    "UCC scheduler integration tests require macOS (brew, pgrep, launchd)"
+)
 class UccSchedulerTests(unittest.TestCase):
     def _write_manifest(self, root: Path, body: str) -> Path:
         manifest = root / "ucc" / "software"

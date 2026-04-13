@@ -529,7 +529,9 @@ _ucc_target_filtered_out() {
       return 0
     fi
   fi
-  if [[ "${UCC_TARGET_SET:-}" != *"${target}|"* ]]; then
+  # When UCC_TARGET_SET is unset, no filter is active — all targets run.
+  # When set (even empty), only targets in the set are processed.
+  if [[ -n "${UCC_TARGET_SET+x}" && "${UCC_TARGET_SET:-}" != *"${target}|"* ]]; then
     _UCC_EMITTED_TARGETS="${_UCC_EMITTED_TARGETS}|${target}|"
     # Fast mode: hide non-selected targets entirely (no observe, no output)
     if [[ "${UIC_PREF_SKIP_DISPLAY_MODE:-full}" == "fast" ]]; then
