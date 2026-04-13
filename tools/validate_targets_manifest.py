@@ -760,6 +760,10 @@ def validate(manifest, known_gates):
                     elif key == "backends":
                         if not isinstance(value, list) or not value:
                             errors.append(f"target '{name}' driver.backends must be a non-empty list")
+                    elif key == "isolation":
+                        # isolation can be a scalar ("pipx") or a dict ({kind: venv, name: X})
+                        if not isinstance(value, (str, dict)):
+                            errors.append(f"target '{name}' driver.isolation must be a string or mapping")
                     elif not isinstance(value, (str, int, float, bool)):
                         errors.append(f"target '{name}' driver '{key}' must be a scalar")
                 # Driver schema validation
