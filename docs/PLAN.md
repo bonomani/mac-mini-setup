@@ -46,10 +46,12 @@ stable until explicitly requested, upstream version checking enabled.
 
 **Driver classification:** Each driver knows its category:
 - **Tool drivers:** brew, pkg, nvm, nvm-version, custom-daemon,
-  app-bundle, script-installer, package → follows tool policy
-- **Lib drivers:** pip (non-isolation), pip groups → follows lib policy
-- **Standalone tool drivers:** pip (isolation=pipx), npm-global →
-  follows tool policy (isolated, no dep conflicts)
+  app-bundle, script-installer, package, npm-global,
+  pip (isolation=pipx) → follows tool policy
+- **Lib drivers:** pip (no isolation) — includes pip groups AND
+  standalone pip packages (e.g. unsloth, any `driver.kind: pip`
+  without `isolation: pipx`) → follows lib policy. These share
+  a dependency graph and upgrades can break cross-package constraints.
 
 **Implementation:**
 1. Add `update-policy` to UIC preferences with three options
