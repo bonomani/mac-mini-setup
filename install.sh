@@ -404,23 +404,35 @@ _resolve_target() {
 }
 
 _resolve_component() {
-  local name="$1"
-  _resolved+=("$name")
-  local _t _targets=()
+  local name="$1" _t _dep_comp _seen=""
+  # Collect all targets for this component
+  local _targets=()
   while IFS= read -r _t; do
-    [[ -n "$_t" ]] && { UCC_TARGET_SET="${UCC_TARGET_SET}${_t}|"; _targets+=("$_t"); }
+    [[ -n "$_t" ]] && _targets+=("$_t")
   done < <(python3 "$_QUERY_SCRIPT" --ordered-targets "$name" "$_MANIFEST_DIR" 2>/dev/null || true)
-  # Auto-include components that provide cross-component dependencies.
-  # Query each target's transitive dependency components and recurse
-  # into any component not yet resolved.
-  local _dep_comp
+  # Auto-include dependency components in topological order (Kahn's algo
+  # in the Python query script). --dep-components returns components in
+  # the correct execution order, so we add them to _resolved before this
+  # component. Dedup against already-resolved components.
   for _t in "${_targets[@]}"; do
     while IFS= read -r _dep_comp; do
-      if [[ -n "$_dep_comp" && "$_dep_comp" != "$name" ]] \
-        && ! printf '%s\n' "${_resolved[@]}" | grep -qx "$_dep_comp"; then
-        _resolve_component "$_dep_comp"
+      if [[ -n "$_dep_comp" && "$_dep_comp" != "$name" \
+        && "$_seen" != *"|${_dep_comp}|"* ]] \
+        && ! printf '%s\n' "${_resolved[@]+"${_resolved[@]}"}" | grep -qx "$_dep_comp"; then
+        _seen="${_seen}|${_dep_comp}|"
+        _resolved+=("$_dep_comp")
+        # Also add the dep component's targets to UCC_TARGET_SET
+        local _dt
+        while IFS= read -r _dt; do
+          [[ -n "$_dt" ]] && UCC_TARGET_SET="${UCC_TARGET_SET}${_dt}|"
+        done < <(python3 "$_QUERY_SCRIPT" --ordered-targets "$_dep_comp" "$_MANIFEST_DIR" 2>/dev/null || true)
       fi
     done < <(python3 "$_QUERY_SCRIPT" --dep-components "$_t" "$_MANIFEST_DIR" 2>/dev/null || true)
+  done
+  # Add this component after its dependencies
+  _resolved+=("$name")
+  for _t in "${_targets[@]}"; do
+    UCC_TARGET_SET="${UCC_TARGET_SET}${_t}|"
   done
 }
 
