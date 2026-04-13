@@ -26,7 +26,9 @@ prefs (`package-update-policy` + `brew-livecheck`) with unclear naming.
 Without `brew-livecheck=1`, no driver detects outdated packages — 7
 drivers (brew, pip, pipx, nvm, custom-daemon, pkg, package,
 script-installer) all silently report `[ok]` for installed-but-outdated
-software.
+software. The pip driver also reuses `UIC_PREF_BREW_LIVECHECK` to gate
+its own `pip list --outdated` cache — a naming mismatch that makes the
+pref harder to reason about.
 
 **Solution:** Replace `package-update-policy` and `brew-livecheck` with
 a single `update-policy` pref:
@@ -35,7 +37,7 @@ a single `update-policy` pref:
 update-policy: conservative | balanced | aggressive
 ```
 
-| Policy | Tools (brew/pkg/nvm/apps) | Libs (pip groups) | Upstream check |
+| Policy | Tools | Libs | Upstream check |
 |---|---|---|---|
 | `conservative` | install-only | install-only | off |
 | `balanced` | always-upgrade | install-only | on |
@@ -44,7 +46,7 @@ update-policy: conservative | balanced | aggressive
 **Default:** `balanced` — tools stay current automatically, libs stay
 stable until explicitly requested, upstream version checking enabled.
 
-**Target classification via `update_class`:**
+#### Target classification via `update_class`
 
 The distinction is not about the driver — it's about whether upgrading
 can break other installed software. Declared per-target in YAML:
@@ -70,16 +72,46 @@ xz:
 This lets brew formulae like `xz` or `openssl` opt into `lib` behavior
 while most brew packages stay as `tool`.
 
-**Implementation:**
-1. Add `update-policy` to UIC preferences with three options
-2. Map internally: `balanced` → `UIC_PREF_BREW_LIVECHECK=1` +
-   `UIC_PREF_TOOL_UPDATE=always-upgrade` + `UIC_PREF_LIB_UPDATE=install-only`
-3. Each driver checks the appropriate policy variable
-4. Deprecate `package-update-policy` and `brew-livecheck` (keep as
-   overrides for backward compat)
-5. The pip driver's `_pip_update_would_conflict` safety check remains
-   active in all modes — `aggressive` enables the upgrade attempt but
-   the conflict guard still prevents breakage
+#### Current code state (as of 2026-04-13)
+
+The two legacy prefs already work but are spread across drivers:
+- `UIC_PREF_PACKAGE_UPDATE_POLICY` — checked by `brew_refresh_caches`,
+  `brew_formula_observe`, `brew_cask_observe` (lib/ucc_brew.sh)
+- `UIC_PREF_BREW_LIVECHECK` — gates `brew livecheck` cache
+  (lib/ucc_brew.sh) **and** `pip list --outdated` + `pipx` PyPI check
+  (lib/drivers/pip.sh), despite the brew-specific name
+
+The pip driver has no equivalent of `UIC_PREF_PACKAGE_UPDATE_POLICY` —
+it always upgrades on `action=update` (gated only by
+`_pip_update_would_conflict`). The new `update-policy` must wire
+`lib`-class policy into `_ucc_driver_pip_action` so `balanced` skips
+pip upgrades while `aggressive` attempts them.
+
+#### Implementation steps
+
+1. **New pref**: add `update-policy` to UIC preferences (conservative |
+   balanced | aggressive). Default: `balanced`.
+2. **Internal expansion**: map the single pref to three internal vars:
+   - `UIC_PREF_UPSTREAM_CHECK` (on/off) — replaces `UIC_PREF_BREW_LIVECHECK`
+   - `UIC_PREF_TOOL_UPDATE` (install-only | always-upgrade)
+   - `UIC_PREF_LIB_UPDATE` (install-only | always-upgrade) — replaces
+     `UIC_PREF_PACKAGE_UPDATE_POLICY` for lib-class targets
+3. **Wire `update_class` into drivers**:
+   - `_ucc_driver_pip_action`: read target's `update_class` (default
+     `lib`); check `UIC_PREF_LIB_UPDATE` before attempting upgrade.
+     The `_pip_update_would_conflict` safety check remains active in all
+     modes — `aggressive` enables the upgrade attempt but the conflict
+     guard still prevents breakage.
+   - `brew_formula_observe` / `brew_cask_observe`: read target's
+     `update_class` (default `tool`); check the matching policy var.
+   - Other drivers (nvm, pkg, custom-daemon, script-installer): default
+     `tool`, check `UIC_PREF_TOOL_UPDATE`.
+4. **Deprecate old prefs**: keep `package-update-policy` and
+   `brew-livecheck` as overrides for backward compat; log a deprecation
+   warning when they're set.
+5. **Mark targets**: add `update_class: lib` to brew formulae that are
+   shared dependencies: xz, openssl, gcc, icu4c, readline, etc.
+   Pip targets get `lib` by driver default so no YAML change needed.
 
 **Operator overrides:** `--pref update-policy=aggressive` for a full
 upgrade run. Or `--pref lib-update-policy=always-upgrade` to override
