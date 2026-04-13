@@ -2,10 +2,27 @@
 
 ## Open
 
-Three items. Phase C1 is **waiting-for-consumer**. Docker Desktop
+Four items. Phase C1 is **waiting-for-consumer**. Docker Desktop
 unattended first install is **in-progress** (core recipe works,
 Step 9 triage ongoing). Docker privileged ports target is
 **ready-to-implement** (design validated, functions exist).
+
+### Auto-include dependency components when selecting a single component
+
+`./install.sh docker` fails because `docker-desktop` depends on
+`homebrew` which lives in the `software-bootstrap` component. The
+framework doesn't auto-include `software-bootstrap` — it only runs
+the explicitly requested component, and cross-component dependencies
+show as `dep-fail`.
+
+**Expected behavior**: when a user selects a component (e.g. `docker`),
+the framework should resolve `depends_on` across component boundaries
+and automatically include any component that provides a required target.
+In this case, selecting `docker` should auto-include `software-bootstrap`
+(provides `homebrew`).
+
+**Current workaround**: `./install.sh software-bootstrap docker` or
+run without component filter (`./install.sh`).
 
 ### Phase C1 — uniform drift helper
 
