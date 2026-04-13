@@ -13,6 +13,39 @@ Six items, all deferred. Docker install/launch is fully functional
 | 4 | Phase C1 — drift helper | Waiting-for-consumer | Low |
 | 5 | ~~`docker-privileged-ports` target~~ | ✅ DONE 2026-04-13 (`f064f39`, `d50b28f`) | — |
 | 6 | Docker unattended first install — Checkpoint C | Core works, needs clean-state end-to-end tests | Medium |
+| 7 | Fix test suite — 43 failing integration tests | Categorized, 3 fixed (cat B), 40 remaining | High |
+
+### Fix test suite — 43 failing integration tests
+
+43 tests in `tests/scheduler/test_ucc_scheduler.py` and 1 in
+`tests/test_dev_tools_vscode_settings.py` fail on macOS. These are
+pre-existing failures — the tests were silently masked on WSL because
+`UCC_TARGET_SET` was empty (filtering everything). On macOS they run
+but fail due to accumulated drift between the test fixtures and the
+current codebase.
+
+**Root causes categorized (2026-04-13):**
+
+| Cat | Tests | Cause | Fix |
+|---|---|---|---|
+| A | 10 | `command not found` — functions moved to different lib files or renamed (`_ai_apply_compose_runtime` deleted, `npm_global_cache_versions`/`ollama_model_cache_list`/`vscode_extensions_cache_versions` moved, `dev_tools.sh` renamed) | Source correct lib files in test fixtures |
+| B | 3 | `declared[@]: unbound variable` in `ucc_flush_registered_targets` | ✅ DONE (`95d78b1`) — protected empty arrays with `${arr[@]+"..."}` |
+| C | 5 | Validator rejects fixtures — `brew-formula`, `brew-service`, `softwareupdate-defaults` are not valid driver kinds | Update fixture YAML to use current driver names |
+| D | 3 | `requires: macos` skips xcode tests on macOS — `HOST_PLATFORM` not exported in test env | Export `HOST_PLATFORM=macos` in test bash preamble |
+| E | 2 | Legacy capability fixtures use `runtime_manager: capability` + `probe_kind: command` + `oracle.runtime` (all rejected by validator) | Migrate to `driver.kind: capability` + `driver.probe` |
+| F | ~20 | Logic failures — tests expect `[ok]`/`[installed]` but get `[fail]`/`[policy]` due to runtime probes failing, missing deps, or policy gates not matching test assumptions | Deep investigation per test; may reveal real bugs in `ucc_flush_registered_targets` topo ordering |
+
+**Known bug found during investigation:**
+`ucc_flush_registered_targets` does not execute targets in topological
+order — `test_registered_targets_execute_in_topological_order` proves
+execution order is `[c, a, b]` instead of `[a, b, c]`. The `declared`
+array is populated from the manifest query but the execution loop does
+not use it to reorder. This may be the root cause of many category F
+failures (deps not resolved before action runs).
+
+**Guard strategy:** On WSL, the entire `UccSchedulerTests` class is
+skipped (`@unittest.skipUnless(os.uname().sysname == "Darwin")`).
+Integration tests belong on the target platform (macOS CI or Mac mini).
 
 ### Auto-include dependency components when selecting a single component
 
