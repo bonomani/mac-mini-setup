@@ -322,7 +322,7 @@ _ucc_display_name() {
 _ucc_emit_target_line() {
   local profile="$1" status="$2" name="$3" detail="${4:-}" line=""
   if [[ -n "$detail" ]]; then
-    line=$(printf '      [%-8s] %-30s %s' "$status" "$name" "$detail")
+    line=$(printf '      [%-8s] %-40s %s' "$status" "$name" "$detail")
   else
     line=$(printf '      [%-8s] %s' "$status" "$name")
   fi
@@ -536,7 +536,7 @@ _ucc_target_filtered_out() {
   if [[ -n "${UCC_DISABLED_TARGETS:-}" && "${UCC_DISABLED_TARGETS}" == *"${target}|"* ]]; then
     _UCC_EMITTED_TARGETS="${_UCC_EMITTED_TARGETS}|${target}|"
     local display_name; display_name="$(_ucc_display_name "$target")"
-    printf '      [%-8s] %-30s %s\n' "disabled" "$display_name" "disabled by policy"
+    printf '      [%-8s] %-40s %s\n' "disabled" "$display_name" "disabled by policy"
     return 0
   fi
   # Check requires: condition (platform/version/PM support)
@@ -545,7 +545,7 @@ _ucc_target_filtered_out() {
     if [[ -n "$_requires" ]] && ! _ucc_eval_requires "$_requires"; then
       _UCC_EMITTED_TARGETS="${_UCC_EMITTED_TARGETS}|${target}|"
       local display_name; display_name="$(_ucc_display_name "$target")"
-      printf '      [%-8s] %-30s %s\n' "skip" "$display_name" "requires: ${_requires}"
+      printf '      [%-8s] %-40s %s\n' "skip" "$display_name" "requires: ${_requires}"
       return 0
     fi
   fi
@@ -592,9 +592,9 @@ _ucc_target_filtered_out() {
       fi
     fi
     if [[ -n "$state" && "$state" != "absent" ]]; then
-      printf '      [%-8s] %-30s %s (current: %s)\n' "skip" "$display_name" "not selected" "$state"
+      printf '      [%-8s] %-40s %s (current: %s)\n' "skip" "$display_name" "not selected" "$state"
     else
-      printf '      [%-8s] %-30s %s\n' "skip" "$display_name" "not selected"
+      printf '      [%-8s] %-40s %s\n' "skip" "$display_name" "not selected"
     fi
     return 0
   fi
@@ -1301,7 +1301,7 @@ _ucc_check_deps_recursive() {
     [[ ":${visited}:" == *":${dep}:"* ]] && continue
     status="$(_ucc_target_status_value "$dep")"
     if [[ "$status" == "failed" ]]; then
-      printf '      [%-8s] %-30s dependency failed this run: %s\n' \
+      printf '      [%-8s] %-40s dependency failed this run: %s\n' \
         "dep-fail" "$(_ucc_display_name "$origin")" "$dep"
       return 1
     fi
@@ -1314,7 +1314,7 @@ _ucc_check_deps_recursive() {
     oracle_cmd="$(_ucc_target_oracle_configured "$dep")"
     if [[ -n "$oracle_cmd" ]]; then
       if ! eval "$oracle_cmd" 2>/dev/null; then
-        printf '      [%-8s] %-30s dependency not satisfied (oracle fail): %s\n' \
+        printf '      [%-8s] %-40s dependency not satisfied (oracle fail): %s\n' \
           "dep-fail" "$(_ucc_display_name "$origin")" "$dep"
         return 1
       fi
@@ -1622,9 +1622,9 @@ ucc_flush_registered_targets() {
     if [[ $_was_processed -eq 0 ]]; then
       local _dn; _dn="$(_ucc_display_name "$target")"
       if [[ -n "${UCC_DISABLED_TARGETS:-}" && "${UCC_DISABLED_TARGETS}" == *"${target}|"* ]]; then
-        printf '      [%-8s] %-30s %s\n' "disabled" "$_dn" "disabled by policy"
+        printf '      [%-8s] %-40s %s\n' "disabled" "$_dn" "disabled by policy"
       else
-        printf '      [%-8s] %-30s %s\n' "skip" "$_dn" "not processed"
+        printf '      [%-8s] %-40s %s\n' "skip" "$_dn" "not processed"
       fi
     fi
   done
@@ -1667,7 +1667,7 @@ ucc_skip_target() {
   local name="$1" reason="$2"
   local display_name
   display_name="$(_ucc_display_name "$name")"
-  printf '      [%-8s] %-30s %s\n' "skip" "$display_name" "$reason"
+  printf '      [%-8s] %-40s %s\n' "skip" "$display_name" "$reason"
   _UCC_SKIPPED=$(( ${_UCC_SKIPPED:-0} + 1 ))
   _UCC_EMITTED_TARGETS="${_UCC_EMITTED_TARGETS}|${name}|"
 }
