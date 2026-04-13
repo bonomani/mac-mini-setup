@@ -438,6 +438,15 @@ _ucc_run_yaml_action() {
   local cfg_dir="$1" yaml="$2" target="$3" action_key="$4"
   local cmd
 
+  # Check admin_required BEFORE any driver or YAML action dispatch.
+  # Return 125 (policy) so ucc_target shows [policy] instead of [fail].
+  if _ucc_yaml_target_admin_required "$cfg_dir" "$yaml" "$target" "$action_key"; then
+    if sudo_not_available; then
+      log_warn "Target '$target' requires admin privileges — skipped (no sudo ticket)"
+      return 125
+    fi
+  fi
+
   if [[ "$action_key" == "install" || "$action_key" == "update" ]]; then
     local _driver_kind
     _driver_kind="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.kind")"
@@ -458,12 +467,6 @@ _ucc_run_yaml_action() {
       ;;
   esac
   [[ -n "$cmd" ]] || return 1
-  if _ucc_yaml_target_admin_required "$cfg_dir" "$yaml" "$target" "$action_key"; then
-    if sudo_not_available; then
-      log_warn "Target '$target' requires admin privileges; acquire a sudo ticket first with: sudo -v"
-      return 125
-    fi
-  fi
   _ucc_eval_yaml_expr "$cfg_dir" "$yaml" "$target" "$cmd"
 }
 
