@@ -44,6 +44,8 @@ register_unsloth_studio_targets() {
   eval "_install_unsloth_studio() {
     local _bin
     _bin=\"\$(_unsloth_bin)\" || return 1
+    # Bootstrap Studio on first install (downloads frontend + deps)
+    ucc_run \"\$_bin\" studio update
     mkdir -p '\$(dirname '${plist}')'
     cat > '${plist}' <<PLIST
 ${plist_marker}
