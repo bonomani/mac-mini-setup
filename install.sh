@@ -406,9 +406,22 @@ _resolve_target() {
 _resolve_component() {
   local name="$1"
   _resolved+=("$name")
+  local _t _targets=()
   while IFS= read -r _t; do
-    [[ -n "$_t" ]] && UCC_TARGET_SET="${UCC_TARGET_SET}${_t}|"
+    [[ -n "$_t" ]] && { UCC_TARGET_SET="${UCC_TARGET_SET}${_t}|"; _targets+=("$_t"); }
   done < <(python3 "$_QUERY_SCRIPT" --ordered-targets "$name" "$_MANIFEST_DIR" 2>/dev/null || true)
+  # Auto-include components that provide cross-component dependencies.
+  # Query each target's transitive dependency components and recurse
+  # into any component not yet resolved.
+  local _dep_comp
+  for _t in "${_targets[@]}"; do
+    while IFS= read -r _dep_comp; do
+      if [[ -n "$_dep_comp" && "$_dep_comp" != "$name" ]] \
+        && ! printf '%s\n' "${_resolved[@]}" | grep -qx "$_dep_comp"; then
+        _resolve_component "$_dep_comp"
+      fi
+    done < <(python3 "$_QUERY_SCRIPT" --dep-components "$_t" "$_MANIFEST_DIR" 2>/dev/null || true)
+  done
 }
 
 _UCC_SELECTION_FILE="${UIC_PREF_FILE%/*}/selection.env"
