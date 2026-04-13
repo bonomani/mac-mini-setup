@@ -1693,7 +1693,7 @@ ucc_flush_registered_targets() {
     declared+=("$target")
   done <<< "$ordered"
 
-  for target in "${declared[@]}"; do
+  for target in "${declared[@]+"${declared[@]}"}"; do
     idx="$(_ucc_registered_index "$target" || true)"
     [[ -n "$idx" ]] || continue
     # Target set filter applied at entry points (ucc_yaml_*_target functions)
@@ -1705,7 +1705,7 @@ ucc_flush_registered_targets() {
   for idx in "${!_UCC_REGISTERED_NAMES[@]}"; do
     name="${_UCC_REGISTERED_NAMES[$idx]}"
     seen=0
-    for target in "${declared[@]}"; do
+    for target in "${declared[@]+"${declared[@]}"}"; do
       [[ "$target" == "$name" ]] && { seen=1; break; }
     done
     [[ "$seen" -eq 1 ]] && continue
@@ -1718,7 +1718,7 @@ ucc_flush_registered_targets() {
   done
 
   # Emit [skip] for targets in the component that the runner never processed
-  for target in "${declared[@]}"; do
+  for target in "${declared[@]+"${declared[@]}"}"; do
     # Check if target was registered (runner called ucc_yaml_*_target for it)
     _was_processed=0
     for _rn in "${_UCC_REGISTERED_NAMES[@]+"${_UCC_REGISTERED_NAMES[@]}"}"; do
