@@ -25,7 +25,7 @@ _ucc_driver_nvm_observe() {
   local ver
   ver="$(_nvm_self_version "$nvm_dir")" || { printf 'absent'; return; }
   [[ -z "$ver" ]] && { printf 'present'; return; }
-  if [[ "${UIC_PREF_BREW_LIVECHECK:-0}" == "1" ]]; then
+  if [[ "${UIC_PREF_UPSTREAM_CHECK:-0}" == "1" ]]; then
     local repo; repo="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.github_repo" 2>/dev/null || true)"
     if [[ -n "$repo" ]] && declare -f _pkg_github_latest_tag >/dev/null 2>&1; then
       local latest; latest="$(_pkg_github_latest_tag "$repo" 2>/dev/null)"
@@ -76,8 +76,8 @@ _ucc_driver_nvm_version_observe() {
     return
   fi
   # Outdated check: compare against `nvm ls-remote --lts` for the major.
-  # Opt-in via UIC_PREF_BREW_LIVECHECK=1 (network call).
-  if [[ "${UIC_PREF_BREW_LIVECHECK:-0}" == "1" ]]; then
+  # Opt-in via UIC_PREF_UPSTREAM_CHECK=1 (network call).
+  if [[ "${UIC_PREF_UPSTREAM_CHECK:-0}" == "1" ]]; then
     local latest
     latest="$(bash -c "source \"\$HOME/$nvm_dir/nvm.sh\" 2>/dev/null && nvm ls-remote --lts 2>/dev/null" \
       | grep -oE "v${ver}\.[0-9]+\.[0-9]+" | tail -1 | sed 's/^v//')"

@@ -24,12 +24,12 @@ brew_cache_outdated() {
 
 # Cross-check installed formulae against upstream via `brew livecheck`.
 # Catches releases that are newer than the formula in Homebrew (formula lag).
-# Opt-in via UIC_PREF_BREW_LIVECHECK=1 because livecheck is network-bound and slow.
+# Opt-in via UIC_PREF_UPSTREAM_CHECK=1 because livecheck is network-bound and slow.
 # Output format from `brew livecheck --quiet --newer-only --installed`:
 #   <name> : <installed> ==> <latest>
 brew_cache_livecheck() {
   export _BREW_LIVECHECK_CACHE=""
-  [[ "${UIC_PREF_BREW_LIVECHECK:-0}" == "1" ]] || return 0
+  [[ "${UIC_PREF_UPSTREAM_CHECK:-0}" == "1" ]] || return 0
   _BREW_LIVECHECK_CACHE=$(brew livecheck --quiet --newer-only --installed 2>/dev/null || true)
 }
 
@@ -41,7 +41,7 @@ _brew_livecheck_is_outdated() {
 }
 
 brew_refresh_caches() {
-  if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-always-upgrade}" == "always-upgrade" ]]; then
+  if [[ "${UIC_PREF_TOOL_UPDATE:-always-upgrade}" == "always-upgrade" ]]; then
     brew_cache_outdated
   else
     brew_cache_versions
@@ -75,7 +75,8 @@ brew_service_is_started() {
 }
 
 # Generic observe helpers — return: absent | outdated | current
-# Respect UIC_PREF_PACKAGE_UPDATE_POLICY (install-only | always-upgrade).
+# Respect UIC_PREF_TOOL_UPDATE / UIC_PREF_LIB_UPDATE based on update_class.
+# Optional second arg: update_class (tool|lib, default: tool).
 # brew_cask_is_installed is defined in lib/utils.sh
 # which is always sourced before these helpers are called.
 # Lookup version from cache (no brew subprocess)
@@ -84,22 +85,30 @@ brew_service_is_started() {
 _brew_cached_version()      { local p="${1##*/}"; echo "${_BREW_VERSIONS_CACHE:-}"      | awk -v p="$p" '$1==p{print $NF}'; }
 _brew_cask_cached_version() { local p="${1##*/}"; echo "${_BREW_CASK_VERSIONS_CACHE:-}" | awk -v p="$p" '$1==p{v=$NF; sub(/,.*$/,"",v); print v}'; }
 
+# Return the effective update policy for a given update_class.
+_brew_update_policy_for_class() {
+  case "${1:-tool}" in
+    lib) printf '%s' "${UIC_PREF_LIB_UPDATE:-install-only}" ;;
+    *)   printf '%s' "${UIC_PREF_TOOL_UPDATE:-always-upgrade}" ;;
+  esac
+}
+
 brew_observe() {
-  local pkg="$1" ver
+  local pkg="$1" update_class="${2:-tool}" ver
   # Use version cache for presence check — avoids `brew list <pkg>` subprocess
   ver=$(_brew_cached_version "$pkg")
   [[ -z "$ver" ]] && { echo "absent"; return; }
-  if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-always-upgrade}" == "always-upgrade" ]]; then
+  if [[ "$(_brew_update_policy_for_class "$update_class")" == "always-upgrade" ]]; then
     _brew_is_outdated "$pkg" && { echo "outdated"; return; }
   fi
   echo "$ver"
 }
 
 brew_cask_observe() {
-  local pkg="$1" greedy_auto_updates="${2:-false}" ver
+  local pkg="$1" greedy_auto_updates="${2:-false}" update_class="${3:-tool}" ver
   ver=$(_brew_cask_cached_version "$pkg")
   [[ -z "$ver" ]] && { echo "absent"; return; }
-  if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-always-upgrade}" == "always-upgrade" ]]; then
+  if [[ "$(_brew_update_policy_for_class "$update_class")" == "always-upgrade" ]]; then
     _brew_cask_is_outdated "$pkg" "$greedy_auto_updates" && { echo "outdated"; return; }
   fi
   echo "$ver"
@@ -108,13 +117,15 @@ brew_cask_observe() {
 # Post-process a brew observe state with `brew livecheck` results.
 # If `brew outdated` says current but livecheck found a newer upstream release,
 # return "outdated". Otherwise pass-through.
-# Reads driver.ref to identify the package.
+# Reads driver.ref and update_class to identify the package and policy.
 _ucc_brew_state_with_upstream() {
   local cfg_dir="$1" yaml="$2" target="$3" state="$4"
   if [[ "$state" == "absent" || "$state" == "outdated" ]]; then
     printf '%s' "$state"; return
   fi
-  if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-always-upgrade}" != "always-upgrade" ]]; then
+  local update_class
+  update_class="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "update_class" 2>/dev/null || true)"
+  if [[ "$(_brew_update_policy_for_class "${update_class:-tool}")" != "always-upgrade" ]]; then
     printf '%s' "$state"; return
   fi
   local ref

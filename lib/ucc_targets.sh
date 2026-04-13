@@ -1042,9 +1042,9 @@ ucc_yaml_runtime_target() {
 
 _ucc_observe_brew_runtime_formula() {
   local pkg="$1" service_name="$2" runtime_cmd="${3:-}" configured_cmd="${4:-}" cfg_dir="${5:-}" yaml="${6:-}" target="${7:-}"
-  local pkg_state
-
-  pkg_state="$(brew_observe "$pkg")"
+  local pkg_state update_class
+  update_class="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "update_class" 2>/dev/null || true)"
+  pkg_state="$(brew_observe "$pkg" "${update_class:-tool}")"
 
   if [[ "$pkg_state" == "absent" ]]; then
     ucc_asm_state --installation Absent --runtime NeverStarted --health Unavailable --admin Enabled --dependencies DepsUnknown
@@ -1080,9 +1080,9 @@ _ucc_observe_brew_runtime_formula() {
 
 _ucc_apply_brew_runtime_formula() {
   local pkg="$1" brew_ref="$2" service_name="$3" runtime_cmd="${4:-}" mode="${5:-install}" cfg_dir="${6:-}" yaml="${7:-}" target="${8:-}"
-  local pkg_state
-
-  pkg_state="$(brew_observe "$pkg")"
+  local pkg_state update_class
+  update_class="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "update_class" 2>/dev/null || true)"
+  pkg_state="$(brew_observe "$pkg" "${update_class:-tool}")"
   if [[ "$pkg_state" == "absent" ]]; then
     brew_install "$brew_ref" || return 1
   elif [[ "$pkg_state" == "outdated" || "$mode" == "update" ]]; then

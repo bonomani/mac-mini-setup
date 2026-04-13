@@ -723,7 +723,7 @@ _ucc_sudo_refresh() {
 # Warm Brew caches before any component runs. Version caches are needed in all
 # modes; outdated caches are only useful when upgrades are enabled.
 if command -v brew &>/dev/null; then
-  if [[ "${UIC_PREF_PACKAGE_UPDATE_POLICY:-always-upgrade}" == "always-upgrade" ]]; then
+  if [[ "${UIC_PREF_TOOL_UPDATE:-always-upgrade}" == "always-upgrade" ]]; then
     brew update --force --quiet 2>/dev/null || true
   fi
   brew_refresh_caches

@@ -11,15 +11,16 @@
 
 _ucc_driver_brew_observe() {
   local cfg_dir="$1" yaml="$2" target="$3"
-  local ref cask greedy state
+  local ref cask greedy state update_class
   ref="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.ref")"
   [[ -n "$ref" ]] || return 1
+  update_class="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "update_class" 2>/dev/null || true)"
   cask="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.cask")"
   if [[ "$cask" == "true" ]]; then
     greedy="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.greedy_auto_updates")"
-    state="$(brew_cask_observe "$ref" "$greedy")"
+    state="$(brew_cask_observe "$ref" "$greedy" "${update_class:-tool}")"
   else
-    state="$(brew_observe "$ref")"
+    state="$(brew_observe "$ref" "${update_class:-tool}")"
   fi
   _ucc_brew_state_with_upstream "$cfg_dir" "$yaml" "$target" "$state"
 }

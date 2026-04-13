@@ -13,8 +13,8 @@ _ucc_driver_script_installer_observe() {
   [[ -d "$HOME/$install_dir" ]] || { printf 'absent'; return; }
   # Outdated check: most script installers (oh-my-zsh etc.) clone a git
   # repo under install_dir. If so, compare local HEAD vs origin HEAD.
-  # Opt-in via UIC_PREF_BREW_LIVECHECK=1 (network call).
-  if [[ "${UIC_PREF_BREW_LIVECHECK:-0}" == "1" && -d "$HOME/$install_dir/.git" ]]; then
+  # Opt-in via UIC_PREF_UPSTREAM_CHECK=1 (network call).
+  if [[ "${UIC_PREF_UPSTREAM_CHECK:-0}" == "1" && -d "$HOME/$install_dir/.git" ]]; then
     local local_head remote_head
     local_head="$(git -C "$HOME/$install_dir" rev-parse HEAD 2>/dev/null)"
     git -C "$HOME/$install_dir" fetch --quiet origin 2>/dev/null || true

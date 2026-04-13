@@ -156,10 +156,10 @@ _pkg_native_upgrade() {
 
 # ── Per-PM outdated detection (used by pkg native-pm backend) ────────────────
 # Cache populated lazily on first call. Each backend has its own cache var.
-# Gated on UIC_PREF_BREW_LIVECHECK=1 (network call, can be slow).
+# Gated on UIC_PREF_UPSTREAM_CHECK=1 (network call, can be slow).
 _pkg_native_outdated_cache_load() {
   local backend="$1"
-  [[ "${UIC_PREF_BREW_LIVECHECK:-0}" == "1" ]] || return 1
+  [[ "${UIC_PREF_UPSTREAM_CHECK:-0}" == "1" ]] || return 1
   case "$backend" in
     apt)
       [[ -n "${_PKG_APT_OUTDATED_CACHE+x}" ]] && return 0

@@ -244,7 +244,7 @@ not specified). Counts are real (`type` distribution per component).
 | `skip-display-mode` | `full` | `full|fast` | full: show every target with current state and version (slower observe); fast: hide non-selected targets entirely (faster runs) |
 | `destructive-updates` | `off` | `on|off` | off prevents destructive container/package replacement without explicit operator intent; on allows full reimaging on update |
 | `service-policy` | `autostart` | `manual|autostart` | autostart: script starts required services (Docker, Ollama) when not running; manual: operator starts services before running the script |
-| `package-update-policy` | `always-upgrade` | `install-only|always-upgrade` | always-upgrade: upgrade outdated packages on each run; install-only: skip already-installed packages (use to speed up runs when upgrades are not needed) |
+| `update-policy` | `balanced` | `conservative|balanced|aggressive` | conservative: install only, no upstream checks; balanced: auto-upgrade tools, hold libs stable, upstream checks on; aggressive: upgrade everything including libs |
 | `preferred-driver-policy` | `warn` | `ignore|warn|migrate` | ignore accepts software found outside the preferred install driver; warn reports drift without changing it; migrate allows supported targets to converve to the preferred driver |
 
 ## 6. Gates  (`defaults/gates.yaml`)

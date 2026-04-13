@@ -36,8 +36,9 @@ _ucc_driver_service_observe() {
   case "$_SVC_BACKEND" in
     brew)
       [[ -n "$_SVC_REF" ]] || return 1
-      local pkg_state
-      pkg_state="$(brew_observe "$_SVC_REF")"
+      local pkg_state update_class
+      update_class="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "update_class" 2>/dev/null || true)"
+      pkg_state="$(brew_observe "$_SVC_REF" "${update_class:-tool}")"
       if [[ "$pkg_state" == "absent" ]]; then
         printf 'absent'; return
       fi

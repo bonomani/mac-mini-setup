@@ -22,9 +22,9 @@ _pip_ensure_path() {
 }
 
 # Cache `pip list --outdated --format=json` once per process; opt-in via
-# UIC_PREF_BREW_LIVECHECK=1 (network call, can be slow on big environments).
+# UIC_PREF_UPSTREAM_CHECK=1 (network call, can be slow on big environments).
 _pip_outdated_cache_load() {
-  [[ "${UIC_PREF_BREW_LIVECHECK:-0}" == "1" ]] || return 1
+  [[ "${UIC_PREF_UPSTREAM_CHECK:-0}" == "1" ]] || return 1
   [[ -n "${_PIP_OUTDATED_CACHE+x}" ]] && return 0
   export _PIP_OUTDATED_CACHE=""
   local cmd="pip"
@@ -83,7 +83,7 @@ _pipx_version() {
 # pipx outdated cache: pipx has no `outdated` json so we compare each tool's
 # version against PyPI's latest via the same opt-in flag.
 _pipx_outdated() {
-  [[ "${UIC_PREF_BREW_LIVECHECK:-0}" == "1" ]] || return 1
+  [[ "${UIC_PREF_UPSTREAM_CHECK:-0}" == "1" ]] || return 1
   local pkg="$1"
   local installed; installed="$(_pipx_version "$pkg")"
   [[ -n "$installed" ]] || return 1
@@ -161,10 +161,19 @@ _ucc_driver_pip_observe() {
 
 _ucc_driver_pip_action() {
   local cfg_dir="$1" yaml="$2" target="$3" action="$4"
-  local isolation pkgs
+  local isolation pkgs update_class update_policy
   isolation="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.isolation" 2>/dev/null || true)"
   pkgs="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.install_packages")"
   [[ -n "$pkgs" ]] || return 1
+  # Resolve update_class: pipx → default tool, pip → default lib
+  update_class="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "update_class" 2>/dev/null || true)"
+  if [[ -z "$update_class" ]]; then
+    [[ "$isolation" == "pipx" ]] && update_class="tool" || update_class="lib"
+  fi
+  case "$update_class" in
+    lib) update_policy="${UIC_PREF_LIB_UPDATE:-install-only}" ;;
+    *)   update_policy="${UIC_PREF_TOOL_UPDATE:-always-upgrade}" ;;
+  esac
   if [[ "$isolation" == "pipx" ]]; then
     if ! _pipx_available; then
       log_warn "pipx not available — install with: brew install pipx"
@@ -172,7 +181,10 @@ _ucc_driver_pip_action() {
     fi
     case "$action" in
       install) _pipx_install_pkgs "$pkgs" ;;
-      update)  _pipx_upgrade_pkgs "$pkgs" ;;
+      update)
+        [[ "$update_policy" == "install-only" ]] && return 0
+        _pipx_upgrade_pkgs "$pkgs"
+        ;;
     esac
     return $?
   fi
@@ -190,6 +202,8 @@ _ucc_driver_pip_action() {
         && pip_cache_versions
       ;;
     update)
+      # Respect update policy: lib-class targets skip upgrades under balanced.
+      [[ "$update_policy" == "install-only" ]] && return 0
       # Non-destructive update: dry-run first; if the resolver would
       # leave any other already-installed package with an unsatisfied
       # constraint ("X requires Y<Z, but you have Y>=Z"), skip the

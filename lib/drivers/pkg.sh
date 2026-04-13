@@ -29,13 +29,13 @@
 # brew (formula). brew_observe already returns absent/outdated/<version>.
 _pkg_brew_available() { command -v brew >/dev/null 2>&1; }
 _pkg_brew_activate()  { :; }
-_pkg_brew_observe()   { brew_observe "$1"; }
+_pkg_brew_observe()   { brew_observe "$1" "${_PKG_UPDATE_CLASS:-tool}"; }
 _pkg_brew_install()   { brew_install "$1"; }
 _pkg_brew_update()    { brew_upgrade "$1"; }
 _pkg_brew_version()   { _brew_cached_version "$1"; }
 # Outdated detection: piggyback on brew_observe (returns "outdated" when
-# brew outdated flags it; UIC_PREF_BREW_LIVECHECK=1 catches formula lag).
-_pkg_brew_outdated()  { [[ "$(brew_observe "$1")" == "outdated" ]]; }
+# brew outdated flags it; UIC_PREF_UPSTREAM_CHECK=1 catches formula lag).
+_pkg_brew_outdated()  { [[ "$(brew_observe "$1" "${_PKG_UPDATE_CLASS:-tool}")" == "outdated" ]]; }
 
 # npm-global
 _pkg_npm_available()  { _npm_ensure_path; }
@@ -56,7 +56,7 @@ _pkg_npm_version()    { npm_global_version "$1"; }
 # Cache `npm outdated -g --json` once per process; opt-in via the brew
 # livecheck flag (same trade-off — slow network call).
 _pkg_npm_outdated() {
-  [[ "${UIC_PREF_BREW_LIVECHECK:-0}" == "1" ]] || return 1
+  [[ "${UIC_PREF_UPSTREAM_CHECK:-0}" == "1" ]] || return 1
   local pkg="$1"
   if [[ -z "${_NPM_OUTDATED_CACHE+x}" ]]; then
     export _NPM_OUTDATED_CACHE
@@ -74,7 +74,7 @@ sys.exit(0 if '$pkg' in d else 1)
 }
 
 # curl (script installer fallback). Presence by default; outdated detection
-# is opt-in via driver.github_repo + UIC_PREF_BREW_LIVECHECK=1.
+# is opt-in via driver.github_repo + UIC_PREF_UPSTREAM_CHECK=1.
 _pkg_curl_available() { command -v curl >/dev/null 2>&1; }
 _pkg_curl_activate()  { :; }
 _pkg_curl_observe()   {
@@ -104,10 +104,10 @@ _pkg_curl_version() {
     | grep -oE '[0-9]+(\.[0-9]+){1,3}' | head -1
 }
 # True (0) if upstream GitHub release is strictly newer than installed binary.
-# Gated on UIC_PREF_BREW_LIVECHECK=1 (network call). Reads driver.github_repo
+# Gated on UIC_PREF_UPSTREAM_CHECK=1 (network call). Reads driver.github_repo
 # from _PKG_GITHUB_REPO stashed by the dispatcher.
 _pkg_curl_outdated() {
-  [[ "${UIC_PREF_BREW_LIVECHECK:-0}" == "1" ]] || return 1
+  [[ "${UIC_PREF_UPSTREAM_CHECK:-0}" == "1" ]] || return 1
   [[ -n "${_PKG_GITHUB_REPO:-}" ]] || return 1
   local installed latest
   installed="$(_pkg_curl_version)"
@@ -158,12 +158,12 @@ _pkg_github_latest_tag() {
 _pkg_brew_cask_available() { command -v brew >/dev/null 2>&1; }
 _pkg_brew_cask_activate()  { :; }
 _pkg_brew_cask_observe()   {
-  brew_cask_observe "$1" "${_PKG_GREEDY:-false}"
+  brew_cask_observe "$1" "${_PKG_GREEDY:-false}" "${_PKG_UPDATE_CLASS:-tool}"
 }
 _pkg_brew_cask_install()   { brew_cask_install "$1"; }
 _pkg_brew_cask_update()    { brew_cask_upgrade "$1" "${_PKG_GREEDY:-false}"; }
 _pkg_brew_cask_version()   { _brew_cask_cached_version "$1"; }
-_pkg_brew_cask_outdated()  { [[ "$(brew_cask_observe "$1" "${_PKG_GREEDY:-false}")" == "outdated" ]]; }
+_pkg_brew_cask_outdated()  { [[ "$(brew_cask_observe "$1" "${_PKG_GREEDY:-false}" "${_PKG_UPDATE_CLASS:-tool}")" == "outdated" ]]; }
 
 # native-pm: Linux/WSL2 platform-aware package manager (apt/dnf/pacman/zypper).
 # Delegates to the helpers in lib/drivers/package.sh which already implement
@@ -238,7 +238,7 @@ _pkg_winget_version() {
     | tail -n +2 | awk '{for(i=1;i<=NF;i++) if($i ~ /^[0-9]+\./) {print $i; exit}}'
 }
 _pkg_winget_outdated() {
-  [[ "${UIC_PREF_BREW_LIVECHECK:-0}" == "1" ]] || return 1
+  [[ "${UIC_PREF_UPSTREAM_CHECK:-0}" == "1" ]] || return 1
   local ref="$1" wcmd
   wcmd="$(_pkg_winget_cmd)"
   $wcmd upgrade --id "$ref" --exact --accept-source-agreements 2>/dev/null \
@@ -300,9 +300,9 @@ _pkg_vscode_version()   { _vscode_extension_cached_version "$1"; }
 
 # Per-process cache: lines of "<extension_id>\t<latest_version>".
 # Built lazily by querying the VS Code marketplace once for all installed
-# extensions. Gated on UIC_PREF_BREW_LIVECHECK=1 (network call).
+# extensions. Gated on UIC_PREF_UPSTREAM_CHECK=1 (network call).
 _pkg_vscode_outdated_cache_load() {
-  [[ "${UIC_PREF_BREW_LIVECHECK:-0}" == "1" ]] || return 1
+  [[ "${UIC_PREF_UPSTREAM_CHECK:-0}" == "1" ]] || return 1
   [[ -n "${_PKG_VSCODE_LATEST_CACHE+x}" ]] && return 0
   export _PKG_VSCODE_LATEST_CACHE=""
   command -v code >/dev/null 2>&1 || return 1
@@ -346,7 +346,7 @@ for ext in results:
 }
 
 _pkg_vscode_outdated() {
-  [[ "${UIC_PREF_BREW_LIVECHECK:-0}" == "1" ]] || return 1
+  [[ "${UIC_PREF_UPSTREAM_CHECK:-0}" == "1" ]] || return 1
   local id="$1"
   [[ -n "$id" ]] || return 1
   _pkg_vscode_outdated_cache_load || return 1
@@ -433,6 +433,7 @@ _ucc_driver_pkg_observe() {
   _PKG_BIN="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.bin" 2>/dev/null || true)"
   _PKG_GREEDY="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.greedy_auto_updates" 2>/dev/null || true)"
   _PKG_GITHUB_REPO="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.github_repo" 2>/dev/null || true)"
+  _PKG_UPDATE_CLASS="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "update_class" 2>/dev/null || true)"
   local fn="_pkg_${_PKG_PICKED_NAME//-/_}_observe"
   declare -f "$fn" >/dev/null 2>&1 || return 1
   "$fn" "$_PKG_PICKED_REF"

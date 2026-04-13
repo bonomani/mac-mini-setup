@@ -51,6 +51,7 @@ targets:
     type: package
     state_model: package
     display_name: XZ Utils
+    update_class: lib
     driver:
       kind: pkg
       backends:
