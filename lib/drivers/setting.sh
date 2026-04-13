@@ -83,6 +83,7 @@ _ucc_driver_setting_apply() {
 }
 
 _ucc_driver_setting_evidence() {
+  _setting_get_fields "$1" "$2" "$3"
   local val
   val="$(_setting_read_value "$1" "$2" "$3")"
   printf '%s=%s' "$_SETTING_KEY" "$val"
