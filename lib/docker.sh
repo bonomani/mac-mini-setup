@@ -393,8 +393,14 @@ _docker_launch() {
     sleep 5
   fi
 
-  log_info "DEBUG: launching Docker via detached process"
-  nohup bash -c "sleep 1; open -g '$app_path'" &>/dev/null &
+  # Launch with a clean environment. install.sh accumulates hundreds of
+  # exported _UCC_* variables (145+ KB) which are inherited by the nohup
+  # child. Docker Desktop's com.docker.backend silently fails to start
+  # when the inherited environment is too large. `env -i` strips all
+  # inherited vars; we pass only HOME and PATH which Docker needs.
+  log_info "Launching Docker Desktop..."
+  nohup env -i HOME="$HOME" PATH="$PATH" \
+    bash -c "sleep 1; open -g '$app_path'" &>/dev/null &
 
   # Wait up to 30s for daemon readiness. If Docker doesn't respond
   # within 30s, it's not coming up — don't waste minutes retrying.
