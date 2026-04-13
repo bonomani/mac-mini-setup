@@ -2,10 +2,17 @@
 
 ## Open
 
-Six items. Phase C1 is **waiting-for-consumer**. Docker Desktop
-unattended first install is **in-progress** (core recipe works,
-Step 12 done, vmnetd wired, launch fixed). Docker privileged ports
-target is **ready-to-implement** (design validated, functions exist).
+Six items, all deferred. Docker install/launch is fully functional
+(tested 2026-04-13). Remaining work is hardening and cross-platform.
+
+| # | Item | Status | Priority |
+|---|---|---|---|
+| 1 | Auto-include dependency components | Design ready | Medium |
+| 2 | Docker cross-platform (WSL2/Linux) | Design + compat matrix ready | Low |
+| 3 | Minimize env size (145KB `_UCC_*` bloat) | Workaround in place (`env -i`) | Medium |
+| 4 | Phase C1 — drift helper | Waiting-for-consumer | Low |
+| 5 | `docker-privileged-ports-available` target | Design validated, functions exist | Low |
+| 6 | Docker unattended first install — Checkpoint C | Core works, needs clean-state end-to-end tests | Medium |
 
 ### Auto-include dependency components when selecting a single component
 
