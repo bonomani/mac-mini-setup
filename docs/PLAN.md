@@ -2,8 +2,8 @@
 
 ## Open
 
-Six items, all deferred. Docker install/launch is fully functional
-(tested 2026-04-13). Remaining work is hardening and cross-platform.
+Three items remain. Docker install/launch is fully functional
+(tested 2026-04-13). Test suite green. Remaining work is cross-platform.
 
 | # | Item | Status | Priority |
 |---|---|---|---|
@@ -13,39 +13,39 @@ Six items, all deferred. Docker install/launch is fully functional
 | 4 | Phase C1 — drift helper | Waiting-for-consumer | Low |
 | 5 | ~~`docker-privileged-ports` target~~ | ✅ DONE 2026-04-13 (`f064f39`, `d50b28f`) | — |
 | 6 | Docker unattended first install — Checkpoint C | Core works, needs clean-state end-to-end tests | Medium |
-| 7 | Fix test suite — 43 failing integration tests | Categorized, 3 fixed (cat B), 40 remaining | High |
+| 7 | ~~Fix test suite — 43 failing integration tests~~ | ✅ DONE 2026-04-13 — 159 pass, 1 skipped, 0 failed | — |
 
-### Fix test suite — 43 failing integration tests
+### Fix test suite — 43 failing integration tests (DONE)
 
-43 tests in `tests/scheduler/test_ucc_scheduler.py` and 1 in
-`tests/test_dev_tools_vscode_settings.py` fail on macOS. These are
-pre-existing failures — the tests were silently masked on WSL because
-`UCC_TARGET_SET` was empty (filtering everything). On macOS they run
-but fail due to accumulated drift between the test fixtures and the
-current codebase.
+All 43 failing tests fixed (2026-04-13). Final: 159 pass, 1 skipped.
 
-**Root causes categorized (2026-04-13):**
+**Fixes applied:**
 
-| Cat | Tests | Cause | Fix |
-|---|---|---|---|
-| A | 10 | `command not found` — functions moved to different lib files or renamed (`_ai_apply_compose_runtime` deleted, `npm_global_cache_versions`/`ollama_model_cache_list`/`vscode_extensions_cache_versions` moved, `dev_tools.sh` renamed) | Source correct lib files in test fixtures |
-| B | 3 | `declared[@]: unbound variable` in `ucc_flush_registered_targets` | ✅ DONE (`95d78b1`) — protected empty arrays with `${arr[@]+"..."}` |
-| C | 5 | Validator rejects fixtures — `brew-formula`, `brew-service`, `softwareupdate-defaults` are not valid driver kinds | Update fixture YAML to use current driver names |
-| D | 3 | `requires: macos` skips xcode tests on macOS — `HOST_PLATFORM` not exported in test env | Export `HOST_PLATFORM=macos` in test bash preamble |
-| E | 2 | Legacy capability fixtures use `runtime_manager: capability` + `probe_kind: command` + `oracle.runtime` (all rejected by validator) | Migrate to `driver.kind: capability` + `driver.probe` |
-| F | ~20 | Logic failures — tests expect `[ok]`/`[installed]` but get `[fail]`/`[policy]` due to runtime probes failing, missing deps, or policy gates not matching test assumptions | Deep investigation per test; may reveal real bugs in `ucc_flush_registered_targets` topo ordering |
+| Cat | Fix | Commits |
+|---|---|---|
+| A | Source correct lib files (npm.sh, ollama_models.sh, vscode_ext.sh, homebrew.sh, pip_group.sh) | `7d5954f` |
+| B | Protect empty arrays with `${arr[@]+"..."}` | `95d78b1`, `9e61110` |
+| C | Update driver kinds (softwareupdate-defaults→setting, brew-formula→brew, brew-service→service) | `7d5954f` |
+| D | Export HOST_PLATFORM=macos in xcode test preambles | `7d5954f` |
+| E | Migrate capability fixtures to driver.kind: capability + driver.probe | `7d5954f` |
+| F | Fix driver dispatch fallthrough, PYTHONPATH for HOME override, stub renames, assertion updates | `7d5954f`, `6afdc7a` |
 
-**Known bug found during investigation:**
-`ucc_flush_registered_targets` does not execute targets in topological
-order — `test_registered_targets_execute_in_topological_order` proves
-execution order is `[c, a, b]` instead of `[a, b, c]`. The `declared`
-array is populated from the manifest query but the execution loop does
-not use it to reorder. This may be the root cause of many category F
-failures (deps not resolved before action runs).
+**Bugs found and fixed during investigation:**
+- `_ucc_run_yaml_action`: non-custom drivers with no action handler blocked YAML actions → fixed with `&& return` fallthrough (`8316b31`)
+- `_ucc_driver_evidence`: driver evidence failure masked by `_ucc_driver_github_latest` → fixed with `|| return 1` (`9034539`)
+- `AI_SERVICES[@]` unbound in `ai_apps.sh` → protected (`7d5954f`)
+- `_write_compose_file` used local `stack_template_rel` (unbound in deferred mode) → use `_AI_APPS_TEMPLATE_FILE` (`6afdc7a`)
+- `sudo -n true` fails inside `$()` subshells on macOS (tty-bound tickets) → detect at startup, cache in `_UCC_SUDO_AVAILABLE` (`12c627a`)
+- `run_elevated` prompted for password in non-interactive mode → use `sudo -n` (`b79b2f5`)
+- `defaults write -bool 1` invalid on macOS (requires true/false) → normalize values (`308ebff`)
+- `softwareupdate --schedule` observe pattern didn't match actual output → fix grep (`274c5ce`)
+- Deprecated driver kinds `desktop-app`, `docker-compose` removed from code + validator (`d185edd`, `631682d`)
 
-**Guard strategy:** On WSL, the entire `UccSchedulerTests` class is
-skipped (`@unittest.skipUnless(os.uname().sysname == "Darwin")`).
-Integration tests belong on the target platform (macOS CI or Mac mini).
+**Refactorings applied:**
+- `_ucc_driver_dispatch` hub deduplication (-36 lines) (`6f55222`)
+- Dead desktop-app/docker-compose observe code removal (-129 lines) (`d185edd`)
+- `_ucc_env()` test preamble helper (-69 lines) (`00eb983`)
+- Driver observe/evidence dedup in setting.sh and swupdate_schedule.sh (`5e4a86d`, `1bfeff6`)
 
 ### Auto-include dependency components when selecting a single component
 
