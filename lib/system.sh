@@ -44,7 +44,7 @@ run_system_from_yaml() {
       _total=$((_total + 1))
       _status="$(awk -F'|' -v dep="$_t" '$1==dep {val=$2} END {print val}' "${UCC_TARGET_STATUS_FILE:-}" 2>/dev/null || true)"
       case "$_status" in
-        ok) _ok=$((_ok + 1)) ;;
+        ok|policy) _ok=$((_ok + 1)) ;;
         failed) _failed=$((_failed + 1)) ;;
       esac
     done <<< "$ordered"
@@ -69,7 +69,7 @@ run_system_from_yaml() {
       [[ -n "$_t" && "$_t" != "system-composition" ]] || continue
       _total=$((_total + 1))
       _status="$(awk -F'|' -v dep="$_t" '$1==dep {val=$2} END {print val}' "${UCC_TARGET_STATUS_FILE:-}" 2>/dev/null || true)"
-      case "$_status" in ok) _ok=$((_ok + 1)) ;; failed) _failed=$((_failed + 1)) ;; *) _pending=$((_pending + 1)) ;; esac
+      case "$_status" in ok|policy) _ok=$((_ok + 1)) ;; failed) _failed=$((_failed + 1)) ;; *) _pending=$((_pending + 1)) ;; esac
     done <<< "$ordered"
     printf 'kind=os-config  ready=%s/%s' "$_ok" "$_total"
     [[ "$_failed" -gt 0 ]] && printf '  failed=%s' "$_failed"
