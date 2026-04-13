@@ -162,7 +162,20 @@ _ucc_yaml_target_get() {
 _ucc_yaml_target_get_many() {
   local cfg_dir="$1" yaml="$2" target="$3"
   shift 3
-  python3 "$cfg_dir/tools/read_config.py" --target-get-many "$yaml" "$target" "$@" 2>/dev/null || true
+  local yaml_fn="${yaml//[^a-zA-Z0-9]/_}"
+  local target_fn="${target//[^a-zA-Z0-9]/_}"
+  local cache_var="_UCC_YTGT_${yaml_fn}_${target_fn}"
+  if [[ -n "${!cache_var:-}" ]]; then
+    # Filter cached rows to only requested keys
+    local _keys=""
+    local _k; for _k in "$@"; do _keys="${_keys}|${_k}"; done
+    _keys="${_keys#|}"
+    printf '%s' "${!cache_var}" | base64 -d | awk -F'\t' -v keys="$_keys" \
+      'BEGIN{RS="\0"; n=split(keys,ka,"|"); for(i=1;i<=n;i++) want[ka[i]]=1}
+       $1 in want {printf "%s\t%s\0",$1,$2}'
+  else
+    python3 "$cfg_dir/tools/read_config.py" --target-get-many "$yaml" "$target" "$@" 2>/dev/null || true
+  fi
 }
 
 _ucc_yaml_target_driver_get() {
