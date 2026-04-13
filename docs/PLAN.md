@@ -9,7 +9,7 @@ Six items, all deferred. Docker install/launch is fully functional
 |---|---|---|---|
 | 1 | Auto-include dependency components | Design ready | Medium |
 | 2 | Docker cross-platform (WSL2/Linux) | Design + compat matrix ready | Low |
-| 3 | Minimize env size (145KB `_UCC_*` bloat) | Workaround in place (`env -i`) | Medium |
+| 3 | ~~Minimize env size (145KB `_UCC_*` bloat)~~ | ✅ DONE 2026-04-13 (`9862f89`) — cleanup in `ucc_reset_registered_targets` | — |
 | 4 | Phase C1 — drift helper | Waiting-for-consumer | Low |
 | 5 | ~~`docker-privileged-ports` target~~ | ✅ DONE 2026-04-13 (`f064f39`, `d50b28f`) | — |
 | 6 | Docker unattended first install — Checkpoint C | Core works, needs clean-state end-to-end tests | Medium |
