@@ -2,8 +2,9 @@
 
 ## Open
 
-Four items remain. Docker install/launch is fully functional
-(tested 2026-04-13). Test suite green.
+Three items remain. Docker install/launch is fully functional
+(tested 2026-04-13). Test suite green. Pip venv isolation shipped
+(2026-04-14).
 
 | # | Item | Status | Priority |
 |---|---|---|---|
@@ -18,7 +19,7 @@ Four items remain. Docker install/launch is fully functional
 | 9 | ~~Extract install.sh functions to lib/~~ | ✅ DONE 2026-04-13 — install.sh 1225→991 lines (`c463e5c`) | — |
 | 10 | ~~Unify batch cache access~~ | ✅ DONE 2026-04-13 — `_ucc_yaml_target_get_many` uses `_UCC_YTGT_*` cache (`3647ee4`) | — |
 | 11 | Unified `update-policy` pref | ✅ DONE 2026-04-13 (`da6b335`, `7a9566a`) | — |
-| 12 | Pip venv isolation (`isolation.kind: venv`) | Planned | High |
+| 12 | Pip venv isolation (`isolation.kind: venv`) | ✅ DONE 2026-04-14 (`9a8cf5c`, `7287079`, `dede47a`) | — |
 
 ### Unified `update-policy` pref
 
