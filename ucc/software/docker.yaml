@@ -55,6 +55,8 @@ targets:
       version: docker_version
       install_source: docker_install_source_observe
       pid: docker_desktop_pid
+    actions:
+      install: _docker_desktop_install
     stopped_dependencies: DepsReady
   docker-daemon:
     component: docker
@@ -70,6 +72,8 @@ targets:
     oracle:
       configured: docker_daemon_configured
       runtime: docker_daemon_is_running
+    actions:
+      install: _docker_daemon_start
     stopped_health: Unavailable
     stopped_dependencies: DepsReady
   docker-available:
