@@ -55,6 +55,10 @@ _ucc_driver_setting_apply() {
   local cfg_dir="$1" yaml="$2" target="$3"
   _setting_get_fields "$cfg_dir" "$yaml" "$target"
   [[ -n "$_SETTING_KEY" && -n "$_SETTING_VALUE" ]] || return 1
+  # macOS defaults -bool requires true/false/yes/no, not 1/0
+  if [[ "$_SETTING_TYPE" == "bool" ]]; then
+    case "$_SETTING_VALUE" in 1|yes|YES) _SETTING_VALUE="true" ;; 0|no|NO) _SETTING_VALUE="false" ;; esac
+  fi
   local needs_sudo=0
   case "$_SETTING_SUDO" in 1|true|TRUE|yes|YES) needs_sudo=1 ;; esac
   case "$_SETTING_BACKEND" in
