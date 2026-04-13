@@ -15,6 +15,8 @@ Three items remain. Docker install/launch is fully functional
 | 6 | Docker unattended first install — Checkpoint C | Core works, needs clean-state end-to-end tests | Medium |
 | 7 | ~~Fix test suite — 43 failing integration tests~~ | ✅ DONE 2026-04-13 — 159 pass, 1 skipped, 0 failed | — |
 | 8 | ~~Driver convention: `_<driver>_state()` helper~~ | ✅ DONE 2026-04-13 — 7 drivers extracted, 12 share only cached YAML reads (no duplication) | — |
+| 9 | Extract install.sh functions to lib/ | Planned | Medium |
+| 10 | Unify batch cache access in `_ucc_yaml_target_get_many` | Planned | Low |
 
 ### Driver convention: `_<driver>_state()` helper
 
@@ -38,6 +40,53 @@ path_export, pip, script_installer, service, vscode/json-merge, zsh_config.
 
 **Not applicable:** brew_unlink, docker_compose_service (different logic);
 npm, package, pkg (dispatchers).
+
+### Extract install.sh functions to lib/
+
+install.sh is 1,225 lines with 25 functions. Several groups are pure
+logic with no install flow dependency — they belong in dedicated lib
+files for separation of concerns and testability.
+
+**Phase 1 — `lib/ucc_selection.sh`** (selection/resolution logic):
+- `_resolve_component()` (lines 406–437) — resolves component + auto-includes deps
+- `_resolve_selection()` (lines 442–456) — dispatches component vs target args
+- `_resolve_target()` (lines 394–404) — resolves single target to UCC_TARGET_SET
+- Related state: `_resolved[]`, `UCC_TARGET_SET`, `_MANIFEST_DIR`, `_QUERY_SCRIPT`
+
+**Phase 2 — `lib/ucc_interactive.sh`** (interactive browser):
+- Component/target selection browser (lines 667–750)
+- `_show_menu()`, `_get_comp_targets()`, browse loop
+- Related state: `_BROWSE_COMPS[]`, `_COMP_TARGETS_DATA[]`, `UCC_TARGET_SET`
+
+**Phase 3 — `lib/ucc_display.sh`** (display/plan output):
+- `print_execution_plan()` (lines 1025–1038)
+- `_display_component_name()` (lines 1013–1023)
+- `_collect_layer_components()` (lines 985–1012)
+
+**Expected result:** install.sh drops to ~900 lines. Each lib file
+can be sourced independently and unit-tested.
+
+### Unify batch cache access in `_ucc_yaml_target_get_many`
+
+`_ucc_yaml_target_get_many()` (line 165 in ucc_targets.sh) always
+calls python3 directly, bypassing the pre-loaded `_UCC_YTGT_*` batch
+cache that install.sh populates at startup.
+
+**Call sites that bypass cache:**
+- Line 755: `_ucc_observe_yaml_parametric_target` — observe_cmd, dependency_gate
+- Line 781: `_ucc_evidence_yaml_parametric_target` — observe_cmd
+- Line 801: `_ucc_yaml_parametric_desired_value` — desired_cmd, desired_value
+- Line 921: `_ucc_observe_yaml_runtime_oracle_target` — oracle.configured, oracle.runtime, stopped_*
+
+All these keys are already in `_UCC_YAML_BATCH_KEYS` (install.sh
+line 1099). When the cache is populated, these calls should read from
+it instead of spawning python3.
+
+**Fix:** Make `_ucc_yaml_target_get_many()` check the batch cache
+first (same pattern as `_ucc_yaml_target_get` at line 154), falling
+back to python3 only when uncached.
+
+**Expected result:** 4–8 fewer python3 invocations per component run.
 
 ### Fix test suite — 43 failing integration tests (DONE)
 
