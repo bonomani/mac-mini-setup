@@ -417,7 +417,7 @@ PY
   }
   _write_compose_file() {
     ucc_run mkdir -p "$COMPOSE_DIR"
-    ucc_run cp "$_AI_APPS_CFG_DIR/${stack_template_rel}" "$COMPOSE_FILE"
+    ucc_run cp "$_AI_APPS_TEMPLATE_FILE" "$COMPOSE_FILE"
   }
 
   ucc_target --name "ai-stack-compose-file" \
