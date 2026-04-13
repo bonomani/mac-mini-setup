@@ -180,39 +180,17 @@ docker_daemon_configured() {
 }
 
 # Usage: run_docker_from_yaml <cfg_dir> <yaml_path>
+# Registers all Docker targets. Install/start actions are wired in the
+# YAML and handled by the framework:
+#   docker-desktop: _docker_desktop_install (brew cask + settings patch)
+#   docker-daemon:  _docker_daemon_start    (nohup open -g + /_ping poll)
 run_docker_from_yaml() {
   local cfg_dir="$1" yaml="$2"
 
-  # ---- Phase 1: install Docker Desktop app ----
   ucc_yaml_runtime_target "$cfg_dir" "$yaml" "docker-desktop"
-
-  # ---- Phase 2: register daemon + capability + resources targets ----
   ucc_yaml_runtime_target "$cfg_dir" "$yaml" "docker-daemon"
   ucc_yaml_capability_target "$cfg_dir" "$yaml" "docker-available"
   ucc_yaml_parametric_target "$cfg_dir" "$yaml" "docker-resources"
-
-  # ---- Phase 3: check Docker Desktop is running ----
-  # Docker Desktop is a macOS GUI app that cannot be reliably started
-  # from a child process of install.sh. Every launch method tested
-  # (open -g, open, osascript activate, nohup, launchctl kickstart)
-  # results in Docker starting but quitting after ~15s. The same
-  # methods work from standalone scripts or the terminal. Root cause
-  # is an unknown interaction between install.sh's process context and
-  # Docker Desktop's startup lifecycle.
-  #
-  # If Docker is not running, report it and tell the user to start it.
-  local app_path backend_process
-  while IFS=$'\t' read -r -d '' key value; do
-    case "$key" in
-      docker_desktop_app_path) app_path="$value" ;;
-      docker_desktop_process)  backend_process="$value" ;;
-    esac
-  done < <(yaml_get_many "$cfg_dir" "$yaml" docker_desktop_app_path docker_desktop_process)
-  if [[ -d "$app_path" ]] && ! pgrep -q "$backend_process" 2>/dev/null; then
-    log_warn "Docker Desktop is installed but not running."
-    log_warn "Start it manually: open -g $app_path"
-    log_warn "Then re-run this script."
-  fi
 }
 
 # Apply silent-start settings to the Docker settings-store JSON.
@@ -291,11 +269,9 @@ _docker_cask_ensure() {
 # into /usr/local). The `assisted` preference handles this via SUDO_ASKPASS.
 # The `manual` preference (default) requires an interactive run.
 _docker_desktop_install() {
-  log_info "DEBUG: _docker_desktop_install called"
   # First-time bootstrap gate: brew cask install needs sudo for
   # cli-plugins symlinks, and Docker needs EULA acceptance settings.
   if ! _docker_bootstrap_complete; then
-    log_info "DEBUG: bootstrap NOT complete"
     if [[ "${UIC_PREF_DOCKER_FIRST_INSTALL:-manual}" == "assisted" ]]; then
       _docker_assisted_install
       return $?
@@ -313,32 +289,17 @@ _docker_desktop_install() {
     fi
     log_info "First-time Docker Desktop setup will prompt for admin password and EULA acceptance."
   fi
-  local cask_id app_path settings_relpath backend_process
+  local cask_id app_path settings_relpath
   while IFS=$'\t' read -r -d '' key value; do
     case "$key" in
       docker_desktop_cask_id)  cask_id="$value" ;;
       docker_desktop_app_path) app_path="$value" ;;
       settings_relpath)        settings_relpath="$value" ;;
-      docker_desktop_process)  backend_process="$value" ;;
     esac
-  done < <(yaml_get_many "$CFG_DIR" "$YAML_PATH" docker_desktop_cask_id docker_desktop_app_path settings_relpath docker_desktop_process)
+  done < <(yaml_get_many "$CFG_DIR" "$YAML_PATH" docker_desktop_cask_id docker_desktop_app_path settings_relpath)
   local greedy; greedy="$(_ucc_yaml_target_get "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME" "driver.greedy_auto_updates")"
-  # DEBUG: unset massive env var before open
-  unset UCC_EXEC_SNAPSHOT
-  log_info "DEBUG: UCC_EXEC_SNAPSHOT unset, launching"
-  open -g "$app_path" || true
-  log_info "DEBUG: open -g done, checking Docker every 10s..."
-  local _d
-  for _d in 10 20 30; do
-    sleep 10
-    if pgrep -q "$backend_process" 2>/dev/null; then
-      log_info "DEBUG: Docker alive after ${_d}s"
-    else
-      log_warn "DEBUG: Docker DEAD after ${_d}s"
-      break
-    fi
-  done
-  log_info "DEBUG: _docker_desktop_install done"
+  _docker_cask_ensure "$cask_id" "$app_path" "$greedy" "Docker Desktop"
+  _docker_settings_store_patch "$settings_relpath"
 }
 
 # Gracefully stop Docker Desktop to avoid the stuck 500-error state.
