@@ -87,6 +87,9 @@ targets:
     display_name: Unsloth
     driver:
       kind: pip
+      isolation:
+        kind: venv
+        name: unsloth
       probe_pkg: unsloth
       install_packages: unsloth
       min_version: ''
@@ -140,6 +143,9 @@ targets:
     display_name: PyTorch packages
     driver:
       kind: pip
+      isolation:
+        kind: venv
+        name: ai-modern
       probe_pkg: torch
       install_packages: torch torchvision torchaudio
       min_version: ''
@@ -151,6 +157,9 @@ targets:
     display_name: Hugging Face packages
     driver:
       kind: pip
+      isolation:
+        kind: venv
+        name: ai-modern
       probe_pkg: transformers
       install_packages: transformers diffusers accelerate datasets tokenizers sentencepiece
         huggingface-hub peft trl
@@ -163,6 +172,9 @@ targets:
     display_name: LangChain packages
     driver:
       kind: pip
+      isolation:
+        kind: venv
+        name: ai-modern
       probe_pkg: langchain-core
       install_packages: langchain-core>=1.0.0 langchain langchain-community langchain-ollama
         langgraph
@@ -175,6 +187,9 @@ targets:
     display_name: LlamaIndex packages
     driver:
       kind: pip
+      isolation:
+        kind: venv
+        name: ai-modern
       probe_pkg: llama-index
       install_packages: llama-index llama-index-llms-ollama llama-index-embeddings-ollama
       min_version: ''
@@ -186,6 +201,9 @@ targets:
     display_name: LLM client packages
     driver:
       kind: pip
+      isolation:
+        kind: venv
+        name: ai-modern
       probe_pkg: openai
       install_packages: openai anthropic
       min_version: ''
@@ -197,6 +215,9 @@ targets:
     display_name: Vector database packages
     driver:
       kind: pip
+      isolation:
+        kind: venv
+        name: ai-modern
       probe_pkg: chromadb
       install_packages: chromadb faiss-cpu qdrant-client
       min_version: ''
@@ -208,6 +229,9 @@ targets:
     display_name: Jupyter packages
     driver:
       kind: pip
+      isolation:
+        kind: venv
+        name: ai-modern
       probe_pkg: jupyterlab
       install_packages: jupyterlab ipywidgets nbformat
       min_version: ''
@@ -219,6 +243,9 @@ targets:
     display_name: Serving packages
     driver:
       kind: pip
+      isolation:
+        kind: venv
+        name: ai-modern
       probe_pkg: fastapi
       install_packages: fastapi uvicorn gradio
       min_version: ''
@@ -230,6 +257,9 @@ targets:
     display_name: Data science packages
     driver:
       kind: pip
+      isolation:
+        kind: venv
+        name: ai-modern
       probe_pkg: numpy
       install_packages: numpy pandas scipy scikit-learn matplotlib seaborn
       min_version: ''
@@ -241,6 +271,9 @@ targets:
     display_name: Utility packages
     driver:
       kind: pip
+      isolation:
+        kind: venv
+        name: ai-modern
       probe_pkg: python-dotenv
       install_packages: python-dotenv rich tqdm
       min_version: ''
@@ -252,6 +285,9 @@ targets:
     display_name: Python dev tools
     driver:
       kind: pip
+      isolation:
+        kind: venv
+        name: ai-modern
       probe_pkg: ruff
       install_packages: ruff
       min_version: ''
@@ -263,6 +299,9 @@ targets:
     display_name: Optimum packages
     driver:
       kind: pip
+      isolation:
+        kind: venv
+        name: ai-modern
       probe_pkg: optimum
       install_packages: optimum
       min_version: ''
@@ -274,6 +313,9 @@ targets:
     display_name: Web testing packages
     driver:
       kind: pip
+      isolation:
+        kind: venv
+        name: ai-modern
       probe_pkg: pytest
       install_packages: pytest beautifulsoup4 playwright mypy coverage
       min_version: ''

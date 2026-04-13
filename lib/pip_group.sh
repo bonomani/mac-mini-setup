@@ -32,6 +32,24 @@ raise SystemExit(0 if Version(sys.argv[1]) <= Version(sys.argv[2]) else 1)
 " "$2" "$ver" 2>/dev/null
 }
 
+# List unique venv names used by pip targets in this YAML.
+_pip_list_venv_names() {
+  local cfg_dir="$1" yaml="$2"
+  python3 -c "
+import yaml, sys
+data = yaml.safe_load(open('$yaml')) or {}
+seen = set()
+for t in (data.get('targets') or {}).values():
+    if not isinstance(t, dict): continue
+    iso = (t.get('driver') or {}).get('isolation')
+    if isinstance(iso, dict) and iso.get('kind') == 'venv':
+        name = iso.get('name', '')
+        if name and name not in seen:
+            seen.add(name)
+            print(name)
+" 2>/dev/null || true
+}
+
 # Runner: load all pip group targets from a YAML config file.
 # Usage: load_pip_groups_from_yaml <cfg_dir> <yaml_path>
 load_pip_groups_from_yaml() {
@@ -64,6 +82,13 @@ run_ai_python_stack_from_yaml() {
 
   # ---- Pip packages ----
   pip_cache_versions
+  # Pre-warm venv caches for targets with isolation.kind=venv
+  local _venv_name _warmed="|"
+  for _venv_name in $(_pip_list_venv_names "$cfg_dir" "$yaml"); do
+    [[ "$_warmed" == *"|${_venv_name}|"* ]] && continue
+    _pip_venv_available "$_venv_name" && _pip_venv_cache_versions "$_venv_name"
+    _warmed="${_warmed}${_venv_name}|"
+  done
   load_pip_groups_from_yaml "$cfg_dir" "$yaml"
 
   # ---- Unsloth package (all platforms) ----

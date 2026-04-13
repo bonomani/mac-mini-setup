@@ -3,11 +3,11 @@
 # driver.probe_pkg:       primary package to probe for presence/version
 # driver.install_packages: space-separated list of packages to install/upgrade
 # driver.min_version:     minimum required version (empty = no constraint)
-# driver.isolation:       none (default) | pipx
+# driver.isolation:       absent (global pip) | pipx | {kind: venv, name: <name>}
 #                         pipx: each package installed into its own venv via
 #                               pipx. No cross-package conflicts possible.
-#                               Use only for self-contained CLI tools — pipx
-#                               targets cannot share imports with other groups.
+#                         venv: shared named venv via pyenv-virtualenv.
+#                               Targets with the same name share one environment.
 
 # Ensure pip + python are on PATH for non-interactive subshells.
 # Falls back to the pyenv-managed interpreter when pyenv is set up.
@@ -20,6 +20,143 @@ _pip_ensure_path() {
   command -v python3 >/dev/null 2>&1 || return 1
   return 0  # python3 -m pip is the fallback path
 }
+
+# ── Isolation parsing ────────────────────────────────────────────────────────
+# Sets _PIP_ISO_KIND (none|pipx|venv) and _PIP_ISO_NAME (venv name, empty for others).
+# Supports both scalar (isolation: pipx) and object (isolation: {kind: venv, name: X}).
+_pip_parse_isolation() {
+  local cfg_dir="$1" yaml="$2" target="$3"
+  _PIP_ISO_KIND="none"
+  _PIP_ISO_NAME=""
+  local kind
+  kind="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.isolation.kind" 2>/dev/null || true)"
+  if [[ -n "$kind" ]]; then
+    _PIP_ISO_KIND="$kind"
+    _PIP_ISO_NAME="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.isolation.name" 2>/dev/null || true)"
+    return
+  fi
+  local scalar
+  scalar="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.isolation" 2>/dev/null || true)"
+  [[ -n "$scalar" ]] && _PIP_ISO_KIND="$scalar"
+}
+
+# ── Venv isolation backend ───────────────────────────────────────────────────
+# Uses pyenv-virtualenv to manage named venvs under ~/.pyenv/versions/<name>.
+
+# Return the pip binary path for a named venv.
+_pip_venv_pip_cmd() {
+  local name="$1"
+  local pyenv_root="${PYENV_ROOT:-$HOME/.pyenv}"
+  printf '%s/versions/%s/bin/pip' "$pyenv_root" "$name"
+}
+
+# Return the python binary path for a named venv.
+_pip_venv_python_cmd() {
+  local name="$1"
+  local pyenv_root="${PYENV_ROOT:-$HOME/.pyenv}"
+  printf '%s/versions/%s/bin/python' "$pyenv_root" "$name"
+}
+
+# Ensure venv exists; create via pyenv-virtualenv if absent. Idempotent.
+_pip_venv_ensure() {
+  local name="$1"
+  local pip_path
+  pip_path="$(_pip_venv_pip_cmd "$name")"
+  [[ -x "$pip_path" ]] && return 0
+  # Get the current pyenv global version as base
+  local py_ver
+  py_ver="$(pyenv global 2>/dev/null)" || py_ver=""
+  [[ -n "$py_ver" ]] || { log_warn "pip/venv: no pyenv global version set"; return 1; }
+  log_info "pip/venv: creating venv '$name' (python $py_ver)"
+  ucc_run pyenv virtualenv "$py_ver" "$name" || return 1
+}
+
+# True if the venv exists and has a working pip.
+_pip_venv_available() {
+  local name="$1"
+  local pip_path
+  pip_path="$(_pip_venv_pip_cmd "$name")"
+  [[ -x "$pip_path" ]]
+}
+
+# ── Per-venv pip version cache ───────────────────────────────────────────────
+# Each venv gets its own cache var: _PIP_VENV_CACHE_<sanitized_name>
+
+_pip_venv_cache_var() {
+  local name="$1"
+  printf '_PIP_VENV_CACHE_%s' "${name//[^a-zA-Z0-9]/_}"
+}
+
+_pip_venv_cache_versions() {
+  local name="$1"
+  local pip_path var
+  pip_path="$(_pip_venv_pip_cmd "$name")"
+  var="$(_pip_venv_cache_var "$name")"
+  export "$var"
+  eval "$var=\"\$($pip_path list --format=json 2>/dev/null || echo '[]')\""
+}
+
+_pip_venv_cached_version() {
+  local name="$1" pkg="$2"
+  local var cache
+  var="$(_pip_venv_cache_var "$name")"
+  cache="${!var:-}"
+  if [[ -z "$cache" ]]; then
+    local pip_path
+    pip_path="$(_pip_venv_pip_cmd "$name")"
+    $pip_path show "$pkg" 2>/dev/null | awk '/^Version:/{print $2}'
+    return
+  fi
+  python3 -c "
+import sys, json
+pkgs = json.load(sys.stdin)
+name = sys.argv[1].lower().replace('-','_')
+for p in pkgs:
+    if p['name'].lower().replace('-','_') == name:
+        print(p['version']); sys.exit(0)
+" "$pkg" 2>/dev/null <<< "$cache"
+}
+
+# ── Per-venv outdated cache ──────────────────────────────────────────────────
+
+_pip_venv_outdated_cache_var() {
+  printf '_PIP_VENV_OUTDATED_%s' "${1//[^a-zA-Z0-9]/_}"
+}
+
+_pip_venv_outdated_cache_load() {
+  local name="$1"
+  [[ "${UIC_PREF_UPSTREAM_CHECK:-0}" == "1" ]] || return 1
+  local var
+  var="$(_pip_venv_outdated_cache_var "$name")"
+  [[ -n "${!var+x}" ]] && return 0
+  export "$var"
+  local pip_path
+  pip_path="$(_pip_venv_pip_cmd "$name")"
+  eval "$var=\"\$($pip_path list --outdated --format=json 2>/dev/null || true)\""
+  return 0
+}
+
+_pip_venv_pkgs_outdated() {
+  local name="$1" pkgs="$2"
+  [[ -n "$pkgs" ]] || return 1
+  _pip_venv_outdated_cache_load "$name" || return 1
+  local var cache
+  var="$(_pip_venv_outdated_cache_var "$name")"
+  cache="${!var:-}"
+  [[ -n "$cache" ]] || return 1
+  printf '%s' "$cache" | python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+except Exception:
+    sys.exit(1)
+outdated = {(p.get('name') or '').lower() for p in data}
+wanted = set('$pkgs'.lower().split())
+sys.exit(0 if wanted & outdated else 1)
+" 2>/dev/null
+}
+
+# ── Global pip caches (unchanged) ────────────────────────────────────────────
 
 # Cache `pip list --outdated --format=json` once per process; opt-in via
 # UIC_PREF_UPSTREAM_CHECK=1 (network call, can be slow on big environments).
@@ -117,9 +254,10 @@ _pipx_upgrade_pkgs() {
 # ── Driver interface ─────────────────────────────────────────────────────────
 _ucc_driver_pip_observe() {
   local cfg_dir="$1" yaml="$2" target="$3"
-  local isolation
-  isolation="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.isolation" 2>/dev/null || true)"
-  if [[ "$isolation" == "pipx" ]]; then
+  _pip_parse_isolation "$cfg_dir" "$yaml" "$target"
+
+  # ── pipx ──
+  if [[ "$_PIP_ISO_KIND" == "pipx" ]]; then
     _pipx_available || { printf 'absent'; return; }
     local probe ver
     probe="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.probe_pkg")"
@@ -133,6 +271,41 @@ _ucc_driver_pip_observe() {
     fi
     return
   fi
+
+  # ── venv ──
+  if [[ "$_PIP_ISO_KIND" == "venv" ]]; then
+    local vname="$_PIP_ISO_NAME"
+    [[ -n "$vname" ]] || { log_warn "pip/venv: isolation.name missing for $target"; return 1; }
+    _pip_venv_available "$vname" || { printf 'absent'; return; }
+    local probe min_ver pkgs ver
+    probe="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.probe_pkg")"
+    [[ -n "$probe" ]] || return 1
+    min_ver="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.min_version")"
+    pkgs="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.install_packages")"
+    ver="$(_pip_venv_cached_version "$vname" "$probe")"
+    if [[ -z "$ver" ]]; then
+      printf 'absent'
+      return
+    fi
+    if [[ -n "$min_ver" ]]; then
+      local py_path
+      py_path="$(_pip_venv_python_cmd "$vname")"
+      if ! $py_path -c \
+        "from packaging.version import Version; import sys; raise SystemExit(0 if Version('$min_ver') <= Version(sys.argv[1]) else 1)" \
+        "$ver" 2>/dev/null; then
+        printf 'absent'
+        return
+      fi
+    fi
+    if _pip_venv_pkgs_outdated "$vname" "$pkgs"; then
+      printf 'outdated'
+    else
+      printf '%s' "$ver"
+    fi
+    return
+  fi
+
+  # ── global pip (no isolation) ──
   _pip_ensure_path || { printf 'absent'; return; }
   local probe min_ver pkgs ver
   probe="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.probe_pkg")"
@@ -161,20 +334,22 @@ _ucc_driver_pip_observe() {
 
 _ucc_driver_pip_action() {
   local cfg_dir="$1" yaml="$2" target="$3" action="$4"
-  local isolation pkgs update_class update_policy
-  isolation="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.isolation" 2>/dev/null || true)"
+  _pip_parse_isolation "$cfg_dir" "$yaml" "$target"
+  local pkgs update_class update_policy
   pkgs="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.install_packages")"
   [[ -n "$pkgs" ]] || return 1
-  # Resolve update_class: pipx → default tool, pip → default lib
+  # Resolve update_class: pipx/venv-tool → default tool, pip/venv-lib → default lib
   update_class="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "update_class" 2>/dev/null || true)"
   if [[ -z "$update_class" ]]; then
-    [[ "$isolation" == "pipx" ]] && update_class="tool" || update_class="lib"
+    [[ "$_PIP_ISO_KIND" == "pipx" ]] && update_class="tool" || update_class="lib"
   fi
   case "$update_class" in
     lib) update_policy="${UIC_PREF_LIB_UPDATE:-install-only}" ;;
     *)   update_policy="${UIC_PREF_TOOL_UPDATE:-always-upgrade}" ;;
   esac
-  if [[ "$isolation" == "pipx" ]]; then
+
+  # ── pipx ──
+  if [[ "$_PIP_ISO_KIND" == "pipx" ]]; then
     if ! _pipx_available; then
       log_warn "pipx not available — install with: brew install pipx"
       return 1
@@ -188,6 +363,32 @@ _ucc_driver_pip_action() {
     esac
     return $?
   fi
+
+  # ── venv ──
+  if [[ "$_PIP_ISO_KIND" == "venv" ]]; then
+    local vname="$_PIP_ISO_NAME"
+    [[ -n "$vname" ]] || { log_warn "pip/venv: isolation.name missing for $target"; return 1; }
+    _pip_venv_ensure "$vname" || return 1
+    local pip_cmd
+    pip_cmd="$(_pip_venv_pip_cmd "$vname")"
+    case "$action" in
+      install)
+        ucc_run $pip_cmd install -q --upgrade-strategy only-if-needed $pkgs \
+          && _pip_venv_cache_versions "$vname"
+        ;;
+      update)
+        [[ "$update_policy" == "install-only" ]] && return 0
+        if _pip_update_would_conflict "$pip_cmd" "$pkgs"; then
+          return 0
+        fi
+        ucc_run $pip_cmd install -q --upgrade --upgrade-strategy only-if-needed $pkgs \
+          && _pip_venv_cache_versions "$vname"
+        ;;
+    esac
+    return $?
+  fi
+
+  # ── global pip ──
   _pip_ensure_path || { log_warn "pip not available (no pyenv/python on PATH)"; return 1; }
   local pip_cmd
   if command -v pip >/dev/null 2>&1; then
@@ -239,11 +440,13 @@ _pip_update_would_conflict() {
 
 _ucc_driver_pip_recover() {
   local cfg_dir="$1" yaml="$2" target="$3" level="$4"
-  local isolation pkgs
-  isolation="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.isolation" 2>/dev/null || true)"
+  _pip_parse_isolation "$cfg_dir" "$yaml" "$target"
+  local pkgs
   pkgs="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.install_packages")"
   [[ -n "$pkgs" ]] || return 1
-  if [[ "$isolation" == "pipx" ]]; then
+
+  # ── pipx ──
+  if [[ "$_PIP_ISO_KIND" == "pipx" ]]; then
     _pipx_available || return 1
     case "$level" in
       1) _pipx_upgrade_pkgs "$pkgs" ;;
@@ -257,6 +460,23 @@ _ucc_driver_pip_recover() {
     esac
     return $?
   fi
+
+  # ── venv ──
+  if [[ "$_PIP_ISO_KIND" == "venv" ]]; then
+    local vname="$_PIP_ISO_NAME"
+    [[ -n "$vname" ]] || return 1
+    _pip_venv_ensure "$vname" || return 1
+    local pip_cmd
+    pip_cmd="$(_pip_venv_pip_cmd "$vname")"
+    case "$level" in
+      1) ucc_run $pip_cmd install -q --upgrade-strategy only-if-needed $pkgs ;;
+      2) ucc_run $pip_cmd install -q --no-cache-dir --force-reinstall $pkgs ;;
+      *) return 2 ;;
+    esac
+    return $?
+  fi
+
+  # ── global pip ──
   _pip_ensure_path || return 1
   local pip_cmd="pip"
   command -v pip >/dev/null 2>&1 || pip_cmd="python3 -m pip"
@@ -273,13 +493,20 @@ _ucc_driver_pip_recover() {
 
 _ucc_driver_pip_evidence() {
   local cfg_dir="$1" yaml="$2" target="$3"
-  local isolation probe ver
-  isolation="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.isolation" 2>/dev/null || true)"
+  _pip_parse_isolation "$cfg_dir" "$yaml" "$target"
+  local probe ver
   probe="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.probe_pkg")"
   [[ -n "$probe" ]] || return 1
-  if [[ "$isolation" == "pipx" ]]; then
+
+  if [[ "$_PIP_ISO_KIND" == "pipx" ]]; then
     ver="$(_pipx_version "$probe")"
     printf 'version=%s  pkg=%s  isolation=pipx' "${ver:-absent}" "$probe"
+    return
+  fi
+  if [[ "$_PIP_ISO_KIND" == "venv" ]]; then
+    local vname="$_PIP_ISO_NAME"
+    ver="$(_pip_venv_cached_version "$vname" "$probe")"
+    printf 'version=%s  pkg=%s  venv=%s' "${ver:-absent}" "$probe" "$vname"
     return
   fi
   ver="$(_pip_cached_version "$probe")"
