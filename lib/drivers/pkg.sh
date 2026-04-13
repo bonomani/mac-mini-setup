@@ -446,6 +446,7 @@ _ucc_driver_pkg_action() {
   # Per-backend extras.
   _PKG_CURL_ARGS="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.curl_args" 2>/dev/null || true)"
   _PKG_GREEDY="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.greedy_auto_updates" 2>/dev/null || true)"
+  _PKG_UPDATE_CLASS="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "update_class" 2>/dev/null || true)"
   local act_fn="_pkg_${_PKG_PICKED_NAME//-/_}_${action}"
   declare -f "$act_fn" >/dev/null 2>&1 || return 1
   # Optional activation

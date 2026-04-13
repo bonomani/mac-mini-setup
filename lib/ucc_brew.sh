@@ -117,15 +117,13 @@ brew_cask_observe() {
 # Post-process a brew observe state with `brew livecheck` results.
 # If `brew outdated` says current but livecheck found a newer upstream release,
 # return "outdated". Otherwise pass-through.
-# Reads driver.ref and update_class to identify the package and policy.
+# Reads driver.ref to identify the package. update_class passed as arg 5.
 _ucc_brew_state_with_upstream() {
-  local cfg_dir="$1" yaml="$2" target="$3" state="$4"
+  local cfg_dir="$1" yaml="$2" target="$3" state="$4" update_class="${5:-tool}"
   if [[ "$state" == "absent" || "$state" == "outdated" ]]; then
     printf '%s' "$state"; return
   fi
-  local update_class
-  update_class="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "update_class" 2>/dev/null || true)"
-  if [[ "$(_brew_update_policy_for_class "${update_class:-tool}")" != "always-upgrade" ]]; then
+  if [[ "$(_brew_update_policy_for_class "$update_class")" != "always-upgrade" ]]; then
     printf '%s' "$state"; return
   fi
   local ref

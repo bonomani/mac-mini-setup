@@ -379,8 +379,8 @@ uic_export() {
   done
 
   # Expand update-policy into internal vars.
-  # Backward compat: legacy package-update-policy / brew-livecheck env vars
-  # override the expanded values when explicitly set.
+  # Granular overrides: --pref upstream-check=0, --pref tool-update=install-only,
+  # --pref lib-update=always-upgrade.
   local _up="${UIC_PREF_UPDATE_POLICY:-balanced}"
   case "$_up" in
     conservative)
@@ -399,15 +399,6 @@ uic_export() {
       export UIC_PREF_LIB_UPDATE="${UIC_PREF_LIB_UPDATE:-install-only}"
       ;;
   esac
-  # Backward compat: honour legacy env vars if explicitly set
-  if [[ -n "${UIC_PREF_BREW_LIVECHECK+x}" ]]; then
-    log_warn "UIC: brew-livecheck is deprecated — use update-policy instead"
-    export UIC_PREF_UPSTREAM_CHECK="${UIC_PREF_BREW_LIVECHECK}"
-  fi
-  if [[ -n "${UIC_PREF_PACKAGE_UPDATE_POLICY+x}" ]]; then
-    log_warn "UIC: package-update-policy is deprecated — use update-policy instead"
-    export UIC_PREF_TOOL_UPDATE="${UIC_PREF_PACKAGE_UPDATE_POLICY}"
-  fi
 }
 
 # ============================================================

@@ -106,16 +106,14 @@ pip upgrades while `aggressive` attempts them.
      `update_class` (default `tool`); check the matching policy var.
    - Other drivers (nvm, pkg, custom-daemon, script-installer): default
      `tool`, check `UIC_PREF_TOOL_UPDATE`.
-4. **Deprecate old prefs**: keep `package-update-policy` and
-   `brew-livecheck` as overrides for backward compat; log a deprecation
-   warning when they're set.
-5. **Mark targets**: add `update_class: lib` to brew formulae that are
+4. **Mark targets**: add `update_class: lib` to brew formulae that are
    shared dependencies: xz, openssl, gcc, icu4c, readline, etc.
    Pip targets get `lib` by driver default so no YAML change needed.
 
 **Operator overrides:** `--pref update-policy=aggressive` for a full
-upgrade run. Or `--pref lib-update-policy=always-upgrade` to override
-just the lib part while keeping the rest at `balanced`.
+upgrade run. Or `--pref lib-update=always-upgrade` to override just
+the lib part while keeping the rest at `balanced`. Granular knobs:
+`--pref tool-update=install-only`, `--pref upstream-check=0`.
 
 ### Driver convention: `_<driver>_state()` helper
 

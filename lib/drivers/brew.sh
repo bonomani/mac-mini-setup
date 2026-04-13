@@ -22,7 +22,7 @@ _ucc_driver_brew_observe() {
   else
     state="$(brew_observe "$ref" "${update_class:-tool}")"
   fi
-  _ucc_brew_state_with_upstream "$cfg_dir" "$yaml" "$target" "$state"
+  _ucc_brew_state_with_upstream "$cfg_dir" "$yaml" "$target" "$state" "${update_class:-tool}"
 }
 
 _ucc_driver_brew_action() {
