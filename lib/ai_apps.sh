@@ -32,7 +32,7 @@ run_ai_apps_from_yaml() {
   while IFS= read -r _svc; do [[ -n "$_svc" ]] && AI_SERVICES+=("$_svc"); done \
     < <(yaml_list "$cfg_dir" "$yaml" stack.services)
   STACK_SERVICES="${#AI_SERVICES[@]}"
-  STACK_SIGNATURE="$(printf '%s\n' "${AI_SERVICES[@]}" | LC_ALL=C sort | paste -sd, -)"
+  STACK_SIGNATURE="$(printf '%s\n' ${AI_SERVICES[@]+"${AI_SERVICES[@]}"} | LC_ALL=C sort | paste -sd, -)"
   STACK_DEFINITION_VALUE="marker=${COMPOSE_MARKER} services=${STACK_SIGNATURE}"
   IMAGE_POLICY="${UIC_PREF_AI_APPS_IMAGE_POLICY:-reuse-local}"
   _AI_APPS_CFG_DIR="$cfg_dir"

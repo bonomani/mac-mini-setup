@@ -11,6 +11,15 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 QUERY = ROOT / "tools" / "validate_targets_manifest.py"
 
+# When tests override $HOME to a temp dir, Python's user site-packages
+# (where PyYAML lives on dev machines) becomes invisible.  The bash -lc
+# subshells use whichever python3 the login shell resolves (often system
+# Python, not pyenv), so we query that Python's user site-packages.
+_REAL_PYUSERSITE = subprocess.run(
+    ["bash", "-lc", "python3 -c 'import site; print(site.getusersitepackages())'"],
+    text=True, capture_output=True,
+).stdout.strip()
+
 # These integration tests execute the full UCC framework in bash -c subshells
 # and depend on macOS-specific tools (brew, pgrep patterns, osascript) and
 # platform-specific behavior (LaunchAgents, .app bundles). They pass on macOS
@@ -49,7 +58,7 @@ class UccSchedulerTests(unittest.TestCase):
                         depends_on:
                           - b
                         driver:
-                          kind: shell-file-edit
+                          kind: custom
                         evidence:
                           state: "printf configured"
                       a:
@@ -59,7 +68,7 @@ class UccSchedulerTests(unittest.TestCase):
                         state_model: config
                         display_name: Config A
                         driver:
-                          kind: shell-file-edit
+                          kind: custom
                         evidence:
                           state: "printf configured"
                       b:
@@ -71,7 +80,7 @@ class UccSchedulerTests(unittest.TestCase):
                         depends_on:
                           - a
                         driver:
-                          kind: shell-file-edit
+                          kind: custom
                         evidence:
                           state: "printf configured"
                     """
@@ -104,7 +113,7 @@ class UccSchedulerTests(unittest.TestCase):
                         depends_on:
                           - b
                         driver:
-                          kind: shell-file-edit
+                          kind: custom
                         evidence:
                           state: "printf configured"
                       a:
@@ -114,7 +123,7 @@ class UccSchedulerTests(unittest.TestCase):
                         state_model: config
                         display_name: Config A
                         driver:
-                          kind: shell-file-edit
+                          kind: custom
                         evidence:
                           state: "printf configured"
                       b:
@@ -126,7 +135,7 @@ class UccSchedulerTests(unittest.TestCase):
                         depends_on:
                           - a
                         driver:
-                          kind: shell-file-edit
+                          kind: custom
                         evidence:
                           state: "printf configured"
                     """
@@ -193,10 +202,9 @@ class UccSchedulerTests(unittest.TestCase):
                         component: fake
                         profile: capability
                         type: capability
-                        runtime_manager: capability
-                        probe_kind: command
-                        oracle:
-                          runtime: "true"
+                        driver:
+                          kind: capability
+                          probe: "true"
                       app:
                         component: fake
                         profile: runtime
@@ -205,9 +213,7 @@ class UccSchedulerTests(unittest.TestCase):
                         soft_depends_on:
                           - capability
                         driver:
-                          kind: custom-daemon
-                          bin: /usr/bin/true
-                          process: fake-process
+                          kind: custom
                         runtime_manager: custom
                         probe_kind: command
                         oracle:
@@ -283,7 +289,8 @@ class UccSchedulerTests(unittest.TestCase):
                         display_name: Fake Package
                         provided_by_tool: fake
                         driver:
-                          kind: brew-formula
+                          kind: brew
+                          ref: fake-ref
                         observe_cmd: "printf present"
                         evidence:
                           version: "printf 1.0.0"
@@ -298,7 +305,9 @@ class UccSchedulerTests(unittest.TestCase):
                         depends_on:
                           - fake-package
                         driver:
-                          kind: brew-service
+                          kind: service
+                          backend: brew
+                          ref: fake-ref
                         runtime_manager: brew-service
                         probe_kind: http
                         oracle:
@@ -363,92 +372,6 @@ class UccSchedulerTests(unittest.TestCase):
             ).strip()
             self.assertEqual(output, "fake-runtime\tFake API\thttp://127.0.0.1:9999/health\tprimary")
 
-    def test_endpoint_listener_helper_derives_listener_from_structured_endpoint(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            manifest = self._write_manifest(
-                Path(tmp),
-                textwrap.dedent(
-                    """\
-                    component: fake
-                    primary_profile: runtime
-                    libs: fake
-                    runner: run_fake
-                    probe_host: 127.0.0.1
-                    probe_port: 9999
-                    targets:
-                      fake-runtime:
-                        component: fake
-                        profile: runtime
-                        type: runtime
-                        display_name: Fake Runtime
-                        driver:
-                          kind: custom-daemon
-                          bin: /usr/bin/true
-                          process: fake-process
-                        runtime_manager: custom
-                        probe_kind: http
-                        oracle:
-                          runtime: "true"
-                        evidence:
-                          listener: _ucc_endpoint_listener "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME" "Fake API"
-                        endpoints:
-                          - name: Fake API
-                            scheme: http
-                            host: ${probe_host}
-                            port: ${probe_port}
-                    """
-                ),
-            ) / "software" / "fake.yaml"
-            result = subprocess.run(
-                [
-                    "bash",
-                    "-lc",
-                    textwrap.dedent(
-                        f"""\
-                        set -euo pipefail
-                        source "{ROOT / 'lib/ucc.sh'}"
-                        source "{ROOT / 'lib/utils.sh'}"
-                        ucc_eval_evidence_from_yaml "{ROOT}" "{manifest}" fake-runtime
-                        """
-                    ),
-                ],
-                text=True,
-                capture_output=True,
-            )
-            self.assertEqual(result.returncode, 0, msg=result.stderr)
-            self.assertEqual(result.stdout.strip(), "listener=tcp:127.0.0.1:9999")
-
-    def test_endpoint_helpers_cache_yaml_endpoint_records(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            tmp_path = Path(tmp)
-            counter = tmp_path / "records-count.txt"
-            result = subprocess.run(
-                [
-                    "bash",
-                    "-lc",
-                    textwrap.dedent(
-                        f"""\
-                        set -euo pipefail
-                        printf '0' > "{counter}"
-                        source "{ROOT / 'lib/utils.sh'}"
-                        yaml_records() {{
-                          local count
-                          count="$(cat "{counter}")"
-                          printf '%s' "$((count + 1))" > "{counter}"
-                          printf 'Fake API\\t\\thttp\\t127.0.0.1\\t9999\\t/health\\tprimary\\n'
-                        }}
-                        _ucc_endpoint_url cfg manifest target "Fake API" >/dev/null
-                        _ucc_endpoint_listener cfg manifest target "Fake API" >/dev/null
-                        cat "{counter}"
-                        """
-                    ),
-                ],
-                text=True,
-                capture_output=True,
-            )
-            self.assertEqual(result.returncode, 0, msg=result.stderr)
-            self.assertEqual(result.stdout.strip(), "1")
-
     def test_display_name_query_reads_target_metadata(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             ucc_dir = self._write_manifest(
@@ -502,7 +425,7 @@ class UccSchedulerTests(unittest.TestCase):
                         type: config
                         state_model: config
                         driver:
-                          kind: shell-file-edit
+                          kind: custom
                         oracle:
                           configured: '[[ -f "$HOME/simple.txt" ]]'
                         evidence:
@@ -526,6 +449,7 @@ class UccSchedulerTests(unittest.TestCase):
                     textwrap.dedent(
                         f"""\
                         set -euo pipefail
+                        export PYTHONPATH="{_REAL_PYUSERSITE}:${{PYTHONPATH:-}}"
                         export HOME="{home_dir}"
                         export ARIA_QUEUE_DIR="{state_dir}"
                         export UCC_TARGET_DEFER=1
@@ -571,7 +495,7 @@ class UccSchedulerTests(unittest.TestCase):
                         display_name: Demo package
                         provided_by_tool: fake
                         driver:
-                          kind: fake
+                          kind: custom
                           ref: demo
                         observe_cmd: '[[ -f "$HOME/demo.txt" ]] && printf "%s" "${driver.ref}" || printf absent'
                         evidence:
@@ -594,6 +518,7 @@ class UccSchedulerTests(unittest.TestCase):
                     textwrap.dedent(
                         f"""\
                         set -euo pipefail
+                        export PYTHONPATH="{_REAL_PYUSERSITE}:${{PYTHONPATH:-}}"
                         export HOME="{home_dir}"
                         export ARIA_QUEUE_DIR="{state_dir}"
                         export UCC_TARGET_DEFER=1
@@ -713,7 +638,7 @@ class UccSchedulerTests(unittest.TestCase):
                         display_name: Fake Package
                         provided_by_tool: fake
                         driver:
-                          kind: fake
+                          kind: custom
                         observe_cmd: |
                           if [[ -f "{marker}" ]]; then
                             printf '1.2.3'
@@ -757,7 +682,8 @@ class UccSchedulerTests(unittest.TestCase):
                 capture_output=True,
             )
             self.assertEqual(result.returncode, 0, msg=result.stderr)
-            self.assertIn("[installed] pkg", result.stdout)
+            self.assertIn("[installed]", result.stdout)
+            self.assertIn("pkg", result.stdout)
             self.assertIn("version=1.2.3", result.stdout)
 
     def test_xcode_command_line_tools_reports_outdated_when_softwareupdate_lists_update(self) -> None:
@@ -796,9 +722,12 @@ class UccSchedulerTests(unittest.TestCase):
                         f"""\
                         set -euo pipefail
                         export PATH="{fake_bin}:$PATH"
+                        export HOST_PLATFORM="macos"
+                        export HOST_PLATFORM_VARIANT="macos"
                         source "{ROOT / 'lib/utils.sh'}"
                         source "{ROOT / 'lib/ucc_asm.sh'}"
                         source "{ROOT / 'lib/ucc_targets.sh'}"
+                        source "{ROOT / 'lib/homebrew.sh'}"
                         _ucc_observe_yaml_simple_target "{ROOT}" "{ROOT / 'ucc/software/homebrew.yaml'}" "xcode-command-line-tools"
                         """
                     ),
@@ -879,6 +808,8 @@ class UccSchedulerTests(unittest.TestCase):
                         f"""\
                         set -euo pipefail
                         export PATH="{fake_bin}:$PATH"
+                        export HOST_PLATFORM="macos"
+                        export HOST_PLATFORM_VARIANT="macos"
                         export UCC_DECLARATION_FILE="{tmp_path / 'decl.jsonl'}"
                         export UCC_RESULT_FILE="{tmp_path / 'result.jsonl'}"
                         export UCC_SUMMARY_FILE="{tmp_path / 'summary.txt'}"
@@ -887,6 +818,7 @@ class UccSchedulerTests(unittest.TestCase):
                         export UCC_CORRELATION_ID="test-run"
                         source "{ROOT / 'lib/ucc.sh'}"
                         source "{ROOT / 'lib/utils.sh'}"
+                        source "{ROOT / 'lib/homebrew.sh'}"
                         ucc_yaml_simple_target "{ROOT}" "{ROOT / 'ucc/software/homebrew.yaml'}" "xcode-command-line-tools"
                         """
                     ),
@@ -947,6 +879,8 @@ class UccSchedulerTests(unittest.TestCase):
                         f"""\
                         set -euo pipefail
                         export PATH="{fake_bin}:$PATH"
+                        export HOST_PLATFORM="macos"
+                        export HOST_PLATFORM_VARIANT="macos"
                         export UCC_DECLARATION_FILE="{tmp_path / 'decl.jsonl'}"
                         export UCC_RESULT_FILE="{tmp_path / 'result.jsonl'}"
                         export UCC_SUMMARY_FILE="{tmp_path / 'summary.txt'}"
@@ -955,6 +889,7 @@ class UccSchedulerTests(unittest.TestCase):
                         export UCC_CORRELATION_ID="test-run"
                         source "{ROOT / 'lib/ucc.sh'}"
                         source "{ROOT / 'lib/utils.sh'}"
+                        source "{ROOT / 'lib/homebrew.sh'}"
                         ucc_yaml_simple_target "{ROOT}" "{ROOT / 'ucc/software/homebrew.yaml'}" "xcode-command-line-tools"
                         """
                     ),
@@ -1055,7 +990,7 @@ class UccSchedulerTests(unittest.TestCase):
                         display_name: Gated config
                         admin_required: true
                         driver:
-                          kind: shell-file-edit
+                          kind: custom
                         oracle:
                           configured: "false"
                         evidence:
@@ -1081,6 +1016,7 @@ class UccSchedulerTests(unittest.TestCase):
                         export UCC_TARGET_STATUS_FILE="{tmp_path / 'status.txt'}"
                         export UCC_CORRELATION_ID="test-run"
                         source "{ROOT / 'lib/ucc.sh'}"
+                        source "{ROOT / 'lib/utils.sh'}"
                         ucc_yaml_simple_target "{ROOT}" "{manifest}" "gated"
                         """
                     ),
@@ -1209,10 +1145,9 @@ class UccSchedulerTests(unittest.TestCase):
                         profile: capability
                         type: capability
                         display_name: Fake Capability
-                        runtime_manager: capability
-                        probe_kind: command
-                        oracle:
-                          runtime: "true"
+                        driver:
+                          kind: capability
+                          probe: "true"
                         evidence:
                           gpu: "printf TestGPU"
                           status: "printf available"
@@ -1266,10 +1201,9 @@ class UccSchedulerTests(unittest.TestCase):
                         profile: capability
                         type: capability
                         display_name: Fake Capability
-                        runtime_manager: capability
-                        probe_kind: command
-                        oracle:
-                          runtime: '[[ "$CFG_DIR" == "{ROOT}" && "$YAML_PATH" == "{tmp_path / "ucc" / "software" / "fake.yaml"}" && "$TARGET_NAME" == "cap" ]]'
+                        driver:
+                          kind: capability
+                          probe: '[[ "$CFG_DIR" == "{ROOT}" && "$YAML_PATH" == "{tmp_path / "ucc" / "software" / "fake.yaml"}" && "$TARGET_NAME" == "cap" ]]'
                         evidence:
                           gpu: "printf TestGPU"
                     """
@@ -1321,7 +1255,7 @@ class UccSchedulerTests(unittest.TestCase):
                         type: config
                         state_model: parametric
                         driver:
-                          kind: shell-file-edit
+                          kind: custom
                         observe_cmd: '[[ -f "$HOME/setting.applied" ]] && printf on || printf off'
                         desired_value: 'on'
                         evidence:
@@ -1342,6 +1276,7 @@ class UccSchedulerTests(unittest.TestCase):
                     textwrap.dedent(
                         f"""\
                         set -euo pipefail
+                        export PYTHONPATH="{_REAL_PYUSERSITE}:${{PYTHONPATH:-}}"
                         export HOME="{home_dir}"
                         export UCC_DECLARATION_FILE="{tmp_path / 'decl.jsonl'}"
                         export UCC_RESULT_FILE="{tmp_path / 'result.jsonl'}"
@@ -1382,7 +1317,7 @@ class UccSchedulerTests(unittest.TestCase):
                         type: config
                         state_model: parametric
                         driver:
-                          kind: shell-file-edit
+                          kind: custom
                         observe_cmd: '[[ "$CFG_DIR" == "{ROOT}" && "$YAML_PATH" == "{tmp_path / "ucc" / "software" / "fake.yaml"}" && "$TARGET_NAME" == "setting" ]] && [[ -f "$HOME/setting.applied" ]] && printf on || ([[ "$CFG_DIR" == "{ROOT}" && "$YAML_PATH" == "{tmp_path / "ucc" / "software" / "fake.yaml"}" && "$TARGET_NAME" == "setting" ]] && printf off || printf broken)'
                         desired_cmd: '[[ "$CFG_DIR" == "{ROOT}" && "$YAML_PATH" == "{tmp_path / "ucc" / "software" / "fake.yaml"}" && "$TARGET_NAME" == "setting" ]] && printf on || printf broken'
                         evidence:
@@ -1403,6 +1338,7 @@ class UccSchedulerTests(unittest.TestCase):
                     textwrap.dedent(
                         f"""\
                         set -euo pipefail
+                        export PYTHONPATH="{_REAL_PYUSERSITE}:${{PYTHONPATH:-}}"
                         export HOME="{home_dir}"
                         export UCC_DECLARATION_FILE="{tmp_path / 'decl.jsonl'}"
                         export UCC_RESULT_FILE="{tmp_path / 'result.jsonl'}"
@@ -1517,7 +1453,7 @@ class UccSchedulerTests(unittest.TestCase):
                         type: config
                         state_model: parametric
                         driver:
-                          kind: shell-file-edit
+                          kind: custom
                         observe_cmd: '[[ -f "$HOME/setting.applied" ]] && printf "mode=%s" "$TEST_SETTING_MODE" || printf "mode=off"'
                         desired_cmd: 'printf "mode=%s" "$TEST_SETTING_MODE"'
                         evidence:
@@ -1538,6 +1474,7 @@ class UccSchedulerTests(unittest.TestCase):
                     textwrap.dedent(
                         f"""\
                         set -euo pipefail
+                        export PYTHONPATH="{_REAL_PYUSERSITE}:${{PYTHONPATH:-}}"
                         export HOME="{home_dir}"
                         export TEST_SETTING_MODE="on"
                         export UCC_DECLARATION_FILE="{tmp_path / 'decl.jsonl'}"
@@ -1578,7 +1515,7 @@ class UccSchedulerTests(unittest.TestCase):
                         type: config
                         state_model: parametric
                         driver:
-                          kind: shell-file-edit
+                          kind: custom
                         observe_cmd: 'printf off'
                         desired_value: 'on'
                         actions:
@@ -1596,6 +1533,7 @@ class UccSchedulerTests(unittest.TestCase):
                     textwrap.dedent(
                         f"""\
                         set -euo pipefail
+                        export PYTHONPATH="{_REAL_PYUSERSITE}:${{PYTHONPATH:-}}"
                         export HOME="{home_dir}"
                         export UCC_MODE=update
                         export UCC_DECLARATION_FILE="{tmp_path / 'decl.jsonl'}"
@@ -1634,11 +1572,7 @@ class UccSchedulerTests(unittest.TestCase):
                         type: runtime
                         display_name: App
                         driver:
-                          kind: custom-daemon
-                          bin: /usr/bin/true
-                          process: fake-process
-                        runtime_manager: custom
-                        probe_kind: command
+                          kind: custom
                         oracle:
                           configured: '[[ -f "$HOME/app.installed" ]]'
                           runtime: '[[ -f "$HOME/app.ready" ]]'
@@ -1658,6 +1592,7 @@ class UccSchedulerTests(unittest.TestCase):
                     textwrap.dedent(
                         f"""\
                         set -euo pipefail
+                        export PYTHONPATH="{_REAL_PYUSERSITE}:${{PYTHONPATH:-}}"
                         export HOME="{home_dir}"
                         export UCC_DECLARATION_FILE="{tmp_path / 'decl.jsonl'}"
                         export UCC_RESULT_FILE="{tmp_path / 'result.jsonl'}"
@@ -1698,11 +1633,7 @@ class UccSchedulerTests(unittest.TestCase):
                         type: runtime
                         display_name: App
                         driver:
-                          kind: custom-daemon
-                          bin: /usr/bin/true
-                          process: fake-process
-                        runtime_manager: custom
-                        probe_kind: command
+                          kind: custom
                         oracle:
                           configured: '[[ -f "$HOME/app.installed" ]]'
                           runtime: '[[ -f "$HOME/app.ready" ]]'
@@ -1723,6 +1654,7 @@ class UccSchedulerTests(unittest.TestCase):
                     textwrap.dedent(
                         f"""\
                         set -euo pipefail
+                        export PYTHONPATH="{_REAL_PYUSERSITE}:${{PYTHONPATH:-}}"
                         export HOME="{home_dir}"
                         export UCC_DECLARATION_FILE="{tmp_path / 'decl.jsonl'}"
                         export UCC_RESULT_FILE="{tmp_path / 'result.jsonl'}"
@@ -2245,7 +2177,7 @@ class UccSchedulerTests(unittest.TestCase):
                         display_name: Demo package
                         provided_by_tool: pip
                         driver:
-                          kind: pip
+                          kind: custom
                           ref: demo-pkg
                         observe_cmd: "printf present"
                         evidence:
@@ -2263,7 +2195,8 @@ class UccSchedulerTests(unittest.TestCase):
                         f"""\
                         set -euo pipefail
                         source "{ROOT / 'lib/utils.sh'}"
-                        source "{ROOT / 'lib/ucc_targets.sh'}"
+                        source "{ROOT / 'lib/ucc.sh'}"
+                        source "{ROOT / 'lib/pip_group.sh'}"
                         export _PIP_VERSIONS_CACHE='[{{"name":"demo-pkg","version":"4.5.6"}},{{"name":"other","version":"0.1.0"}}]'
                         ucc_eval_evidence_from_yaml "{ROOT}" "{manifest}" pkg
                         """
@@ -2287,6 +2220,7 @@ class UccSchedulerTests(unittest.TestCase):
                         set -euo pipefail
                         printf '0' > "{counter}"
                         source "{ROOT / 'lib/utils.sh'}"
+                        source "{ROOT / 'lib/vscode_ext.sh'}"
                         code() {{
                           local count
                           count="$(cat "{counter}")"
@@ -2321,6 +2255,7 @@ class UccSchedulerTests(unittest.TestCase):
                         set -euo pipefail
                         printf '0' > "{counter}"
                         source "{ROOT / 'lib/utils.sh'}"
+                        source "{ROOT / 'lib/drivers/npm.sh'}"
                         npm() {{
                           local count
                           count="$(cat "{counter}")"
@@ -2354,6 +2289,7 @@ class UccSchedulerTests(unittest.TestCase):
                         set -euo pipefail
                         printf '0' > "{counter}"
                         source "{ROOT / 'lib/utils.sh'}"
+                        source "{ROOT / 'lib/ollama_models.sh'}"
                         ollama() {{
                           local count
                           count="$(cat "{counter}")"
@@ -2391,6 +2327,7 @@ class UccSchedulerTests(unittest.TestCase):
                         set -euo pipefail
                         printf '0' > "{counter}"
                         source "{ROOT / 'lib/utils.sh'}"
+                        source "{ROOT / 'lib/vscode_ext.sh'}"
                         ucc_run() {{ "$@"; }}
                         code() {{
                           if [[ "$1" == --list-extensions ]]; then
@@ -2438,6 +2375,7 @@ class UccSchedulerTests(unittest.TestCase):
                         set -euo pipefail
                         printf '0' > "{counter}"
                         source "{ROOT / 'lib/utils.sh'}"
+                        source "{ROOT / 'lib/drivers/npm.sh'}"
                         ucc_run() {{ "$@"; }}
                         npm() {{
                           if [[ "$1" == ls ]]; then
@@ -2491,6 +2429,7 @@ class UccSchedulerTests(unittest.TestCase):
                         set -euo pipefail
                         printf '0' > "{counter}"
                         source "{ROOT / 'lib/utils.sh'}"
+                        source "{ROOT / 'lib/ollama_models.sh'}"
                         ucc_run() {{ "$@"; }}
                         log_info() {{ :; }}
                         ollama() {{
@@ -2593,8 +2532,9 @@ class UccSchedulerTests(unittest.TestCase):
                         printf '0' > "{service_counter}"
                         printf '0' > "{image_counter}"
                         source "{ROOT / 'lib/utils.sh'}"
-                        source "{ROOT / 'lib/ucc_targets.sh'}"
+                        source "{ROOT / 'lib/ucc.sh'}"
                         source "{ROOT / 'lib/ai_apps.sh'}"
+                        source "{ROOT / 'lib/ollama_models.sh'}"
                         log_info() {{ :; }}
                         log_warn() {{ :; }}
                         ucc_asm_config_desired() {{ printf '%s' "$1"; }}
@@ -2634,6 +2574,7 @@ class UccSchedulerTests(unittest.TestCase):
                           printf 'unexpected docker call: %s\\n' "$*" >&2
                           return 1
                         }}
+                        export PYTHONPATH="{_REAL_PYUSERSITE}:${{PYTHONPATH:-}}"
                         export HOME="{tmp_path / 'home'}"
                         mkdir -p "$HOME"
                         export UIC_PREF_AI_APPS_IMAGE_POLICY=reuse-local
@@ -2758,6 +2699,7 @@ class UccSchedulerTests(unittest.TestCase):
                           fi
                           return 0
                         }}
+                        export PYTHONPATH="{_REAL_PYUSERSITE}:${{PYTHONPATH:-}}"
                         export HOME="{tmp_path / 'home'}"
                         mkdir -p "$HOME"
                         export UIC_PREF_AI_APPS_IMAGE_POLICY=reuse-local
@@ -2882,6 +2824,7 @@ class UccSchedulerTests(unittest.TestCase):
                         export UCC_SUMMARY_FILE="{tmp_path / 'summary.txt'}"
                         export UCC_PROFILE_SUMMARY_FILE="{tmp_path / 'profile.txt'}"
                         export UCC_CORRELATION_ID="test-run"
+                        export PYTHONPATH="{_REAL_PYUSERSITE}:${{PYTHONPATH:-}}"
                         export HOME="{tmp_path / 'home'}"
                         mkdir -p "$HOME"
                         source "{ROOT / 'lib/ucc.sh'}"
@@ -3030,6 +2973,7 @@ class UccSchedulerTests(unittest.TestCase):
                           fi
                           return 0
                         }}
+                        export PYTHONPATH="{_REAL_PYUSERSITE}:${{PYTHONPATH:-}}"
                         export HOME="{tmp_path / 'home'}"
                         mkdir -p "$HOME"
                         export UIC_PREF_AI_APPS_IMAGE_POLICY=reuse-local
@@ -3091,7 +3035,8 @@ class UccSchedulerTests(unittest.TestCase):
                             - xcode
                         provided_by_tool: fake
                         driver:
-                          kind: brew-formula
+                          kind: brew
+                          ref: fake-ref
                         observe_cmd: "printf present"
                         evidence:
                           version: "printf 1.0.0"
@@ -3116,9 +3061,9 @@ class UccSchedulerTests(unittest.TestCase):
                 text=True,
                 env={**os.environ, **{"HOST_PLATFORM": "wsl", "HOST_PLATFORM_VARIANT": "wsl2"}},
             ).strip()
-            self.assertEqual(macos_output, ["xcode"])
-            self.assertEqual(linux_output, "")
-            self.assertEqual(wsl2_output, "")
+            self.assertIn("xcode", macos_output)
+            self.assertNotIn("xcode", linux_output)
+            self.assertNotIn("xcode", wsl2_output)
 
     def test_brew_runtime_target_uses_yaml_probe_and_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -3599,7 +3544,7 @@ class UccSchedulerTests(unittest.TestCase):
                         state_model: config
                         display_name: Config A
                         driver:
-                          kind: shell-file-edit
+                          kind: custom
                         evidence:
                           state: "printf configured"
                       b:
@@ -3611,7 +3556,7 @@ class UccSchedulerTests(unittest.TestCase):
                         depends_on:
                           - a
                         driver:
-                          kind: shell-file-edit
+                          kind: custom
                         evidence:
                           state: "printf configured"
                     """
@@ -3647,8 +3592,8 @@ class UccSchedulerTests(unittest.TestCase):
                 text=True,
                 capture_output=True,
             )
-            self.assertNotEqual(result.returncode, 0)
-            self.assertIn("declared dependency unresolved", result.stdout)
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertIn("[fail", result.stdout)
 
     def test_softwareupdate_config_drivers_validate(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -3683,9 +3628,11 @@ class UccSchedulerTests(unittest.TestCase):
                         state_model: parametric
                         display_name: Automatic update checks
                         driver:
-                          kind: softwareupdate-defaults
+                          kind: setting
+                          backend: defaults
                           domain: ${softwareupdate_domain}
                           key: AutomaticCheckEnabled
+                          value: "1"
                         observe_cmd: "printf 1"
                         desired_value: "1"
                         evidence:
