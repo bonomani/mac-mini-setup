@@ -31,9 +31,8 @@ _setting_get_fields() {
   [[ -n "$_SETTING_TYPE" ]] || _SETTING_TYPE="bool"
 }
 
-_ucc_driver_setting_observe() {
-  local cfg_dir="$1" yaml="$2" target="$3"
-  _setting_get_fields "$cfg_dir" "$yaml" "$target"
+_setting_read_value() {
+  _setting_get_fields "$1" "$2" "$3"
   case "$_SETTING_BACKEND" in
     defaults)
       [[ -n "$_SETTING_DOMAIN" && -n "$_SETTING_KEY" ]] || return 1
@@ -45,6 +44,10 @@ _ucc_driver_setting_observe() {
       ;;
     *) return 1 ;;
   esac
+}
+
+_ucc_driver_setting_observe() {
+  _setting_read_value "$1" "$2" "$3"
 }
 
 _ucc_driver_setting_action() {
@@ -80,18 +83,7 @@ _ucc_driver_setting_apply() {
 }
 
 _ucc_driver_setting_evidence() {
-  local cfg_dir="$1" yaml="$2" target="$3"
-  _setting_get_fields "$cfg_dir" "$yaml" "$target"
-  local val=""
-  case "$_SETTING_BACKEND" in
-    defaults)
-      [[ -n "$_SETTING_DOMAIN" && -n "$_SETTING_KEY" ]] || return 1
-      val="$(defaults read "$_SETTING_DOMAIN" "$_SETTING_KEY" 2>/dev/null || true)"
-      ;;
-    pmset)
-      [[ -n "$_SETTING_KEY" ]] || return 1
-      val="$(pmset -g | awk -v s="$_SETTING_KEY" '$1==s{print $2}')"
-      ;;
-  esac
+  local val
+  val="$(_setting_read_value "$1" "$2" "$3")"
   printf '%s=%s' "$_SETTING_KEY" "$val"
 }
