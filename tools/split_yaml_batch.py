@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+from __future__ import annotations
+
 """Split --all-targets-get-many-with-evidence output into per-target shell export statements.
 
 Usage: split_yaml_batch.py <yaml_fn>
