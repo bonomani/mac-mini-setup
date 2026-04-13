@@ -1,6 +1,40 @@
 #!/usr/bin/env bash
 # lib/docker.sh — Docker Desktop app install + daemon lifecycle
 # Sourced via docker.yaml libs: field
+#
+# ── Docker Desktop process architecture (macOS, verified 2026-04-13) ──
+#
+# com.docker.backend is the root process (PPID 1, launched by launchd via
+# `open -g /Applications/Docker.app`). It spawns two direct children:
+#
+#   com.docker.backend (PPID 1)          ← root, launched by launchd
+#   ├── backend services                  ← manages the VM
+#   │   └── com.docker.virtualization     ← Linux VM (Apple Virtualization.framework)
+#   │       └── dockerd (inside VM)       ← the actual Docker daemon (no host PID)
+#   └── backend fork                      ← manages everything else
+#       ├── com.docker.build              ← BuildKit
+#       ├── docker-sandbox
+#       ├── Docker Desktop (Electron GUI) ← child of backend, NOT the other way around
+#       │   └── Helper, Renderer, docker CLI instances
+#       └── docker-agent                  ← Gordon AI
+#
+# ── Shutdown cascade timing (kill tests on Apple Silicon) ──
+#
+#   Kill target          │ Cascade │ Delay to full shutdown
+#   ─────────────────────┼─────────┼───────────────────────
+#   backend (root)       │ yes     │ immediate
+#   backend services     │ yes     │ <5s
+#   backend fork         │ yes     │ ~2s
+#   Docker Desktop (GUI) │ yes     │ ~4.5s
+#   com.docker.virtualization │ yes │ ~10-15s
+#
+# Key findings:
+# - Killing ANY component triggers full shutdown (no resilience/auto-restart)
+# - The backend detects child death and tears down the entire tree
+# - The socket (~/.docker/run/docker.sock) is removed when backend exits
+# - During shutdown, pgrep may still see backend for a few seconds after
+#   the daemon is already unreachable — always probe the socket, not the PID
+#
 
 # Observe docker-desktop install state: installed | absent
 # Probe the .app bundle directly. We do not check `command -v docker` because
@@ -8,16 +42,32 @@
 # Intel path), and on Apple Silicon /usr/local/bin is not always in PATH for
 # the framework's observe sub-shells, which would falsely report 'absent'
 # even when Docker.app is fully installed and running.
+# Uses implicit $CFG_DIR/$YAML_PATH context.
 docker_desktop_observe() {
-  [[ -d /Applications/Docker.app ]] && printf 'installed' || printf 'absent'
+  local app_path
+  while IFS=$'\t' read -r -d '' key value; do
+    case "$key" in
+      docker_desktop_app_path) app_path="$value" ;;
+    esac
+  done < <(yaml_get_many "$CFG_DIR" "$YAML_PATH" docker_desktop_app_path)
+  [[ -d "$app_path" ]] && printf 'installed' || printf 'absent'
 }
 
 # Return 0 if Docker Desktop (the macOS app) is running.
-# Checks for the com.docker.backend process, which is the main backend
-# process of Docker Desktop. This is distinct from docker_daemon_is_running
-# which checks if the docker API (daemon inside the VM) is reachable.
+# Checks for com.docker.backend, which is the root process of Docker Desktop
+# (PPID 1, launched by launchd). It spawns everything else: the GUI (Electron),
+# the Linux VM (com.docker.virtualization), BuildKit, and helpers.
+# This is distinct from docker_daemon_is_running which checks if the docker
+# API (daemon inside the VM) is reachable via the socket.
+# Uses implicit $CFG_DIR/$YAML_PATH context.
 docker_desktop_is_running() {
-  pgrep -q com.docker.backend 2>/dev/null
+  local pattern
+  while IFS=$'\t' read -r -d '' key value; do
+    case "$key" in
+      docker_desktop_process) pattern="$value" ;;
+    esac
+  done < <(yaml_get_many "$CFG_DIR" "$YAML_PATH" docker_desktop_process)
+  pgrep -q "$pattern" 2>/dev/null
 }
 
 # Resolve Docker settings-store.json full path from YAML.
@@ -80,8 +130,16 @@ docker_resources_apply() {
 }
 
 # Print Docker CLI version string (e.g. "27.3.1").
+# Queries the daemon API via socket to avoid PATH dependency.
+# Falls back to docker --version if socket is unavailable.
 docker_version() {
-  docker --version 2>/dev/null | awk '{print $3}' | tr -d ','
+  local sock="$HOME/.docker/run/docker.sock"
+  if [[ -S "$sock" ]]; then
+    curl -sf --unix-socket "$sock" http://localhost/version 2>/dev/null \
+      | python3 -c "import sys,json; print(json.load(sys.stdin).get('Version',''))" 2>/dev/null
+  else
+    docker --version 2>/dev/null | awk '{print $3}' | tr -d ','
+  fi
 }
 
 # Print the install source of Docker Desktop if it is not absent/brew-cask.
@@ -98,16 +156,27 @@ docker_install_source_observe() {
   [[ "$src" != "absent" && "$src" != "brew-cask" ]] && printf '%s' "$src" || true
 }
 
-# Print the PID of the Docker backend process (empty if not running).
+# Print the PID of the Docker Desktop root process (com.docker.backend).
+# This is the top-level process (PPID 1) that spawns the GUI, VM, and all
+# helpers. dockerd runs inside the Linux VM and has no host-visible PID.
 # Uses implicit $CFG_DIR/$YAML_PATH context.
-docker_daemon_pid() {
+docker_desktop_pid() {
   local pattern
   while IFS=$'\t' read -r -d '' key value; do
     case "$key" in
-      docker_backend_process) pattern="$value" ;;
+      docker_desktop_process) pattern="$value" ;;
     esac
-  done < <(yaml_get_many "$CFG_DIR" "$YAML_PATH" docker_backend_process)
+  done < <(yaml_get_many "$CFG_DIR" "$YAML_PATH" docker_desktop_process)
   pgrep -f "$pattern" 2>/dev/null | head -1
+}
+
+# Return 0 if the Docker daemon socket exists on the host.
+# The daemon runs inside the Linux VM managed by Docker Desktop;
+# the socket at ~/.docker/run/docker.sock is the host-side proxy.
+# This avoids relying on `command -v docker` which depends on PATH
+# (unreliable on Apple Silicon where /usr/local/bin is not guaranteed).
+docker_daemon_configured() {
+  [[ -S "$HOME/.docker/run/docker.sock" ]]
 }
 
 # Usage: run_docker_from_yaml <cfg_dir> <yaml_path>
@@ -132,9 +201,16 @@ run_docker_from_yaml() {
   # Docker Desktop's startup lifecycle.
   #
   # If Docker is not running, report it and tell the user to start it.
-  if [[ -d /Applications/Docker.app ]] && ! pgrep -q com.docker.backend 2>/dev/null; then
+  local app_path backend_process
+  while IFS=$'\t' read -r -d '' key value; do
+    case "$key" in
+      docker_desktop_app_path) app_path="$value" ;;
+      docker_desktop_process)  backend_process="$value" ;;
+    esac
+  done < <(yaml_get_many "$cfg_dir" "$yaml" docker_desktop_app_path docker_desktop_process)
+  if [[ -d "$app_path" ]] && ! pgrep -q "$backend_process" 2>/dev/null; then
     log_warn "Docker Desktop is installed but not running."
-    log_warn "Start it manually: open -g /Applications/Docker.app"
+    log_warn "Start it manually: open -g $app_path"
     log_warn "Then re-run this script."
   fi
 }
@@ -177,17 +253,24 @@ _docker_strip_quarantine() {
 # Apple Silicon Docker Desktop 4.x uses com.docker.helper at user level,
 # not vmnetd at system level, so the path is always missing on a fully
 # working install.
+# Uses implicit $CFG_DIR/$YAML_PATH context.
 _docker_bootstrap_complete() {
-  local settings="$HOME/Library/Group Containers/group.com.docker/settings-store.json"
+  local settings_relpath
+  while IFS=$'\t' read -r -d '' key value; do
+    case "$key" in
+      settings_relpath) settings_relpath="$value" ;;
+    esac
+  done < <(yaml_get_many "$CFG_DIR" "$YAML_PATH" settings_relpath)
+  local settings="$HOME/$settings_relpath"
   [[ -f "$settings" ]] && grep -q '"LicenseTermsVersion"' "$settings" 2>/dev/null
 }
 
 # Ensure cask is installed/up-to-date via brew, skipping if already present via app-bundle.
 _docker_cask_ensure() {
-  local cask_id="$1" app_path="$2" greedy="$3"
+  local cask_id="$1" app_path="$2" greedy="$3" display_name="$4"
   local install_source; install_source="$(desktop_app_install_source "$cask_id" "$app_path")"
   if [[ "$install_source" == "app-bundle" ]]; then
-    desktop_app_handle_unmanaged_cask "$cask_id" "Docker Desktop" || return $?
+    desktop_app_handle_unmanaged_cask "$cask_id" "$display_name" || return $?
     return 0
   fi
   local observed; observed="$(brew_cask_observe "$cask_id" "$greedy")"
@@ -230,24 +313,25 @@ _docker_desktop_install() {
     fi
     log_info "First-time Docker Desktop setup will prompt for admin password and EULA acceptance."
   fi
-  local cask_id app_path settings_relpath
+  local cask_id app_path settings_relpath backend_process
   while IFS=$'\t' read -r -d '' key value; do
     case "$key" in
-      docker_desktop_cask_id) cask_id="$value" ;;
+      docker_desktop_cask_id)  cask_id="$value" ;;
       docker_desktop_app_path) app_path="$value" ;;
-      settings_relpath)       settings_relpath="$value" ;;
+      settings_relpath)        settings_relpath="$value" ;;
+      docker_desktop_process)  backend_process="$value" ;;
     esac
-  done < <(yaml_get_many "$CFG_DIR" "$YAML_PATH" docker_desktop_cask_id docker_desktop_app_path settings_relpath)
+  done < <(yaml_get_many "$CFG_DIR" "$YAML_PATH" docker_desktop_cask_id docker_desktop_app_path settings_relpath docker_desktop_process)
   local greedy; greedy="$(_ucc_yaml_target_get "$CFG_DIR" "$YAML_PATH" "$TARGET_NAME" "driver.greedy_auto_updates")"
   # DEBUG: unset massive env var before open
   unset UCC_EXEC_SNAPSHOT
   log_info "DEBUG: UCC_EXEC_SNAPSHOT unset, launching"
-  open -g /Applications/Docker.app || true
+  open -g "$app_path" || true
   log_info "DEBUG: open -g done, checking Docker every 10s..."
   local _d
   for _d in 10 20 30; do
     sleep 10
-    if pgrep -q com.docker.backend 2>/dev/null; then
+    if pgrep -q "$backend_process" 2>/dev/null; then
       log_info "DEBUG: Docker alive after ${_d}s"
     else
       log_warn "DEBUG: Docker DEAD after ${_d}s"
@@ -259,8 +343,11 @@ _docker_desktop_install() {
 
 # Gracefully stop Docker Desktop to avoid the stuck 500-error state.
 #
-# `osascript quit "Docker Desktop"` is the only reliable way to fully
-# stop Docker Desktop on Apple Silicon. Alternatives that don't work:
+# `osascript quit app` is the only reliable way to fully stop Docker
+# Desktop on Apple Silicon. macOS routes the quit to the app bundle,
+# which signals com.docker.backend (the root process, PPID 1) to tear
+# down the entire process tree: GUI, VM, BuildKit, helpers.
+# Alternatives that don't work:
 #   - `pkill -f com.docker` — force-kills processes, leaves the daemon
 #     API in a persistent 500-error state on restart.
 #   - `osascript quit "Docker"` — partially stops it, same 500 result.
@@ -269,13 +356,14 @@ _docker_desktop_install() {
 # If osascript quit fails (Docker hung/unresponsive), we fall back to
 # pkill as a last resort — the 500 state is better than no stop at all.
 #
-# Usage: _docker_kill_zombies <kill_pattern>
+# Usage: _docker_kill_zombies <kill_pattern> <app_name>
 _docker_kill_zombies() {
-  osascript -e 'quit app "Docker Desktop"' 2>/dev/null || true
+  local kill_pattern="$1" app_name="${2:-Docker Desktop}"
+  osascript -e "quit app \"$app_name\"" 2>/dev/null || true
   sleep 5
   # If Docker Desktop didn't respond to the graceful quit, force-kill
-  if pgrep -f "$1" >/dev/null 2>&1; then
-    pkill -f "$1" 2>/dev/null || true
+  if pgrep -f "$kill_pattern" >/dev/null 2>&1; then
+    pkill -f "$kill_pattern" 2>/dev/null || true
     sleep 2
   fi
 }
@@ -297,31 +385,51 @@ _docker_kill_zombies() {
 # (socket exists but API not yet accepting — the connection blocks
 # inside the docker CLI for 30s+). Without a timeout, a single hung
 # call eats the entire readiness budget.
-# Probe Docker daemon readiness via docker ps -q (lightweight — no
-# plugin enumeration, no full system probe). Returns 0 instantly when
-# daemon is reachable, 1 when not.
+# Probe Docker daemon readiness via the API socket directly.
+# Avoids dependency on the docker CLI being in PATH (unreliable on
+# Apple Silicon where /usr/local/bin is not always available).
+# Falls back to docker ps -q if curl is unavailable.
 _docker_ready() {
-  docker ps -q >/dev/null 2>&1
+  local sock="$HOME/.docker/run/docker.sock"
+  if [[ -S "$sock" ]]; then
+    curl -sf --unix-socket "$sock" http://localhost/_ping >/dev/null 2>&1
+  else
+    docker ps -q >/dev/null 2>&1
+  fi
 }
 
+# Uses implicit $CFG_DIR/$YAML_PATH context.
 _docker_launch() {
   log_info "Starting Docker Desktop..."
+
+  local app_path app_name
+  while IFS=$'\t' read -r -d '' key value; do
+    case "$key" in
+      docker_desktop_app_path) app_path="$value" ;;
+      docker_desktop_app_name) app_name="$value" ;;
+    esac
+  done < <(yaml_get_many "$CFG_DIR" "$YAML_PATH" docker_desktop_app_path docker_desktop_app_name)
 
   # Pre-check: detect the stuck 500-error state from a previous
   # partial shutdown. In this state, the daemon API accepts connections
   # but always returns HTTP 500. No amount of open -g fixes it — only
-  # a full `quit app "Docker Desktop"` + fresh start recovers.
+  # a full `quit app` + fresh start recovers.
   # Check before opening so we don't waste 140s polling a broken daemon.
-  local _pre
-  _pre="$(docker info 2>&1)"
-  if [[ "$_pre" == *"500 Internal Server Error"* ]]; then
-    log_warn "Docker daemon in 500 error state — quitting Docker Desktop"
-    osascript -e 'quit app "Docker Desktop"' 2>/dev/null || true
+  local sock="$HOME/.docker/run/docker.sock"
+  local _pre=""
+  if [[ -S "$sock" ]]; then
+    _pre="$(curl -s --unix-socket "$sock" http://localhost/info 2>&1)"
+  else
+    _pre="$(docker info 2>&1)"
+  fi
+  if [[ "$_pre" == *"500"* ]]; then
+    log_warn "Docker daemon in 500 error state — quitting $app_name"
+    osascript -e "quit app \"$app_name\"" 2>/dev/null || true
     sleep 5
   fi
 
   log_info "DEBUG: launching Docker via detached process"
-  nohup bash -c 'sleep 1; open -g /Applications/Docker.app' &>/dev/null &
+  nohup bash -c "sleep 1; open -g '$app_path'" &>/dev/null &
 
   # Wait up to 30s for daemon readiness. If Docker doesn't respond
   # within 30s, it's not coming up — don't waste minutes retrying.

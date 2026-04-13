@@ -28,7 +28,7 @@ preferences:
 docker_desktop_cask_id: docker-desktop
 docker_desktop_app_name: Docker Desktop
 docker_desktop_app_path: /Applications/Docker.app
-docker_backend_process: com.docker.backend
+docker_desktop_process: com.docker.backend
 settings_relpath: Library/Group Containers/group.com.docker/settings-store.json
 targets:
   docker-desktop:
@@ -54,6 +54,7 @@ targets:
     evidence:
       version: docker_version
       install_source: docker_install_source_observe
+      pid: docker_desktop_pid
     stopped_dependencies: DepsReady
   docker-daemon:
     component: docker
@@ -64,13 +65,11 @@ targets:
     - docker-desktop
     driver:
       kind: custom
-    runtime_manager: process
+    runtime_manager: socket
     probe_kind: command
     oracle:
-      configured: is_installed docker
+      configured: docker_daemon_configured
       runtime: docker_daemon_is_running
-    evidence:
-      pid: docker_daemon_pid
     stopped_health: Unavailable
     stopped_dependencies: DepsReady
   docker-available:

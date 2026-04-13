@@ -70,14 +70,22 @@ torch_cuda_device_name() {
   python3 -c "import torch; print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'none')" 2>/dev/null || printf 'none'
 }
 
-# Return 0 if the Docker daemon is reachable.
+# Return 0 if the Docker daemon (inside the VM) is reachable via API.
+# Probes the socket directly via curl /_ping to avoid dependency on the
+# docker CLI being in PATH (unreliable on Apple Silicon where
+# /usr/local/bin is not always available in sub-shells).
 docker_daemon_is_running() {
-  docker info >/dev/null 2>&1
+  local sock="$HOME/.docker/run/docker.sock"
+  if [[ -S "$sock" ]]; then
+    curl -sf --unix-socket "$sock" http://localhost/_ping >/dev/null 2>&1
+  else
+    docker info >/dev/null 2>&1
+  fi
 }
 
 # Print Docker daemon status string.
 docker_daemon_status() {
-  if docker info >/dev/null 2>&1; then
+  if docker_daemon_is_running; then
     printf 'running'
   else
     printf 'stopped'

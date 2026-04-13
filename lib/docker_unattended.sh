@@ -196,25 +196,26 @@ PY
 }
 
 # Seed the com.docker.vmnetd privileged helper by copying the embedded
-# binary from /Applications/Docker.app into /Library/PrivilegedHelperTools,
-# extracting the embedded launchd plist into /Library/LaunchDaemons, and
+# binary from Docker.app into /Library/PrivilegedHelperTools, extracting
+# the embedded launchd plist into /Library/LaunchDaemons, and
 # bootstrapping the daemon via launchctl. This avoids the macOS
 # Authorization Services dialog that Docker.app would otherwise raise
 # on first launch.
 #
 # Preconditions:
-#   - Docker.app is present at /Applications/Docker.app (brew cask
-#     install must have already run).
+#   - Docker.app is present at the given app_path (brew cask install
+#     must have already run).
 #   - SUDO_ASKPASS is exported (via _docker_assisted_setup_askpass),
 #     so the `sudo -A` calls succeed non-interactively.
 #
 # Mac-only: uses codesign, sudo cp to /Library, and launchctl bootstrap.
 # The extraction logic is split into _docker_assisted_extract_launchd_plist
 # for WSL unit testing.
-#
-# ⚠️ Unverified end-to-end on Mac mini until Checkpoint C.
+# Usage: _docker_assisted_seed_vmnetd <app_path>
 _docker_assisted_seed_vmnetd() {
-  local bin_src="/Applications/Docker.app/Contents/Library/LaunchServices/com.docker.vmnetd"
+  local app_path="$1"
+  [[ -n "$app_path" ]] || { log_warn "docker-assisted: app_path required"; return 1; }
+  local bin_src="$app_path/Contents/Library/LaunchServices/com.docker.vmnetd"
   local bin_dst="/Library/PrivilegedHelperTools/com.docker.vmnetd"
   local plist_dst="/Library/LaunchDaemons/com.docker.vmnetd.plist"
   [[ -f "$bin_src" ]] || { log_warn "docker-assisted: vmnetd binary not found at $bin_src"; return 1; }
@@ -313,6 +314,10 @@ _docker_assisted_install() {
 
   # Step 6: strip Gatekeeper quarantine.
   _docker_strip_quarantine "$app_path"
+
+  # Step 7: seed vmnetd to bypass Authorization Services dialog.
+  _docker_assisted_seed_vmnetd "$app_path" \
+    || { log_warn "docker-assisted: vmnetd seeding failed (non-fatal — Docker may prompt for auth on first launch)"; }
 
   # Daemon start is NOT our job — the docker-daemon target handles it
   # via _docker_daemon_start after this target completes.
