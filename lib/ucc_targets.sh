@@ -1713,7 +1713,7 @@ ucc_flush_registered_targets() {
     undeclared+=("$idx")
   done
 
-  for idx in "${undeclared[@]}"; do
+  for idx in "${undeclared[@]+"${undeclared[@]}"}"; do
     UCC_EXEC_SNAPSHOT="${_UCC_REGISTERED_ENV[$idx]}" eval "_ucc_execute_target ${_UCC_REGISTERED_ARGS[$idx]}" || return 1
   done
 
