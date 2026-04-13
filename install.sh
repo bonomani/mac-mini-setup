@@ -414,7 +414,7 @@ _resolve_component() {
   # in the Python query script). --dep-components returns components in
   # the correct execution order, so we add them to _resolved before this
   # component. Dedup against already-resolved components.
-  for _t in "${_targets[@]}"; do
+  for _t in ${_targets[@]+"${_targets[@]}"}; do
     while IFS= read -r _dep_comp; do
       if [[ -n "$_dep_comp" && "$_dep_comp" != "$name" \
         && "$_seen" != *"|${_dep_comp}|"* ]] \
@@ -431,7 +431,7 @@ _resolve_component() {
   done
   # Add this component after its dependencies
   _resolved+=("$name")
-  for _t in "${_targets[@]}"; do
+  for _t in ${_targets[@]+"${_targets[@]}"}; do
     UCC_TARGET_SET="${UCC_TARGET_SET}${_t}|"
   done
 }
