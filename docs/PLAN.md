@@ -14,6 +14,21 @@ Three items remain. Docker install/launch is fully functional
 | 5 | ~~`docker-privileged-ports` target~~ | ✅ DONE 2026-04-13 (`f064f39`, `d50b28f`) | — |
 | 6 | Docker unattended first install — Checkpoint C | Core works, needs clean-state end-to-end tests | Medium |
 | 7 | ~~Fix test suite — 43 failing integration tests~~ | ✅ DONE 2026-04-13 — 159 pass, 1 skipped, 0 failed | — |
+| 8 | Driver convention: `_<driver>_state()` helper | Convention established in `setting.sh`, `swupdate_schedule.sh` | Low |
+
+### Driver convention: `_<driver>_state()` helper
+
+Observe and evidence functions often share the same "read current
+state" logic. Rather than changing the dispatch protocol, each driver
+that shares logic should extract a `_<driver>_state()` helper. Observe
+calls it directly; evidence wraps it as `key=value`.
+
+**Convention established in:**
+- `setting.sh` → `_setting_read_value()` (`5e4a86d`)
+- `swupdate_schedule.sh` → `_swupdate_schedule_state()` (`1bfeff6`)
+
+**Apply to new drivers** when observe and evidence share read logic.
+No framework change needed — this is a driver authoring convention.
 
 ### Fix test suite — 43 failing integration tests (DONE)
 
