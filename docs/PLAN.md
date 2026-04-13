@@ -7,7 +7,7 @@ Six items, all deferred. Docker install/launch is fully functional
 
 | # | Item | Status | Priority |
 |---|---|---|---|
-| 1 | Auto-include dependency components | Design ready | Medium |
+| 1 | ~~Auto-include dependency components~~ | ✅ DONE 2026-04-13 (`8f59b2e`, `2117c51`) | — |
 | 2 | Docker cross-platform (WSL2/Linux) | Design + compat matrix ready | Low |
 | 3 | ~~Minimize env size (145KB `_UCC_*` bloat)~~ | ✅ DONE 2026-04-13 (`9862f89`) — cleanup in `ucc_reset_registered_targets` | — |
 | 4 | Phase C1 — drift helper | Waiting-for-consumer | Low |
