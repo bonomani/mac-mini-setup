@@ -223,13 +223,21 @@ _ucc_eval_yaml_expr() {
 }
 
 _ucc_yaml_expr_succeeds() {
-  local cfg_dir="$1" yaml="$2" target="$3" expr="$4"
-  _ucc_eval_yaml_expr "$cfg_dir" "$yaml" "$target" "$expr" >/dev/null 2>&1
+  local cfg_dir="$1" yaml="$2" target="$3" expr="$4" _rc=0 _stderr=""
+  _stderr="$(_ucc_eval_yaml_expr "$cfg_dir" "$yaml" "$target" "$expr" >/dev/null 2>&1)" || _rc=$?
+  if [[ $_rc -ne 0 && $_rc -gt 1 ]]; then
+    # rc=1 is normal "condition false"; rc>1 signals a probe error
+    log_warn "oracle probe error (rc=$_rc) for target '$target': $expr" 2>/dev/null || true
+  fi
+  return $_rc
 }
 
 _ucc_eval_yaml_scalar_cmd() {
-  local cfg_dir="$1" yaml="$2" target="$3" cmd="$4" output trimmed
-  output="$(_ucc_eval_yaml_expr "$cfg_dir" "$yaml" "$target" "$cmd" 2>/dev/null || true)"
+  local cfg_dir="$1" yaml="$2" target="$3" cmd="$4" output trimmed _rc=0
+  output="$(_ucc_eval_yaml_expr "$cfg_dir" "$yaml" "$target" "$cmd" 2>/dev/null)" || _rc=$?
+  if [[ $_rc -ne 0 && -z "$output" ]]; then
+    log_warn "observe probe failed (rc=$_rc) for target '$target': $cmd" 2>/dev/null || true
+  fi
   output="${output%%$'\n'*}"
   trimmed="${output#"${output%%[![:space:]]*}"}"
   trimmed="${trimmed%"${trimmed##*[![:space:]]}"}"
@@ -553,7 +561,7 @@ _ucc_target_filtered_out() {
         # Try oracle.configured
         local _oracle; _oracle="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "oracle.configured" 2>/dev/null || true)"
         if [[ -n "$_oracle" ]]; then
-          if _ucc_yaml_expr_succeeds "$cfg_dir" "$yaml" "$target" "$_oracle" 2>/dev/null; then
+          if _ucc_yaml_expr_succeeds "$cfg_dir" "$yaml" "$target" "$_oracle"; then
             state="configured"
           fi
         fi
@@ -562,7 +570,7 @@ _ucc_target_filtered_out() {
         # Try oracle.runtime
         local _rt_oracle; _rt_oracle="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "oracle.runtime" 2>/dev/null || true)"
         if [[ -n "$_rt_oracle" ]]; then
-          if _ucc_yaml_expr_succeeds "$cfg_dir" "$yaml" "$target" "$_rt_oracle" 2>/dev/null; then
+          if _ucc_yaml_expr_succeeds "$cfg_dir" "$yaml" "$target" "$_rt_oracle"; then
             state="running"
           else
             state="stopped"
