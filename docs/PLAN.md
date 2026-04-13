@@ -2,7 +2,7 @@
 
 ## Open
 
-Five items. Phase C1 is **waiting-for-consumer**. Docker Desktop
+Six items. Phase C1 is **waiting-for-consumer**. Docker Desktop
 unattended first install is **in-progress** (core recipe works,
 Step 9 triage ongoing). Docker privileged ports target is
 **ready-to-implement** (design validated, functions exist).
@@ -23,6 +23,39 @@ In this case, selecting `docker` should auto-include `software-bootstrap`
 
 **Current workaround**: `./install.sh software-bootstrap docker` or
 run without component filter (`./install.sh`).
+
+### Docker support on Windows (WSL2) and Linux
+
+Docker currently only runs on macOS (`platforms: [macos]` in
+`docker.yaml`). The probes and launch logic are macOS-specific:
+`open -g`, `osascript quit`, `pgrep com.docker.backend`, Apple
+Virtualization.framework process tree.
+
+**Windows (WSL2)**:
+- Docker Desktop for Windows uses WSL2 backend — `docker-desktop`
+  and `docker-desktop-data` WSL distributions
+- Process: `Docker Desktop.exe` + `com.docker.backend.exe`
+- Socket: `/var/run/docker.sock` (exposed into WSL2 distros)
+- Launch: `powershell.exe -Command "Start-Process 'Docker Desktop'"` 
+  or via Windows start menu integration
+- No `open -g`, no `osascript`, no `pgrep` on process names
+
+**Linux (native Docker Engine)**:
+- No Docker Desktop needed — `dockerd` runs natively via systemd
+- Socket: `/var/run/docker.sock` (standard)
+- Launch: `systemctl start docker`
+- Probes: `systemctl is-active docker` or `/_ping` on socket
+- Or Docker Desktop for Linux (QEMU VM, same architecture as macOS)
+
+**Actions**:
+1. Add `platforms: [macos, linux, wsl2]` to `docker.yaml`
+2. Abstract probes: `docker_desktop_is_running` dispatches per platform
+   (pgrep on macOS, systemctl on Linux, powershell on WSL2)
+3. Abstract launch: `_docker_launch` dispatches per platform
+4. `docker_daemon_configured` and `docker_daemon_is_running` already
+   use the socket — these are portable as-is
+5. `docker-daemon` on native Linux: `driver.kind: systemd-service`
+   instead of `custom`, no `docker-desktop` dependency
 
 ### Minimize exported environment size across the framework
 
