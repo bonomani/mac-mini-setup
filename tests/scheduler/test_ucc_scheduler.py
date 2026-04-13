@@ -15,8 +15,8 @@ QUERY = ROOT / "tools" / "validate_targets_manifest.py"
 # and depend on macOS-specific tools (brew, pgrep patterns, osascript) and
 # platform-specific behavior (LaunchAgents, .app bundles). They pass on macOS
 # but fail on Linux/WSL where these tools are absent or behave differently.
-# A future improvement would be to mock platform-specific commands so the
-# dispatch logic can be tested universally.
+# Integration tests belong on the target platform — run them on macOS CI or
+# directly on the Mac mini.
 @unittest.skipUnless(
     os.uname().sysname == "Darwin",
     "UCC scheduler integration tests require macOS (brew, pgrep, launchd)"
