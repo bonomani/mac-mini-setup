@@ -31,12 +31,37 @@ Docker currently only runs on macOS (`platforms: [macos]` in
 `open -g`, `osascript quit`, `pgrep com.docker.backend`, Apple
 Virtualization.framework process tree.
 
+**Current OS compatibility status** (2026-04-13):
+
+| Function | macOS | Linux | WSL2 | Notes |
+|---|---|---|---|---|
+| `docker_desktop_observe` | ✅ | ❌ app path | ❌ app path | Checks `/Applications/Docker.app` |
+| `docker_desktop_is_running` | ✅ | ❌ pgrep | ❌ pgrep | Checks `com.docker.backend` process |
+| `docker_desktop_pid` | ✅ | ❌ pgrep | ❌ pgrep | Same process name |
+| `docker_daemon_configured` | ✅ | ✅ | ✅ | Socket check — portable |
+| `docker_daemon_is_running` | ✅ | ✅ | ✅ | `/_ping` on socket — portable |
+| `docker_daemon_status` | ✅ | ✅ | ✅ | Calls `docker_daemon_is_running` |
+| `docker_version` | ✅ | ✅ | ✅ | `/version` on socket — portable |
+| `docker_resources_observe` | ✅ | ❌ path | ❌ path | Reads macOS `settings-store.json` |
+| `docker_resources_apply` | ✅ | ❌ path | ❌ path | Writes macOS `settings-store.json` |
+| `_docker_launch` | ✅ | ❌ open -g | ❌ open -g | macOS `open` command |
+| `_docker_kill_zombies` | ✅ | ❌ osascript | ❌ osascript | macOS AppleScript |
+| `_docker_ready` | ✅ | ✅ | ✅ | `/_ping` on socket — portable |
+| `_docker_bootstrap_complete` | ✅ | ❌ path | ❌ path | macOS `settings-store.json` |
+| `_docker_cask_ensure` | ✅ | ❌ brew cask | ❌ brew cask | macOS brew only |
+| `_docker_strip_quarantine` | ✅ | n/a | n/a | macOS Gatekeeper xattr |
+| `_docker_settings_store_patch` | ✅ | ❌ path | ❌ path | macOS `settings-store.json` |
+| `_docker_assisted_*` | ✅ | n/a | n/a | macOS-only unattended install |
+
+**Summary**: daemon-level probes (socket-based) are already portable.
+Desktop-level probes and all install/launch/stop actions are macOS-only.
+
 **Windows (WSL2)**:
 - Docker Desktop for Windows uses WSL2 backend — `docker-desktop`
   and `docker-desktop-data` WSL distributions
 - Process: `Docker Desktop.exe` + `com.docker.backend.exe`
 - Socket: `/var/run/docker.sock` (exposed into WSL2 distros)
-- Launch: `powershell.exe -Command "Start-Process 'Docker Desktop'"` 
+- Launch: `powershell.exe -Command "Start-Process 'Docker Desktop'"`
   or via Windows start menu integration
 - No `open -g`, no `osascript`, no `pgrep` on process names
 
