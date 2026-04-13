@@ -91,9 +91,11 @@ def test_component_selection_includes_all_targets():
     stdout, _, _ = run_query("--ordered-targets", "docker")
     targets = stdout.splitlines()
     assert "docker-desktop" in targets
-    assert "docker-resources" in targets
+    assert "docker-daemon" in targets
     assert "docker-available" in targets
-    assert len(targets) == 3, f"Docker has 3 targets, got {len(targets)}"
+    assert "docker-resources" in targets
+    assert "docker-privileged-ports" in targets
+    assert len(targets) == 5, f"Docker has 5 targets, got {len(targets)}"
     print("PASS: Component selection includes all targets")
 
 

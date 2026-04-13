@@ -197,6 +197,8 @@ class UccSchedulerTests(unittest.TestCase):
                           - capability
                         driver:
                           kind: custom-daemon
+                          bin: /usr/bin/true
+                          process: fake-process
                         runtime_manager: custom
                         probe_kind: command
                         oracle:
@@ -328,6 +330,8 @@ class UccSchedulerTests(unittest.TestCase):
                         display_name: Fake Runtime
                         driver:
                           kind: custom-daemon
+                          bin: /usr/bin/true
+                          process: fake-process
                         runtime_manager: custom
                         probe_kind: http
                         oracle:
@@ -370,6 +374,8 @@ class UccSchedulerTests(unittest.TestCase):
                         display_name: Fake Runtime
                         driver:
                           kind: custom-daemon
+                          bin: /usr/bin/true
+                          process: fake-process
                         runtime_manager: custom
                         probe_kind: http
                         oracle:
@@ -452,6 +458,8 @@ class UccSchedulerTests(unittest.TestCase):
                         display_name: Fake Runtime
                         driver:
                           kind: custom-daemon
+                          bin: /usr/bin/true
+                          process: fake-process
                         runtime_manager: custom
                         probe_kind: command
                         oracle:
@@ -1618,6 +1626,8 @@ class UccSchedulerTests(unittest.TestCase):
                         display_name: App
                         driver:
                           kind: custom-daemon
+                          bin: /usr/bin/true
+                          process: fake-process
                         runtime_manager: custom
                         probe_kind: command
                         oracle:
@@ -1680,6 +1690,8 @@ class UccSchedulerTests(unittest.TestCase):
                         display_name: App
                         driver:
                           kind: custom-daemon
+                          bin: /usr/bin/true
+                          process: fake-process
                         runtime_manager: custom
                         probe_kind: command
                         oracle:
@@ -1992,6 +2004,8 @@ class UccSchedulerTests(unittest.TestCase):
                         type: runtime
                         driver:
                           kind: custom-daemon
+                          bin: /usr/bin/true
+                          process: fake-process
                         oracle:
                           runtime: 'curl -fsS http://127.0.0.1:${probe_port} >/dev/null 2>&1'
                     """
