@@ -886,14 +886,19 @@ for root, _, files in os.walk('$_MANIFEST_DIR'):
   fi
 fi
 
-# --- Sudo keepalive -------------------------------------------
-# If a sudo ticket is active, refresh it every 60 s in the background
-# so it doesn't expire mid-run. The loop self-terminates when the
-# parent install.sh process exits (kill -0 checks parent PID).
+# --- Sudo detection & keepalive --------------------------------
+# sudo -n true inside $() subshells (where ucc_target captures
+# observe output) loses the tty-bound ticket on macOS. Detect once
+# here (in the main shell, with tty access) and export the result
+# so sudo_is_available can check the flag without re-probing.
 if sudo -n true 2>/dev/null; then
+  export _UCC_SUDO_AVAILABLE=1
+  # Refresh the ticket every 60 s so it doesn't expire mid-run.
   ( while true; do sudo -n true 2>/dev/null; sleep 60; kill -0 "$$" 2>/dev/null || exit; done ) &
   _SUDO_KEEPALIVE_PID=$!
   trap 'kill $_SUDO_KEEPALIVE_PID 2>/dev/null || true' EXIT
+else
+  export _UCC_SUDO_AVAILABLE=0
 fi
 
 # Warm Brew caches before any component runs. Version caches are needed in all

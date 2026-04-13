@@ -152,10 +152,13 @@ _tic_is_macos() {
 }
 
 # Return 0 if elevated privileges are available (root or cached sudo ticket).
-sudo_is_available() { [[ $EUID -eq 0 ]] || sudo -n true 2>/dev/null; }
+# When running inside install.sh, _UCC_SUDO_AVAILABLE is pre-set at startup
+# (in the main shell with tty access) because sudo -n true inside $()
+# subshells loses the tty-bound ticket on macOS.
+sudo_is_available() { [[ $EUID -eq 0 ]] || [[ "${_UCC_SUDO_AVAILABLE:-}" == "1" ]] || sudo -n true 2>/dev/null; }
 
 # Return 0 if elevated privileges are NOT available.
-sudo_not_available() { [[ $EUID -ne 0 ]] && ! sudo -n true 2>/dev/null; }
+sudo_not_available() { ! sudo_is_available; }
 
 # Run a command with elevated privileges (sudo when not root, direct when root).
 # Usage: run_elevated <cmd> [args...]

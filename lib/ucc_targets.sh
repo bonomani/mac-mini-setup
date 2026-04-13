@@ -223,9 +223,9 @@ _ucc_eval_yaml_expr() {
 }
 
 _ucc_yaml_expr_succeeds() {
-  local cfg_dir="$1" yaml="$2" target="$3" expr="$4" _rc=0 _stderr=""
-  _stderr="$(_ucc_eval_yaml_expr "$cfg_dir" "$yaml" "$target" "$expr" >/dev/null 2>&1)" || _rc=$?
-  if [[ $_rc -ne 0 && $_rc -gt 1 ]]; then
+  local cfg_dir="$1" yaml="$2" target="$3" expr="$4" _rc=0
+  _ucc_eval_yaml_expr "$cfg_dir" "$yaml" "$target" "$expr" >/dev/null 2>&1 || _rc=$?
+  if [[ $_rc -gt 1 ]]; then
     # rc=1 is normal "condition false"; rc>1 signals a probe error
     log_warn "oracle probe error (rc=$_rc) for target '$target': $expr" 2>/dev/null || true
   fi
