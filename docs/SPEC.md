@@ -66,6 +66,9 @@ not specified). Counts are real (`type` distribution per component).
 - `ollama-model-qwen3-latest`
 - `rdpilot`
 - `rustup`
+- `unsloth`
+- `unsloth-studio`
+- `unsloth-studio-service`
 - `xrdp`
 
 ## 4. Targets by component
@@ -333,7 +336,7 @@ See [`docs/driver-feature-matrix.md`](driver-feature-matrix.md) — auto-generat
 - Preferences: **6**
 - Gates: **1**
 - TIC tests: **23**
-- Globally disabled targets: **8**
+- Globally disabled targets: **11**
 
 Top 10 driver kinds by target count:
 

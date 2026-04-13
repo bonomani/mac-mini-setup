@@ -17,3 +17,6 @@ disabled:
 - rustup
 - rdpilot
 - xrdp
+- unsloth
+- unsloth-studio
+- unsloth-studio-service
