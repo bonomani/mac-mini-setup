@@ -17,7 +17,8 @@ Four items remain. Docker install/launch is fully functional
 | 8 | ~~Driver convention: `_<driver>_state()` helper~~ | ✅ DONE 2026-04-13 — 7 drivers extracted, 12 share only cached YAML reads (no duplication) | — |
 | 9 | ~~Extract install.sh functions to lib/~~ | ✅ DONE 2026-04-13 — install.sh 1225→991 lines (`c463e5c`) | — |
 | 10 | ~~Unify batch cache access~~ | ✅ DONE 2026-04-13 — `_ucc_yaml_target_get_many` uses `_UCC_YTGT_*` cache (`3647ee4`) | — |
-| 11 | Unified `update-policy` pref | Planned | Medium |
+| 11 | Unified `update-policy` pref | ✅ DONE 2026-04-13 (`da6b335`, `7a9566a`) | — |
+| 12 | Pip venv isolation (`isolation.kind: venv`) | Planned | High |
 
 ### Unified `update-policy` pref
 
@@ -114,6 +115,122 @@ pip upgrades while `aggressive` attempts them.
 upgrade run. Or `--pref lib-update=always-upgrade` to override just
 the lib part while keeping the rest at `balanced`. Granular knobs:
 `--pref tool-update=install-only`, `--pref upstream-check=0`.
+
+### Pip venv isolation (`isolation.kind: venv`)
+
+**Problem:** All pip-group targets install into the global pyenv Python
+environment. Packages with incompatible dependency constraints break
+each other silently — pip reports conflicts but installs anyway. Three
+incompatible zones identified (2026-04-13):
+
+1. **unsloth/unsloth-zoo** — pins torch<2.11, datasets<4.4,
+   transformers≤5.5, trl≤0.24 — incompatible with modern HF stack
+2. **jupyter-ai-magics** — pins langchain<0.4 — incompatible with
+   langchain 1.x used by pip-group-langchain
+3. **datasets↔fsspec** — datasets 4.8 requires fsspec≤2026.2.0 but
+   serving group pulls fsspec 2026.3.0
+
+**Solution:** Extend the pip driver's existing `isolation` field from a
+scalar (`pipx`) to an object with `kind` and `name`:
+
+```yaml
+# No isolation (current default — global pip)
+pip-group-utilities:
+  driver:
+    kind: pip
+    install_packages: python-dotenv
+
+# pipx isolation (current — 1 venv per tool, no import sharing)
+some-cli-tool:
+  driver:
+    kind: pip
+    isolation:
+      kind: pipx
+    install_packages: some-tool
+
+# venv isolation (new — shared named venv)
+pip-group-pytorch:
+  driver:
+    kind: pip
+    isolation:
+      kind: venv
+      name: ai-modern
+    install_packages: torch torchvision torchaudio
+
+pip-group-langchain:
+  driver:
+    kind: pip
+    isolation:
+      kind: venv
+      name: ai-modern          # same venv, shares torch
+    install_packages: langchain langchain-core
+
+pip-group-jupyter:
+  driver:
+    kind: pip
+    isolation:
+      kind: venv
+      name: jupyter-ai         # separate venv
+    install_packages: jupyterlab jupyter-ai-magics
+```
+
+**Isolation modes:**
+
+| `isolation` | Behaviour |
+|---|---|
+| absent | pip global (current, unchanged) |
+| `kind: pipx` | 1 venv per package (current, unchanged) |
+| `kind: venv, name: X` | shared named venv X (new) |
+
+**Venv layout (3 environments):**
+
+| Venv | Pip groups | Why isolated |
+|---|---|---|
+| `ai-modern` | pytorch, huggingface, langchain, llamaindex, llm-clients, vector-dbs, serving, data-science, utilities, dev-tools, optimum | Main compatible stack |
+| `jupyter-ai` | jupyter, jupyter-ai-magics | langchain <0.4 conflict |
+| `unsloth` | unsloth, unsloth-zoo | torch/transformers/trl version pins |
+
+**Design rationale — follows existing patterns:**
+
+The framework already has three isolation architectures, all using the
+same `depends_on`-based pattern:
+
+| Tech | Infra target | Package targets | Isolation unit |
+|---|---|---|---|
+| Docker | `ai-stack-compose-running` | `open-webui-runtime` etc. | container |
+| Node | `nvm` → `node-lts` | `npm-global-claude-code` etc. | node version |
+| Brew | `homebrew` | `git`, `jq` etc. | Cellar prefix |
+| **Pip+venv** | (pip driver creates venv) | `pip-group-*` | **named venv** |
+
+Unlike the others, pip venv creation is handled inside the pip driver
+(like pipx), not as a separate infra target. The venv is created
+idempotently on first `pip install` into it. This matches the pipx
+pattern where `pipx install` creates the venv as a side effect.
+
+**Implementation steps:**
+
+1. **Parse `isolation` as object or scalar**: in `_ucc_driver_pip_observe`
+   and `_ucc_driver_pip_action`, read `driver.isolation` — if it has a
+   `.kind` subfield, use object form; if scalar `pipx`, treat as
+   `{kind: pipx}` for backward compat; if absent, global pip.
+2. **Venv management helpers**:
+   - `_pip_venv_ensure <name>` — create venv via `pyenv virtualenv
+     <python_version> <name>` if it doesn't exist
+   - `_pip_venv_activate <name>` — set PATH to
+     `~/.pyenv/versions/<name>/bin` so pip/python resolve to the venv
+   - `_pip_venv_pip_cmd <name>` — return the venv's pip path directly
+3. **Wire into observe**: when `isolation.kind=venv`, activate the venv
+   before running `pip list` / `_pip_cached_version` / outdated checks.
+   Version cache must be per-venv (key by venv name).
+4. **Wire into action**: when `isolation.kind=venv`, ensure venv exists,
+   then `pip install` into it. `_pip_update_would_conflict` dry-run
+   also runs inside the venv.
+5. **YAML migration**: add `isolation: {kind: venv, name: ...}` to all
+   pip-group targets in `ai-python-stack.yaml`. Group assignment per
+   the 3-venv table above.
+6. **pip_cache_versions per venv**: the global `_PIP_VERSIONS_CACHE`
+   must become per-venv. Use `_PIP_VERSIONS_CACHE_<VENV_NAME>` or a
+   keyed lookup.
 
 ### Driver convention: `_<driver>_state()` helper
 
