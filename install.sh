@@ -886,6 +886,16 @@ for root, _, files in os.walk('$_MANIFEST_DIR'):
   fi
 fi
 
+# --- Sudo keepalive -------------------------------------------
+# If a sudo ticket is active, refresh it every 60 s in the background
+# so it doesn't expire mid-run. The loop self-terminates when the
+# parent install.sh process exits (kill -0 checks parent PID).
+if sudo -n true 2>/dev/null; then
+  ( while true; do sudo -n true 2>/dev/null; sleep 60; kill -0 "$$" 2>/dev/null || exit; done ) &
+  _SUDO_KEEPALIVE_PID=$!
+  trap 'kill $_SUDO_KEEPALIVE_PID 2>/dev/null || true' EXIT
+fi
+
 # Warm Brew caches before any component runs. Version caches are needed in all
 # modes; outdated caches are only useful when upgrades are enabled.
 if command -v brew &>/dev/null; then
