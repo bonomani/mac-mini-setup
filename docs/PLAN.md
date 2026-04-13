@@ -44,14 +44,31 @@ update-policy: conservative | balanced | aggressive
 **Default:** `balanced` — tools stay current automatically, libs stay
 stable until explicitly requested, upstream version checking enabled.
 
-**Driver classification:** Each driver knows its category:
-- **Tool drivers:** brew, pkg, nvm, nvm-version, custom-daemon,
-  app-bundle, script-installer, package, npm-global,
-  pip (isolation=pipx) → follows tool policy
-- **Lib drivers:** pip (no isolation) — includes pip groups AND
-  standalone pip packages (e.g. unsloth, any `driver.kind: pip`
-  without `isolation: pipx`) → follows lib policy. These share
-  a dependency graph and upgrades can break cross-package constraints.
+**Target classification via `update_class`:**
+
+The distinction is not about the driver — it's about whether upgrading
+can break other installed software. Declared per-target in YAML:
+
+```yaml
+git:
+  update_class: tool    # self-contained, safe to auto-upgrade
+
+xz:
+  update_class: lib     # shared dependency, upgrade can break consumers
+```
+
+| Class | Rule | Examples |
+|---|---|---|
+| `tool` (default) | Self-contained, no shared deps | jq, wget, git, ollama, iterm2, claude-code, nvm |
+| `lib` | Shared dependency graph, upgrade can break consumers | pip packages, xz, openssl, gcc, build-deps |
+
+**Driver defaults** (when `update_class` is not set in YAML):
+- `pip` (no isolation) → `lib`
+- `pip` (isolation=pipx) → `tool`
+- All other drivers → `tool`
+
+This lets brew formulae like `xz` or `openssl` opt into `lib` behavior
+while most brew packages stay as `tool`.
 
 **Implementation:**
 1. Add `update-policy` to UIC preferences with three options
