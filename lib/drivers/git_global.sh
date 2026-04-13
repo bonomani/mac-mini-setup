@@ -2,9 +2,17 @@
 # lib/drivers/git_global.sh — driver.kind: git-global
 # Manages git global user.name + user.email + global_config records.
 
+_git_global_read() {
+  local user email
+  user="$(git config --global user.name 2>/dev/null || true)"
+  email="$(git config --global user.email 2>/dev/null || true)"
+  _GIT_GLOBAL_USER="$user"
+  _GIT_GLOBAL_EMAIL="$email"
+}
+
 _ucc_driver_git_global_observe() {
-  local cfg_dir="$1" yaml="$2" target="$3"
-  if git config --global user.name >/dev/null 2>&1; then
+  _git_global_read
+  if [[ -n "$_GIT_GLOBAL_USER" ]]; then
     printf 'configured'
   else
     printf 'absent'
@@ -31,9 +39,6 @@ _ucc_driver_git_global_action() {
 }
 
 _ucc_driver_git_global_evidence() {
-  local cfg_dir="$1" yaml="$2" target="$3"
-  local user email
-  user="$(git config --global user.name 2>/dev/null || true)"
-  email="$(git config --global user.email 2>/dev/null || true)"
-  [[ -n "$user" ]] && printf 'user=%s  email=%s' "$user" "$email"
+  _git_global_read
+  [[ -n "$_GIT_GLOBAL_USER" ]] && printf 'user=%s  email=%s' "$_GIT_GLOBAL_USER" "$_GIT_GLOBAL_EMAIL"
 }

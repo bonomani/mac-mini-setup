@@ -3,13 +3,14 @@
 # Ensures pip + setuptools + wheel are up-to-date.
 # Reads pip_bootstrap list from YAML.
 
+_pip_bootstrap_version() {
+  pip --version 2>/dev/null | awk '{print $2}'
+}
+
 _ucc_driver_pip_bootstrap_observe() {
-  local cfg_dir="$1" yaml="$2" target="$3"
-  if command -v pip >/dev/null 2>&1; then
-    pip --version 2>/dev/null | awk '{print $2}'
-  else
-    printf 'absent'
-  fi
+  local ver
+  ver="$(_pip_bootstrap_version)"
+  printf '%s' "${ver:-absent}"
 }
 
 _ucc_driver_pip_bootstrap_action() {
@@ -20,9 +21,8 @@ _ucc_driver_pip_bootstrap_action() {
 }
 
 _ucc_driver_pip_bootstrap_evidence() {
-  local cfg_dir="$1" yaml="$2" target="$3"
   local ver path
-  ver="$(pip --version 2>/dev/null | awk '{print $2}')"
+  ver="$(_pip_bootstrap_version)"
   path="$(command -v pip 2>/dev/null || true)"
   [[ -n "$ver" ]] && printf 'version=%s  path=%s' "$ver" "$path"
 }

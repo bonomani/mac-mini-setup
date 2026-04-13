@@ -7,6 +7,10 @@
 # driver.download_url_tpl:  <url-template>    ({version} placeholder, e.g., https://example.com/{version}/app.zip)
 # driver.package_ext:       zip|dmg           (default: zip)
 
+_app_bundle_plist_version() {
+  defaults read "$1/Contents/Info" CFBundleShortVersionString 2>/dev/null
+}
+
 _ucc_driver_app_bundle_observe() {
   local cfg_dir="$1" yaml="$2" target="$3"
   local app_path brew_cask ver cask_ver
@@ -36,7 +40,7 @@ _ucc_driver_app_bundle_observe() {
     return
   fi
 
-  ver="$(defaults read "$app_path/Contents/Info" CFBundleShortVersionString 2>/dev/null)"
+  ver="$(_app_bundle_plist_version "$app_path")"
   log_debug "app-bundle[$target] observe: plist version='${ver:-<unreadable>}'"
 
   # Compare against latest from API to detect outdated
@@ -146,7 +150,7 @@ _ucc_driver_app_bundle_evidence() {
   [[ -n "$app_path" && -d "$app_path" ]] || return 1
   brew_cask="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.brew_cask")"
 
-  ver="$(defaults read "$app_path/Contents/Info" CFBundleShortVersionString 2>/dev/null)"
+  ver="$(_app_bundle_plist_version "$app_path")"
   log_debug "app-bundle[$target] evidence: plist version='${ver:-<unreadable>}'"
   [[ -n "$ver" ]] || return 1
   if [[ -n "$brew_cask" ]] && [[ -n "$(_brew_cask_cached_version "$brew_cask")" ]]; then

@@ -8,15 +8,23 @@
 
 # ── nvm install ───────────────────────────────────────────────────────────────
 
+_nvm_resolve_dir() {
+  local dir; dir="$(_ucc_yaml_target_get "$1" "$2" "$3" "driver.nvm_dir")"
+  printf '%s' "${dir:-.nvm}"
+}
+
+_nvm_self_version() {
+  local nvm_dir="$1"
+  [[ -s "$HOME/$nvm_dir/nvm.sh" ]] || return 1
+  bash -c "source \"\$HOME/$nvm_dir/nvm.sh\" 2>/dev/null && nvm --version 2>/dev/null" || true
+}
+
 _ucc_driver_nvm_observe() {
   local cfg_dir="$1" yaml="$2" target="$3"
-  local nvm_dir; nvm_dir="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.nvm_dir")"
-  nvm_dir="${nvm_dir:-.nvm}"
-  [[ -s "$HOME/$nvm_dir/nvm.sh" ]] || { printf 'absent'; return; }
+  local nvm_dir; nvm_dir="$(_nvm_resolve_dir "$cfg_dir" "$yaml" "$target")"
   local ver
-  ver="$(bash -c "source \"\$HOME/$nvm_dir/nvm.sh\" 2>/dev/null && nvm --version 2>/dev/null" || true)"
+  ver="$(_nvm_self_version "$nvm_dir")" || { printf 'absent'; return; }
   [[ -z "$ver" ]] && { printf 'present'; return; }
-  # Outdated check via driver.github_repo (e.g. nvm-sh/nvm), opt-in.
   if [[ "${UIC_PREF_BREW_LIVECHECK:-0}" == "1" ]]; then
     local repo; repo="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.github_repo" 2>/dev/null || true)"
     if [[ -n "$repo" ]] && declare -f _pkg_github_latest_tag >/dev/null 2>&1; then
@@ -40,10 +48,8 @@ _ucc_driver_nvm_action() {
 
 _ucc_driver_nvm_evidence() {
   local cfg_dir="$1" yaml="$2" target="$3"
-  local nvm_dir; nvm_dir="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.nvm_dir")"
-  nvm_dir="${nvm_dir:-.nvm}"
-  local ver
-  ver="$(bash -c "source \"\$HOME/$nvm_dir/nvm.sh\" 2>/dev/null && nvm --version 2>/dev/null" || true)"
+  local nvm_dir; nvm_dir="$(_nvm_resolve_dir "$cfg_dir" "$yaml" "$target")"
+  local ver; ver="$(_nvm_self_version "$nvm_dir")" || return 1
   [[ -n "$ver" ]] || return 1
   printf 'version=%s  path=%s' "$ver" "$HOME/$nvm_dir"
 }
