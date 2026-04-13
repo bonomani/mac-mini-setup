@@ -2,8 +2,8 @@
 
 ## Open
 
-Three items remain. Docker install/launch is fully functional
-(tested 2026-04-13). Test suite green. Remaining work is cross-platform.
+Four items remain. Docker install/launch is fully functional
+(tested 2026-04-13). Test suite green.
 
 | # | Item | Status | Priority |
 |---|---|---|---|
@@ -17,6 +17,54 @@ Three items remain. Docker install/launch is fully functional
 | 8 | ~~Driver convention: `_<driver>_state()` helper~~ | ✅ DONE 2026-04-13 — 7 drivers extracted, 12 share only cached YAML reads (no duplication) | — |
 | 9 | ~~Extract install.sh functions to lib/~~ | ✅ DONE 2026-04-13 — install.sh 1225→991 lines (`c463e5c`) | — |
 | 10 | ~~Unify batch cache access~~ | ✅ DONE 2026-04-13 — `_ucc_yaml_target_get_many` uses `_UCC_YTGT_*` cache (`3647ee4`) | — |
+| 11 | Unified `update-policy` pref | Planned | Medium |
+
+### Unified `update-policy` pref
+
+**Problem:** Three correlated concerns are currently spread across two
+prefs (`package-update-policy` + `brew-livecheck`) with unclear naming.
+Without `brew-livecheck=1`, no driver detects outdated packages — 7
+drivers (brew, pip, pipx, nvm, custom-daemon, pkg, package,
+script-installer) all silently report `[ok]` for installed-but-outdated
+software.
+
+**Solution:** Replace `package-update-policy` and `brew-livecheck` with
+a single `update-policy` pref:
+
+```yaml
+update-policy: conservative | balanced | aggressive
+```
+
+| Policy | Tools (brew/pkg/nvm/apps) | Libs (pip groups) | Upstream check |
+|---|---|---|---|
+| `conservative` | install-only | install-only | off |
+| `balanced` | always-upgrade | install-only | on |
+| `aggressive` | always-upgrade | always-upgrade | on |
+
+**Default:** `balanced` — tools stay current automatically, libs stay
+stable until explicitly requested, upstream version checking enabled.
+
+**Driver classification:** Each driver knows its category:
+- **Tool drivers:** brew, pkg, nvm, nvm-version, custom-daemon,
+  app-bundle, script-installer, package → follows tool policy
+- **Lib drivers:** pip (non-isolation), pip groups → follows lib policy
+- **Standalone tool drivers:** pip (isolation=pipx), npm-global →
+  follows tool policy (isolated, no dep conflicts)
+
+**Implementation:**
+1. Add `update-policy` to UIC preferences with three options
+2. Map internally: `balanced` → `UIC_PREF_BREW_LIVECHECK=1` +
+   `UIC_PREF_TOOL_UPDATE=always-upgrade` + `UIC_PREF_LIB_UPDATE=install-only`
+3. Each driver checks the appropriate policy variable
+4. Deprecate `package-update-policy` and `brew-livecheck` (keep as
+   overrides for backward compat)
+5. The pip driver's `_pip_update_would_conflict` safety check remains
+   active in all modes — `aggressive` enables the upgrade attempt but
+   the conflict guard still prevents breakage
+
+**Operator overrides:** `--pref update-policy=aggressive` for a full
+upgrade run. Or `--pref lib-update-policy=always-upgrade` to override
+just the lib part while keeping the rest at `balanced`.
 
 ### Driver convention: `_<driver>_state()` helper
 
