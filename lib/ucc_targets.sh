@@ -884,14 +884,6 @@ _ucc_observe_yaml_runtime_target() {
     esac
     return
   fi
-  case "$runtime_driver" in
-    desktop-app)
-      _ucc_observe_yaml_desktop_app_runtime_target "$cfg_dir" "$yaml" "$target"
-      return ;;
-    docker-compose)
-      _ucc_observe_yaml_docker_compose_runtime_target "$cfg_dir" "$yaml" "$target"
-      return ;;
-  esac
   _ucc_observe_yaml_runtime_oracle_target "$cfg_dir" "$yaml" "$target"
 }
 
@@ -944,121 +936,11 @@ _ucc_observe_yaml_runtime_oracle_target() {
     --dependencies "$stopped_dependencies"
 }
 
-_ucc_observe_yaml_desktop_app_runtime_target() {
-  local cfg_dir="$1" yaml="$2" target="$3"
-  local configured_cmd runtime_cmd package_ref app_path greedy_auto_updates observed install_source policy
-  local fn="${target//[^a-zA-Z0-9]/_}"
-  local _cached_var="_UCC_OBS_CACHED_${fn}"
-  if [[ -n "${!_cached_var:-}" ]]; then
-    local _v
-    _v="_UCC_RT_CONFIGURED_${fn}"; configured_cmd="${!_v}"
-    _v="_UCC_RT_RUNTIME_${fn}";    runtime_cmd="${!_v}"
-    _v="_UCC_RT_PKG_${fn}";        package_ref="${!_v}"
-    _v="_UCC_RT_APP_${fn}";        app_path="${!_v}"
-    _v="_UCC_RT_GREEDY_${fn}";     greedy_auto_updates="${!_v}"
-  else
-    while IFS=$'\t' read -r -d '' key value; do
-      case "$key" in
-        oracle.configured)          configured_cmd="$value" ;;
-        oracle.runtime)             runtime_cmd="$value" ;;
-        driver.package_ref)         package_ref="$value" ;;
-        driver.app_path)            app_path="$value" ;;
-        driver.greedy_auto_updates) greedy_auto_updates="$value" ;;
-      esac
-    done < <(_ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" \
-      oracle.configured oracle.runtime driver.package_ref driver.app_path driver.greedy_auto_updates)
-  fi
-
-  observed="installed"
-  policy="${UIC_PREF_PREFERRED_DRIVER_POLICY:-warn}"
-  if [[ -n "$package_ref" ]] && command -v desktop_app_install_source >/dev/null 2>&1; then
-    install_source="$(desktop_app_install_source "$package_ref" "$app_path" 2>/dev/null || true)"
-  elif [[ -n "$app_path" && -d "$app_path" ]]; then
-    install_source="app-bundle"
-  else
-    install_source="absent"
-  fi
-
-  if [[ "$install_source" == "brew-cask" ]] && command -v brew_cask_observe >/dev/null 2>&1; then
-    observed="$(brew_cask_observe "$package_ref" "$greedy_auto_updates" 2>/dev/null || true)"
-  elif [[ "$install_source" == "app-bundle" ]]; then
-    if [[ "$policy" == "ignore" ]]; then
-      observed="installed"
-    else
-      printf 'needs-update'
-      return
-    fi
-  elif [[ -n "$configured_cmd" ]] && ! _ucc_yaml_expr_succeeds "$cfg_dir" "$yaml" "$target" "$configured_cmd"; then
-    observed="absent"
-  fi
-
-  if [[ "$observed" == "absent" ]] && [[ -n "$configured_cmd" ]] && ! _ucc_yaml_expr_succeeds "$cfg_dir" "$yaml" "$target" "$configured_cmd"; then
-    ucc_asm_state --installation Absent --runtime NeverStarted --health Unavailable --admin Enabled --dependencies DepsUnknown
-    return
-  fi
-
-  if [[ -n "$runtime_cmd" ]] && _ucc_yaml_expr_succeeds "$cfg_dir" "$yaml" "$target" "$runtime_cmd"; then
-    if [[ "$observed" == "outdated" ]]; then
-      ucc_asm_state --installation Installed --runtime Running --health Degraded --admin Enabled --dependencies DepsDegraded
-    else
-      ucc_asm_runtime_desired
-    fi
-    return
-  fi
-
-  if [[ "$observed" == "outdated" ]]; then
-    ucc_asm_state --installation Installed --runtime Stopped --health Degraded --admin Enabled --dependencies DepsDegraded
-    return
-  fi
-
-  ucc_asm_state --installation Configured --runtime Stopped --health Unavailable --admin Enabled --dependencies DepsDegraded
-}
-
-_ucc_observe_yaml_docker_compose_runtime_target() {
-  local cfg_dir="$1" yaml="$2" target="$3"
-  local runtime_cmd service_name state
-  local fn="${target//[^a-zA-Z0-9]/_}"
-  local _cached_var="_UCC_OBS_CACHED_${fn}"
-  if [[ -n "${!_cached_var:-}" ]]; then
-    local _v
-    _v="_UCC_RT_RUNTIME_${fn}"; runtime_cmd="${!_v}"
-    _v="_UCC_RT_SERVICE_${fn}"; service_name="${!_v}"
-  else
-    while IFS=$'\t' read -r -d '' key value; do
-      case "$key" in
-        oracle.runtime)      runtime_cmd="$value" ;;
-        driver.service_name) service_name="$value" ;;
-      esac
-    done < <(_ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" oracle.runtime driver.service_name)
-  fi
-  [[ -f "${COMPOSE_FILE:-}" ]] || {
-    ucc_asm_state --installation Absent --runtime Stopped --health Unavailable --admin Enabled --dependencies DepsFailed
-    return
-  }
-
-  state="$(docker inspect --format '{{.State.Status}}' "$service_name" 2>/dev/null || true)"
-  if [[ -z "$state" ]]; then
-    ucc_asm_state --installation Configured --runtime Stopped --health Unavailable --admin Enabled --dependencies DepsReady
-    return
-  fi
-  if [[ "$state" != "running" ]]; then
-    ucc_asm_state --installation Configured --runtime Stopped --health Degraded --admin Enabled --dependencies DepsReady
-    return
-  fi
-
-  if [[ -n "$runtime_cmd" ]] && ! _ucc_yaml_expr_succeeds "$cfg_dir" "$yaml" "$target" "$runtime_cmd"; then
-    ucc_asm_state --installation Configured --runtime Running --health Degraded --admin Enabled --dependencies DepsReady
-    return
-  fi
-
-  ucc_asm_runtime_desired
-}
-
 ucc_yaml_runtime_target() {
   local cfg_dir="$1" yaml="$2" target="$3" install_fn="${4:-}" update_fn="${5:-}"
   _ucc_target_filtered_out "$target" "$cfg_dir" "$yaml" && return 0
   local fn install_cmd update_cmd
-  local obs_configured="" obs_runtime="" obs_driver="" obs_service="" obs_pkg="" obs_app="" obs_greedy=""
+  local obs_configured="" obs_runtime="" obs_driver=""
   local obs_stopped_inst="" obs_stopped_rt="" obs_stopped_health="" obs_stopped_deps=""
   local _ev_b64=""
   fn="${target//[^a-zA-Z0-9]/_}"
@@ -1072,10 +954,6 @@ ucc_yaml_runtime_target() {
       oracle.configured)           obs_configured="$value" ;;
       oracle.runtime)              obs_runtime="$value" ;;
       driver.kind)                 obs_driver="$value" ;;
-      driver.service_name)         obs_service="$value" ;;
-      driver.package_ref)          obs_pkg="$value" ;;
-      driver.app_path)             obs_app="$value" ;;
-      driver.greedy_auto_updates)  obs_greedy="$value" ;;
       stopped_installation)        obs_stopped_inst="$value" ;;
       stopped_runtime)             obs_stopped_rt="$value" ;;
       stopped_health)              obs_stopped_health="$value" ;;
@@ -1083,8 +961,7 @@ ucc_yaml_runtime_target() {
     esac
   done < <(_ucc_ytgt_source "$cfg_dir" "$yaml" "$target" \
       actions.install actions.update oracle.configured oracle.runtime \
-      driver.kind driver.service_name driver.package_ref driver.app_path \
-      driver.greedy_auto_updates stopped_installation stopped_runtime \
+      driver.kind stopped_installation stopped_runtime \
       stopped_health stopped_dependencies)
   [[ -z "$update_cmd" ]] && update_cmd="$install_cmd"
   # A dispatched driver handles install/update even when actions.* are absent from YAML
@@ -1096,10 +973,6 @@ ucc_yaml_runtime_target() {
   export "_UCC_RT_CONFIGURED_${fn}=${obs_configured}"
   export "_UCC_RT_RUNTIME_${fn}=${obs_runtime}"
   export "_UCC_RT_DRIVER_${fn}=${obs_driver}"
-  export "_UCC_RT_SERVICE_${fn}=${obs_service}"
-  export "_UCC_RT_PKG_${fn}=${obs_pkg}"
-  export "_UCC_RT_APP_${fn}=${obs_app}"
-  export "_UCC_RT_GREEDY_${fn}=${obs_greedy}"
   export "_UCC_RT_STOPPED_INST_${fn}=${obs_stopped_inst}"
   export "_UCC_RT_STOPPED_RT_${fn}=${obs_stopped_rt}"
   export "_UCC_RT_STOPPED_HEALTH_${fn}=${obs_stopped_health}"
