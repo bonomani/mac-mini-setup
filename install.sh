@@ -886,20 +886,26 @@ for root, _, files in os.walk('$_MANIFEST_DIR'):
   fi
 fi
 
-# --- Sudo detection & keepalive --------------------------------
+# --- Sudo detection -------------------------------------------
 # sudo -n true inside $() subshells (where ucc_target captures
 # observe output) loses the tty-bound ticket on macOS. Detect once
 # here (in the main shell, with tty access) and export the result
 # so sudo_is_available can check the flag without re-probing.
+#
+# Keepalive: sudo -v in a background subshell can't refresh the
+# ticket (subshells lose tty context on macOS). Instead, we refresh
+# the ticket inline before each component via _ucc_sudo_refresh.
 if sudo -n true 2>/dev/null; then
   export _UCC_SUDO_AVAILABLE=1
-  # Refresh the ticket every 60 s so it doesn't expire mid-run.
-  ( while true; do sudo -n true 2>/dev/null; sleep 60; kill -0 "$$" 2>/dev/null || exit; done ) &
-  _SUDO_KEEPALIVE_PID=$!
-  trap 'kill $_SUDO_KEEPALIVE_PID 2>/dev/null || true' EXIT
 else
   export _UCC_SUDO_AVAILABLE=0
 fi
+
+_ucc_sudo_refresh() {
+  [[ "${_UCC_SUDO_AVAILABLE:-0}" == "1" ]] || return 0
+  # sudo -v in the main shell (foreground, with tty) refreshes the ticket.
+  sudo -v 2>/dev/null || true
+}
 
 # Warm Brew caches before any component runs. Version caches are needed in all
 # modes; outdated caches are only useful when upgrades are enabled.
@@ -1155,6 +1161,10 @@ _run_comp() {
     ignore) _run="ucc_reset_registered_targets; export UCC_TARGET_DEFER=1; ${_runner} \"${DIR}\" \"${_config}\" && ucc_flush_registered_targets \"${comp}\" || true" ;;
     *)      _run="ucc_reset_registered_targets; export UCC_TARGET_DEFER=1; ${_runner} \"${DIR}\" \"${_config}\" && ucc_flush_registered_targets \"${comp}\"" ;;
   esac
+  # Refresh sudo ticket before component execution. bash -c loses tty
+  # context, so sudo -n inside the child can't see the parent's ticket.
+  # sudo -v here (in the main shell with tty) renews it just in time.
+  _ucc_sudo_refresh
   if ! bash -c "${_comp_prelude}; ${_src}${_run}; ucc_summary \"${comp}\""; then
     log_warn "Component failed: $comp"
     FAILED_COMPONENTS+=("$comp")
