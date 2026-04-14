@@ -453,7 +453,14 @@ _ucc_run_yaml_action() {
     local _driver_kind
     _driver_kind="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.kind")"
     if [[ -n "$_driver_kind" && "$_driver_kind" != "custom" ]]; then
-      _ucc_driver_action "$cfg_dir" "$yaml" "$target" "$action_key" && return
+      # Always propagate the driver's exit code — including 124 (warn) and
+      # 125 (admin required) which the scheduler maps to [warn]/[policy]
+      # instead of [fail]. Previously `&& return` swallowed non-zero codes
+      # and fell through to the YAML actions block, which then returned 1
+      # for drivers without explicit actions.* entries.
+      local _drv_rc=0
+      _ucc_driver_action "$cfg_dir" "$yaml" "$target" "$action_key" || _drv_rc=$?
+      return $_drv_rc
     fi
   fi
 
