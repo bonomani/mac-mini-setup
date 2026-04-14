@@ -535,20 +535,30 @@ _ucc_eval_requires() {
 
 _ucc_target_filtered_out() {
   local target="$1" cfg_dir="${2:-}" yaml="${3:-}"
+  # In deferred mode, emission is handled by ucc_flush_registered_targets in
+  # topological order. Filter without printing here to keep output ordered.
+  local _defer="${UCC_TARGET_DEFER:-0}"
   # Check if globally disabled by policy
   if [[ -n "${UCC_DISABLED_TARGETS:-}" && "${UCC_DISABLED_TARGETS}" == *"${target}|"* ]]; then
-    _UCC_EMITTED_TARGETS="${_UCC_EMITTED_TARGETS}|${target}|"
-    local display_name; display_name="$(_ucc_display_name "$target")"
-    printf '      [%-8s] %-40s %s\n' "disabled" "$display_name" "disabled by policy"
+    if [[ "$_defer" != "1" ]]; then
+      _UCC_EMITTED_TARGETS="${_UCC_EMITTED_TARGETS}|${target}|"
+      local display_name; display_name="$(_ucc_display_name "$target")"
+      printf '      [%-8s] %-40s %s\n' "disabled" "$display_name" "disabled by policy"
+    fi
     return 0
   fi
   # Check requires: condition (platform/version/PM support)
   if [[ -n "$cfg_dir" && -n "$yaml" ]]; then
     local _requires; _requires="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "requires" 2>/dev/null || true)"
     if [[ -n "$_requires" ]] && ! _ucc_eval_requires "$_requires"; then
-      _UCC_EMITTED_TARGETS="${_UCC_EMITTED_TARGETS}|${target}|"
-      local display_name; display_name="$(_ucc_display_name "$target")"
-      printf '      [%-8s] %-40s %s\n' "skip" "$display_name" "requires: ${_requires}"
+      if [[ "$_defer" != "1" ]]; then
+        _UCC_EMITTED_TARGETS="${_UCC_EMITTED_TARGETS}|${target}|"
+        local display_name; display_name="$(_ucc_display_name "$target")"
+        printf '      [%-8s] %-40s %s\n' "skip" "$display_name" "requires: ${_requires}"
+      else
+        # Stash the requires: condition so flush can render the same message.
+        eval "_UCC_DEFERRED_REQUIRES_$(echo "${target//[^a-zA-Z0-9]/_}")=\"\$_requires\""
+      fi
       return 0
     fi
   fi
@@ -1584,7 +1594,10 @@ _ucc_execute_target() {
 ucc_flush_registered_targets() {
   local component="$1" ordered="" target idx
   local declared=() undeclared=()
-  [[ ${#_UCC_REGISTERED_NAMES[@]} -gt 0 ]] || return 0
+  # Note: do NOT early-return when _UCC_REGISTERED_NAMES is empty.
+  # In deferred mode, fully-filtered components (all targets disabled or
+  # requires-skipped) register nothing — but the flush still needs to emit
+  # those targets in topo order with their proper [disabled]/[skip] reasons.
 
   if [[ -n "${_UCC_ALL_ORDERED_CACHE:-}" ]]; then
     ordered="$(printf '%s\n' "$_UCC_ALL_ORDERED_CACHE" | awk -F'\t' -v c="$component" '$1==c{print $2; exit}' | tr ',' '\n')"
@@ -1635,7 +1648,16 @@ ucc_flush_registered_targets() {
       if [[ -n "${UCC_DISABLED_TARGETS:-}" && "${UCC_DISABLED_TARGETS}" == *"${target}|"* ]]; then
         printf '      [%-8s] %-40s %s\n' "disabled" "$_dn" "disabled by policy"
       else
-        printf '      [%-8s] %-40s %s\n' "skip" "$_dn" "not processed"
+        # Was the target filtered by `requires:` during the deferred
+        # registration phase? If so, surface the same message we would
+        # have shown immediately in non-defer mode.
+        local _req_var="_UCC_DEFERRED_REQUIRES_$(echo "${target//[^a-zA-Z0-9]/_}")"
+        local _req="${!_req_var:-}"
+        if [[ -n "$_req" ]]; then
+          printf '      [%-8s] %-40s %s\n' "skip" "$_dn" "requires: ${_req}"
+        else
+          printf '      [%-8s] %-40s %s\n' "skip" "$_dn" "not processed"
+        fi
       fi
     fi
   done
