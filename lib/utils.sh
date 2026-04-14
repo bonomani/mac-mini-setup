@@ -94,7 +94,7 @@ docker_daemon_status() {
 
 # Return 0 if the network is reachable (can resolve + connect to a public host).
 network_is_available() {
-  curl -fsS --connect-timeout 5 --max-time 10 https://github.com >/dev/null 2>&1
+  curl -fsS --connect-timeout "$(_ucc_curl_timeout probe)" --max-time "$(_ucc_curl_timeout endpoint)" https://github.com >/dev/null 2>&1
 }
 
 # Print network connectivity status.
@@ -112,7 +112,7 @@ network_status() {
 # deployments.
 ollama_model_loadable() {
   local endpoint="${UCC_OLLAMA_ENDPOINT:-http://127.0.0.1:11434}"
-  local tags; tags="$(curl -fsS --max-time 10 "${endpoint%/}/api/tags" 2>/dev/null)"
+  local tags; tags="$(curl -fsS --max-time "$(_ucc_curl_timeout endpoint)" "${endpoint%/}/api/tags" 2>/dev/null)"
   [[ -n "$tags" ]] && echo "$tags" | python3 -c "import sys,json; sys.exit(0 if json.load(sys.stdin).get('models') else 1)" 2>/dev/null
 }
 
@@ -746,6 +746,27 @@ _ucc_http_probe_endpoint_timeout() {
   local url=""
   url="$(_ucc_endpoint_url "$cfg_dir" "$yaml" "$target" "$endpoint_name")" || return 1
   curl -fsS --max-time "$max_time" "$url" >/dev/null 2>&1
+}
+
+# ── Curl timeout categories ───────────────────────────────────────────────────
+# Centralized per-category timeouts for network calls. Categories reflect
+# expected response size + criticality:
+#   probe       (5s)   — health probes, registry metadata (github API, pypi)
+#   endpoint    (10s)  — service API responses (ollama tags)
+#   metadata    (30s)  — app-bundle update API JSON (vscode, etc.)
+#   download    (300s) — actual binary/dmg/zip download
+#
+# Override per-category via UCC_CURL_TIMEOUT_<CAT>=<seconds>:
+#   UCC_CURL_TIMEOUT_PROBE=10 ./install.sh ...   # double probes
+_ucc_curl_timeout() {
+  local category="$1"
+  case "$category" in
+    probe)    printf '%s' "${UCC_CURL_TIMEOUT_PROBE:-5}" ;;
+    endpoint) printf '%s' "${UCC_CURL_TIMEOUT_ENDPOINT:-10}" ;;
+    metadata) printf '%s' "${UCC_CURL_TIMEOUT_METADATA:-30}" ;;
+    download) printf '%s' "${UCC_CURL_TIMEOUT_DOWNLOAD:-300}" ;;
+    *)        printf '5' ;;
+  esac
 }
 
 # Echo a single value (use in evidence fields to expose config variables).

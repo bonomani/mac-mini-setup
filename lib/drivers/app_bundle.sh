@@ -48,7 +48,7 @@ _ucc_driver_app_bundle_observe() {
   update_api="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.update_api")"
   if [[ -n "$update_api" && -n "$ver" ]]; then
     log_debug "app-bundle[$target] observe: fetching latest version from '$update_api'"
-    response="$(curl -sL --max-time 30 "$update_api" 2>/dev/null)"
+    response="$(curl -sL --max-time "$(_ucc_curl_timeout metadata)" "$update_api" 2>/dev/null)"
     latest="$(printf '%s' "$response" | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -1)"
     log_debug "app-bundle[$target] observe: latest='${latest:-<parse failed>}' current='$ver'"
     if [[ -n "$latest" && "$latest" != "$ver" ]]; then
@@ -93,7 +93,7 @@ _ucc_driver_app_bundle_action() {
   # Fetch latest version from API (JSON array or newline-separated)
   local latest response
   log_debug "app-bundle[$target] action: fetching latest version from '$update_api'"
-  response="$(curl -sL --max-time 30 "$update_api" 2>/dev/null)" || return 1
+  response="$(curl -sL --max-time "$(_ucc_curl_timeout metadata)" "$update_api" 2>/dev/null)" || return 1
   latest="$(printf '%s' "$response" | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -1)"
   log_debug "app-bundle[$target] action: latest version='${latest:-<parse failed>}'"
   [[ -n "$latest" ]] || return 1
@@ -104,7 +104,7 @@ _ucc_driver_app_bundle_action() {
   pkg_file="$tmp_dir/update.$pkg_ext"
   log_debug "app-bundle[$target] action: downloading '$download_url' → '$pkg_file'"
 
-  ucc_run curl -sL --max-time 300 -o "$pkg_file" "$download_url" || { rm -rf "$tmp_dir"; return 1; }
+  ucc_run curl -sL --max-time "$(_ucc_curl_timeout download)" -o "$pkg_file" "$download_url" || { rm -rf "$tmp_dir"; return 1; }
 
   case "$pkg_ext" in
     dmg)

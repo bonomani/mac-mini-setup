@@ -280,7 +280,7 @@ _pipx_outdated() {
   local installed; installed="$(_pipx_version "$pkg")"
   [[ -n "$installed" ]] || return 1
   local latest
-  latest="$(curl -fsS --max-time 5 "https://pypi.org/pypi/${pkg}/json" 2>/dev/null \
+  latest="$(curl -fsS --max-time "$(_ucc_curl_timeout probe)" "https://pypi.org/pypi/${pkg}/json" 2>/dev/null \
     | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('info',{}).get('version',''))" 2>/dev/null)"
   [[ -n "$latest" ]] || return 1
   [[ "$installed" != "$latest" ]] || return 1

@@ -141,7 +141,7 @@ _pkg_github_latest_tag() {
     printf '%s' "$cached"
     return 0
   fi
-  local tag; tag="$(curl -fsS --max-time 5 "https://api.github.com/repos/${repo}/releases/latest" 2>/dev/null \
+  local tag; tag="$(curl -fsS --max-time "$(_ucc_curl_timeout probe)" "https://api.github.com/repos/${repo}/releases/latest" 2>/dev/null \
     | awk -F'"' '/"tag_name"/{print $4}' | sed 's/^v//')"
   if [[ -z "$tag" ]]; then
     export _PKG_GH_TAG_CACHE="${_PKG_GH_TAG_CACHE:+${_PKG_GH_TAG_CACHE}
@@ -319,7 +319,7 @@ print(json.dumps({"filters": filters, "flags": 0x192}))
 PY
 )"
   local resp
-  resp="$(curl -fsS --max-time 8 \
+  resp="$(curl -fsS --max-time "$(_ucc_curl_timeout endpoint)" \
     -H 'Accept: application/json;api-version=3.0-preview.1' \
     -H 'Content-Type: application/json' \
     -X POST "https://marketplace.visualstudio.com/_apis/public/gallery/extensionquery" \

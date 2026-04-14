@@ -79,7 +79,7 @@ PLIST
     ucc_run launchctl load '${plist}'
     UCC_RUNTIME_WAIT_ATTEMPTS=10 \\
     UCC_RUNTIME_WAIT_INTERVAL=2 \\
-    _ucc_wait_for_runtime_probe \"curl -fsS --max-time 5 'http://127.0.0.1:${port}' >/dev/null 2>&1\"
+    _ucc_wait_for_runtime_probe \"curl -fsS --max-time \$(_ucc_curl_timeout probe) 'http://127.0.0.1:${port}' >/dev/null 2>&1\"
   }"
   eval "_update_unsloth_studio() {
     launchctl unload '${plist}' 2>/dev/null || true
@@ -134,7 +134,7 @@ UNIT
     ucc_run systemctl --user enable --now '${service_name}'
     UCC_RUNTIME_WAIT_ATTEMPTS=10 \\
     UCC_RUNTIME_WAIT_INTERVAL=2 \\
-    _ucc_wait_for_runtime_probe \"curl -fsS --max-time 5 'http://127.0.0.1:${port}' >/dev/null 2>&1\"
+    _ucc_wait_for_runtime_probe \"curl -fsS --max-time \$(_ucc_curl_timeout probe) 'http://127.0.0.1:${port}' >/dev/null 2>&1\"
   }"
   eval "_update_unsloth_studio_service() {
     _install_unsloth_studio_service
