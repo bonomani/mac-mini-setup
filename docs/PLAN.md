@@ -2,11 +2,11 @@
 
 ## Open
 
-Seven items open, four deferred (#2, #4, #6, #16). Seven new items
+Six items open, four deferred (#2, #4, #6, #16). Seven new items
 (#13–#19) opened 2026-04-14 from the WSL dry-run analysis and the
-pyenv/venv dependency discussion; #13 shipped same day. Docker
-install/launch is fully functional (tested 2026-04-13). Test suite
-green. Pip venv isolation shipped (2026-04-14).
+pyenv/venv dependency discussion; #13 and #19 shipped same day.
+Docker install/launch is fully functional (tested 2026-04-13).
+Test suite green. Pip venv isolation shipped (2026-04-14).
 
 | # | Item | Status | Priority |
 |---|---|---|---|
@@ -28,7 +28,7 @@ green. Pip venv isolation shipped (2026-04-14).
 | 16 | Ollama on WSL — review autostart semantics | Deferred 2026-04-14 | Deferred |
 | 17 | Reconcile Summary "Total" vs "By Profile" counts | Open 2026-04-14 | Low |
 | 18 | Platform-aware header / RAM warning | Open 2026-04-14 | Low |
-| 19 | Add `python-venv-available` capability target | Open 2026-04-14 | Medium |
+| 19 | ~~Add `python-venv-available` capability target~~ | ✅ DONE 2026-04-14 — probe in `lib/utils.sh` (7 failure modes), YAML target + 14 consumers wired | — |
 
 ### Unified `update-policy` pref
 
