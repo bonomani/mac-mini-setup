@@ -1503,6 +1503,16 @@ _ucc_execute_target() {
 
   # Step 4: Apply transition
   if [[ "$UCC_DRY_RUN" == "1" ]]; then
+    if [[ -z "$install_fn" ]]; then
+      # No install_fn (e.g. capability target): there's no action that
+      # would converge this state. Show observed-only, not a misleading
+      # "Unavailable -> Healthy" projection.
+      _ucc_emit_target_line "$profile" "observe" "$display_name" "state=\"$(_ucc_display_state "$observed" "$axes")\" (observe-only)"
+      _ucc_record_outcome "$profile" "$name" "" "unchanged" "unchanged" "$msg_id" "$started_at" \
+        "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":{}}" \
+        "{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"no_install_fn\",\"message\":\"observe-only target, no transition possible\"}"
+      return 0
+    fi
     _ucc_emit_target_line "$profile" "dry-run" "$display_name" "\"$(_ucc_display_state "$observed" "$axes")\" -> \"$(_ucc_display_state "$desired" "$axes")\""
     _ucc_record_outcome "$profile" "$name" "" "unchanged" "unchanged" "$msg_id" "$started_at" \
       "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$desired" "$axes")}" \

@@ -82,7 +82,7 @@ not specified). Counts are real (`type` distribution per component).
 | `ai-stack-compose-running` | `compose-apply` | `runtime` | AI stack compose up |  | `docker-available`, `ai-stack-compose-file` |
 | `flowise-runtime` | `docker-compose-service` | `runtime` | Flowise |  | `ai-stack-compose-running` |
 | `n8n-runtime` | `docker-compose-service` | `runtime` | n8n |  | `ai-stack-compose-running` |
-| `ollama` | `custom-daemon` | `runtime` | Ollama | macos>=14,linux,wsl2 |  |
+| `ollama` | `custom-daemon` | `runtime` | Ollama | launchd,systemd |  |
 | `ollama-model-llama3.1-70b` | `pkg` | `package` | Ollama llama3.1:70b |  | `ollama` |
 | `ollama-model-llama3.1-8b` | `pkg` | `package` | Ollama llama3.1:8b |  | `ollama` |
 | `ollama-model-llama3.2` | `pkg` | `package` | Ollama llama3.2 |  | `ollama` |

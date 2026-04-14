@@ -2,11 +2,11 @@
 
 ## Open
 
-Three items open (#32–#34), four deferred (#2, #4, #6, #16), four
-closed (#24, #27, #36 not-a-bug; #29 confirmed intentional). Twenty-five
-new items (#13–#37) opened 2026-04-14 across four dry-run analyses;
-eighteen shipped same day. #35 + #37 shipped 2026-04-14 from fourth
-review; #36 closed as by-design declarative behavior.
+Zero items open, four deferred (#2, #4, #6, #16), four closed (#24,
+#27, #36 not-a-bug; #29 confirmed intentional). Twenty-five new items
+(#13–#37) opened 2026-04-14 across four dry-run analyses; twenty-one
+shipped same day. Final sweep 2026-04-14: #32, #33, #34 from third
+review; #35 + #37 from fourth review; #36 closed as by-design.
 Docker install/launch is fully functional (tested 2026-04-13). Test
 suite green. Pip venv isolation shipped (2026-04-14).
 
@@ -43,9 +43,9 @@ suite green. Pip venv isolation shipped (2026-04-14).
 | 29 | ~~`ollama-model-llama3.2` default-enabled — verify it's intentional~~ | ✅ CLOSED 2026-04-14 — confirmed intentional. llama3.2 stays enabled by default; the larger models (llama3.1 8b/70b, qwen3, qwen2.5-coder, mistral) remain disabled | — |
 | 30 | ~~Display-order within a group should follow dep order, not declaration order~~ | ✅ DONE 2026-04-14 — `_ucc_target_filtered_out` defers `[disabled]`/`[skip requires:]` emissions in defer mode; flush emits in topo order; flush no longer early-returns on empty registration | — |
 | 31 | ~~`Unsloth Studio` display name collision~~ | ✅ DONE 2026-04-14 — disambiguated to `Unsloth Studio (launchd)` and `Unsloth Studio (systemd)` | — |
-| 32 | Inconsistent skip-message wording: `xcode-command-line-tools` shows "not applicable on wsl" while other `requires: macos` targets show "requires: macos" | Open 2026-04-14 | Low |
-| 33 | Capability-target dry-run projection misleading: shows `Degraded -> Healthy` even when no install action exists (e.g. `cuda-available` on a host without GPU) | Open 2026-04-14 | Medium |
-| 34 | `ollama` target attempts autostart on WSL without `requires: launchd,systemd` gate (#22 mechanism not applied to ollama) | Open 2026-04-14 | Medium |
+| 32 | ~~Inconsistent skip-message wording: `xcode-command-line-tools` / `build-deps`~~ | ✅ DONE 2026-04-14 — removed explicit `ucc_skip_target` calls in `homebrew.sh`; YAML `requires:` now handles both (uniform "requires: …" message) | — |
+| 33 | ~~Capability-target dry-run projection misleading: shows `X -> Healthy` even when no install action exists~~ | ✅ DONE 2026-04-14 — dry-run path in `ucc_target` now checks for `install_fn`; capability targets (observe-only) emit `[observe] state="…" (observe-only)` instead of a misleading transition | — |
+| 34 | ~~`ollama` target attempts autostart on WSL without init-system gate~~ | ✅ DONE 2026-04-14 — `requires: macos>=14,linux,wsl2` replaced with `requires: launchd,systemd` (same #22 pattern as ariaflow); WSL2 without systemd cleanly skips | — |
 | 35 | ~~`pip-latest` (pip-bootstrap driver) ignores `update-policy=balanced`~~ | ✅ DONE 2026-04-14 — pip-bootstrap now detects `outdated` state via `pip list --outdated` (gated on `UIC_PREF_UPSTREAM_CHECK`) and respects `UIC_PREF_TOOL_UPDATE` in update action | — |
 | 36 | ~~`softwareupdate-auto-check=1` silently overwrites user's manual opt-out~~ | ❌ CLOSED 2026-04-14 — not a bug, by design. Parametric targets are declarative; dry-run announces the change (`config_value=0 -> config_value=1`). Operator opts out via selection.yaml, target-overrides.yaml, or `--pref default-selection=none`. Same semantics as Ansible/Chef. | — |
 | 37 | ~~`sudo-available` capability shows `health_state=Degraded`~~ | ✅ DONE 2026-04-14 — `_ucc_observe_yaml_capability_target` now emits `health=Unavailable` (was Degraded) when probe returns false. Degraded is reserved for broken/drift. | — |
