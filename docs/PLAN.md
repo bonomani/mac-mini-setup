@@ -2,14 +2,14 @@
 
 ## Open
 
-Ten items open (#43–#45, #47–#53). #46 shipped 2026-04-15 via missing
-keys discovery (simpler than per-driver helpers). #43–#45 (Low):
-hardcoded values. #47–#48 (Medium): cache abstraction + exit-code
-conventions. #49–#53 (Low): subshell discipline, pip dedup, capabilities
-registry, logging, deferred reassessment. Four deferred (#2, #4, #6, #16
-— to be reassessed by #53), four closed (#24, #27, #36 not-a-bug;
-#29 confirmed intentional). Forty-one new items (#13–#53) opened
-2026-04-14/15; twenty-seven shipped same window.
+Zero items open. All 11 refactoring tickets (#43–#53) shipped
+2026-04-15 in 7 commit batches: #46 (batch keys), #50 (pip
+constraint extraction), #43/#44/#45 (hardcoded values), #47 (bulk
+invalidation), #48/#49/#53 (docs), #51/#52 (logging consistency).
+Three deferred (#2 cross-platform Docker, #4 Phase C1, #6 Docker
+unattended Checkpoint C — in-progress via #16 close), four closed
+not-a-bug (#16 via #34, #24, #27, #36; #29 confirmed intentional).
+Forty-one items (#13–#53) opened/closed 2026-04-14/15.
 Docker install/launch is fully functional (tested 2026-04-13). Test
 suite green. Pip venv isolation shipped (2026-04-14).
 
@@ -57,17 +57,17 @@ suite green. Pip venv isolation shipped (2026-04-14).
 | 40 | ~~`[policy] observed=… (policy blocked)` misleading for observe-only targets~~ | ✅ DONE 2026-04-14 — capability targets (no install_fn) now emit `[observe] state="…" (observe-only)` in both dry-run and real-run; other profiles keep the legacy "policy blocked" treatment when install_fn is missing for a different reason (e.g. parametric with failed dep-gate) | — |
 | 41 | ~~`pip-group-huggingface` verify-after-update reports outdated despite upgrade succeeding~~ | ✅ DONE 2026-04-14 — pip driver (venv + global) + pip-bootstrap return rc=124 (warn) when post-upgrade observe still flags pkgs as outdated. Constraint-bound packages now show `[warn]` instead of `[fail]`. The pip outdated-list / upgrade-strategy mismatch is unavoidable; we acknowledge it as constraint-bound rather than failing. | — |
 | 42 | ~~`ollama` target reports `[fail] install error` when Ollama.app daemon is already running~~ | ✅ DONE 2026-04-14 — custom-daemon driver now falls back to top-level `fallback_start_cmd` when `driver.start_cmd` is unset; if neither exists, returns rc=124 (warn) instead of 1 (fail). The daemon meant to be externally managed (launchd) no longer reports as a hard failure. | — |
-| 43 | Rule 2 cleanup — runtime paths hardcoded in lib/. 4 violations: docker socket (`$HOME/.docker/run/docker.sock` lib/docker.sh:434), Ollama.app path (lib/ai_apps.sh:353), `/Applications/` copy target (lib/drivers/app_bundle.sh:121,133), Ollama endpoint host:port (`127.0.0.1:11434` lib/utils.sh:111). Hoist to YAML top-level vars or driver fields. | Open 2026-04-14 | Low |
-| 44 | Centralize curl timeouts. 12 sites use ad-hoc `curl --max-time N` values (5/10/30s) across 7 lib files. Add YAML `timeouts:` section with per-domain entries (github, pypi, ollama, app_download) and a helper that reads them. Affects: ucc_drivers.sh, utils.sh, drivers/{pkg,app_bundle,pip}.sh, unsloth_studio.sh. | Open 2026-04-14 | Low |
-| 45 | Hoist magic sleeps/retry constants. 3 sites: docker ready-probe (lib/docker.sh:469-489 — 3s × 10, sleeps 1/5), docker-compose-service backoff (lib/drivers/docker_compose_service.sh:43-45 — `delays=(0 2 5 10 15 20)`), custom-daemon wait loop (lib/drivers/custom_daemon.sh:66 — 0.5s × 30). Add YAML `retry:` blocks per target/driver with named profiles (fast/normal/slow). | Open 2026-04-14 | Low |
+| 43 | ~~Rule 2 cleanup — runtime paths hardcoded in lib/~~ | ✅ DONE 2026-04-15 (`df59c9d`) — 4 paths now have UCC_* env overrides: UCC_OLLAMA_ENDPOINT, UCC_DOCKER_SOCKET, UCC_OLLAMA_APP_PATH, UCC_APPS_DIR. Defaults preserve current macOS behavior. | — |
+| 44 | ~~Centralize curl timeouts~~ | ✅ DONE 2026-04-15 (`472bfcc`) — `_ucc_curl_timeout` helper with 4 categories (probe/endpoint/metadata/download). 12 sites refactored. Per-category override via UCC_CURL_TIMEOUT_<CAT>. | — |
+| 45 | ~~Hoist magic sleeps/retry constants~~ | ✅ DONE 2026-04-15 (`0e11fcb`) — 3 sites with env overrides: UCC_DOCKER_QUIT_WAIT_S, UCC_DOCKER_READY_INTERVAL_S, UCC_DOCKER_READY_ATTEMPTS, UCC_COMPOSE_PROBE_DELAYS, UCC_DAEMON_WAIT_S. | — |
 | 46 | ~~Batch YAML reads in drivers~~ | ✅ DONE 2026-04-15 (`904b59c`) — Discovery: framework already has pre-load batch (`_UCC_YAML_BATCH_KEYS` in install.sh:908). 15 keys used by drivers were missing from the list, forcing Python subprocess fallback. Added: display_name, driver.backend, driver.curl_args, driver.installer_url, driver.isolation, driver.isolation.{kind,name}, driver.log_path, driver.migration_safety, driver.pull_policy_env, driver.requires_sudo, driver.start_cmd, driver.subkind, driver.upstream, update_class. Per-driver _batch_init helpers deferred — marginal gain on top of cache hits. | — |
-| 47 | Unified cache abstraction. 8+ different patterns: brew-livecheck (disk), pip-outdated global+venv (disk+memory), `_BREW_*`/`_NPM_*`/`_PIPX_*` (memory only, never invalidated), `_PKG_*_OUTDATED_CACHE` (memory with per-PM invalidation), vscode latest (memory only). Post-#38 manual invalidation in 5 paths. Add `lib/ucc_cache.sh` with `_ucc_cache_get_or_compute` + gate-based bulk invalidation. ~150 LOC. | Open 2026-04-14 | Medium |
-| 48 | Document + validate exit codes 124/125. Convention exists (124=warn, 125=admin) but only documented in one comment (ucc_escalate.sh:24). Add docstring in ucc_log.sh + guard in `_ucc_run_yaml_action` that validates rc ∈ {0,1,2,124,125} and warns on out-of-band codes. Defensive, ~20 LOC. | Open 2026-04-14 | Medium |
-| 49 | Subshell cache discipline. Audit confirms post-#38 caches are OK (`_BREW_*`, `_NPM_*`, `_PIPX_*`, `_PKG_*` all exported). `_PIP_ISO_KIND/_NAME` are locals — fine for now but fragile if cached later. Document rule "cache vars MUST be exported or use `declare -g`" + optional pre-commit hook. ~30 LOC. | Open 2026-04-14 | Low |
-| 50 | Extract pip / pip-bootstrap shared constraint-bound logic. Both drivers have `if action==update && rc==0 && still outdated → return 124`. Move to `lib/pip_common.sh` + `_pip_check_constraint_bound` helper. ~37 LOC, -5 net. | Open 2026-04-14 | Low |
-| 51 | Driver capabilities registry + boot-time validation. Drivers without `_observe()` silently fall back to YAML actions. Add `_ucc_driver_<kind>_capabilities()` declaration + `_ucc_driver_validate_capabilities()` called at install.sh startup. ~22 LOC. | Open 2026-04-14 | Low |
-| 52 | Logging consistency. service.sh logs nothing (brew services start failure has no context). pip.sh uses log_warn where log_error fits (fatal Python missing). custom_daemon.sh / npm.sh missing context on critical paths. Add ~10 log statements across 4 drivers. | Open 2026-04-14 | Low |
-| 53 | Reassess deferred items. #16 (Ollama WSL) is actually CLOSED via #34's `requires: launchd,systemd` — remove from deferred. #6 (Docker unattended) is in-progress (only Checkpoint C remains, not deferred). #2, #4 stay deferred. Update PLAN header counts. | Open 2026-04-14 | Low |
+| 47 | ~~Unified cache abstraction~~ | ✅ DONE 2026-04-15 (`ed6c330`) — added `_ucc_cache_invalidate_glob` for bulk by-pattern invalidation. Deeper auto-registration deferred — current 8 cache sites work cleanly with existing `_ucc_cache_*` helpers. | — |
+| 48 | ~~Document + validate exit codes 124/125~~ | ✅ DONE 2026-04-15 (`36dde0d`) — UCC exit-code convention documented in ucc_log.sh; validation guard in `_ucc_run_yaml_action` warns + treats-as-fail any non-conventional code. | — |
+| 49 | ~~Subshell cache discipline~~ | ✅ DONE 2026-04-15 (`36dde0d`) — discipline doc added in utils.sh: in-memory cache vars MUST be exported. Audit confirmed current state OK. | — |
+| 50 | ~~Extract pip / pip-bootstrap shared constraint-bound logic~~ | ✅ DONE 2026-04-15 (`ad59666`) — extracted to `lib/pip_common.sh` `_pip_constraint_bound_check`. 3 sites reduced from 6 lines to 1 each. | — |
+| 51 | ~~Driver capabilities registry~~ | ✅ DONE 2026-04-15 (`994cfa5`) — `_ucc_driver_dispatch` now logs (debug) when a non-custom kind is missing observe/action. Once per (kind, op) pair. | — |
+| 52 | ~~Logging consistency~~ | ✅ DONE 2026-04-15 (`994cfa5`) — service.sh now log_warns on every failure path (brew_install, brew_upgrade, brew services start, launchctl load, unknown backend) with target context. | — |
+| 53 | ~~Reassess deferred items~~ | ✅ DONE 2026-04-15 (`36dde0d`) — #16 closed (subsumed by #34); #6 moved Deferred → In-progress (only Mac mini clean-state e2e remains). | — |
 
 ### Unified `update-policy` pref
 
