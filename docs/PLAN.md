@@ -2,14 +2,14 @@
 
 ## Open
 
-Eleven items open (#43–#53). #43–#45 (Low): Rule 2/3 hardcoded values.
-#46 (High): YAML batch-load — biggest perf win. #47–#48 (Medium): cache
-abstraction + exit-code conventions. #49–#53 (Low): subshell discipline,
-pip dedup, capabilities registry, logging, deferred reassessment. Four
-deferred (#2, #4, #6, #16 — to be reassessed by #53), four closed (#24,
-#27, #36 not-a-bug; #29 confirmed intentional). Forty-one new items
-(#13–#53) opened 2026-04-14 across four dry-runs + two real runs + one
-static audit + one deep refactoring analysis; twenty-six shipped same day.
+Ten items open (#43–#45, #47–#53). #46 shipped 2026-04-15 via missing
+keys discovery (simpler than per-driver helpers). #43–#45 (Low):
+hardcoded values. #47–#48 (Medium): cache abstraction + exit-code
+conventions. #49–#53 (Low): subshell discipline, pip dedup, capabilities
+registry, logging, deferred reassessment. Four deferred (#2, #4, #6, #16
+— to be reassessed by #53), four closed (#24, #27, #36 not-a-bug;
+#29 confirmed intentional). Forty-one new items (#13–#53) opened
+2026-04-14/15; twenty-seven shipped same window.
 Docker install/launch is fully functional (tested 2026-04-13). Test
 suite green. Pip venv isolation shipped (2026-04-14).
 
@@ -60,7 +60,7 @@ suite green. Pip venv isolation shipped (2026-04-14).
 | 43 | Rule 2 cleanup — runtime paths hardcoded in lib/. 4 violations: docker socket (`$HOME/.docker/run/docker.sock` lib/docker.sh:434), Ollama.app path (lib/ai_apps.sh:353), `/Applications/` copy target (lib/drivers/app_bundle.sh:121,133), Ollama endpoint host:port (`127.0.0.1:11434` lib/utils.sh:111). Hoist to YAML top-level vars or driver fields. | Open 2026-04-14 | Low |
 | 44 | Centralize curl timeouts. 12 sites use ad-hoc `curl --max-time N` values (5/10/30s) across 7 lib files. Add YAML `timeouts:` section with per-domain entries (github, pypi, ollama, app_download) and a helper that reads them. Affects: ucc_drivers.sh, utils.sh, drivers/{pkg,app_bundle,pip}.sh, unsloth_studio.sh. | Open 2026-04-14 | Low |
 | 45 | Hoist magic sleeps/retry constants. 3 sites: docker ready-probe (lib/docker.sh:469-489 — 3s × 10, sleeps 1/5), docker-compose-service backoff (lib/drivers/docker_compose_service.sh:43-45 — `delays=(0 2 5 10 15 20)`), custom-daemon wait loop (lib/drivers/custom_daemon.sh:66 — 0.5s × 30). Add YAML `retry:` blocks per target/driver with named profiles (fast/normal/slow). | Open 2026-04-14 | Low |
-| 46 | Batch YAML reads in drivers — `_ucc_yaml_target_get` called 4-7× per observe/action/evidence (each = Python subprocess ~50ms). Add `_ucc_driver_<kind>_batch_init` per driver using existing `_ucc_ytgt_source` helper. Sites: brew.sh:12-26 (4 reads), service.sh:20-26 (4 reads × 3 calls), pip.sh:310-388 (5+ reads), custom_daemon.sh:12-50 (7 reads), nvm.sh:22-39 (3 reads). ~100 LOC, biggest startup perf win. | Open 2026-04-14 | High |
+| 46 | ~~Batch YAML reads in drivers~~ | ✅ DONE 2026-04-15 (`904b59c`) — Discovery: framework already has pre-load batch (`_UCC_YAML_BATCH_KEYS` in install.sh:908). 15 keys used by drivers were missing from the list, forcing Python subprocess fallback. Added: display_name, driver.backend, driver.curl_args, driver.installer_url, driver.isolation, driver.isolation.{kind,name}, driver.log_path, driver.migration_safety, driver.pull_policy_env, driver.requires_sudo, driver.start_cmd, driver.subkind, driver.upstream, update_class. Per-driver _batch_init helpers deferred — marginal gain on top of cache hits. | — |
 | 47 | Unified cache abstraction. 8+ different patterns: brew-livecheck (disk), pip-outdated global+venv (disk+memory), `_BREW_*`/`_NPM_*`/`_PIPX_*` (memory only, never invalidated), `_PKG_*_OUTDATED_CACHE` (memory with per-PM invalidation), vscode latest (memory only). Post-#38 manual invalidation in 5 paths. Add `lib/ucc_cache.sh` with `_ucc_cache_get_or_compute` + gate-based bulk invalidation. ~150 LOC. | Open 2026-04-14 | Medium |
 | 48 | Document + validate exit codes 124/125. Convention exists (124=warn, 125=admin) but only documented in one comment (ucc_escalate.sh:24). Add docstring in ucc_log.sh + guard in `_ucc_run_yaml_action` that validates rc ∈ {0,1,2,124,125} and warns on out-of-band codes. Defensive, ~20 LOC. | Open 2026-04-14 | Medium |
 | 49 | Subshell cache discipline. Audit confirms post-#38 caches are OK (`_BREW_*`, `_NPM_*`, `_PIPX_*`, `_PKG_*` all exported). `_PIP_ISO_KIND/_NAME` are locals — fine for now but fragile if cached later. Document rule "cache vars MUST be exported or use `declare -g`" + optional pre-commit hook. ~30 LOC. | Open 2026-04-14 | Low |
