@@ -2,11 +2,11 @@
 
 ## Open
 
-Eleven items open, four deferred (#2, #4, #6, #16). Nineteen new
-items (#13–#31) opened 2026-04-14 from the WSL dry-run analyses;
-ten (#13, #14, #15, #17, #18, #19, #20, #21, #22, plus the #19-followup
-capability registration fix) shipped same day. Items #20–#31 opened
-from the post-session full-output review.
+Eight items open, four deferred (#2, #4, #6, #16), one closed not-a-bug
+(#24). Nineteen new items (#13–#31) opened 2026-04-14 from the WSL
+dry-run analyses; twelve (#13, #14, #15, #17, #18, #19, #20, #21, #22,
+#23, #31, plus the #19-followup) shipped same day. Items #20–#31
+opened from the post-session full-output review.
 Docker install/launch is fully functional (tested 2026-04-13). Test
 suite green. Pip venv isolation shipped (2026-04-14).
 
@@ -34,15 +34,15 @@ suite green. Pip venv isolation shipped (2026-04-14).
 | 20 | ~~`mps-available` / `cuda-available` skipped in dry-run~~ | ✅ DONE 2026-04-14 — removed `UCC_DRY_RUN != 1` + `case macos` gates in `pip_group.sh`; YAML `requires:` already handles platform filter | — |
 | 21 | ~~Asymmetric skip-cascade: per-target `requires:` vs. component platform-skip~~ | ✅ DONE 2026-04-14 — codified asymmetry as principled in CLAUDE.md Rule 11; require explicit `?platform` for platform-conditional deps; ariaflow-server YAML fixed | — |
 | 22 | ~~`brew services` backend on non-macOS hosts (ariaflow-server / -dashboard)~~ | ✅ DONE 2026-04-14 — added `init_system` fingerprint segment (launchd/systemd/no-init-system); ariaflow targets now `requires: launchd,systemd` | — |
-| 23 | `ai-stack-compose-file` installs even when `ai-stack-compose-running` is platform-skipped | Open 2026-04-14 | Low |
-| 24 | `avahi` installs despite `mdns-available` already passing | Open 2026-04-14 | Low |
+| 23 | ~~`ai-stack-compose-file` installs even when `ai-stack-compose-running` is platform-skipped~~ | ✅ DONE 2026-04-14 — added `depends_on: [docker-available]` so it cascade-skips on WSL | — |
+| 24 | ~~`avahi` installs despite `mdns-available` already passing~~ | ❌ CLOSED — not a bug. avahi is the Linux-native mDNS daemon; installing on Linux is correct even when dns-sd.exe interop also satisfies mdns-available. The two coexist. | — |
 | 25 | Services-list filtering — hide endpoints unreachable on this host | Open 2026-04-14 | Low |
 | 26 | Distinguish "Degraded" (broken) from "Outdated" (upgrade pending) | Open 2026-04-14 | Low |
 | 27 | `Healthy` asserted without a probe — oh-my-zsh, home-bin-in-path, etc. | Open 2026-04-14 | Low |
-| 28 | Profile-count math reconciliation (post-#17 follow-up) | Open 2026-04-14 | Low |
-| 29 | `ollama-model-llama3.2` default-enabled — verify it's intentional | Open 2026-04-14 | Low |
+| 28 | Profile-count math reconciliation (post-#17 follow-up) | Open 2026-04-14 — needs investigation: Total 22 ok vs By-Profile 69 ok; observe is called pre + post-action so single targets log multiple profile outcomes | Low |
+| 29 | `ollama-model-llama3.2` default-enabled — verify it's intentional | Open 2026-04-14 — needs user decision (2 GB pull on every install) | Low |
 | 30 | Display-order within a group should follow dep order, not declaration order | Open 2026-04-14 | Low |
-| 31 | `Unsloth Studio` display name collision — both `unsloth-studio` and `unsloth-studio-service` show same label | Open 2026-04-14 | Low |
+| 31 | ~~`Unsloth Studio` display name collision~~ | ✅ DONE 2026-04-14 — disambiguated to `Unsloth Studio (launchd)` and `Unsloth Studio (systemd)` | — |
 
 ### Unified `update-policy` pref
 
