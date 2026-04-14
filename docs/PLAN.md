@@ -2,9 +2,11 @@
 
 ## Open
 
-Three items remain. Docker install/launch is fully functional
-(tested 2026-04-13). Test suite green. Pip venv isolation shipped
-(2026-04-14).
+Seven items open, four deferred (#2, #4, #6, #16). Seven new items
+(#13–#19) opened 2026-04-14 from the WSL dry-run analysis and the
+pyenv/venv dependency discussion; #13 shipped same day. Docker
+install/launch is fully functional (tested 2026-04-13). Test suite
+green. Pip venv isolation shipped (2026-04-14).
 
 | # | Item | Status | Priority |
 |---|---|---|---|
@@ -13,13 +15,20 @@ Three items remain. Docker install/launch is fully functional
 | 3 | ~~Minimize env size (145KB `_UCC_*` bloat)~~ | ✅ DONE 2026-04-13 (`9862f89`) — cleanup in `ucc_reset_registered_targets` | — |
 | 4 | Phase C1 — drift helper | Waiting-for-consumer | Low |
 | 5 | ~~`docker-privileged-ports` target~~ | ✅ DONE 2026-04-13 (`f064f39`, `d50b28f`) | — |
-| 6 | Docker unattended first install — Checkpoint C | Core works, needs clean-state end-to-end tests | Medium |
+| 6 | Docker unattended first install — Checkpoint C | Deferred 2026-04-14 — core works, clean-state e2e tests can wait | Deferred |
 | 7 | ~~Fix test suite — 43 failing integration tests~~ | ✅ DONE 2026-04-13 — 159 pass, 1 skipped, 0 failed | — |
 | 8 | ~~Driver convention: `_<driver>_state()` helper~~ | ✅ DONE 2026-04-13 — 7 drivers extracted, 12 share only cached YAML reads (no duplication) | — |
 | 9 | ~~Extract install.sh functions to lib/~~ | ✅ DONE 2026-04-13 — install.sh 1225→991 lines (`c463e5c`) | — |
 | 10 | ~~Unify batch cache access~~ | ✅ DONE 2026-04-13 — `_ucc_yaml_target_get_many` uses `_UCC_YTGT_*` cache (`3647ee4`) | — |
 | 11 | Unified `update-policy` pref | ✅ DONE 2026-04-13 (`da6b335`, `7a9566a`) | — |
 | 12 | Pip venv isolation (`isolation.kind: venv`) | ✅ DONE 2026-04-14 (`9a8cf5c`, `7287079`, `dede47a`) | — |
+| 13 | ~~Dry-run ordering: `pyenv init` runs before pyenv exists~~ | ✅ DONE 2026-04-14 — 3 dep edges added, inline glue removed, rule codified in SPEC §3 | — |
+| 14 | Cascade-skip dependents of platform-skipped targets | Open 2026-04-14 | Medium |
+| 15 | Platform-gate PREF display | Open 2026-04-14 | Low |
+| 16 | Ollama on WSL — review autostart semantics | Deferred 2026-04-14 | Deferred |
+| 17 | Reconcile Summary "Total" vs "By Profile" counts | Open 2026-04-14 | Low |
+| 18 | Platform-aware header / RAM warning | Open 2026-04-14 | Low |
+| 19 | Add `python-venv-available` capability target | Open 2026-04-14 | Medium |
 
 ### Unified `update-policy` pref
 
@@ -1194,6 +1203,475 @@ docker-resources:     # parametric: settings-store.json
 **Root cause of the 20s-quit bug:** Docker Desktop silently fails when
 the inherited environment exceeds ~145 KB (hundreds of `_UCC_*` exports
 accumulated during install.sh). Fixed by launching with `env -i HOME PATH`.
+
+### Dry-run ordering: `pyenv init` runs before pyenv exists
+
+**Symptom (dry-run on WSL where pyenv is not yet installed):**
+
+```
+/home/bc/repos/github/bonomani/mac-mini-setup/lib/pip_group.sh: line 157: pyenv: command not found
+```
+
+**This is not just a redirection bug — it's a dry-run/dependency
+contract violation.** The visible stderr line is the tip; the real
+issue is that dry-run silently breaks the implicit ordering contract
+between targets in the same lib function.
+
+**The sequence in `lib/pip_group.sh:153-158`:**
+
+```bash
+ucc_yaml_simple_target "$cfg_dir" "$yaml" "pyenv"    # (1) install pyenv
+ucc_yaml_simple_target "$cfg_dir" "$yaml" "xz"
+export PYENV_ROOT="$HOME/$_PYENV_DIR"
+export PATH="$PYENV_ROOT/bin:$PATH"
+eval "$(pyenv init -)" 2>/dev/null || true           # (2) activate pyenv
+ucc_yaml_simple_target "$cfg_dir" "$yaml" "python"   # (3) uses pyenv
+```
+
+The code assumes a hard chain `pyenv → python`:
+1. (1) materializes the binary.
+2. (2) activates it in the current shell.
+3. (3) observes/installs python via pyenv.
+
+**Install mode:** works — (1) actually installs, so (2) finds pyenv on PATH.
+
+**Dry-run mode:** (1) is a no-op (`[dry-run]` marker only, nothing
+installed). (2) then calls a non-existent binary. Bash emits
+`pyenv: command not found` during the `$(...)` command substitution —
+the `2>/dev/null` on `eval` does **not** suppress it, because the
+message is produced by bash before `eval` is invoked.
+
+Then (3) runs against a shell that doesn't have pyenv on PATH. It
+*happens* to print the right-looking `Absent → Configured` transition
+(no pyenv → looks Absent), but any finer observation (version match,
+virtualenv presence) would be wrong. Every pip-group target
+downstream of pyenv inherits this broken shell state.
+
+**Two layers to fix:**
+
+1. **Narrow fix (stops stderr + unblocks dry-run of this file):**
+   guard the init call with `command -v`:
+
+   ```bash
+   if command -v pyenv >/dev/null 2>&1; then
+     eval "$(pyenv init -)"
+   fi
+   ```
+
+   Preferred over redirect-hiding because it also avoids silently
+   masking real `pyenv init` failures when pyenv *is* installed but
+   misconfigured.
+
+2. **Declare the missing dependency edges** (root cause): the
+   pattern "install A → raw bash glue → install B" only exists in the
+   first place because the `pyenv → python` edge is **hidden in the
+   YAML**. Trace what's currently declared:
+
+   | Target | Declared `depends_on` | Actually needs |
+   |---|---|---|
+   | `pyenv` | *(none)* | `homebrew` — implicit, driver is `pyenv-brew` |
+   | `python` | `xz` | `xz` **+ `pyenv`** — `pyenv` hidden in `backends: [pyenv: ${python_version}]` |
+
+   Direction note: `python` depends on `pyenv`, not the reverse.
+   pyenv is a bash tool that *installs* Python (same relationship as
+   `nvm → node`). It does not need Python to run.
+
+   **Fix — add the missing edges explicitly:**
+
+   ```yaml
+   pyenv:
+     depends_on: [homebrew]
+   python:
+     depends_on: [xz, pyenv]
+   ```
+
+   Once the graph is complete, the inline `eval "$(pyenv init -)"` in
+   `pip_group.sh` between the two targets becomes **unnecessary** —
+   the framework's dependency-ordered processing guarantees pyenv is
+   observed (and in non-dry-run: installed + activated) before
+   `python` is reached. The activation step, if still needed, moves
+   into the `pyenv` driver's own post-install hook, not into a caller
+   lib function.
+
+3. **Framework rule (prevents recurrence):** with the edges declared,
+   codify the rule: **lib functions must not place raw bash between
+   `ucc_yaml_simple_target` calls that assumes a prior target
+   materialized — declare the dependency in YAML instead.** The
+   dependency graph is the source of truth for ordering; imperative
+   glue code in lib functions is a smell.
+
+   Optional framework enhancement: have the `pkg` driver recognize
+   when `backends:` references another target name (e.g.
+   `backends: [pyenv: ${python_version}]`) and **auto-inject** the
+   edge. That way the YAML doesn't need to duplicate an edge that's
+   already implicit in `backends:`.
+
+**Acceptance:**
+- Fresh WSL dry-run produces zero stray stderr lines in the
+  `[ai-python-stack]` group prior to pyenv installation.
+- The same dry-run on a host that *does* have pyenv installed still
+  exercises the init path (i.e. the fix must not hide the
+  post-install wiring from dry-run verification).
+- `depends_on` for `pyenv` and `python` in
+  `ucc/software/ai-python-stack.yaml` explicitly lists `homebrew` and
+  `pyenv` respectively. Graph visualization (or `install.sh
+  --print-graph` if it exists) shows the `python → pyenv → homebrew`
+  chain.
+- The inline `eval "$(pyenv init -)"` between `ucc_yaml_simple_target`
+  calls in `lib/pip_group.sh` is either removed (activation moved
+  into the `pyenv` driver) or wrapped with `command -v pyenv`.
+- A follow-up note in `docs/SPEC.md` or driver docs captures the rule
+  chosen in layer (3): no bash glue between target installs —
+  declare dependencies instead.
+
+### Cascade-skip dependents of platform-skipped targets
+
+**Symptom:** on WSL, the dry-run reports:
+
+```
+[dep-fail] AI stack compose up (ai-stack-compose-running)
+           dependency not satisfied (oracle fail): docker-daemon
+```
+
+…but `docker-daemon` itself was group-skipped one section earlier
+with `Skipping docker (platform=wsl unsupported)`. `[dep-fail]` reads
+like a real failure; a user debugging WSL output will chase a
+non-issue.
+
+**Desired behavior:** when a target's `depends_on` resolves to a
+target that was skipped because of platform (not because it failed),
+the dependent should report `[skip]` with reason
+`dependency skipped (platform)` instead of `[dep-fail]`.
+
+**Where to change:** dependency-gate resolution in `lib/ucc_targets.sh`
+(the `dependency_gate` path used by observe). It needs to distinguish
+three cases for an unsatisfied dep:
+1. dep failed oracle → `[dep-fail]` (current behavior, keep)
+2. dep was disabled by policy → `[skip] disabled dep`
+3. dep was skipped because of platform → `[skip] platform`
+
+**Acceptance:** WSL dry-run shows `[skip]` (not `[dep-fail]`) for
+`ai-stack-compose-running` and any other target whose only unmet dep
+is `docker-daemon` / `docker-available`.
+
+### Platform-gate PREF display
+
+**Symptom:** on WSL, the PREF block still prints mac-only tuning
+knobs:
+
+```
+[PREF]  docker-memory-gb      48      options: 16|32|48|56
+[PREF]  docker-cpu-count      10      options: 4|6|8|10|12
+[PREF]  docker-swap-mib       4096
+[PREF]  docker-disk-mib       204800
+[PREF]  docker-first-install  manual
+[PREF]  pytorch-device        mps     options: mps|cpu
+```
+
+None of these are actionable on WSL (docker group is skipped, MPS is
+Apple-only).
+
+**Fix:** extend `preferences.yaml` entries with an optional
+`platforms:` field (same syntax as target `requires:` / `platforms:`),
+and filter the PREF print loop by the running `$HOST_PLATFORM` before
+display. Missing `platforms:` means "all platforms" (current default).
+
+```yaml
+preferences:
+  - name: docker-memory-gb
+    platforms: [macos]
+    default: 48
+    ...
+  - name: pytorch-device
+    platforms: [macos]
+    default: mps
+    ...
+```
+
+**Note:** this is **display-only** — the preference values must still
+be read if any code path consults them (e.g. future WSL docker
+support). Only the printout is gated.
+
+**Acceptance:** WSL dry-run's PREF block contains only prefs that
+apply to linux/wsl2.
+
+### Ollama on WSL — review autostart semantics
+
+**Symptom:** WSL dry-run shows:
+
+```
+[dry-run] Ollama (ollama)
+  "installation_state=Configured runtime_state=Stopped
+   health_state=Degraded dependency_state=DepsReady" ->
+  "installation_state=Configured runtime_state=Running
+   health_state=Healthy dependency_state=DepsReady"
+[dry-run] Ollama nomic-embed-text (ollama-model-nomic-embed-text)
+  installation_state=Absent -> Configured
+```
+
+Ollama on Linux uses a systemd unit (`ollama.service`), not
+`brew services`. The current runtime driver may not know to start it
+via `systemctl`, and under WSL without systemd the autostart path may
+fail at apply time (dry-run hides this).
+
+**Action:** verify at non-dry-run time that:
+1. Ollama installation on WSL actually produces a working service
+   (systemd vs. manual `ollama serve`).
+2. The runtime driver has a correct start path for Linux/WSL, or the
+   target declares `requires: macos` for the autostart behavior and
+   uses a separate install-only target elsewhere.
+3. Model-pull oracle (`ollama-model-*`) doesn't silently hang waiting
+   for a server that isn't running.
+
+This is a verification task — may turn into a real bug or may close
+as "works as designed."
+
+### Reconcile Summary "Total" vs "By Profile" counts
+
+**Symptom:** the WSL dry-run Summary block shows:
+
+```
+── Convergence / software
+  software-bootstrap      2 ok  skip=1
+  ai-python-stack         2 ok
+  build-tools             skip=3
+  ai-apps                 2 ok
+  network-services        1 ok
+  node-stack              2 ok
+  cli-tools               10 ok
+  vscode-stack            2 ok  skip=2
+  ──────────────────────────────────────────────────────
+  Total                   21 ok  skip=6
+  ──────────────────────────────────────────────────────
+  By Profile
+  Configured              61 ok
+  Runtime                 3 ok
+  Capability              2 ok
+  Parametric              2 ok
+```
+
+`Total 21 ok` vs `Configured 61 ok` are counting different things
+(group rollup vs per-profile observation). The labels don't make that
+obvious.
+
+**Fix (one of):**
+- Rename the second block header to `By Profile — observations`
+  (plural, explicit).
+- Or reconcile to a single counting scheme.
+- Or add a one-line explanation under the separator.
+
+**Acceptance:** a reader seeing the Summary for the first time should
+not ask "why do these numbers disagree."
+
+### Platform-aware header / RAM warning
+
+**Symptom:** WSL dry-run header and warnings are Mac-framed:
+
+```
+AI Workstation Setup | platform=wsl | mode=install dry_run=1
+x86_64 · 15 GB
+...
+[WARN] Less than 32 GB RAM — large models may be slow
+```
+
+The `platform=wsl` line is correct, but the services summary at the
+end still lists Mac-oriented endpoints and the 32 GB RAM warning
+threshold was calibrated for a 64 GB Mac mini. On a 15 GB WSL dev
+host the warning is noise.
+
+**Fix:** low-effort polish —
+1. Drop or reword the RAM warning when `platform != macos` (or
+   re-threshold for linux/wsl2).
+2. Keep the services summary but prefix entries that won't be
+   reachable on the current host (e.g. `[skipped] Open WebUI …` when
+   the compose stack is not running).
+
+**Acceptance:** header output on WSL reads as informational, not as
+"this tool is misconfigured for your box."
+
+### Add `python-venv-available` capability target
+
+**Context:** after #12 (pip venv isolation), each pip group with
+`isolation.kind: venv` creates its own venv lazily inside the pip
+driver. The venv is a silent side-effect of the first pip-group
+target that needs it — not a named framework target.
+
+**Problem:** the precondition "this Python interpreter can create
+venvs" is invisible to the framework. If it fails (disk full, venv
+module missing, permissions on `$HOME/.venvs`, broken `_ctypes` in a
+pyenv-compiled Python, Debian `python3-venv` package absent on
+non-pyenv systems), the failure surfaces inside **each** pip-group
+line, 13 times, with confusing context — not as a single clear
+capability failure.
+
+It's also the same class of hidden-dependency issue as #13: the pip
+groups depend on "venv works," but that edge isn't declared.
+
+**Fix — add a single shared capability target** (Option C from the
+earlier discussion; rejected Options A=inline status quo, B=per-venv
+target explosion):
+
+```yaml
+python-venv-available:
+  component: ai-python-stack
+  profile: capability
+  type: capability
+  display_name: Python venv module
+  depends_on:
+  - python
+  driver:
+    kind: capability
+    probe: python_venv_is_available
+  evidence:
+    status: python_venv_status
+```
+
+**Why `depends_on: [python]` alone — nothing else:**
+
+venv is a stdlib module; it ships bundled with any correctly-built
+Python. It has no installation step of its own. So the capability
+depends only on a correctly-built `python` — not on the tools *used*
+to build it.
+
+Transitive chain (after #13 is applied):
+
+```
+python-venv-available
+  └── python
+        ├── xz                        (compile-time: liblzma for stdlib lzma)
+        └── pyenv                     (← new from #13)
+              └── homebrew            (← new from #13)
+                    ├── network-available
+                    ├── xcode-command-line-tools  (?macos)
+                    └── build-deps                 (?!brew, linux/wsl2)
+```
+
+**Rejected direct deps** (all transitive via `python`):
+
+| Candidate | Why rejected |
+|---|---|
+| `pyenv` | Transitive via `python` once #13 lands. Adding directly = duplication. |
+| `build-deps` / `xcode-command-line-tools` | Transitive via `python → pyenv → homebrew`. |
+| `xz` | Transitive via `python`. |
+| `homebrew` | Transitive. |
+| `pip-latest` | Independent concern — `pip-latest` upgrades global pip; venv creation uses `ensurepip` stubs bundled in Python. |
+
+**Principle:** the capability asserts *Python ended up correctly
+built*. It doesn't care about the path taken to get there — that's
+`python`'s own `depends_on` chain to manage.
+
+**Expected dry-run output** (once #13 + #19 both land):
+
+```
+[ok|dry-run] Build dependencies (build-deps)
+[ok|dry-run] Network (network-available)
+[ok|dry-run] Homebrew (homebrew)
+[ok|dry-run] pyenv
+[ok|dry-run] XZ Utils (xz)
+[ok|dry-run] Python (python)
+[ok|dry-run] Python venv module (python-venv-available)
+[dry-run  ] PyTorch packages (pip-group-pytorch)
+[dry-run  ] Hugging Face packages (pip-group-huggingface)
+...
+```
+
+A break anywhere in the chain shows **one** failure at the right
+level, not 13 confusing pip-group failures downstream.
+
+**Failure modes the probe must catch** (why this is worth its own
+capability, not just a `python -m venv --help` smoke test):
+
+| # | Failure | Root cause | Detection |
+|---|---|---|---|
+| 1 | venv module missing | Debian splits `python3-venv` into a separate apt package; minimal builds skip it | `python -m venv --help` non-zero |
+| 2 | ensurepip missing | pyenv-built Python without `ensurepip`; Debian minimal | `python -c 'import ensurepip'` fails |
+| 3 | Broken `_ssl` / `_hashlib` | Python compiled without OpenSSL headers (pyenv ran before `build-deps`/`openssl`) | `python -c 'import ssl, hashlib'` fails |
+| 4 | Broken `_ctypes` | Python compiled without libffi headers | `python -c 'import ctypes'` fails |
+| 5 | Venv root not writable | `$HOME/.venvs` missing or wrong perms | `test -w <venv_root>` (or parent) |
+| 6 | Broken pip bootstrap | venv creates but pip install fails (ensurepip stubs corrupt, proxy) | Throwaway venv smoke test: `python -m venv /tmp/x && /tmp/x/bin/pip --version` |
+| 7 | Disk full / quota | No space on venv-root filesystem | Smoke test fails with `ENOSPC` |
+
+**Probe scope — what it does vs. doesn't:**
+
+Does:
+- Prove `python -m venv` end-to-end on *this* interpreter.
+- Prove a created venv has a functional `pip`.
+- Prove the venv root is writable.
+
+Does **not**:
+- Create real per-group venvs (stays inline in pip driver, lazy).
+- Check PyPI reachability (that's `network-available`).
+- Check per-package install (that's each `pip-group-*` target).
+
+**Reference probe implementation** (`python_venv_is_available`):
+
+```bash
+python_venv_is_available() {
+  command -v python >/dev/null 2>&1 || return 1
+
+  # (1) venv module importable
+  python -m venv --help >/dev/null 2>&1 || return 1
+
+  # (2,3,4) critical stdlib modules
+  python -c 'import ensurepip, ssl, hashlib, ctypes' 2>/dev/null || return 1
+
+  # (5,6,7) smoke test: real venv + pip works
+  local tmp
+  tmp="$(mktemp -d)" || return 1
+  if ! python -m venv "$tmp/v" >/dev/null 2>&1; then
+    rm -rf "$tmp"; return 1
+  fi
+  if ! "$tmp/v/bin/pip" --version >/dev/null 2>&1; then
+    rm -rf "$tmp"; return 1
+  fi
+  rm -rf "$tmp"
+  return 0
+}
+```
+
+**Not covered — deliberately out of scope:**
+
+Multiple Python env tools exist. This capability only asserts
+**stdlib `venv`**. Others are separate tools with their own targets
+(or none):
+
+| Tool | Target today | Reason for exclusion |
+|---|---|---|
+| `venv` (stdlib) | **this capability (#19)** | — |
+| `virtualenv` (pip pkg) | No | Superset of venv; not used by pip groups here |
+| `pipx` | No | Isolated CLI installs — distinct concern |
+| `pyenv-virtualenv` | No | pyenv plugin — not the isolation path chosen by #12 |
+| `poetry` / `conda` | No | Different ecosystems — out of scope for this repo |
+
+Every pip-group target with `isolation.kind: venv` adds
+`python-venv-available` to its `depends_on`. Per-group venv creation
+stays inline in the pip driver — this target is precondition-only,
+not per-venv.
+
+**Naming:** follows the `-available` suffix convention codified in
+`docs/SPEC.md` section 3.1 (target naming). Reject alternatives
+`pip-venv-infra`, `venv-ready`, `python-venv-ok`.
+
+**Why Option C and not Option B (per-venv targets):**
+- 13 pip groups × 1 venv = 13 near-identical targets. Pure noise.
+- Individual venv creation is one `python -m venv <path>` call,
+  idempotent by existence check — doesn't warrant a framework target
+  each.
+- The *precondition* (venv module works at all) is what's worth
+  making explicit; the per-venv creation is not.
+
+**Acceptance:**
+- New `python-venv-available` target in
+  `ucc/software/ai-python-stack.yaml` with `depends_on: [python]`.
+- All 13 `pip-group-*` targets with `isolation.kind: venv` list
+  `python-venv-available` in their `depends_on`.
+- On a host with a broken-venv Python (e.g. Debian without
+  `python3-venv` package, or a pyenv-build that failed to compile
+  `_ssl`/`_ctypes`), dry-run shows **one** `[fail]`/`[cap-fail]` line
+  on `python-venv-available` and `[dep-fail]` on each pip-group —
+  not 13 identical-looking install failures later.
+- Probe runs in < 500 ms (no heavy package install, just
+  interpreter + tempdir check).
 
 ## Closed
 
