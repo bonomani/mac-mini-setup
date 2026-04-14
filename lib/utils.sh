@@ -436,6 +436,19 @@ _ucc_cache_invalidate() {
   rm -f "$path" 2>/dev/null || true
 }
 
+# Bulk invalidate caches matching a glob pattern. Useful for "wipe all
+# upstream-check caches" or "reset everything" scenarios.
+# Usage:
+#   _ucc_cache_invalidate_glob 'pip-outdated-*'   # all pip outdated caches
+#   _ucc_cache_invalidate_glob '*'                # nuke all caches
+_ucc_cache_invalidate_glob() {
+  local pattern="$1"
+  local dir; dir="$(_ucc_cache_dir)"
+  [[ -d "$dir" ]] || return 0
+  # Use find to avoid shell-glob issues with no-match
+  find "$dir" -maxdepth 1 -name "$pattern" -delete 2>/dev/null || true
+}
+
 # ── Migration safety probes ───────────────────────────────────────────────────
 # Per-process cache: lines of "<owner>:<ref>\t<verdict>\t<evidence>"
 _MIGRATION_SAFETY_CACHE=""
