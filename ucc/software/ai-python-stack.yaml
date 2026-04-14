@@ -118,7 +118,7 @@ targets:
     component: ai-python-stack
     profile: runtime
     type: runtime
-    display_name: Unsloth Studio
+    display_name: Unsloth Studio (launchd)
     requires: macos
     depends_on:
     - unsloth
@@ -139,7 +139,7 @@ targets:
     component: ai-python-stack
     profile: runtime
     type: runtime
-    display_name: Unsloth Studio
+    display_name: Unsloth Studio (systemd)
     requires: linux,wsl2
     depends_on:
     - unsloth

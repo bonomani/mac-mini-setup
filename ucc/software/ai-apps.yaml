@@ -57,6 +57,7 @@ targets:
     display_name: compose file
     depends_on:
     - ai-apps-template
+    - docker-available
     driver:
       kind: compose-file
       path_env: COMPOSE_FILE

@@ -78,7 +78,7 @@ not specified). Counts are real (`type` distribution per component).
 | Target | Kind | Type | Display name | requires | depends_on |
 |---|---|---|---|---|---|
 | `ai-apps-template` | `custom` | `precondition` | Compose template |  |  |
-| `ai-stack-compose-file` | `compose-file` | `config` | compose file |  | `ai-apps-template` |
+| `ai-stack-compose-file` | `compose-file` | `config` | compose file |  | `ai-apps-template`, `docker-available` |
 | `ai-stack-compose-running` | `compose-apply` | `runtime` | AI stack compose up |  | `docker-available`, `ai-stack-compose-file` |
 | `flowise-runtime` | `docker-compose-service` | `runtime` | Flowise |  | `ai-stack-compose-running` |
 | `n8n-runtime` | `docker-compose-service` | `runtime` | n8n |  | `ai-stack-compose-running` |
@@ -118,8 +118,8 @@ not specified). Counts are real (`type` distribution per component).
 | `python` | `pkg` | `package` | Python |  | `xz`, `pyenv` |
 | `python-venv-available` | `capability` | `capability` | Python venv module |  | `python` |
 | `unsloth` | `pip` | `package` | Unsloth |  | `python-venv-available` |
-| `unsloth-studio` | `custom` | `runtime` | Unsloth Studio | macos | `unsloth` |
-| `unsloth-studio-service` | `custom` | `runtime` | Unsloth Studio | linux,wsl2 | `unsloth` |
+| `unsloth-studio` | `custom` | `runtime` | Unsloth Studio (launchd) | macos | `unsloth` |
+| `unsloth-studio-service` | `custom` | `runtime` | Unsloth Studio (systemd) | linux,wsl2 | `unsloth` |
 | `xz` | `pkg` | `package` | XZ Utils |  |  |
 
 ### build-tools  (3 targets)
