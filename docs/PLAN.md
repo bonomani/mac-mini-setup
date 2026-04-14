@@ -2,9 +2,9 @@
 
 ## Open
 
-Seven items open, four deferred (#2, #4, #6, #16), two closed
+Six items open, four deferred (#2, #4, #6, #16), two closed
 (#24 not-a-bug, #29 confirmed intentional). Nineteen new items
-(#13–#31) opened 2026-04-14 from the WSL dry-run analyses; twelve
+(#13–#31) opened 2026-04-14 from the WSL dry-run analyses; thirteen
 shipped same day. Items #20–#31 opened from the post-session
 full-output review.
 Docker install/launch is fully functional (tested 2026-04-13). Test
@@ -41,7 +41,7 @@ suite green. Pip venv isolation shipped (2026-04-14).
 | 27 | `Healthy` asserted without a probe — oh-my-zsh, home-bin-in-path, etc. | Open 2026-04-14 | Low |
 | 28 | Profile-count math reconciliation (post-#17 follow-up) | Open 2026-04-14 — needs investigation: Total 22 ok vs By-Profile 69 ok; observe is called pre + post-action so single targets log multiple profile outcomes | Low |
 | 29 | ~~`ollama-model-llama3.2` default-enabled — verify it's intentional~~ | ✅ CLOSED 2026-04-14 — confirmed intentional. llama3.2 stays enabled by default; the larger models (llama3.1 8b/70b, qwen3, qwen2.5-coder, mistral) remain disabled | — |
-| 30 | Display-order within a group should follow dep order, not declaration order | Open 2026-04-14 | Low |
+| 30 | ~~Display-order within a group should follow dep order, not declaration order~~ | ✅ DONE 2026-04-14 — `_ucc_target_filtered_out` defers `[disabled]`/`[skip requires:]` emissions in defer mode; flush emits in topo order; flush no longer early-returns on empty registration | — |
 | 31 | ~~`Unsloth Studio` display name collision~~ | ✅ DONE 2026-04-14 — disambiguated to `Unsloth Studio (launchd)` and `Unsloth Studio (systemd)` | — |
 
 ### Unified `update-policy` pref
