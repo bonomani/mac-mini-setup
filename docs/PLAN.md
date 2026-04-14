@@ -2,11 +2,12 @@
 
 ## Open
 
-Three items open, four deferred (#2, #4, #6, #16), three closed
-(#24, #27 not-a-bug; #29 confirmed intentional). Nineteen new items
-(#13–#31) opened 2026-04-14 from the WSL dry-run analyses; fifteen
-shipped same day. Items #20–#31 opened from the post-session
-full-output review.
+Two items open (#4, #2 deferred only), four deferred (#2, #4, #6, #16),
+three closed (#24, #27 not-a-bug; #29 confirmed intentional). Nineteen
+new items (#13–#31) opened 2026-04-14 from the WSL dry-run analyses;
+all sixteen actionable items (#13–#15, #17–#23, #25, #26, #28, #30, #31)
+shipped same day. Items #20–#31 opened from the post-session full-output
+review.
 Docker install/launch is fully functional (tested 2026-04-13). Test
 suite green. Pip venv isolation shipped (2026-04-14).
 
@@ -37,7 +38,7 @@ suite green. Pip venv isolation shipped (2026-04-14).
 | 23 | ~~`ai-stack-compose-file` installs even when `ai-stack-compose-running` is platform-skipped~~ | ✅ DONE 2026-04-14 — added `depends_on: [docker-available]` so it cascade-skips on WSL | — |
 | 24 | ~~`avahi` installs despite `mdns-available` already passing~~ | ❌ CLOSED — not a bug. avahi is the Linux-native mDNS daemon; installing on Linux is correct even when dns-sd.exe interop also satisfies mdns-available. The two coexist. | — |
 | 25 | ~~Services-list filtering — hide endpoints unreachable on this host~~ | ✅ DONE 2026-04-14 — `print_services_summary` reads `UCC_TARGET_STATUS_FILE` and filters out failed/skipped/never-converged targets; WSL drops 6 docker-stack endpoints | — |
-| 26 | Distinguish "Degraded" (broken) from "Outdated" (upgrade pending) | Open 2026-04-14 | Low |
+| 26 | ~~Distinguish "Degraded" (broken) from "Outdated" (upgrade pending)~~ | ✅ DONE 2026-04-14 — `outdated` raw value now maps to `health_state=Outdated` (vs `Degraded` for drift); split also distinguishes `needs-update` (drift) from `outdated` (version) in config state model | — |
 | 27 | ~~`Healthy` asserted without a probe~~ | ❌ CLOSED 2026-04-14 — re-read the drivers. All 4 (script-installer, path-export, zsh-config, home-artifact) DO have real probes (file/dir/setting checks). Pre-converge `Unknown` reflects the file not-yet existing; post-converge `Healthy` is asserted from actual file-exists checks, not vacuous. | — |
 | 28 | ~~Profile-count math reconciliation (post-#17 follow-up)~~ | ✅ DONE 2026-04-14 — investigated: `Total` only counts `[ok]` lines (already-converged targets), `By Profile` counts every observation including dry-run plans. Same data, different scope. Clarified label to "By Profile — observations (incl. dry-run plans)" | — |
 | 29 | ~~`ollama-model-llama3.2` default-enabled — verify it's intentional~~ | ✅ CLOSED 2026-04-14 — confirmed intentional. llama3.2 stays enabled by default; the larger models (llama3.1 8b/70b, qwen3, qwen2.5-coder, mistral) remain disabled | — |
