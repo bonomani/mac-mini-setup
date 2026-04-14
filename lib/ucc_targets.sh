@@ -1308,6 +1308,14 @@ _ucc_check_deps_recursive() {
         "dep-fail" "$(_ucc_display_name "$origin")" "$dep"
       return 1
     fi
+    if [[ "$status" == "platform-skipped" ]]; then
+      # Dep's component was group-skipped for platform reasons — cascade to
+      # a clean [skip] on the dependent instead of [dep-fail]. The dep was
+      # never a real failure; it simply doesn't apply on this host.
+      printf '      [%-8s] %-40s dependency not applicable on %s: %s\n' \
+        "skip" "$(_ucc_display_name "$origin")" "${HOST_PLATFORM:-host}" "$dep"
+      return 1
+    fi
     if [[ -n "$status" ]]; then
       # Dep ran this session and did not fail; its transitive deps were already
       # validated before it executed — no need to recurse further.

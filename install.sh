@@ -833,10 +833,23 @@ _DISP_RUNNERS=()
 _DISP_ON_FAILS=()
 _DISP_CONFIGS=()
 
+# Record synthetic "platform-skipped" status for every target in a
+# component that is being skipped because its platform doesn't apply.
+# Consumed by _ucc_check_deps_recursive so cross-component dependents
+# cascade to [skip] instead of [dep-fail].
+_record_component_platform_skip() {
+  local comp="$1" t
+  while IFS= read -r t; do
+    [[ -n "$t" ]] || continue
+    _ucc_record_target_status "$t" "platform-skipped"
+  done < <(python3 "$UCC_TARGETS_QUERY_SCRIPT" --ordered-targets "$comp" "$UCC_TARGETS_MANIFEST" 2>/dev/null || true)
+}
+
 for comp in "${TO_RUN[@]}"; do
   if [[ "$comp" == "verify" ]]; then
     if ! _component_supported_for "$comp" "tic"; then
       log_info "Skipping $(_display_component_name "$comp") (platform=${HOST_PLATFORM} unsupported)"
+      _record_component_platform_skip "$comp"
       continue
     fi
     _DISP_COMPS+=("$comp")
@@ -857,6 +870,7 @@ for comp in "${TO_RUN[@]}"; do
   fi
   if ! _component_supported_for "$comp" "$_config"; then
     log_info "Skipping $(_display_component_name "$comp") (platform=${HOST_PLATFORM} unsupported)"
+    _record_component_platform_skip "$comp"
     continue
   fi
   _DISP_COMPS+=("$comp")
