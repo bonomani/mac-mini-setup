@@ -83,6 +83,18 @@ targets:
     - python
     driver:
       kind: pip-bootstrap
+  python-venv-available:
+    component: ai-python-stack
+    profile: capability
+    type: capability
+    display_name: Python venv module
+    depends_on:
+    - python
+    driver:
+      kind: capability
+      probe: python_venv_is_available
+    evidence:
+      status: python_venv_status
   # ── Pip packages ─────────────────────────────────────────────
   unsloth:
     component: ai-python-stack
@@ -90,6 +102,8 @@ targets:
     type: package
     state_model: package
     display_name: Unsloth
+    depends_on:
+    - python-venv-available
     driver:
       kind: pip
       isolation:
@@ -146,6 +160,8 @@ targets:
     type: package
     state_model: package
     display_name: PyTorch packages
+    depends_on:
+    - python-venv-available
     driver:
       kind: pip
       isolation:
@@ -160,6 +176,8 @@ targets:
     type: package
     state_model: package
     display_name: Hugging Face packages
+    depends_on:
+    - python-venv-available
     driver:
       kind: pip
       isolation:
@@ -175,6 +193,8 @@ targets:
     type: package
     state_model: package
     display_name: LangChain packages
+    depends_on:
+    - python-venv-available
     driver:
       kind: pip
       isolation:
@@ -190,6 +210,8 @@ targets:
     type: package
     state_model: package
     display_name: LlamaIndex packages
+    depends_on:
+    - python-venv-available
     driver:
       kind: pip
       isolation:
@@ -204,6 +226,8 @@ targets:
     type: package
     state_model: package
     display_name: LLM client packages
+    depends_on:
+    - python-venv-available
     driver:
       kind: pip
       isolation:
@@ -218,6 +242,8 @@ targets:
     type: package
     state_model: package
     display_name: Vector database packages
+    depends_on:
+    - python-venv-available
     driver:
       kind: pip
       isolation:
@@ -232,6 +258,8 @@ targets:
     type: package
     state_model: package
     display_name: Jupyter packages
+    depends_on:
+    - python-venv-available
     driver:
       kind: pip
       isolation:
@@ -246,6 +274,8 @@ targets:
     type: package
     state_model: package
     display_name: Serving packages
+    depends_on:
+    - python-venv-available
     driver:
       kind: pip
       isolation:
@@ -260,6 +290,8 @@ targets:
     type: package
     state_model: package
     display_name: Data science packages
+    depends_on:
+    - python-venv-available
     driver:
       kind: pip
       isolation:
@@ -274,6 +306,8 @@ targets:
     type: package
     state_model: package
     display_name: Utility packages
+    depends_on:
+    - python-venv-available
     driver:
       kind: pip
       isolation:
@@ -288,6 +322,8 @@ targets:
     type: package
     state_model: package
     display_name: Python dev tools
+    depends_on:
+    - python-venv-available
     driver:
       kind: pip
       isolation:
@@ -302,6 +338,8 @@ targets:
     type: package
     state_model: package
     display_name: Optimum packages
+    depends_on:
+    - python-venv-available
     driver:
       kind: pip
       isolation:
@@ -316,6 +354,8 @@ targets:
     type: package
     state_model: package
     display_name: Web testing packages
+    depends_on:
+    - python-venv-available
     driver:
       kind: pip
       isolation:

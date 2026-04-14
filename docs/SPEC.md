@@ -47,7 +47,7 @@ not specified). Counts are real (`type` distribution per component).
 | Component | Targets | type=package | type=config | type=runtime | type=capability |
 |---|---:|---:|---:|---:|---:|
 | `ai-apps` | 16 | 7 | 1 | 7 | 0 |
-| `ai-python-stack` | 22 | 17 | 1 | 2 | 2 |
+| `ai-python-stack` | 23 | 17 | 1 | 2 | 3 |
 | `build-tools` | 3 | 3 | 0 | 0 | 0 |
 | `cli-tools` | 26 | 21 | 5 | 0 | 0 |
 | `docker` | 5 | 0 | 2 | 2 | 1 |
@@ -94,29 +94,30 @@ not specified). Counts are real (`type` distribution per component).
 | `openhands-runtime` | `docker-compose-service` | `runtime` | OpenHands |  | `ai-stack-compose-running` |
 | `qdrant-runtime` | `docker-compose-service` | `runtime` | Qdrant |  | `ai-stack-compose-running` |
 
-### ai-python-stack  (22 targets)
+### ai-python-stack  (23 targets)
 
 | Target | Kind | Type | Display name | requires | depends_on |
 |---|---|---|---|---|---|
 | `cuda-available` | `capability` | `capability` | NVIDIA CUDA | linux,wsl2 | `pip-group-pytorch` |
 | `mps-available` | `capability` | `capability` | Metal MPS | macos | `pip-group-pytorch` |
-| `pip-group-data-science` | `pip` | `package` | Data science packages |  |  |
-| `pip-group-dev-tools` | `pip` | `package` | Python dev tools |  |  |
-| `pip-group-huggingface` | `pip` | `package` | Hugging Face packages |  |  |
-| `pip-group-jupyter` | `pip` | `package` | Jupyter packages |  |  |
-| `pip-group-langchain` | `pip` | `package` | LangChain packages |  |  |
-| `pip-group-llamaindex` | `pip` | `package` | LlamaIndex packages |  |  |
-| `pip-group-llm-clients` | `pip` | `package` | LLM client packages |  |  |
-| `pip-group-optimum` | `pip` | `package` | Optimum packages |  |  |
-| `pip-group-pytorch` | `pip` | `package` | PyTorch packages |  |  |
-| `pip-group-serving` | `pip` | `package` | Serving packages |  |  |
-| `pip-group-utilities` | `pip` | `package` | Utility packages |  |  |
-| `pip-group-vector-dbs` | `pip` | `package` | Vector database packages |  |  |
-| `pip-group-web-testing` | `pip` | `package` | Web testing packages |  |  |
+| `pip-group-data-science` | `pip` | `package` | Data science packages |  | `python-venv-available` |
+| `pip-group-dev-tools` | `pip` | `package` | Python dev tools |  | `python-venv-available` |
+| `pip-group-huggingface` | `pip` | `package` | Hugging Face packages |  | `python-venv-available` |
+| `pip-group-jupyter` | `pip` | `package` | Jupyter packages |  | `python-venv-available` |
+| `pip-group-langchain` | `pip` | `package` | LangChain packages |  | `python-venv-available` |
+| `pip-group-llamaindex` | `pip` | `package` | LlamaIndex packages |  | `python-venv-available` |
+| `pip-group-llm-clients` | `pip` | `package` | LLM client packages |  | `python-venv-available` |
+| `pip-group-optimum` | `pip` | `package` | Optimum packages |  | `python-venv-available` |
+| `pip-group-pytorch` | `pip` | `package` | PyTorch packages |  | `python-venv-available` |
+| `pip-group-serving` | `pip` | `package` | Serving packages |  | `python-venv-available` |
+| `pip-group-utilities` | `pip` | `package` | Utility packages |  | `python-venv-available` |
+| `pip-group-vector-dbs` | `pip` | `package` | Vector database packages |  | `python-venv-available` |
+| `pip-group-web-testing` | `pip` | `package` | Web testing packages |  | `python-venv-available` |
 | `pip-latest` | `pip-bootstrap` | `config` | pip |  | `python` |
 | `pyenv` | `pyenv-brew` | `package` | pyenv |  | `homebrew` |
 | `python` | `pkg` | `package` | Python |  | `xz`, `pyenv` |
-| `unsloth` | `pip` | `package` | Unsloth |  |  |
+| `python-venv-available` | `capability` | `capability` | Python venv module |  | `python` |
+| `unsloth` | `pip` | `package` | Unsloth |  | `python-venv-available` |
 | `unsloth-studio` | `custom` | `runtime` | Unsloth Studio | macos | `unsloth` |
 | `unsloth-studio-service` | `custom` | `runtime` | Unsloth Studio | linux,wsl2 | `unsloth` |
 | `xz` | `pkg` | `package` | XZ Utils |  |  |
@@ -332,7 +333,7 @@ See [`docs/driver-feature-matrix.md`](driver-feature-matrix.md) — auto-generat
 ## 11. Counts (live)
 
 - Components: **10**
-- Targets: **113**
+- Targets: **114**
 - Distinct driver kinds: **26**
 - Preferences: **7**
 - Gates: **1**
@@ -347,7 +348,7 @@ Top 10 driver kinds by target count:
 | `pip` | 14 |
 | `setting` | 12 |
 | `custom` | 10 |
-| `capability` | 7 |
+| `capability` | 8 |
 | `docker-compose-service` | 5 |
 | `home-artifact` | 2 |
 | `service` | 2 |

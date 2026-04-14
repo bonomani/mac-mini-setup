@@ -182,6 +182,45 @@ mdns_is_available() {
     || command -v avahi-publish-service >/dev/null 2>&1
 }
 
+# Return 0 if Python's stdlib venv module is usable end-to-end on this host.
+# Covers seven failure modes: (1) venv module missing (Debian splits python3-venv
+# into a separate apt package), (2) ensurepip missing, (3) broken _ssl/_hashlib
+# (Python compiled without OpenSSL headers), (4) broken _ctypes (without libffi),
+# (5-7) smoke test creating a throwaway venv and running its pip to surface
+# permissions, disk space, and ensurepip-bootstrap failures.
+# Cached per process to avoid paying the smoke test twice (probe + evidence).
+python_venv_is_available() {
+  if [[ -n "${_PYTHON_VENV_AVAIL+x}" ]]; then
+    return "$_PYTHON_VENV_AVAIL"
+  fi
+  _python_venv_probe
+  export _PYTHON_VENV_AVAIL=$?
+  return "$_PYTHON_VENV_AVAIL"
+}
+
+_python_venv_probe() {
+  command -v python >/dev/null 2>&1 || return 1
+  python -m venv --help >/dev/null 2>&1 || return 1
+  python -c 'import ensurepip, ssl, hashlib, ctypes' 2>/dev/null || return 1
+  local tmp rc=0
+  tmp="$(mktemp -d)" || return 1
+  python -m venv "$tmp/v" >/dev/null 2>&1 || rc=1
+  if [[ $rc -eq 0 ]]; then
+    "$tmp/v/bin/pip" --version >/dev/null 2>&1 || rc=1
+  fi
+  rm -rf "$tmp"
+  return "$rc"
+}
+
+# Print human-readable status for the python-venv-available capability.
+python_venv_status() {
+  if python_venv_is_available; then
+    printf 'healthy'
+  else
+    printf 'broken'
+  fi
+}
+
 # Return 0 if a file exists at the given path under $HOME.
 # Usage: home_file_exists <relpath>
 home_file_exists() { [[ -f "$HOME/$1" ]]; }
