@@ -2,9 +2,9 @@
 
 ## Open
 
-Five items open, four deferred (#2, #4, #6, #16), three closed
+Four items open, four deferred (#2, #4, #6, #16), three closed
 (#24, #27 not-a-bug; #29 confirmed intentional). Nineteen new items
-(#13–#31) opened 2026-04-14 from the WSL dry-run analyses; thirteen
+(#13–#31) opened 2026-04-14 from the WSL dry-run analyses; fourteen
 shipped same day. Items #20–#31 opened from the post-session
 full-output review.
 Docker install/launch is fully functional (tested 2026-04-13). Test
@@ -36,7 +36,7 @@ suite green. Pip venv isolation shipped (2026-04-14).
 | 22 | ~~`brew services` backend on non-macOS hosts (ariaflow-server / -dashboard)~~ | ✅ DONE 2026-04-14 — added `init_system` fingerprint segment (launchd/systemd/no-init-system); ariaflow targets now `requires: launchd,systemd` | — |
 | 23 | ~~`ai-stack-compose-file` installs even when `ai-stack-compose-running` is platform-skipped~~ | ✅ DONE 2026-04-14 — added `depends_on: [docker-available]` so it cascade-skips on WSL | — |
 | 24 | ~~`avahi` installs despite `mdns-available` already passing~~ | ❌ CLOSED — not a bug. avahi is the Linux-native mDNS daemon; installing on Linux is correct even when dns-sd.exe interop also satisfies mdns-available. The two coexist. | — |
-| 25 | Services-list filtering — hide endpoints unreachable on this host | Open 2026-04-14 | Low |
+| 25 | ~~Services-list filtering — hide endpoints unreachable on this host~~ | ✅ DONE 2026-04-14 — `print_services_summary` reads `UCC_TARGET_STATUS_FILE` and filters out failed/skipped/never-converged targets; WSL drops 6 docker-stack endpoints | — |
 | 26 | Distinguish "Degraded" (broken) from "Outdated" (upgrade pending) | Open 2026-04-14 | Low |
 | 27 | ~~`Healthy` asserted without a probe~~ | ❌ CLOSED 2026-04-14 — re-read the drivers. All 4 (script-installer, path-export, zsh-config, home-artifact) DO have real probes (file/dir/setting checks). Pre-converge `Unknown` reflects the file not-yet existing; post-converge `Healthy` is asserted from actual file-exists checks, not vacuous. | — |
 | 28 | Profile-count math reconciliation (post-#17 follow-up) | Open 2026-04-14 — needs investigation: Total 22 ok vs By-Profile 69 ok; observe is called pre + post-action so single targets log multiple profile outcomes | Low |
