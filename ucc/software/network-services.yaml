@@ -50,6 +50,7 @@ targets:
     profile: runtime
     type: runtime
     display_name: Ariaflow Server
+    requires: launchd,systemd
     depends_on:
     - networkquality-available?macos
     - mdns-available
@@ -75,6 +76,7 @@ targets:
     profile: runtime
     type: runtime
     display_name: Ariaflow Dashboard
+    requires: launchd,systemd
     depends_on:
     - mdns-available
     driver:

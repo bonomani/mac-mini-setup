@@ -222,10 +222,19 @@ Using `?platform` makes the dep ITSELF conditional, sidestepping both mechanisms
 
 **Conditional dep syntax** (parsed by `tools/validate_targets_manifest.py:_resolve_conditional_dep`, comma = OR):
 
-- `?value` — match host (`?macos`, `?linux`, `?wsl2`)
+- `?value` — match host (`?macos`, `?linux`, `?wsl2`, `?launchd`, `?systemd`)
 - `?!value` — NOT match (`?!brew`)
 - `?name>=version` — version compare (`?macos>=14`)
 - `?macos>=14,linux,wsl2` — OR combination
+
+**Available host segments** (matchable by `?value` and `requires:`): `HOST_PLATFORM`, `HOST_PLATFORM_VARIANT`, `HOST_ARCH`, `HOST_OS_ID`, `HOST_PACKAGE_MANAGER`, plus all `/`-separated segments of `HOST_FINGERPRINT`. The fingerprint includes:
+- OS family (`macos`, `wsl2-ubuntu`, `ubuntu`, etc.)
+- OS version
+- Arch
+- Package manager (with `@windows-N` suffix on WSL)
+- **Init system** (`launchd` on macOS, `systemd` on Linux/WSL2 with systemd, `no-init-system` otherwise)
+
+Targets that depend on a service-management subsystem (e.g. `kind: service, backend: brew` which needs `brew services` → launchd or systemd) should declare `requires: launchd,systemd`. This skips the target gracefully on hosts where neither is available (e.g. default WSL2 without `[boot] systemd=true`).
 
 ### Naming
 

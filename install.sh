@@ -137,10 +137,29 @@ export HOST_ARCH="$(_detect_host_arch)"
 export HOST_OS_ID="$(_detect_host_os_id)"
 export HOST_PACKAGE_MANAGER="$(_detect_host_package_manager)"
 
+# Detect the host's init/service-manager subsystem. Returned value is added
+# to HOST_FINGERPRINT so YAML targets can declare `requires: launchd,systemd`
+# and gracefully skip on hosts where neither is available (e.g. default WSL2
+# without systemd, where `brew services` will not work).
+_detect_init_system() {
+  case "$HOST_PLATFORM" in
+    macos) printf 'launchd' ;;
+    *)
+      if [[ -d /run/systemd/system ]] || \
+         { command -v systemctl >/dev/null 2>&1 && systemctl is-system-running >/dev/null 2>&1; }; then
+        printf 'systemd'
+      else
+        printf 'no-init-system'
+      fi
+      ;;
+  esac
+}
+
 _build_host_fingerprint() {
-  local os ver arch pm
+  local os ver arch pm init
   arch="$HOST_ARCH"
   pm="$HOST_PACKAGE_MANAGER"
+  init="$(_detect_init_system)"
   case "$HOST_PLATFORM" in
     macos)
       os="macos"
@@ -175,7 +194,7 @@ _build_host_fingerprint() {
       ;;
     *) os="unknown"; ver="unknown" ;;
   esac
-  printf '%s/%s/%s/%s' "$os" "$ver" "$arch" "$pm"
+  printf '%s/%s/%s/%s/%s' "$os" "$ver" "$arch" "$pm" "$init"
 }
 
 export HOST_FINGERPRINT="$(_build_host_fingerprint)"
