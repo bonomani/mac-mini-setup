@@ -2,11 +2,11 @@
 
 ## Open
 
-Three items open (#32, #33, #34 from third dry-run review), four
+Six items open (#32–#37; #35–#37 from fourth dry-run review), four
 deferred (#2, #4, #6, #16), three closed (#24, #27 not-a-bug;
-#29 confirmed intentional). Twenty-two new items (#13–#34) opened
-2026-04-14 across three dry-run analyses; sixteen shipped same day.
-#32–#34 opened from third (post-Phase-4) full-output review.
+#29 confirmed intentional). Twenty-five new items (#13–#37) opened
+2026-04-14 across four dry-run analyses; sixteen shipped same day.
+#35–#37 opened from fourth post-venv-migration review.
 Docker install/launch is fully functional (tested 2026-04-13). Test
 suite green. Pip venv isolation shipped (2026-04-14).
 
@@ -46,6 +46,9 @@ suite green. Pip venv isolation shipped (2026-04-14).
 | 32 | Inconsistent skip-message wording: `xcode-command-line-tools` shows "not applicable on wsl" while other `requires: macos` targets show "requires: macos" | Open 2026-04-14 | Low |
 | 33 | Capability-target dry-run projection misleading: shows `Degraded -> Healthy` even when no install action exists (e.g. `cuda-available` on a host without GPU) | Open 2026-04-14 | Medium |
 | 34 | `ollama` target attempts autostart on WSL without `requires: launchd,systemd` gate (#22 mechanism not applied to ollama) | Open 2026-04-14 | Medium |
+| 35 | `pip-latest` (pip-bootstrap driver) ignores `update-policy=balanced` — pip global stuck at 24.0 while latest is 26.0.1 | Open 2026-04-14 | Medium |
+| 36 | `softwareupdate-auto-check=1` silently overwrites user's manual opt-out (config_value 0→1 in dry-run) | Open 2026-04-14 | Medium |
+| 37 | `sudo-available` capability shows `health_state=Degraded` (Degraded is for broken/drift; capability unavailable should be `Unavailable`) | Open 2026-04-14 | Low |
 
 ### Unified `update-policy` pref
 
