@@ -468,7 +468,7 @@ _docker_launch() {
   if [[ "$_pre" == *"500"* ]]; then
     log_warn "Docker daemon in 500 error state — quitting $app_name"
     osascript -e "quit app \"$app_name\"" 2>/dev/null || true
-    sleep 5
+    sleep "${UCC_DOCKER_QUIT_WAIT_S:-5}"
   fi
 
   # Launch with a clean environment. install.sh accumulates hundreds of
@@ -480,17 +480,21 @@ _docker_launch() {
   nohup env -i HOME="$HOME" PATH="$PATH" \
     bash -c "sleep 1; open -g '$app_path'" &>/dev/null &
 
-  # Wait up to 30s for daemon readiness. If Docker doesn't respond
-  # within 30s, it's not coming up — don't waste minutes retrying.
+  # Readiness probe: poll _docker_ready every UCC_DOCKER_READY_INTERVAL_S
+  # seconds, up to UCC_DOCKER_READY_ATTEMPTS times (default: 3s × 10 = 30s).
+  # If Docker doesn't respond within the window, it's not coming up —
+  # don't waste minutes retrying.
+  local _interval="${UCC_DOCKER_READY_INTERVAL_S:-3}"
+  local _attempts="${UCC_DOCKER_READY_ATTEMPTS:-10}"
   local i
-  for i in $(seq 1 10); do
+  for i in $(seq 1 "$_attempts"); do
     if _docker_ready; then
-      log_info "Docker daemon ready after $((i*3))s"
+      log_info "Docker daemon ready after $((i * _interval))s"
       return 0
     fi
-    sleep 3
+    sleep "$_interval"
   done
-  log_warn "Docker daemon not reachable after 30s"
+  log_warn "Docker daemon not reachable after $((_attempts * _interval))s"
   return 1
 }
 

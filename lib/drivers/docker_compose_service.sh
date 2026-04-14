@@ -36,11 +36,13 @@ _ucc_driver_docker_compose_service_observe() {
   # run would find the service healthy — a confusing false-negative
   # on the first post-bootstrap run of ./install.sh.
   #
-  # Retry budget: up to ~64s cumulative (delays 0, 2, 5, 10, 15, 20 +
-  # 2s curl max-time per probe). Healthy services pay ~1s; fresh
-  # services get enough slack for typical startup; genuinely-broken
-  # services take the full budget before reporting stopped.
-  local delays=(0 2 5 10 15 20)
+  # Retry budget: up to ~64s cumulative (default delays 0,2,5,10,15,20 +
+  # 2s curl max-time per probe). Healthy services pay ~1s; fresh services
+  # get enough slack for typical startup; genuinely-broken services take
+  # the full budget before reporting stopped.
+  # Override via UCC_COMPOSE_PROBE_DELAYS (space-separated seconds).
+  local delays
+  read -r -a delays <<< "${UCC_COMPOSE_PROBE_DELAYS:-0 2 5 10 15 20}"
   local d
   for d in "${delays[@]}"; do
     [[ $d -gt 0 ]] && sleep "$d"
