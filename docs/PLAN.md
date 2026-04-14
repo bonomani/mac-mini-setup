@@ -2,12 +2,11 @@
 
 ## Open
 
-Two items open (#4, #2 deferred only), four deferred (#2, #4, #6, #16),
-three closed (#24, #27 not-a-bug; #29 confirmed intentional). Nineteen
-new items (#13–#31) opened 2026-04-14 from the WSL dry-run analyses;
-all sixteen actionable items (#13–#15, #17–#23, #25, #26, #28, #30, #31)
-shipped same day. Items #20–#31 opened from the post-session full-output
-review.
+Three items open (#32, #33, #34 from third dry-run review), four
+deferred (#2, #4, #6, #16), three closed (#24, #27 not-a-bug;
+#29 confirmed intentional). Twenty-two new items (#13–#34) opened
+2026-04-14 across three dry-run analyses; sixteen shipped same day.
+#32–#34 opened from third (post-Phase-4) full-output review.
 Docker install/launch is fully functional (tested 2026-04-13). Test
 suite green. Pip venv isolation shipped (2026-04-14).
 
@@ -44,6 +43,9 @@ suite green. Pip venv isolation shipped (2026-04-14).
 | 29 | ~~`ollama-model-llama3.2` default-enabled — verify it's intentional~~ | ✅ CLOSED 2026-04-14 — confirmed intentional. llama3.2 stays enabled by default; the larger models (llama3.1 8b/70b, qwen3, qwen2.5-coder, mistral) remain disabled | — |
 | 30 | ~~Display-order within a group should follow dep order, not declaration order~~ | ✅ DONE 2026-04-14 — `_ucc_target_filtered_out` defers `[disabled]`/`[skip requires:]` emissions in defer mode; flush emits in topo order; flush no longer early-returns on empty registration | — |
 | 31 | ~~`Unsloth Studio` display name collision~~ | ✅ DONE 2026-04-14 — disambiguated to `Unsloth Studio (launchd)` and `Unsloth Studio (systemd)` | — |
+| 32 | Inconsistent skip-message wording: `xcode-command-line-tools` shows "not applicable on wsl" while other `requires: macos` targets show "requires: macos" | Open 2026-04-14 | Low |
+| 33 | Capability-target dry-run projection misleading: shows `Degraded -> Healthy` even when no install action exists (e.g. `cuda-available` on a host without GPU) | Open 2026-04-14 | Medium |
+| 34 | `ollama` target attempts autostart on WSL without `requires: launchd,systemd` gate (#22 mechanism not applied to ollama) | Open 2026-04-14 | Medium |
 
 ### Unified `update-policy` pref
 
