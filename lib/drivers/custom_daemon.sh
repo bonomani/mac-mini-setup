@@ -67,16 +67,18 @@ _ucc_driver_custom_daemon_action() {
   # but pgrep raced with our observe.
   [[ -n "$start_cmd" ]] || return 124
   ucc_run sh -c "$start_cmd" || return $?
-  # Wait briefly for the process to appear, so observe sees "running".
+  # Wait for the process to appear, so observe sees "running".
+  # Bumped from 5s → 15s: `open -a` is async on macOS and the daemon helper
+  # process can take several seconds to spawn under load.
   if [[ -n "$process" ]]; then
     local i=0
-    while (( i < 10 )); do
+    while (( i < 30 )); do
       pgrep -f "$process" >/dev/null 2>&1 && return 0
       sleep 0.5
       i=$((i + 1))
     done
-    log_warn "custom-daemon: ${target} start_cmd ran but process '${process}' did not appear within 5s"
-    return 1
+    log_warn "custom-daemon: ${target} start_cmd ran but process '${process}' did not appear within 15s — returning warn (rc=124) instead of fail"
+    return 124
   fi
   return 0
 }
