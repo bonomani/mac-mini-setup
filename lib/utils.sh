@@ -372,6 +372,25 @@ _cfg_backup() {
 # UCC_CACHE_TTL_MIN defaults to 60 minutes
 #
 # Bypass the cache by setting UCC_NO_CACHE=1 (forces refresh).
+#
+# ── Subshell cache discipline ─────────────────────────────────────────────────
+# In-memory cache vars (e.g. _BREW_VERSIONS_CACHE, _PIP_OUTDATED_CACHE,
+# _NPM_GLOBAL_VERSIONS_CACHE, _PIPX_CACHE, _PKG_*_OUTDATED_CACHE) MUST be
+# `export`ed (or use `declare -g`). The framework calls observe functions
+# inside subshells via `observed=$($observe_fn)`. Vars set inside a subshell
+# are NOT visible to the parent — so a non-exported cache populated in
+# observe is invisible to the next observe and gets re-computed.
+#
+# This caused regression #38: pip-outdated cache populated in subshell,
+# action invalidation only touched the (empty) parent var, then verify
+# re-ran observe in another subshell which re-populated from disk where
+# the pre-upgrade snapshot was still fresh. Fix: invalidate the disk cache
+# in the action (parent shell) so the verify subshell finds it stale.
+#
+# Audit confirmed (2026-04-15): all session-level caches in lib/ucc_brew.sh,
+# lib/drivers/{pip,pkg,package,npm,pip_bootstrap}.sh use `export` correctly.
+# `_PIP_ISO_KIND`/`_PIP_ISO_NAME` in pip.sh are intentionally locals (not
+# cached across calls — re-parsed each time via `_pip_parse_isolation`).
 
 _ucc_cache_dir() {
   printf '%s' "${UCC_CACHE_DIR:-$HOME/.ai-stack/cache}"

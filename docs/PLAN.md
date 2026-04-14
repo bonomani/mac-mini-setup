@@ -20,7 +20,7 @@ suite green. Pip venv isolation shipped (2026-04-14).
 | 3 | ~~Minimize env size (145KB `_UCC_*` bloat)~~ | ✅ DONE 2026-04-13 (`9862f89`) — cleanup in `ucc_reset_registered_targets` | — |
 | 4 | Phase C1 — drift helper | Waiting-for-consumer | Low |
 | 5 | ~~`docker-privileged-ports` target~~ | ✅ DONE 2026-04-13 (`f064f39`, `d50b28f`) | — |
-| 6 | Docker unattended first install — Checkpoint C | Deferred 2026-04-14 — core works, clean-state e2e tests can wait | Deferred |
+| 6 | Docker unattended first install — Checkpoint C | In-progress — core shipped, only Mac mini clean-state e2e remains | In-progress |
 | 7 | ~~Fix test suite — 43 failing integration tests~~ | ✅ DONE 2026-04-13 — 159 pass, 1 skipped, 0 failed | — |
 | 8 | ~~Driver convention: `_<driver>_state()` helper~~ | ✅ DONE 2026-04-13 — 7 drivers extracted, 12 share only cached YAML reads (no duplication) | — |
 | 9 | ~~Extract install.sh functions to lib/~~ | ✅ DONE 2026-04-13 — install.sh 1225→991 lines (`c463e5c`) | — |
@@ -30,7 +30,7 @@ suite green. Pip venv isolation shipped (2026-04-14).
 | 13 | ~~Dry-run ordering: `pyenv init` runs before pyenv exists~~ | ✅ DONE 2026-04-14 — 3 dep edges added, inline glue removed, rule codified in SPEC §3 | — |
 | 14 | ~~Cascade-skip dependents of platform-skipped targets~~ | ✅ DONE 2026-04-14 — `platform-skipped` synthetic status emitted at group skip, handled in dep-gate with clean `[skip]` | — |
 | 15 | ~~Platform-gate PREF display~~ | ✅ DONE 2026-04-14 — YAML parser filters by file + per-pref `platforms:`, using same match rule as `_component_supported_for` | — |
-| 16 | Ollama on WSL — review autostart semantics | Subsumed by #22 (same root cause: service backend needs init system); ollama on linux uses systemd directly, init_system fingerprint applies | Deferred — re-evaluate after #22 |
+| 16 | ~~Ollama on WSL — review autostart semantics~~ | ✅ CLOSED 2026-04-15 — fixed by #34 (`requires: launchd,systemd` replaces `requires: macos>=14,linux,wsl2`). Ollama target now skips cleanly on WSL2 without systemd. | — |
 | 17 | ~~Reconcile Summary "Total" vs "By Profile" counts~~ | ✅ DONE 2026-04-14 — renamed section to "By Profile — observations" for clarity | — |
 | 18 | ~~Platform-aware header / RAM warning~~ | ✅ DONE 2026-04-14 — 32 GB RAM warning gated to `HOST_PLATFORM == macos` | — |
 | 19 | ~~Add `python-venv-available` capability target~~ | ✅ DONE 2026-04-14 — probe in `lib/utils.sh` (7 failure modes), YAML target + 14 consumers wired | — |

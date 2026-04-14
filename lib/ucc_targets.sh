@@ -460,6 +460,15 @@ _ucc_run_yaml_action() {
       # for drivers without explicit actions.* entries.
       local _drv_rc=0
       _ucc_driver_action "$cfg_dir" "$yaml" "$target" "$action_key" || _drv_rc=$?
+      # UCC exit-code convention: 0/1/2/124/125 only (see lib/ucc_log.sh).
+      # Any other code is a driver bug — log + treat as fail.
+      case $_drv_rc in
+        0|1|2|124|125) ;;
+        *)
+          log_warn "driver '$_driver_kind' returned non-conventional rc=$_drv_rc for $target/$action_key — treating as fail (rc=1). See lib/ucc_log.sh for the rc convention."
+          _drv_rc=1
+          ;;
+      esac
       return $_drv_rc
     fi
   fi
