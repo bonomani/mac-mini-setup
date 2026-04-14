@@ -173,6 +173,10 @@ targets:
       kind: custom-daemon
       bin: ollama
       process: 'ollama (serve|app)'
+      # `open -a Ollama` is idempotent (no error if already running) and
+      # handles the case where the daemon is externally managed by Ollama.app.
+      # Top-level fallback_start_cmd (`ollama serve`) is for non-app installs.
+      start_cmd: open -a Ollama
       github_repo: ollama/ollama
     endpoints:
     - name: Ollama API
