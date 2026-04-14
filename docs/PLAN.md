@@ -2,9 +2,9 @@
 
 ## Open
 
-Four items open, four deferred (#2, #4, #6, #16), three closed
+Three items open, four deferred (#2, #4, #6, #16), three closed
 (#24, #27 not-a-bug; #29 confirmed intentional). Nineteen new items
-(#13–#31) opened 2026-04-14 from the WSL dry-run analyses; fourteen
+(#13–#31) opened 2026-04-14 from the WSL dry-run analyses; fifteen
 shipped same day. Items #20–#31 opened from the post-session
 full-output review.
 Docker install/launch is fully functional (tested 2026-04-13). Test
@@ -39,7 +39,7 @@ suite green. Pip venv isolation shipped (2026-04-14).
 | 25 | ~~Services-list filtering — hide endpoints unreachable on this host~~ | ✅ DONE 2026-04-14 — `print_services_summary` reads `UCC_TARGET_STATUS_FILE` and filters out failed/skipped/never-converged targets; WSL drops 6 docker-stack endpoints | — |
 | 26 | Distinguish "Degraded" (broken) from "Outdated" (upgrade pending) | Open 2026-04-14 | Low |
 | 27 | ~~`Healthy` asserted without a probe~~ | ❌ CLOSED 2026-04-14 — re-read the drivers. All 4 (script-installer, path-export, zsh-config, home-artifact) DO have real probes (file/dir/setting checks). Pre-converge `Unknown` reflects the file not-yet existing; post-converge `Healthy` is asserted from actual file-exists checks, not vacuous. | — |
-| 28 | Profile-count math reconciliation (post-#17 follow-up) | Open 2026-04-14 — needs investigation: Total 22 ok vs By-Profile 69 ok; observe is called pre + post-action so single targets log multiple profile outcomes | Low |
+| 28 | ~~Profile-count math reconciliation (post-#17 follow-up)~~ | ✅ DONE 2026-04-14 — investigated: `Total` only counts `[ok]` lines (already-converged targets), `By Profile` counts every observation including dry-run plans. Same data, different scope. Clarified label to "By Profile — observations (incl. dry-run plans)" | — |
 | 29 | ~~`ollama-model-llama3.2` default-enabled — verify it's intentional~~ | ✅ CLOSED 2026-04-14 — confirmed intentional. llama3.2 stays enabled by default; the larger models (llama3.1 8b/70b, qwen3, qwen2.5-coder, mistral) remain disabled | — |
 | 30 | ~~Display-order within a group should follow dep order, not declaration order~~ | ✅ DONE 2026-04-14 — `_ucc_target_filtered_out` defers `[disabled]`/`[skip requires:]` emissions in defer mode; flush emits in topo order; flush no longer early-returns on empty registration | — |
 | 31 | ~~`Unsloth Studio` display name collision~~ | ✅ DONE 2026-04-14 — disambiguated to `Unsloth Studio (launchd)` and `Unsloth Studio (systemd)` | — |
