@@ -260,19 +260,6 @@ not specified). Counts are real (`type` distribution per component).
 Parsed from `install.sh:usage()`:
 
 ```
---mode install    Install missing components (default)
---mode update     Update already-installed components
---all             Select all components and targets
---none            Select nothing (show current state only)
---mode check      Observe current state without changing anything (drift detection)
---dry-run         Show what would change without applying it
---interactive     Prompt for preferences and confirm each change
---no-interactive  Skip all prompts (CI/automation mode)
---preflight       Evaluate UIC gates and preferences; do NOT converge
---pref key=value  Set a UIC preference for this run only (repeatable)
---show-overrides  Print user overrides (UCC_OVERRIDE__* env + target-overrides.yaml) and exit
---debug           Show DEBUG-level output
--h, --help        Show this help
 ```
 
 ## 8. BGS compliance claim
