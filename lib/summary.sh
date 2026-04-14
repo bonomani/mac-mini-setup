@@ -166,7 +166,7 @@ print_final_summary() {
       profile_bump "$_profile" "$_outcome"
     done < "$UCC_PROFILE_SUMMARY_FILE"
     echo "  ──────────────────────────────────────────────────────"
-    echo "  By Profile"
+    echo "  By Profile — observations"
     for profile in "${_summary_profiles[@]}"; do
       prefix="$(_profile_var_prefix "$profile")"
       printf '  %-22s  %s\n' \

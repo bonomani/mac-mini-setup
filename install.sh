@@ -762,7 +762,10 @@ log_debug "correlation_id=$UCC_CORRELATION_ID"
 echo "========================================================"
 
 [[ "$HOST_PLATFORM" == "macos" && "$ARCH" != "arm64" ]] && log_warn "Intel Mac detected — some AI acceleration features may differ"
-[[ $TOTAL_GB -lt 32 ]]   && log_warn "Less than 32 GB RAM — large models may be slow"
+# 32 GB threshold is calibrated for the target Mac mini (64 GB) AI workload.
+# Suppress on non-macOS hosts where this script is typically run on smaller
+# dev/CI boxes and the warning is noise.
+[[ "$HOST_PLATFORM" == "macos" && $TOTAL_GB -lt 32 ]] && log_warn "Less than 32 GB RAM — large models may be slow"
 
 # --- Ensure brew is in PATH (re-checked after each component) ---
 _refresh_brew_path() {

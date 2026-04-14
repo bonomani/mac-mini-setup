@@ -475,15 +475,43 @@ _uic_unquote_scalar() {
 
 # Parse preferences from a YAML file's preferences: section using Python.
 # Outputs tab-separated: name\tdefault\toptions\trationale
+#
+# Platform filtering: prefs are skipped when the current HOST_PLATFORM isn't
+# in their applicable set. Sources of the applicable set (first match wins):
+#   1. The pref's own `platforms:` list (e.g. pytorch-device on macos only).
+#   2. The file's top-level `platforms:` list (e.g. all docker-* on macos).
+#   3. All platforms if neither is declared.
 _uic_parse_prefs_from_yaml() {
   local yaml_file="$1"
   [[ -f "$yaml_file" ]] || return 0
   python3 -c "
-import yaml, sys
+import yaml, sys, os
 with open(sys.argv[1]) as f:
     data = yaml.safe_load(f) or {}
+host = os.environ.get('HOST_PLATFORM', '')
+variant = os.environ.get('HOST_PLATFORM_VARIANT', '')
+# Match rule mirrors install.sh _component_supported_for:
+#   platform == HOST_PLATFORM_VARIANT   (e.g. wsl2)
+#   platform == HOST_PLATFORM           (e.g. wsl)
+#   platform == 'linux' and HOST_PLATFORM == 'wsl'  (wsl→linux fallback)
+def host_matches(platforms):
+    if not platforms:
+        return True
+    for p in platforms:
+        if p == variant or p == host:
+            return True
+        if p == 'linux' and host == 'wsl':
+            return True
+    return False
+file_platforms = data.get('platforms') or []
+file_ok = host_matches(file_platforms)
 for p in data.get('preferences', []):
     if not isinstance(p, dict): continue
+    pref_platforms = p.get('platforms') or []
+    # Per-pref platforms override file-level when declared.
+    applies = host_matches(pref_platforms) if pref_platforms else file_ok
+    if not applies:
+        continue
     d = p.get('default','')
     if isinstance(d, bool): d = str(d).lower()
     print('{}\t{}\t{}\t{}'.format(

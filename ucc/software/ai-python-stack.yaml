@@ -14,6 +14,8 @@ preferences:
 - name: pytorch-device
   default: mps
   options: mps|cpu
+  platforms:
+  - macos
   rationale: mps uses Apple Silicon Metal GPU for ML acceleration; cpu works everywhere but is significantly slower
 unsloth_label: ai.unsloth.studio
 unsloth_plist_marker: <!-- ai.unsloth.studio v2 -->
