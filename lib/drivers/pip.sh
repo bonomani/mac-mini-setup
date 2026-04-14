@@ -73,6 +73,25 @@ _pip_venv_ensure() {
   "$pip_path" install -q --upgrade pip 2>/dev/null || true
 }
 
+# Run `pip check` inside a venv and warn on internal dependency conflicts.
+# Cached per-process: each venv is checked at most once per run.
+_pip_venv_check_conflicts() {
+  local name="$1"
+  local cache_var="_PIP_VENV_CHECKED_${name//[^a-zA-Z0-9]/_}"
+  [[ -n "${!cache_var+x}" ]] && return 0
+  export "$cache_var=1"
+  _pip_venv_available "$name" || return 0
+  local pip_path output
+  pip_path="$(_pip_venv_pip_cmd "$name")"
+  output="$("$pip_path" check 2>/dev/null || true)"
+  if [[ -n "$output" ]] && ! printf '%s' "$output" | grep -q "No broken requirements found"; then
+    log_warn "pip/venv '$name': dependency conflicts detected"
+    printf '%s\n' "$output" | head -10 | while IFS= read -r line; do
+      [[ -n "$line" ]] && log_warn "  ${line}"
+    done
+  fi
+}
+
 # True if the venv exists and has a working pip.
 _pip_venv_available() {
   local name="$1"
@@ -373,10 +392,12 @@ _ucc_driver_pip_action() {
     _pip_venv_ensure "$vname" || return 1
     local pip_cmd
     pip_cmd="$(_pip_venv_pip_cmd "$vname")"
+    local rc=0
     case "$action" in
       install)
         ucc_run $pip_cmd install -q --upgrade-strategy only-if-needed $pkgs \
           && _pip_venv_cache_versions "$vname"
+        rc=$?
         ;;
       update)
         [[ "$update_policy" == "install-only" ]] && return 0
@@ -385,9 +406,12 @@ _ucc_driver_pip_action() {
         fi
         ucc_run $pip_cmd install -q --upgrade --upgrade-strategy only-if-needed $pkgs \
           && _pip_venv_cache_versions "$vname"
+        rc=$?
         ;;
     esac
-    return $?
+    # Warn on internal conflicts (cached per-venv per-process)
+    _pip_venv_check_conflicts "$vname"
+    return $rc
   fi
 
   # ── global pip ──

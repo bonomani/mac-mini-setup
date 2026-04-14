@@ -50,28 +50,6 @@ for t in (data.get('targets') or {}).values():
 " 2>/dev/null || true
 }
 
-# Report internal dependency conflicts inside each venv via `pip check`.
-# Warns only — conflicts within a venv can't be auto-fixed (the YAML declares
-# which packages should coexist; conflicts mean the declared set is inconsistent).
-_pip_venvs_check_conflicts() {
-  local cfg_dir="$1" yaml="$2"
-  local _vn
-  for _vn in $(_pip_list_venv_names "$cfg_dir" "$yaml"); do
-    _pip_venv_available "$_vn" || continue
-    local pip_path output
-    pip_path="$(_pip_venv_pip_cmd "$_vn")"
-    output="$("$pip_path" check 2>/dev/null || true)"
-    # "pip check" with no conflicts prints "No broken requirements found."
-    # With conflicts, prints one line per violation.
-    if [[ -n "$output" ]] && ! printf '%s' "$output" | grep -q "No broken requirements found"; then
-      log_warn "pip/venv '$_vn': dependency conflicts detected"
-      printf '%s\n' "$output" | head -10 | while IFS= read -r line; do
-        [[ -n "$line" ]] && log_warn "  ${line}"
-      done
-    fi
-  done
-}
-
 # ── pip-global-policy enforcement ─────────────────────────────────────────────
 # Run after all venv installs. Checks global pip for packages with conflicting
 # upper-version constraints. Actions depend on UIC_PREF_PIP_GLOBAL_POLICY:
@@ -193,9 +171,6 @@ run_ai_python_stack_from_yaml() {
 
   # ---- Unsloth package (all platforms) ----
   ucc_yaml_simple_target "$cfg_dir" "$yaml" "unsloth"
-
-  # ---- Venv internal conflict check ----
-  _pip_venvs_check_conflicts "$cfg_dir" "$yaml"
 
   # ---- Global pip conflict cleanup ----
   _pip_global_policy_enforce "$cfg_dir" "$yaml"
