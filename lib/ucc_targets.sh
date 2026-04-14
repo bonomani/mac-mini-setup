@@ -1628,8 +1628,15 @@ ucc_flush_registered_targets() {
     idx="$(_ucc_registered_index "$target" || true)"
     [[ -n "$idx" ]] || continue
     # Target set filter applied at entry points (ucc_yaml_*_target functions)
-    _ucc_require_declared_dependencies_resolved "$target" || return 1
-    UCC_EXEC_SNAPSHOT="${_UCC_REGISTERED_ENV[$idx]}" eval "_ucc_execute_target ${_UCC_REGISTERED_ARGS[$idx]}" || return 1
+    # On dep-fail: print [dep-fail], record status, continue to next target.
+    # Previously aborted the whole component — hid 11+ targets on first fail.
+    if ! _ucc_require_declared_dependencies_resolved "$target"; then
+      _ucc_record_target_status "$target" "failed"
+      continue
+    fi
+    # On target execute failure: continue; _ucc_execute_target already
+    # recorded outcome internally, we should not abort independent targets.
+    UCC_EXEC_SNAPSHOT="${_UCC_REGISTERED_ENV[$idx]}" eval "_ucc_execute_target ${_UCC_REGISTERED_ARGS[$idx]}" || true
   done
 
   local name seen
@@ -1645,7 +1652,7 @@ ucc_flush_registered_targets() {
   done
 
   for idx in "${undeclared[@]+"${undeclared[@]}"}"; do
-    UCC_EXEC_SNAPSHOT="${_UCC_REGISTERED_ENV[$idx]}" eval "_ucc_execute_target ${_UCC_REGISTERED_ARGS[$idx]}" || return 1
+    UCC_EXEC_SNAPSHOT="${_UCC_REGISTERED_ENV[$idx]}" eval "_ucc_execute_target ${_UCC_REGISTERED_ARGS[$idx]}" || true
   done
 
   # Emit [skip] for targets in the component that the runner never processed
