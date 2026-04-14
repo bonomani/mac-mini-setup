@@ -614,43 +614,13 @@ _TIC_COMPS=()
 
 source "${DIR}/lib/ucc_display.sh"
 
-_component_has_selected_targets() {
-  local comp="$1" _t
-  while IFS= read -r _t; do
-    [[ -z "$_t" ]] && continue
-    [[ "${UCC_TARGET_SET:-}" == *"${_t}|"* ]] && return 0
-  done < <(python3 "$_QUERY_SCRIPT" --ordered-targets "$comp" "$_MANIFEST_DIR" 2>/dev/null)
-  return 1
-}
-
-_print_component_header() {
-  local comp="$1"
-  # Fast mode: skip header if no targets in this component are selected
-  if [[ "${UIC_PREF_SKIP_DISPLAY_MODE:-full}" == "fast" ]] \
-    && [[ -n "${UCC_TARGET_SET:-}" ]] \
-    && ! _component_has_selected_targets "$comp"; then
-    return 0
-  fi
-  printf '  [%s]\n' "$(_display_component_name "$comp")"
-}
+source "$DIR/lib/component_runner.sh"
 
 # Pre-collect dispatch info for all components (one query per component)
 _DISP_LIBS=()
 _DISP_RUNNERS=()
 _DISP_ON_FAILS=()
 _DISP_CONFIGS=()
-
-# Record synthetic "platform-skipped" status for every target in a
-# component that is being skipped because its platform doesn't apply.
-# Consumed by _ucc_check_deps_recursive so cross-component dependents
-# cascade to [skip] instead of [dep-fail].
-_record_component_platform_skip() {
-  local comp="$1" t
-  while IFS= read -r t; do
-    [[ -n "$t" ]] || continue
-    _ucc_record_target_status "$t" "platform-skipped"
-  done < <(python3 "$UCC_TARGETS_QUERY_SCRIPT" --ordered-targets "$comp" "$UCC_TARGETS_MANIFEST" 2>/dev/null || true)
-}
 
 for comp in "${TO_RUN[@]}"; do
   if [[ "$comp" == "verify" ]]; then
