@@ -289,7 +289,11 @@ ucc_asm_package_state() {
       ucc_asm_state --installation Absent --runtime NeverStarted --health Unknown --admin Enabled --dependencies DepsUnknown
       ;;
     outdated)
-      ucc_asm_state --installation Installed --runtime Stopped --health Degraded --admin Enabled --dependencies DepsReady
+      # `outdated` = package is installed and works, but a newer version is
+      # available. Distinct from `Degraded` (broken/drift) — surfaced as
+      # `Outdated` so reviewers can tell upgrade-pending apart from real
+      # degradation in the dry-run/real-run output.
+      ucc_asm_state --installation Installed --runtime Stopped --health Outdated --admin Enabled --dependencies DepsReady
       ;;
     *)
       ucc_asm_state --installation Configured --runtime Stopped --health Healthy --admin Enabled --dependencies DepsReady
@@ -308,8 +312,13 @@ ucc_asm_config_state() {
     absent|unset)
       ucc_asm_state --installation Installed --runtime NeverStarted --health Unknown --admin Enabled --dependencies DepsUnknown
       ;;
-    needs-update|outdated)
+    needs-update)
+      # Config drift — declared state and observed state diverge; action needed.
       ucc_asm_state --installation Installed --runtime Stopped --health Degraded --admin Enabled --dependencies DepsReady
+      ;;
+    outdated)
+      # Newer version available, current still works — distinct from drift.
+      ucc_asm_state --installation Installed --runtime Stopped --health Outdated --admin Enabled --dependencies DepsReady
       ;;
     *)
       if [[ -n "$desired_val" ]]; then

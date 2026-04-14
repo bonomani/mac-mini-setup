@@ -1174,7 +1174,9 @@ class UccSchedulerTests(unittest.TestCase):
             )
             self.assertEqual(result.returncode, 0, msg=result.stderr)
             self.assertIn('"installation_state":"Installed"', result.stdout)
-            self.assertIn('"health_state":"Degraded"', result.stdout)
+            # Outdated package = newer version available; distinct from
+            # Degraded (broken/drift) — see ucc_asm_package_state.
+            self.assertIn('"health_state":"Outdated"', result.stdout)
 
     def test_xcode_command_line_tools_uses_update_action_when_outdated(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
