@@ -152,7 +152,7 @@ run_ai_python_stack_from_yaml() {
   ucc_yaml_simple_target "$cfg_dir" "$yaml" "xz"
   ucc_yaml_simple_target "$cfg_dir" "$yaml" "python"
   ucc_yaml_simple_target "$cfg_dir" "$yaml" "pip-latest"
-  ucc_yaml_simple_target "$cfg_dir" "$yaml" "python-venv-available"
+  ucc_yaml_capability_target "$cfg_dir" "$yaml" "python-venv-available"
 
   # ---- Pip packages ----
   pip_cache_versions
