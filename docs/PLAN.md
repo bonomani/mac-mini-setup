@@ -2,10 +2,11 @@
 
 ## Open
 
-Thirteen items open, four deferred (#2, #4, #6, #16). Nineteen new
+Twelve items open, four deferred (#2, #4, #6, #16). Nineteen new
 items (#13–#31) opened 2026-04-14 from the WSL dry-run analyses;
-seven (#13, #14, #15, #17, #18, #19, #20) shipped same day. Items
-#20–#31 opened from the post-session full-output review.
+nine (#13, #14, #15, #17, #18, #19, #20, #21, plus the #19-followup
+capability registration fix) shipped same day. Items #20–#31 opened
+from the post-session full-output review.
 Docker install/launch is fully functional (tested 2026-04-13). Test
 suite green. Pip venv isolation shipped (2026-04-14).
 
@@ -31,7 +32,7 @@ suite green. Pip venv isolation shipped (2026-04-14).
 | 18 | ~~Platform-aware header / RAM warning~~ | ✅ DONE 2026-04-14 — 32 GB RAM warning gated to `HOST_PLATFORM == macos` | — |
 | 19 | ~~Add `python-venv-available` capability target~~ | ✅ DONE 2026-04-14 — probe in `lib/utils.sh` (7 failure modes), YAML target + 14 consumers wired | — |
 | 20 | ~~`mps-available` / `cuda-available` skipped in dry-run~~ | ✅ DONE 2026-04-14 — removed `UCC_DRY_RUN != 1` + `case macos` gates in `pip_group.sh`; YAML `requires:` already handles platform filter | — |
-| 21 | Asymmetric skip-cascade: per-target `requires:` vs. component platform-skip | Open 2026-04-14 | Medium |
+| 21 | ~~Asymmetric skip-cascade: per-target `requires:` vs. component platform-skip~~ | ✅ DONE 2026-04-14 — codified asymmetry as principled in CLAUDE.md Rule 11; require explicit `?platform` for platform-conditional deps; ariaflow-server YAML fixed | — |
 | 22 | `brew services` backend on non-macOS hosts (ariaflow-server / -dashboard) | Open 2026-04-14 | Medium |
 | 23 | `ai-stack-compose-file` installs even when `ai-stack-compose-running` is platform-skipped | Open 2026-04-14 | Low |
 | 24 | `avahi` installs despite `mdns-available` already passing | Open 2026-04-14 | Low |
