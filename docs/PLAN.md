@@ -2,11 +2,11 @@
 
 ## Open
 
-Five items open, four deferred (#2, #4, #6, #16). Seven new items
-(#13–#19) opened 2026-04-14 from the WSL dry-run analysis; #13, #14,
-and #19 shipped same day. Docker install/launch is fully functional
-(tested 2026-04-13). Test suite green. Pip venv isolation shipped
-(2026-04-14).
+Two items open, four deferred (#2, #4, #6, #16). Seven new items
+(#13–#19) opened 2026-04-14 from the WSL dry-run analysis; six of
+them (#13, #14, #15, #17, #18, #19) shipped same day. Docker
+install/launch is fully functional (tested 2026-04-13). Test suite
+green. Pip venv isolation shipped (2026-04-14).
 
 | # | Item | Status | Priority |
 |---|---|---|---|
@@ -24,10 +24,10 @@ and #19 shipped same day. Docker install/launch is fully functional
 | 12 | Pip venv isolation (`isolation.kind: venv`) | ✅ DONE 2026-04-14 (`9a8cf5c`, `7287079`, `dede47a`) | — |
 | 13 | ~~Dry-run ordering: `pyenv init` runs before pyenv exists~~ | ✅ DONE 2026-04-14 — 3 dep edges added, inline glue removed, rule codified in SPEC §3 | — |
 | 14 | ~~Cascade-skip dependents of platform-skipped targets~~ | ✅ DONE 2026-04-14 — `platform-skipped` synthetic status emitted at group skip, handled in dep-gate with clean `[skip]` | — |
-| 15 | Platform-gate PREF display | Open 2026-04-14 | Low |
+| 15 | ~~Platform-gate PREF display~~ | ✅ DONE 2026-04-14 — YAML parser filters by file + per-pref `platforms:`, using same match rule as `_component_supported_for` | — |
 | 16 | Ollama on WSL — review autostart semantics | Deferred 2026-04-14 | Deferred |
-| 17 | Reconcile Summary "Total" vs "By Profile" counts | Open 2026-04-14 | Low |
-| 18 | Platform-aware header / RAM warning | Open 2026-04-14 | Low |
+| 17 | ~~Reconcile Summary "Total" vs "By Profile" counts~~ | ✅ DONE 2026-04-14 — renamed section to "By Profile — observations" for clarity | — |
+| 18 | ~~Platform-aware header / RAM warning~~ | ✅ DONE 2026-04-14 — 32 GB RAM warning gated to `HOST_PLATFORM == macos` | — |
 | 19 | ~~Add `python-venv-available` capability target~~ | ✅ DONE 2026-04-14 — probe in `lib/utils.sh` (7 failure modes), YAML target + 14 consumers wired | — |
 
 ### Unified `update-policy` pref
