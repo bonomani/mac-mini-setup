@@ -2,11 +2,11 @@
 
 ## Open
 
-Six items open, four deferred (#2, #4, #6, #16). Seven new items
-(#13–#19) opened 2026-04-14 from the WSL dry-run analysis and the
-pyenv/venv dependency discussion; #13 and #19 shipped same day.
-Docker install/launch is fully functional (tested 2026-04-13).
-Test suite green. Pip venv isolation shipped (2026-04-14).
+Five items open, four deferred (#2, #4, #6, #16). Seven new items
+(#13–#19) opened 2026-04-14 from the WSL dry-run analysis; #13, #14,
+and #19 shipped same day. Docker install/launch is fully functional
+(tested 2026-04-13). Test suite green. Pip venv isolation shipped
+(2026-04-14).
 
 | # | Item | Status | Priority |
 |---|---|---|---|
@@ -23,7 +23,7 @@ Test suite green. Pip venv isolation shipped (2026-04-14).
 | 11 | Unified `update-policy` pref | ✅ DONE 2026-04-13 (`da6b335`, `7a9566a`) | — |
 | 12 | Pip venv isolation (`isolation.kind: venv`) | ✅ DONE 2026-04-14 (`9a8cf5c`, `7287079`, `dede47a`) | — |
 | 13 | ~~Dry-run ordering: `pyenv init` runs before pyenv exists~~ | ✅ DONE 2026-04-14 — 3 dep edges added, inline glue removed, rule codified in SPEC §3 | — |
-| 14 | Cascade-skip dependents of platform-skipped targets | Open 2026-04-14 | Medium |
+| 14 | ~~Cascade-skip dependents of platform-skipped targets~~ | ✅ DONE 2026-04-14 — `platform-skipped` synthetic status emitted at group skip, handled in dep-gate with clean `[skip]` | — |
 | 15 | Platform-gate PREF display | Open 2026-04-14 | Low |
 | 16 | Ollama on WSL — review autostart semantics | Deferred 2026-04-14 | Deferred |
 | 17 | Reconcile Summary "Total" vs "By Profile" counts | Open 2026-04-14 | Low |
