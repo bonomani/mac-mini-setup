@@ -69,6 +69,12 @@ _ucc_driver_pip_bootstrap_action() {
       ucc_run pip install --upgrade $pkgs
       ;;
   esac
+  local rc=$?
+  # Invalidate caches after a state-changing action so verify-after-update
+  # observes the fresh state instead of the pre-upgrade cached result.
+  unset _PIP_OUTDATED_CACHE
+  _ucc_cache_invalidate "pip-outdated-global"
+  return $rc
 }
 
 _ucc_driver_pip_bootstrap_evidence() {

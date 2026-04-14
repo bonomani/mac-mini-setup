@@ -404,6 +404,15 @@ _ucc_cache_write() {
   cat > "$path"
 }
 
+# Invalidate (delete) a cache file. Called after a state-changing action
+# whose disk-cached observation would otherwise be stale (e.g. after
+# `pip install --upgrade`, the cached `pip list --outdated` result is no
+# longer accurate until it refreshes on next observe).
+_ucc_cache_invalidate() {
+  local path; path="$(_ucc_cache_path "$1")"
+  rm -f "$path" 2>/dev/null || true
+}
+
 # ── Migration safety probes ───────────────────────────────────────────────────
 # Per-process cache: lines of "<owner>:<ref>\t<verdict>\t<evidence>"
 _MIGRATION_SAFETY_CACHE=""
@@ -742,6 +751,9 @@ brew_install() {
 # Upgrade a brew formula (package is present but outdated)
 brew_upgrade() {
   ucc_run brew upgrade "$@" || return $?
+  # Invalidate the disk-cached livecheck result — it would otherwise
+  # still report the pre-upgrade "outdated" until TTL expires.
+  _ucc_cache_invalidate "brew-livecheck"
   brew_refresh_caches 2>/dev/null || true
 }
 
@@ -777,5 +789,7 @@ brew_cask_upgrade() {
     fi
     return $rc
   fi
+  # Invalidate the disk-cached livecheck result after a successful cask upgrade.
+  _ucc_cache_invalidate "brew-livecheck"
   brew_refresh_caches 2>/dev/null || true
 }

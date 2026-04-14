@@ -444,6 +444,9 @@ _ucc_driver_pip_action() {
         rc=$?
         ;;
     esac
+    # Invalidate outdated caches after state-changing action.
+    local _iv; _iv="$(_pip_venv_outdated_cache_var "$vname")"; unset "$_iv"
+    _ucc_cache_invalidate "pip-outdated-venv-${vname//[^a-zA-Z0-9]/_}"
     # Warn on internal conflicts (cached per-venv per-process)
     _pip_venv_check_conflicts "$vname"
     return $rc
@@ -457,11 +460,13 @@ _ucc_driver_pip_action() {
   else
     pip_cmd="python3 -m pip"
   fi
+  local rc=0
   case "$action" in
     install)
       # Plain install: don't touch existing deps unless required by <pkgs>.
       ucc_run $pip_cmd install -q --upgrade-strategy only-if-needed $pkgs \
         && pip_cache_versions
+      rc=$?
       ;;
     update)
       # Respect update policy: lib-class targets skip upgrades under balanced.
@@ -477,8 +482,13 @@ _ucc_driver_pip_action() {
       fi
       ucc_run $pip_cmd install -q --upgrade --upgrade-strategy only-if-needed $pkgs \
         && pip_cache_versions
+      rc=$?
       ;;
   esac
+  # Invalidate outdated caches after state-changing action.
+  unset _PIP_OUTDATED_CACHE
+  _ucc_cache_invalidate "pip-outdated-global"
+  return $rc
 }
 
 # Return 0 (= would conflict) if a dry-run upgrade reports incompatibility
