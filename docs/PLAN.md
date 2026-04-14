@@ -2,12 +2,11 @@
 
 ## Open
 
-Three items open (#38, #39 critical; #40 low) from first real-run
-analysis 2026-04-14. Four deferred (#2, #4, #6, #16), four closed
-(#24, #27, #36 not-a-bug; #29 confirmed intentional). Twenty-eight new
-items (#13–#40) opened 2026-04-14 across four dry-runs + one real run;
-twenty-one shipped same day. #38 is a regression from #35's disk cache;
-#39 is a pre-existing cascade gap exposed by #38's FAIL.
+Zero items open. Four deferred (#2, #4, #6, #16), four closed (#24,
+#27, #36 not-a-bug; #29 confirmed intentional). Twenty-eight new items
+(#13–#40) opened 2026-04-14 across four dry-runs + one real run;
+twenty-four shipped same day. #38 (regression from #35 disk cache) and
+#39 (cascade gap) fixed post-real-run; #40 (UX wording) fixed in parallel.
 Docker install/launch is fully functional (tested 2026-04-13). Test
 suite green. Pip venv isolation shipped (2026-04-14).
 
@@ -50,9 +49,9 @@ suite green. Pip venv isolation shipped (2026-04-14).
 | 35 | ~~`pip-latest` (pip-bootstrap driver) ignores `update-policy=balanced`~~ | ✅ DONE 2026-04-14 — pip-bootstrap now detects `outdated` state via `pip list --outdated` (gated on `UIC_PREF_UPSTREAM_CHECK`) and respects `UIC_PREF_TOOL_UPDATE` in update action | — |
 | 36 | ~~`softwareupdate-auto-check=1` silently overwrites user's manual opt-out~~ | ❌ CLOSED 2026-04-14 — not a bug, by design. Parametric targets are declarative; dry-run announces the change (`config_value=0 -> config_value=1`). Operator opts out via selection.yaml, target-overrides.yaml, or `--pref default-selection=none`. Same semantics as Ansible/Chef. | — |
 | 37 | ~~`sudo-available` capability shows `health_state=Degraded`~~ | ✅ DONE 2026-04-14 — `_ucc_observe_yaml_capability_target` now emits `health=Unavailable` (was Degraded) when probe returns false. Degraded is reserved for broken/drift. | — |
-| 38 | Disk-cached `pip list --outdated` not invalidated after successful pip upgrade — `pip-latest` reports FAIL on verify-after-update despite successful install (regression from #35 cache fix) | Open 2026-04-14 | Critical |
-| 39 | Component run stops showing remaining targets after a single target FAIL — `ai-python-stack` shows 5/18 entries when `pip-latest` FAILs (11+ pip-groups invisible in output, no status recorded). Observability gap. | Open 2026-04-14 | Critical |
-| 40 | `[policy] observed=… (policy blocked)` emitted for targets with no `install_fn` (e.g. `sudo-available` in non-dry-run) — message misleading; should say "observe-only" or "no install fn", parallel to #33 fix in dry-run path | Open 2026-04-14 | Low |
+| 38 | ~~Disk-cached `pip list --outdated` not invalidated after successful pip upgrade~~ | ✅ DONE 2026-04-14 (`dbae935`) — new `_ucc_cache_invalidate` helper called from pip-bootstrap, pip driver (global + venv), brew_upgrade, brew_cask_upgrade after successful action | — |
+| 39 | ~~Component run stops showing remaining targets after a single target FAIL~~ | ✅ DONE 2026-04-14 (`ee874a2`) — `ucc_flush_registered_targets` now records failed status + `continue` instead of `return 1` on dep-fail; switches execute path to `|| true`. Dry-run shows 116 target lines (was ~99) | — |
+| 40 | ~~`[policy] observed=… (policy blocked)` misleading for observe-only targets~~ | ✅ DONE 2026-04-14 — capability targets (no install_fn) now emit `[observe] state="…" (observe-only)` in both dry-run and real-run; other profiles keep the legacy "policy blocked" treatment when install_fn is missing for a different reason (e.g. parametric with failed dep-gate) | — |
 
 ### Unified `update-policy` pref
 

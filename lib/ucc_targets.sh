@@ -1503,10 +1503,8 @@ _ucc_execute_target() {
 
   # Step 4: Apply transition
   if [[ "$UCC_DRY_RUN" == "1" ]]; then
-    if [[ -z "$install_fn" ]]; then
-      # No install_fn (e.g. capability target): there's no action that
-      # would converge this state. Show observed-only, not a misleading
-      # "Unavailable -> Healthy" projection.
+    if [[ -z "$install_fn" && "$profile" == "capability" ]]; then
+      # Capability target with no install_fn: observe-only, no transition.
       _ucc_emit_target_line "$profile" "observe" "$display_name" "state=\"$(_ucc_display_state "$observed" "$axes")\" (observe-only)"
       _ucc_record_outcome "$profile" "$name" "" "unchanged" "unchanged" "$msg_id" "$started_at" \
         "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":{}}" \
@@ -1521,6 +1519,16 @@ _ucc_execute_target() {
   fi
 
   if [[ -z "$install_fn" ]]; then
+    # Capability targets have no install_fn by design — they're observe-only.
+    # Other profiles without install_fn (e.g. parametric with failed dep-gate)
+    # get the legacy "policy blocked" treatment.
+    if [[ "$profile" == "capability" ]]; then
+      _ucc_emit_target_line "$profile" "observe" "$display_name" "state=\"$(_ucc_display_state "$observed" "$axes")\" (observe-only)"
+      _ucc_record_outcome "$profile" "$name" "" "unchanged" "unchanged" "$msg_id" "$started_at" \
+        "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":{}}" \
+        "{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"no_install_fn\",\"message\":\"observe-only target, no transition possible\"}"
+      return 0
+    fi
     _ucc_emit_target_line "$profile" "policy" "$display_name" \
       "$(_ucc_policy_detail "$name" "$observed" "$desired" "$axes" "$evidence_fn" "policy blocked")"
     _ucc_record_outcome "$profile" "$name" "" "unchanged" "unchanged" "$msg_id" "$started_at" \
