@@ -2,11 +2,11 @@
 
 ## Open
 
-Six items open (#32–#37; #35–#37 from fourth dry-run review), four
-deferred (#2, #4, #6, #16), three closed (#24, #27 not-a-bug;
-#29 confirmed intentional). Twenty-five new items (#13–#37) opened
-2026-04-14 across four dry-run analyses; sixteen shipped same day.
-#35–#37 opened from fourth post-venv-migration review.
+Three items open (#32–#34), four deferred (#2, #4, #6, #16), four
+closed (#24, #27, #36 not-a-bug; #29 confirmed intentional). Twenty-five
+new items (#13–#37) opened 2026-04-14 across four dry-run analyses;
+eighteen shipped same day. #35 + #37 shipped 2026-04-14 from fourth
+review; #36 closed as by-design declarative behavior.
 Docker install/launch is fully functional (tested 2026-04-13). Test
 suite green. Pip venv isolation shipped (2026-04-14).
 
@@ -46,9 +46,9 @@ suite green. Pip venv isolation shipped (2026-04-14).
 | 32 | Inconsistent skip-message wording: `xcode-command-line-tools` shows "not applicable on wsl" while other `requires: macos` targets show "requires: macos" | Open 2026-04-14 | Low |
 | 33 | Capability-target dry-run projection misleading: shows `Degraded -> Healthy` even when no install action exists (e.g. `cuda-available` on a host without GPU) | Open 2026-04-14 | Medium |
 | 34 | `ollama` target attempts autostart on WSL without `requires: launchd,systemd` gate (#22 mechanism not applied to ollama) | Open 2026-04-14 | Medium |
-| 35 | `pip-latest` (pip-bootstrap driver) ignores `update-policy=balanced` — pip global stuck at 24.0 while latest is 26.0.1 | Open 2026-04-14 | Medium |
-| 36 | `softwareupdate-auto-check=1` silently overwrites user's manual opt-out (config_value 0→1 in dry-run) | Open 2026-04-14 | Medium |
-| 37 | `sudo-available` capability shows `health_state=Degraded` (Degraded is for broken/drift; capability unavailable should be `Unavailable`) | Open 2026-04-14 | Low |
+| 35 | ~~`pip-latest` (pip-bootstrap driver) ignores `update-policy=balanced`~~ | ✅ DONE 2026-04-14 — pip-bootstrap now detects `outdated` state via `pip list --outdated` (gated on `UIC_PREF_UPSTREAM_CHECK`) and respects `UIC_PREF_TOOL_UPDATE` in update action | — |
+| 36 | ~~`softwareupdate-auto-check=1` silently overwrites user's manual opt-out~~ | ❌ CLOSED 2026-04-14 — not a bug, by design. Parametric targets are declarative; dry-run announces the change (`config_value=0 -> config_value=1`). Operator opts out via selection.yaml, target-overrides.yaml, or `--pref default-selection=none`. Same semantics as Ansible/Chef. | — |
+| 37 | ~~`sudo-available` capability shows `health_state=Degraded`~~ | ✅ DONE 2026-04-14 — `_ucc_observe_yaml_capability_target` now emits `health=Unavailable` (was Degraded) when probe returns false. Degraded is reserved for broken/drift. | — |
 
 ### Unified `update-policy` pref
 

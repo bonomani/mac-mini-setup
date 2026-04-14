@@ -693,7 +693,9 @@ _ucc_observe_yaml_capability_target() {
   if [[ -n "$runtime_cmd" ]] && _ucc_yaml_expr_succeeds "$cfg_dir" "$yaml" "$target" "$runtime_cmd"; then
     ucc_asm_state --installation Configured --runtime Running --health Healthy --admin Enabled --dependencies DepsReady
   else
-    ucc_asm_state --installation Configured --runtime Stopped --health Degraded --admin Enabled --dependencies DepsReady
+    # Capability probe returned false — the capability isn't usable right now.
+    # Use `Unavailable` (not Degraded); Degraded is reserved for broken/drift.
+    ucc_asm_state --installation Configured --runtime Stopped --health Unavailable --admin Enabled --dependencies DepsReady
   fi
 }
 

@@ -57,7 +57,7 @@ re-run the generator after any driver change.
 | `package.sh` | (helpers only) | — | — | — | — | ✅ | — | — |
 | `path_export.sh` | `path-export` | ✅ | ✅ | — | ✅ | — | — | — |
 | `pip.sh` | `pip` | ✅ | ✅ | — | ✅ | ✅ | — | ✅ |
-| `pip_bootstrap.sh` | `pip-bootstrap` | ✅ | ✅ | — | ✅ | — | — | — |
+| `pip_bootstrap.sh` | `pip-bootstrap` | ✅ | ✅ | — | ✅ | ✅ | — | — |
 | `pkg.sh` | `pkg` | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ |
 | `pyenv_brew.sh` | `pyenv-brew` | ✅ | ✅ | — | ✅ | — | — | — |
 | `script_installer.sh` | `script-installer` | ✅ | ✅ | — | ✅ | ✅ | — | — |
