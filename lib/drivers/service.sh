@@ -70,32 +70,32 @@ _ucc_driver_service_action() {
   _service_get_fields "$cfg_dir" "$yaml" "$target"
   case "$_SVC_BACKEND" in
     brew)
-      [[ -n "$_SVC_REF" ]] || return 1
+      [[ -n "$_SVC_REF" ]] || { log_warn "service[$target]: backend=brew but driver.ref unset"; return 1; }
       case "$action" in
         install)
           ucc_run brew services stop "$_SVC_REF" 2>/dev/null || true
-          brew_install "$_SVC_REF"
-          ucc_run brew services start "$_SVC_REF"
+          brew_install "$_SVC_REF" || { log_warn "service[$target]: brew_install '$_SVC_REF' failed"; return 1; }
+          ucc_run brew services start "$_SVC_REF" || { log_warn "service[$target]: brew services start '$_SVC_REF' failed"; return 1; }
           ;;
         update)
           ucc_run brew services stop "$_SVC_REF" 2>/dev/null || true
-          brew_upgrade "$_SVC_REF"
-          ucc_run brew services start "$_SVC_REF"
+          brew_upgrade "$_SVC_REF" || { log_warn "service[$target]: brew_upgrade '$_SVC_REF' failed"; return 1; }
+          ucc_run brew services start "$_SVC_REF" || { log_warn "service[$target]: brew services start '$_SVC_REF' failed"; return 1; }
           ;;
       esac
       ;;
     launchd)
-      [[ -n "$_SVC_PLIST" ]] || return 1
+      [[ -n "$_SVC_PLIST" ]] || { log_warn "service[$target]: backend=launchd but driver.plist unset"; return 1; }
       local file; file="$(_service_launchd_plist_file)"
       case "$action" in
-        install) ucc_run launchctl load "$file" ;;
+        install) ucc_run launchctl load "$file" || { log_warn "service[$target]: launchctl load '$file' failed"; return 1; } ;;
         update)
           ucc_run launchctl unload "$file" 2>/dev/null || true
-          ucc_run launchctl load "$file"
+          ucc_run launchctl load "$file" || { log_warn "service[$target]: launchctl load '$file' failed"; return 1; }
           ;;
       esac
       ;;
-    *) return 1 ;;
+    *) log_warn "service[$target]: unknown backend '$_SVC_BACKEND'"; return 1 ;;
   esac
 }
 

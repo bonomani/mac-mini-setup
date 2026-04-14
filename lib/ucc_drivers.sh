@@ -53,7 +53,21 @@ _ucc_driver_dispatch() {
   kind="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.kind")"
   [[ -n "$kind" && "$kind" != "custom" ]] || return 1
   local fn="_ucc_driver_${kind//-/_}_${op}"
-  declare -f "$fn" >/dev/null 2>&1 || return 1
+  if ! declare -f "$fn" >/dev/null 2>&1; then
+    # Driver kind exists but is missing the requested op. For required ops
+    # (observe/action), this is likely a driver bug — log it once per
+    # (kind, op) pair so it surfaces in real runs without flooding.
+    case "$op" in
+      observe|action)
+        local _seen_var="_UCC_DRV_MISSING_${kind//[^a-zA-Z0-9]/_}_${op}"
+        if [[ -z "${!_seen_var:-}" ]]; then
+          export "$_seen_var=1"
+          log_debug "driver '$kind' missing required op '_ucc_driver_${kind//-/_}_${op}' — falling through (target: $target)"
+        fi
+        ;;
+    esac
+    return 1
+  fi
   "$fn" "$cfg_dir" "$yaml" "$target" "$@"
 }
 
