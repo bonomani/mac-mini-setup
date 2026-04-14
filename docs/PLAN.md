@@ -2,11 +2,13 @@
 
 ## Open
 
-Zero items open. Four deferred (#2, #4, #6, #16), four closed (#24,
-#27, #36 not-a-bug; #29 confirmed intentional). Twenty-eight new items
-(#13–#40) opened 2026-04-14 across four dry-runs + one real run;
-twenty-four shipped same day. #38 (regression from #35 disk cache) and
-#39 (cascade gap) fixed post-real-run; #40 (UX wording) fixed in parallel.
+Two items open (#41, #42 — both Medium), from second real-run
+post-#38/#39/#40 fixes. Four deferred (#2, #4, #6, #16), four closed
+(#24, #27, #36 not-a-bug; #29 confirmed intentional). Thirty new items
+(#13–#42) opened 2026-04-14 across four dry-runs + two real runs;
+twenty-four shipped same day. Real-run #2 confirmed #38/#39/#40 fixes
+work (pip-latest OK, 12/13 pip-groups visible). #41/#42 are semantic
+mismatches surfaced only by real execution.
 Docker install/launch is fully functional (tested 2026-04-13). Test
 suite green. Pip venv isolation shipped (2026-04-14).
 
@@ -52,6 +54,8 @@ suite green. Pip venv isolation shipped (2026-04-14).
 | 38 | ~~Disk-cached `pip list --outdated` not invalidated after successful pip upgrade~~ | ✅ DONE 2026-04-14 (`dbae935`) — new `_ucc_cache_invalidate` helper called from pip-bootstrap, pip driver (global + venv), brew_upgrade, brew_cask_upgrade after successful action | — |
 | 39 | ~~Component run stops showing remaining targets after a single target FAIL~~ | ✅ DONE 2026-04-14 (`ee874a2`) — `ucc_flush_registered_targets` now records failed status + `continue` instead of `return 1` on dep-fail; switches execute path to `|| true`. Dry-run shows 116 target lines (was ~99) | — |
 | 40 | ~~`[policy] observed=… (policy blocked)` misleading for observe-only targets~~ | ✅ DONE 2026-04-14 — capability targets (no install_fn) now emit `[observe] state="…" (observe-only)` in both dry-run and real-run; other profiles keep the legacy "policy blocked" treatment when install_fn is missing for a different reason (e.g. parametric with failed dep-gate) | — |
+| 41 | `pip-group-huggingface` verify-after-update reports outdated despite upgrade succeeding — `pip list --outdated` flags packages (e.g. huggingface_hub 1.10.1→1.10.2) that `pip install --upgrade --upgrade-strategy only-if-needed` won't actually touch because `only-if-needed` respects constraints. After upgrade the packages ARE current, but pip's outdated-list doesn't agree with its upgrade-strategy. Semantic mismatch between detection and action. | Open 2026-04-14 | Medium |
+| 42 | `ollama` target reports `[fail] install error` when Ollama.app auto-started daemon is already running on launchd. custom-daemon driver's install action (starts `ollama serve`) conflicts with the app's daemon; API is actually reachable — verification passes. The FAIL is cosmetic but misleading. | Open 2026-04-14 | Medium |
 
 ### Unified `update-policy` pref
 
