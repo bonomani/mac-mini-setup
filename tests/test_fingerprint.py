@@ -3,6 +3,7 @@
 
 import os
 import sys
+import pytest
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(REPO_ROOT, "tools"))
@@ -11,6 +12,18 @@ from validate_targets_manifest import (
     _resolve_conditional_dep, _host_match_values, _eval_single_condition,
     _host_named_values, _version_compare,
 )
+
+
+@pytest.fixture(autouse=True)
+def _restore_environ():
+    """These tests mutate os.environ via set_env(). Restore after each test
+    so later test files see the host's real HOST_PLATFORM."""
+    saved = os.environ.copy()
+    try:
+        yield
+    finally:
+        os.environ.clear()
+        os.environ.update(saved)
 
 
 def set_env(**kwargs):

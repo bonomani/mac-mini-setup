@@ -262,7 +262,9 @@ _ucc_observed_prefers_update_action() {
   [[ "$observed" == "outdated" || "$observed" == "needs-update" ]] && return 0
   _ucc_is_json_obj "$observed" || return 1
   [[ "$observed" == *'"runtime_state":"Stopped"'* ]] || return 1
-  [[ "$observed" == *'"health_state":"Degraded"'* ]] || return 1
+  # Both Degraded (drift/broken) and Outdated (new version available) trigger
+  # the update action when the target is already installed/configured.
+  [[ "$observed" == *'"health_state":"Degraded"'* || "$observed" == *'"health_state":"Outdated"'* ]] || return 1
   if [[ "$observed" == *'"installation_state":"Installed"'* ]]; then
     return 0
   fi

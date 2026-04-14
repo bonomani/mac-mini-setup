@@ -9,7 +9,7 @@ import yaml
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Allowed keys per YAML structure type
-PREFERENCE_ALLOWED_KEYS = {"name", "default", "options", "rationale", "scope"}
+PREFERENCE_ALLOWED_KEYS = {"name", "default", "options", "rationale", "scope", "platforms"}
 SELECTION_ALLOWED_KEYS = {"default", "disabled"}
 
 # Keys that indicate runtime logic leaked into YAML

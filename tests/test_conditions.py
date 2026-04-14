@@ -4,10 +4,24 @@
 import os
 import sys
 import subprocess
+import pytest
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 QUERY_SCRIPT = os.path.join(REPO_ROOT, "tools", "validate_targets_manifest.py")
 UCC_DIR = os.path.join(REPO_ROOT, "ucc")
+
+
+@pytest.fixture(autouse=True)
+def _restore_environ():
+    """Tests in this module mutate os.environ via `os.environ.update(ENV)`.
+    Restore the full environment after each test so later test files (e.g.
+    test_selection.py) see the host's real HOST_PLATFORM, not a leftover."""
+    saved = os.environ.copy()
+    try:
+        yield
+    finally:
+        os.environ.clear()
+        os.environ.update(saved)
 
 
 def run_query(*args, env_extra=None):

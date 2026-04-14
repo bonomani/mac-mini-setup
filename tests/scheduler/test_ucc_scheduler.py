@@ -2147,7 +2147,7 @@ class UccSchedulerTests(unittest.TestCase):
                     set -euo pipefail
                     source "{ROOT / 'lib/utils.sh'}"
                     source "{ROOT / 'lib/ucc_brew.sh'}"
-                    export UIC_PREF_PACKAGE_UPDATE_POLICY=install-only
+                    export UIC_PREF_TOOL_UPDATE=install-only
                     export _BREW_VERSIONS_CACHE=$'demo 1.2.3\\nother 9.9.9'
                     export _BREW_CASK_VERSIONS_CACHE=$'demo-cask 4.5.6'
                     printf '%s\\n' "$(brew_observe demo)"
@@ -2172,9 +2172,9 @@ class UccSchedulerTests(unittest.TestCase):
                     source "lib/ucc_brew.sh"
                     brew_cache_versions() { echo versions; }
                     brew_cache_outdated() { echo outdated; }
-                    export UIC_PREF_PACKAGE_UPDATE_POLICY=install-only
+                    export UIC_PREF_TOOL_UPDATE=install-only
                     brew_refresh_caches
-                    export UIC_PREF_PACKAGE_UPDATE_POLICY=always-upgrade
+                    export UIC_PREF_TOOL_UPDATE=always-upgrade
                     brew_refresh_caches
                     """
                 ),
@@ -2196,7 +2196,7 @@ class UccSchedulerTests(unittest.TestCase):
                     set -euo pipefail
                     source "{ROOT / 'lib/utils.sh'}"
                     source "{ROOT / 'lib/ucc_brew.sh'}"
-                    export UIC_PREF_PACKAGE_UPDATE_POLICY=always-upgrade
+                    export UIC_PREF_TOOL_UPDATE=always-upgrade
                     export _BREW_CASK_VERSIONS_CACHE=$'lm-studio 0.4.7'
                     export _BREW_CASK_OUTDATED_CACHE=''
                     export _BREW_CASK_OUTDATED_GREEDY_AUTO_UPDATES_CACHE='lm-studio'
