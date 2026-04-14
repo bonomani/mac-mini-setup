@@ -363,6 +363,47 @@ _cfg_backup() {
   cp -p "$file" "${file}.bak.${stamp}" 2>/dev/null || true
 }
 
+# ── Disk cache with TTL (network check results) ───────────────────────────────
+# Caches slow network-bound command output under ~/.ai-stack/cache/ with a TTL.
+# Used to avoid re-running `brew livecheck`, `pip list --outdated`, etc. on
+# every invocation when the answer rarely changes.
+#
+# UCC_CACHE_DIR defaults to ~/.ai-stack/cache
+# UCC_CACHE_TTL_MIN defaults to 60 minutes
+#
+# Bypass the cache by setting UCC_NO_CACHE=1 (forces refresh).
+
+_ucc_cache_dir() {
+  printf '%s' "${UCC_CACHE_DIR:-$HOME/.ai-stack/cache}"
+}
+
+_ucc_cache_path() {
+  printf '%s/%s' "$(_ucc_cache_dir)" "$1"
+}
+
+# Return 0 if cache file exists and is younger than TTL (default 60 min).
+_ucc_cache_fresh() {
+  local path="$1"
+  local ttl="${2:-${UCC_CACHE_TTL_MIN:-60}}"
+  [[ "${UCC_NO_CACHE:-0}" == "1" ]] && return 1
+  [[ -f "$path" ]] || return 1
+  # find -mmin -N → modified within the last N minutes
+  [[ -n "$(find "$path" -mmin "-$ttl" 2>/dev/null | head -1)" ]]
+}
+
+# Read cache content (caller must check freshness first).
+_ucc_cache_read() {
+  local path; path="$(_ucc_cache_path "$1")"
+  [[ -f "$path" ]] && cat "$path"
+}
+
+# Write content (from stdin) to cache file, creating dir as needed.
+_ucc_cache_write() {
+  local path; path="$(_ucc_cache_path "$1")"
+  mkdir -p "$(dirname "$path")" 2>/dev/null || return 1
+  cat > "$path"
+}
+
 # ── Migration safety probes ───────────────────────────────────────────────────
 # Per-process cache: lines of "<owner>:<ref>\t<verdict>\t<evidence>"
 _MIGRATION_SAFETY_CACHE=""

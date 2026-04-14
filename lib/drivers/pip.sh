@@ -57,6 +57,25 @@ _pip_venv_python_cmd() {
   printf '%s/versions/%s/bin/python' "$pyenv_root" "$name"
 }
 
+# Install packages into a venv. Prefers uv (10-100x faster resolver/installer)
+# when available, falls back to direct pip. Handles flag differences:
+#   pip: install -q --upgrade-strategy only-if-needed [--upgrade] <pkgs>
+#   uv:  pip install -q [--upgrade] <pkgs>   (uv's default resolver is
+#        already "only-if-needed"; --upgrade-strategy flag doesn't exist)
+# Usage: _pip_venv_install <name> [--upgrade] <pkgs...>
+_pip_venv_install() {
+  local name="$1"; shift
+  local upgrade=""
+  if [[ "$1" == "--upgrade" ]]; then upgrade="--upgrade"; shift; fi
+  local py_path; py_path="$(_pip_venv_python_cmd "$name")"
+  if command -v uv >/dev/null 2>&1; then
+    ucc_run uv pip install --python "$py_path" -q $upgrade "$@"
+  else
+    local pip_path; pip_path="$(_pip_venv_pip_cmd "$name")"
+    ucc_run "$pip_path" install -q --upgrade-strategy only-if-needed $upgrade "$@"
+  fi
+}
+
 # Ensure venv exists; create via pyenv-virtualenv if absent. Idempotent.
 _pip_venv_ensure() {
   local name="$1"
@@ -151,9 +170,16 @@ _pip_venv_outdated_cache_load() {
   var="$(_pip_venv_outdated_cache_var "$name")"
   [[ -n "${!var+x}" ]] && return 0
   export "$var"
+  local cache_key="pip-outdated-venv-${name//[^a-zA-Z0-9]/_}"
+  local cache_path; cache_path="$(_ucc_cache_path "$cache_key")"
+  if _ucc_cache_fresh "$cache_path"; then
+    eval "$var=\"\$(_ucc_cache_read '$cache_key')\""
+    return 0
+  fi
   local pip_path
   pip_path="$(_pip_venv_pip_cmd "$name")"
   eval "$var=\"\$($pip_path list --outdated --format=json 2>/dev/null || true)\""
+  printf '%s' "${!var}" | _ucc_cache_write "$cache_key"
   return 0
 }
 
@@ -181,13 +207,21 @@ sys.exit(0 if wanted & outdated else 1)
 
 # Cache `pip list --outdated --format=json` once per process; opt-in via
 # UIC_PREF_UPSTREAM_CHECK=1 (network call, can be slow on big environments).
+# Disk-cached under ~/.ai-stack/cache/pip-outdated-global (TTL 60min).
 _pip_outdated_cache_load() {
   [[ "${UIC_PREF_UPSTREAM_CHECK:-0}" == "1" ]] || return 1
   [[ -n "${_PIP_OUTDATED_CACHE+x}" ]] && return 0
   export _PIP_OUTDATED_CACHE=""
+  local cache_key="pip-outdated-global"
+  local cache_path; cache_path="$(_ucc_cache_path "$cache_key")"
+  if _ucc_cache_fresh "$cache_path"; then
+    _PIP_OUTDATED_CACHE="$(_ucc_cache_read "$cache_key")"
+    return 0
+  fi
   local cmd="pip"
   command -v pip >/dev/null 2>&1 || cmd="python3 -m pip"
   _PIP_OUTDATED_CACHE="$($cmd list --outdated --format=json 2>/dev/null || true)"
+  printf '%s' "$_PIP_OUTDATED_CACHE" | _ucc_cache_write "$cache_key"
   return 0
 }
 
@@ -390,12 +424,13 @@ _ucc_driver_pip_action() {
     local vname="$_PIP_ISO_NAME"
     [[ -n "$vname" ]] || { log_warn "pip/venv: isolation.name missing for $target"; return 1; }
     _pip_venv_ensure "$vname" || return 1
+    # Conflict dry-run uses pip directly (uv has no equivalent dry-run format).
     local pip_cmd
     pip_cmd="$(_pip_venv_pip_cmd "$vname")"
     local rc=0
     case "$action" in
       install)
-        ucc_run $pip_cmd install -q --upgrade-strategy only-if-needed $pkgs \
+        _pip_venv_install "$vname" $pkgs \
           && _pip_venv_cache_versions "$vname"
         rc=$?
         ;;
@@ -404,7 +439,7 @@ _ucc_driver_pip_action() {
         if _pip_update_would_conflict "$pip_cmd" "$pkgs"; then
           return 0
         fi
-        ucc_run $pip_cmd install -q --upgrade --upgrade-strategy only-if-needed $pkgs \
+        _pip_venv_install "$vname" --upgrade $pkgs \
           && _pip_venv_cache_versions "$vname"
         rc=$?
         ;;

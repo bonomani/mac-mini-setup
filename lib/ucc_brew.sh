@@ -25,12 +25,21 @@ brew_cache_outdated() {
 # Cross-check installed formulae against upstream via `brew livecheck`.
 # Catches releases that are newer than the formula in Homebrew (formula lag).
 # Opt-in via UIC_PREF_UPSTREAM_CHECK=1 because livecheck is network-bound and slow.
+# Disk-cached under ~/.ai-stack/cache/brew-livecheck (TTL 60min) to avoid
+# re-running on every invocation. Bypass with UCC_NO_CACHE=1.
 # Output format from `brew livecheck --quiet --newer-only --installed`:
 #   <name> : <installed> ==> <latest>
 brew_cache_livecheck() {
   export _BREW_LIVECHECK_CACHE=""
   [[ "${UIC_PREF_UPSTREAM_CHECK:-0}" == "1" ]] || return 0
+  local cache_key="brew-livecheck"
+  local cache_path; cache_path="$(_ucc_cache_path "$cache_key")"
+  if _ucc_cache_fresh "$cache_path"; then
+    _BREW_LIVECHECK_CACHE="$(_ucc_cache_read "$cache_key")"
+    return 0
+  fi
   _BREW_LIVECHECK_CACHE=$(brew livecheck --quiet --newer-only --installed 2>/dev/null || true)
+  printf '%s' "$_BREW_LIVECHECK_CACHE" | _ucc_cache_write "$cache_key"
 }
 
 # Match a formula or cask short name in the livecheck cache.
