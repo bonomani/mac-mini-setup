@@ -109,6 +109,21 @@ print_summary_section() {
   done < "$UCC_SUMMARY_FILE"
 }
 
+# Return 0 if the target reached a successful (or planned-dry-run) state
+# during this run — i.e. its service endpoint will be (or already is)
+# reachable. Returns 1 for failed, platform-skipped, or no-status (which
+# covers disabled, requires-skipped, never-registered).
+_target_endpoint_reachable() {
+  local target="$1" status
+  [[ -n "${UCC_TARGET_STATUS_FILE:-}" && -f "${UCC_TARGET_STATUS_FILE:-}" ]] || return 0
+  status="$(awk -F'|' -v t="$target" '$1==t{val=$2} END{print val}' "$UCC_TARGET_STATUS_FILE")"
+  case "$status" in
+    failed|platform-skipped) return 1 ;;
+    "")                      return 1 ;;
+    *)                       return 0 ;;
+  esac
+}
+
 print_services_summary() {
   local root_dir="$1"
   local query_script="$root_dir/tools/validate_targets_manifest.py"
@@ -121,6 +136,12 @@ print_services_summary() {
   while IFS=$'\t' read -r _target name url note; do
     # Filter to current target set (empty set = nothing selected)
     if [[ "${UCC_TARGET_SET:-}" != *"${_target}|"* ]]; then
+      continue
+    fi
+    # Filter to targets that actually reached a reachable state this run
+    # (skip endpoints whose parent was disabled, platform-skipped, failed,
+    # or requires:-filtered — they won't be answering on this host).
+    if ! _target_endpoint_reachable "$_target"; then
       continue
     fi
     if [[ $_printed -eq 0 ]]; then
