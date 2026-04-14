@@ -2,11 +2,12 @@
 
 ## Open
 
-Two items open, four deferred (#2, #4, #6, #16). Seven new items
-(#13–#19) opened 2026-04-14 from the WSL dry-run analysis; six of
-them (#13, #14, #15, #17, #18, #19) shipped same day. Docker
-install/launch is fully functional (tested 2026-04-13). Test suite
-green. Pip venv isolation shipped (2026-04-14).
+Fourteen items open, four deferred (#2, #4, #6, #16). Nineteen new
+items (#13–#31) opened 2026-04-14 from the WSL dry-run analysis;
+six (#13, #14, #15, #17, #18, #19) shipped same day. Items #20–#31
+opened from the post-session full-output review (2 medium, 10 polish).
+Docker install/launch is fully functional (tested 2026-04-13). Test
+suite green. Pip venv isolation shipped (2026-04-14).
 
 | # | Item | Status | Priority |
 |---|---|---|---|
@@ -29,6 +30,18 @@ green. Pip venv isolation shipped (2026-04-14).
 | 17 | ~~Reconcile Summary "Total" vs "By Profile" counts~~ | ✅ DONE 2026-04-14 — renamed section to "By Profile — observations" for clarity | — |
 | 18 | ~~Platform-aware header / RAM warning~~ | ✅ DONE 2026-04-14 — 32 GB RAM warning gated to `HOST_PLATFORM == macos` | — |
 | 19 | ~~Add `python-venv-available` capability target~~ | ✅ DONE 2026-04-14 — probe in `lib/utils.sh` (7 failure modes), YAML target + 14 consumers wired | — |
+| 20 | `mps-available` / `cuda-available` skipped in dry-run | Open 2026-04-14 | Medium |
+| 21 | Asymmetric skip-cascade: per-target `requires:` vs. component platform-skip | Open 2026-04-14 | Medium |
+| 22 | `brew services` backend on non-macOS hosts (ariaflow-server / -dashboard) | Open 2026-04-14 | Medium |
+| 23 | `ai-stack-compose-file` installs even when `ai-stack-compose-running` is platform-skipped | Open 2026-04-14 | Low |
+| 24 | `avahi` installs despite `mdns-available` already passing | Open 2026-04-14 | Low |
+| 25 | Services-list filtering — hide endpoints unreachable on this host | Open 2026-04-14 | Low |
+| 26 | Distinguish "Degraded" (broken) from "Outdated" (upgrade pending) | Open 2026-04-14 | Low |
+| 27 | `Healthy` asserted without a probe — oh-my-zsh, home-bin-in-path, etc. | Open 2026-04-14 | Low |
+| 28 | Profile-count math reconciliation (post-#17 follow-up) | Open 2026-04-14 | Low |
+| 29 | `ollama-model-llama3.2` default-enabled — verify it's intentional | Open 2026-04-14 | Low |
+| 30 | Display-order within a group should follow dep order, not declaration order | Open 2026-04-14 | Low |
+| 31 | `Unsloth Studio` display name collision — both `unsloth-studio` and `unsloth-studio-service` show same label | Open 2026-04-14 | Low |
 
 ### Unified `update-policy` pref
 
@@ -1672,6 +1685,137 @@ not per-venv.
   not 13 identical-looking install failures later.
 - Probe runs in < 500 ms (no heavy package install, just
   interpreter + tempdir check).
+
+### `mps-available` / `cuda-available` skipped in dry-run
+
+`lib/pip_group.sh:184-190`:
+
+```bash
+# ---- GPU capability probes ----
+if [[ "$UCC_DRY_RUN" != "1" ]] && is_installed python3; then
+  case "${HOST_PLATFORM:-}" in
+    macos) ucc_yaml_capability_target ... "mps-available" ;;
+  esac
+  ucc_yaml_capability_target ... "cuda-available"
+fi
+```
+
+Both probes are gated behind `UCC_DRY_RUN != 1` — they don't run in
+dry-run mode at all. Result on WSL dry-run: lines 77-78 show
+`[skip] not processed` for both, even though cuda-available declares
+`requires: linux,wsl2` and would apply.
+
+**Why this is wrong:** dry-run's purpose is to show what observe
+would find. Hiding observations is the opposite of that.
+Inconsistent with `python-venv-available` which now runs in dry-run
+(it shows `[dry-run] -> Healthy DepsReady`).
+
+**The `is_installed python3` guard** is also stale: pyenv shims may
+not be on PATH when the runner reaches this point, so even in
+non-dry-run, the probes can be incorrectly skipped on hosts where
+Python only exists via pyenv.
+
+**Fix:**
+1. Remove the `UCC_DRY_RUN != 1` gate — capability targets are
+   observe-only, safe in dry-run.
+2. Replace `is_installed python3` with the same dep-graph approach
+   used elsewhere: declare `mps-available: depends_on: [pip-group-pytorch]`
+   (already declared) and let the framework decide if the dep chain
+   is satisfied.
+3. If the probe genuinely needs to be skipped on platforms where
+   it's irrelevant, use the existing `requires:` mechanism in YAML
+   (already in place: mps→macos, cuda→linux,wsl2). The runner
+   shouldn't second-guess.
+
+**Acceptance:** WSL dry-run shows `[dry-run]` or `[ok]` line for
+`cuda-available` (and macOS dry-run for `mps-available`), not
+`[skip] not processed`.
+
+### Asymmetric skip-cascade: per-target `requires:` vs. component platform-skip
+
+Two different "this target doesn't apply on this host" mechanisms
+produce different cascade behavior on dependents:
+
+| Source of skip | Recorded status | Dependent's reaction |
+|---|---|---|
+| Whole component group-skipped (install.sh `_component_supported_for`) | `platform-skipped` (synthetic, from #14) | Cascade `[skip]` with `dependency not applicable on <host>` |
+| Per-target `requires: macos` skip | (no synthetic status) | Dependent reports `DepsReady`, proceeds as if the dep didn't exist |
+
+Concrete example on WSL:
+- `ai-stack-compose-running` depends on `docker-available` →
+  cross-component (docker is platform-skipped) →
+  **clean `[skip]`** ✓
+- `ariaflow-server` depends on `networkquality-available` →
+  same-component (`requires: macos`) →
+  ariaflow-server reports `DepsReady` and proceeds ✗
+
+The ariaflow-server outcome is what we want (it should still install
+on WSL even without networkquality), but the asymmetry is confusing.
+
+**Decide one rule and apply it consistently:**
+
+- **Option A — "skipped deps are satisfied":** treat both kinds of
+  platform-skip as a non-blocker for dependents. Drop #14's
+  `platform-skipped` cascade; let cross-component deps proceed too
+  (then `ai-stack-compose-running` would try to install docker
+  compose on WSL → fail at runtime, regression).
+- **Option B — "skipped deps are vacuous":** introduce a third
+  status `platform-vacuous` for deps that don't apply but shouldn't
+  block. Use for `requires:`-skipped deps. Keep `platform-skipped`
+  blocking for cross-component group skips (current behavior).
+- **Option C — "platforms decide blocking":** read each dep's
+  `requires:` field at dep-check time. If the dep has `requires:
+  macos` and the host is non-mac, treat as satisfied (don't try to
+  observe). If the dep has no `requires:` but its component was
+  platform-skipped, treat as blocking.
+
+Option C is the most consistent with declarative intent — `requires:`
+already encodes "this is mac-only, don't expect it elsewhere," so a
+dependent can ignore it on non-mac. Option B is the cheapest patch.
+
+**Acceptance:** a documented rule in CLAUDE.md (extend Rule 9 or add
+Rule 11) plus matching code so a reader can predict cascade behavior
+from the YAML alone.
+
+### `brew services` backend on non-macOS hosts
+
+Two ariaflow targets (`ariaflow-server`, `ariaflow-dashboard`) and
+`ollama` (#16, deferred) all use `driver.kind: service` with
+`backend: brew`. On macOS, this delegates to `brew services`
+(launchd-backed, works out of the box).
+
+On WSL/Linux:
+- Linuxbrew has `brew services` but it depends on **systemd**.
+- Default WSL2 distros do not enable systemd unless the user
+  explicitly opts in (`/etc/wsl.conf` `[boot] systemd=true`).
+- Without systemd, `brew services start <name>` fails silently or
+  errors.
+
+WSL dry-run reports `[dry-run] Ariaflow Server ... -> Running`
+(line 100) and `[dry-run] Ollama ... -> Running` (line 90). Real
+install would attempt to start and very likely fail mid-converge.
+
+**Options:**
+1. Detect systemd availability at observe time. If not available,
+   either `[skip]` the service start (and surface a hint to the
+   user about enabling systemd) or fall back to a manual-start path
+   (`ollama serve &` style with a written systemd unit / wsl.conf
+   snippet for next reboot).
+2. Add a `service-policy=manual` short-circuit so the operator must
+   start services themselves on WSL — already partly the case via
+   the `service-policy` pref (default `autostart`); could auto-flip
+   to `manual` when systemd is absent.
+3. Mark the targets `requires: macos` if WSL service support is out
+   of scope, and surface a clear "service management not available
+   on this host" message in dry-run.
+
+This item subsumes deferred #16 (Ollama is one instance of the same
+problem). Worth solving the general case.
+
+**Acceptance:** WSL dry-run for any `kind: service, backend: brew`
+target either reports a credible plan (systemd path or manual hint)
+or shows `[skip]` with a reason — never a misleading `-> Running`
+that will fail at apply time.
 
 ## Closed
 
