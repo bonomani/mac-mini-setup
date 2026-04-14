@@ -2,12 +2,13 @@
 
 ## Open
 
-Zero items open. Four deferred (#2, #4, #6, #16), four closed (#24,
-#27, #36 not-a-bug; #29 confirmed intentional). Thirty new items
-(#13–#42) opened 2026-04-14 across four dry-runs + two real runs;
-twenty-six shipped same day. #41 (pip outdated semantic mismatch) and
-#42 (custom-daemon fail-vs-warn) closed via warn-instead-of-fail
-treatment for unavoidable constraint-bound or external-daemon cases.
+Three items open (#43–#45 — all Low, Rule 2/3 cleanup of hardcoded
+values found via static audit). Four deferred (#2, #4, #6, #16), four
+closed (#24, #27, #36 not-a-bug; #29 confirmed intentional). Thirty-three
+new items (#13–#45) opened 2026-04-14 across four dry-runs + two real
+runs + one static audit; twenty-six shipped same day. #43–#45 group
+~19 hardcoded-value violations into 3 themed tickets: paths, curl
+timeouts, retry constants.
 Docker install/launch is fully functional (tested 2026-04-13). Test
 suite green. Pip venv isolation shipped (2026-04-14).
 
@@ -55,6 +56,9 @@ suite green. Pip venv isolation shipped (2026-04-14).
 | 40 | ~~`[policy] observed=… (policy blocked)` misleading for observe-only targets~~ | ✅ DONE 2026-04-14 — capability targets (no install_fn) now emit `[observe] state="…" (observe-only)` in both dry-run and real-run; other profiles keep the legacy "policy blocked" treatment when install_fn is missing for a different reason (e.g. parametric with failed dep-gate) | — |
 | 41 | ~~`pip-group-huggingface` verify-after-update reports outdated despite upgrade succeeding~~ | ✅ DONE 2026-04-14 — pip driver (venv + global) + pip-bootstrap return rc=124 (warn) when post-upgrade observe still flags pkgs as outdated. Constraint-bound packages now show `[warn]` instead of `[fail]`. The pip outdated-list / upgrade-strategy mismatch is unavoidable; we acknowledge it as constraint-bound rather than failing. | — |
 | 42 | ~~`ollama` target reports `[fail] install error` when Ollama.app daemon is already running~~ | ✅ DONE 2026-04-14 — custom-daemon driver now falls back to top-level `fallback_start_cmd` when `driver.start_cmd` is unset; if neither exists, returns rc=124 (warn) instead of 1 (fail). The daemon meant to be externally managed (launchd) no longer reports as a hard failure. | — |
+| 43 | Rule 2 cleanup — runtime paths hardcoded in lib/. 4 violations: docker socket (`$HOME/.docker/run/docker.sock` lib/docker.sh:434), Ollama.app path (lib/ai_apps.sh:353), `/Applications/` copy target (lib/drivers/app_bundle.sh:121,133), Ollama endpoint host:port (`127.0.0.1:11434` lib/utils.sh:111). Hoist to YAML top-level vars or driver fields. | Open 2026-04-14 | Low |
+| 44 | Centralize curl timeouts. 12 sites use ad-hoc `curl --max-time N` values (5/10/30s) across 7 lib files. Add YAML `timeouts:` section with per-domain entries (github, pypi, ollama, app_download) and a helper that reads them. Affects: ucc_drivers.sh, utils.sh, drivers/{pkg,app_bundle,pip}.sh, unsloth_studio.sh. | Open 2026-04-14 | Low |
+| 45 | Hoist magic sleeps/retry constants. 3 sites: docker ready-probe (lib/docker.sh:469-489 — 3s × 10, sleeps 1/5), docker-compose-service backoff (lib/drivers/docker_compose_service.sh:43-45 — `delays=(0 2 5 10 15 20)`), custom-daemon wait loop (lib/drivers/custom_daemon.sh:66 — 0.5s × 30). Add YAML `retry:` blocks per target/driver with named profiles (fast/normal/slow). | Open 2026-04-14 | Low |
 
 ### Unified `update-policy` pref
 
