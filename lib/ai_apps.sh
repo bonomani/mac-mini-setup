@@ -350,7 +350,7 @@ PY
       else
         brew services start "$_OLLAMA_BREW_SERVICE_NAME"
       fi
-    elif [[ "${HOST_PLATFORM:-}" == "macos" && -d "/Applications/Ollama.app" ]]; then
+    elif [[ "${HOST_PLATFORM:-}" == "macos" && -d "${UCC_OLLAMA_APP_PATH:-/Applications/Ollama.app}" ]]; then
       # Kill any stray ollama serve processes not managed by the app
       pkill -f "^ollama serve" 2>/dev/null || true
       # macOS: start daemon via app in background (no GUI window)

@@ -431,7 +431,9 @@ _docker_kill_zombies() {
 # Apple Silicon where /usr/local/bin is not always available).
 # Falls back to docker ps -q if curl is unavailable.
 _docker_ready() {
-  local sock="$HOME/.docker/run/docker.sock"
+  # Default macOS Docker Desktop socket path. Override via UCC_DOCKER_SOCKET
+  # for non-standard layouts (e.g. colima at $HOME/.colima/docker.sock).
+  local sock="${UCC_DOCKER_SOCKET:-$HOME/.docker/run/docker.sock}"
   if [[ -S "$sock" ]]; then
     curl -sf --unix-socket "$sock" http://localhost/_ping >/dev/null 2>&1
   else

@@ -118,7 +118,7 @@ _ucc_driver_app_bundle_action() {
       src_app="$(find "$mount_point" -maxdepth 1 -name "*.app" -type d | head -1)"
       log_debug "app-bundle[$target] action: src_app='${src_app:-<not found>}'"
       if [[ -n "$src_app" ]]; then
-        ucc_run cp -R "$src_app" /Applications/
+        ucc_run cp -R "$src_app" "${UCC_APPS_DIR:-/Applications}/"
       fi
       hdiutil detach "$mount_point" -quiet 2>/dev/null || true
       [[ -n "$src_app" ]] || { rm -rf "$tmp_dir"; return 1; }
@@ -130,7 +130,7 @@ _ucc_driver_app_bundle_action() {
       src_app="$(find "$tmp_dir/extract" -maxdepth 2 -name "*.app" -type d | head -1)"
       log_debug "app-bundle[$target] action: src_app='${src_app:-<not found>}'"
       if [[ -n "$src_app" ]]; then
-        ucc_run cp -R "$src_app" /Applications/
+        ucc_run cp -R "$src_app" "${UCC_APPS_DIR:-/Applications}/"
       fi
       [[ -n "$src_app" ]] || { rm -rf "$tmp_dir"; return 1; }
       ;;

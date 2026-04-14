@@ -107,8 +107,12 @@ network_status() {
 }
 
 # Return 0 if Ollama can load at least one model (list is non-empty).
+# Endpoint defaults to localhost:11434 (matches ucc/software/ai-apps.yaml's
+# api_host/api_port). Override via UCC_OLLAMA_ENDPOINT env for non-default
+# deployments.
 ollama_model_loadable() {
-  local tags; tags="$(curl -fsS --max-time 10 http://127.0.0.1:11434/api/tags 2>/dev/null)"
+  local endpoint="${UCC_OLLAMA_ENDPOINT:-http://127.0.0.1:11434}"
+  local tags; tags="$(curl -fsS --max-time 10 "${endpoint%/}/api/tags" 2>/dev/null)"
   [[ -n "$tags" ]] && echo "$tags" | python3 -c "import sys,json; sys.exit(0 if json.load(sys.stdin).get('models') else 1)" 2>/dev/null
 }
 
