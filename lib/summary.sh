@@ -187,7 +187,10 @@ print_final_summary() {
       profile_bump "$_profile" "$_outcome"
     done < "$UCC_PROFILE_SUMMARY_FILE"
     echo "  ──────────────────────────────────────────────────────"
-    echo "  By Profile — observations"
+    # "Total" above counts only targets already at desired state ([ok] lines).
+    # "By Profile" counts every observation including dry-run plans, [ok], and
+    # changed transitions — answers a different question, hence different sums.
+    echo "  By Profile — observations (incl. dry-run plans)"
     for profile in "${_summary_profiles[@]}"; do
       prefix="$(_profile_var_prefix "$profile")"
       printf '  %-22s  %s\n' \
