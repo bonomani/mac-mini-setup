@@ -51,9 +51,9 @@ targets:
     type: runtime
     display_name: Ariaflow Server
     depends_on:
-    - networkquality-available
+    - networkquality-available?macos
     - mdns-available
-    - avahi
+    - avahi?linux,wsl2
 
     driver:
       kind: service

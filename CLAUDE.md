@@ -181,6 +181,52 @@ ucc_yaml_simple_target "$cfg_dir" "$yaml" "python"   # pkg driver's pyenv
 
 **Exception**: `lib/tic_runner.sh` post-convergence verification runs have no observe pass to piggyback on and may re-establish `PYENV_ROOT` / `NVM_DIR` explicitly.
 
+### Rule 11 — Platform-conditional dependencies must be declared with `?platform`
+
+When a dependent target lists a dep that only exists on certain platforms, declare the platform condition explicitly with the `?` syntax. Don't rely on the dep target's own `requires:` to silently filter it from the graph.
+
+**Bad** — implicit silent skip:
+
+```yaml
+ariaflow-server:
+  depends_on:
+    - networkquality-available    # has `requires: macos`, silently dropped on linux/wsl2
+    - mdns-available
+    - avahi                       # has `requires: linux,wsl2`, silently dropped on macos
+```
+
+This works at runtime (the framework's per-target `requires:` filter happens to make it correct), but the polyglot intent — "use networkquality on macos, avahi on linux" — is invisible to a reader of `ariaflow-server`.
+
+**Good** — explicit conditional dep:
+
+```yaml
+ariaflow-server:
+  depends_on:
+    - networkquality-available?macos
+    - mdns-available
+    - avahi?linux,wsl2
+```
+
+Reader sees the per-platform composition without having to chase the dep targets' own `requires:` fields.
+
+**Why this matters**:
+
+Two skip mechanisms exist and produce different cascade behavior on dependents — the asymmetry is principled but easy to misread:
+
+| Skip source | Effect on dependents |
+|---|---|
+| Component group-skipped (cross-component, `_component_supported_for`) | Dep gets synthetic `platform-skipped` status. Dependents cascade-`[skip]` with "dependency not applicable on `<host>`" (see lib/ucc_targets.sh `_ucc_check_deps_recursive`). |
+| Per-target `requires:` skipped (same-component or cross-component) | Dep filtered from observation, no status recorded. Dep-check finds no status and no oracle → silently treats as satisfied. Dependent proceeds. |
+
+Using `?platform` makes the dep ITSELF conditional, sidestepping both mechanisms — the dep simply isn't in the graph for the wrong platform. This is cleaner than relying on either skip cascade.
+
+**Conditional dep syntax** (parsed by `tools/validate_targets_manifest.py:_resolve_conditional_dep`, comma = OR):
+
+- `?value` — match host (`?macos`, `?linux`, `?wsl2`)
+- `?!value` — NOT match (`?!brew`)
+- `?name>=version` — version compare (`?macos>=14`)
+- `?macos>=14,linux,wsl2` — OR combination
+
 ### Naming
 
 - Functions called directly from YAML (no leading underscore): `docker_resources_observe`, `brew_service_is_started`

@@ -176,7 +176,7 @@ not specified). Counts are real (`type` distribution per component).
 | Target | Kind | Type | Display name | requires | depends_on |
 |---|---|---|---|---|---|
 | `ariaflow-dashboard` | `service` | `runtime` | Ariaflow Dashboard |  | `mdns-available` |
-| `ariaflow-server` | `service` | `runtime` | Ariaflow Server |  | `networkquality-available`, `mdns-available`, `avahi` |
+| `ariaflow-server` | `service` | `runtime` | Ariaflow Server |  | `networkquality-available?macos`, `mdns-available`, `avahi?linux,wsl2` |
 | `avahi` | `pkg` | `package` | Avahi (mDNS) | linux,wsl2 |  |
 | `mdns-available` | `capability` | `capability` | mDNS/Bonjour |  |  |
 | `networkquality-available` | `capability` | `capability` | networkQuality | macos |  |
