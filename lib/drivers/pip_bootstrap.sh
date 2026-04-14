@@ -74,6 +74,16 @@ _ucc_driver_pip_bootstrap_action() {
   # observes the fresh state instead of the pre-upgrade cached result.
   unset _PIP_OUTDATED_CACHE
   _ucc_cache_invalidate "pip-outdated-global"
+  # Constraint-bound: if upgrade succeeded but pkgs are still flagged
+  # outdated by pip list (e.g. pip 26.0.1 stuck behind a transient
+  # newer release we can't satisfy), return 124 so framework warns
+  # rather than fails on verify.
+  if [[ "$action" == "update" && $rc -eq 0 ]]; then
+    if _pip_bootstrap_outdated "$pkgs"; then
+      log_debug "pip-bootstrap: pkgs still outdated post-upgrade — signalling warn"
+      return 124
+    fi
+  fi
   return $rc
 }
 

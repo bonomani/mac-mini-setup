@@ -54,9 +54,18 @@ _ucc_driver_custom_daemon_action() {
   local start_cmd process
   start_cmd="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.start_cmd" 2>/dev/null || true)"
   process="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.process" 2>/dev/null || true)"
-  # No start_cmd → keep historical no-op behavior (the daemon is started
-  # externally — launchd, manual, or the package's own install hook).
-  [[ -n "$start_cmd" ]] || return 1
+  # Fall back to top-level fallback_start_cmd when driver.start_cmd unset
+  # (e.g. ollama: app-installed, no per-driver start; rely on top-level cmd).
+  if [[ -z "$start_cmd" ]]; then
+    while IFS=$'\t' read -r -d '' key value; do
+      [[ "$key" == "fallback_start_cmd" ]] && start_cmd="$value"
+    done < <(yaml_get_many "$cfg_dir" "$yaml" fallback_start_cmd 2>/dev/null || true)
+  fi
+  # Still no start_cmd → return 124 (warn) instead of 1 (fail). The daemon
+  # is meant to be started externally (launchd, manual). Reporting "fail"
+  # confused operators when the daemon was actually running via Ollama.app
+  # but pgrep raced with our observe.
+  [[ -n "$start_cmd" ]] || return 124
   ucc_run sh -c "$start_cmd" || return $?
   # Wait briefly for the process to appear, so observe sees "running".
   if [[ -n "$process" ]]; then

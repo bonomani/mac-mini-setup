@@ -449,6 +449,16 @@ _ucc_driver_pip_action() {
     _ucc_cache_invalidate "pip-outdated-venv-${vname//[^a-zA-Z0-9]/_}"
     # Warn on internal conflicts (cached per-venv per-process)
     _pip_venv_check_conflicts "$vname"
+    # If upgrade succeeded but packages are still outdated (constraint-bound:
+    # `pip list --outdated` flags newer versions but `--upgrade-strategy
+    # only-if-needed` won't pull them due to peer constraints), return 124
+    # so the framework emits [warn] not [fail] on verify-after-update.
+    if [[ "$action" == "update" && $rc -eq 0 ]]; then
+      if _pip_venv_pkgs_outdated "$vname" "$pkgs"; then
+        log_debug "pip/venv: $vname pkgs still outdated post-upgrade (constraint-bound) — signalling warn"
+        return 124
+      fi
+    fi
     return $rc
   fi
 
@@ -488,6 +498,13 @@ _ucc_driver_pip_action() {
   # Invalidate outdated caches after state-changing action.
   unset _PIP_OUTDATED_CACHE
   _ucc_cache_invalidate "pip-outdated-global"
+  # Constraint-bound: see venv branch above for the same logic.
+  if [[ "$action" == "update" && $rc -eq 0 ]]; then
+    if _pip_pkgs_outdated "$pkgs"; then
+      log_debug "pip: pkgs still outdated post-upgrade (constraint-bound) — signalling warn"
+      return 124
+    fi
+  fi
   return $rc
 }
 
