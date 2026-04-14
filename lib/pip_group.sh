@@ -144,17 +144,12 @@ run_ai_python_stack_from_yaml() {
   local cfg_dir="$1" yaml="$2"
 
   # ---- Python lifecycle (pyenv → python → pip) ----
-  local _PYENV_DIR=".pyenv"
-  while IFS=$'\t' read -r -d '' key value; do
-    case "$key" in
-      pyenv_dir) [[ -n "$value" ]] && _PYENV_DIR="$value" ;;
-    esac
-  done < <(yaml_get_many "$cfg_dir" "$yaml" pyenv_dir)
+  # Ordering is enforced by YAML depends_on: pyenv→homebrew, python→[xz,pyenv],
+  # pip-latest→python. The pkg driver's pyenv backend self-activates pyenv
+  # (adds $PYENV_ROOT/bin and shims to PATH, runs `pyenv init -`) on observe;
+  # exports persist to subsequent calls in this function.
   ucc_yaml_simple_target "$cfg_dir" "$yaml" "pyenv"
   ucc_yaml_simple_target "$cfg_dir" "$yaml" "xz"
-  export PYENV_ROOT="$HOME/$_PYENV_DIR"
-  export PATH="$PYENV_ROOT/bin:$PATH"
-  eval "$(pyenv init -)" 2>/dev/null || true
   ucc_yaml_simple_target "$cfg_dir" "$yaml" "python"
   ucc_yaml_simple_target "$cfg_dir" "$yaml" "pip-latest"
 

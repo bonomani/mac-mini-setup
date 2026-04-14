@@ -43,6 +43,8 @@ targets:
     type: package
     state_model: package
     display_name: pyenv
+    depends_on:
+    - homebrew
     driver:
       kind: pyenv-brew
   xz:
@@ -66,6 +68,7 @@ targets:
     display_name: Python
     depends_on:
     - xz
+    - pyenv
     driver:
       kind: pkg
       backends:
@@ -76,6 +79,8 @@ targets:
     type: config
     state_model: config
     display_name: pip
+    depends_on:
+    - python
     driver:
       kind: pip-bootstrap
   # ── Pip packages ─────────────────────────────────────────────

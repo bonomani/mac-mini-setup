@@ -135,6 +135,52 @@ YAML files declare **what** (names, values, relationships), never **when** or **
 
 **Principle**: YAML is a static declaration. If a field's value only makes sense with runtime context (current args, environment, platform state), it belongs in code.
 
+### Rule 9 — Target names follow suffix-by-profile convention
+
+Target names carry their profile via a suffix. A reader should be able to infer the target kind from the name alone.
+
+| Profile | Suffix | Meaning | Examples |
+|---|---|---|---|
+| `capability` | `-available` | "X is present and usable right now by downstream targets" (presence + health + deps checked at observe time) | `docker-available`, `network-available`, `mps-available`, `cuda-available` |
+| `runtime` | `-running` / `-stopped` | Active runtime state of a service | `ai-stack-compose-running` |
+| `configured` (`type: package`) | none | The target **is** the thing being installed | `git`, `cli-jq`, `vscode`, `ollama` |
+| `configured` (`type: config`) | none / free-form | Settings or declared-state file | `git-global-config`, `vscode-settings` |
+| `parametric` | none | Tunable value with a desired setting | `docker-memory-gb`, `brew-analytics` |
+| gate (in `defaults/gates.yaml`) | free-form | Pre-convergence readiness check | `supported-platform` |
+
+**Do not invent synonyms** for `-available` (`-ready`, `-reachable`, `-operational`). They all collapse to the same observe-time check in this framework. Package targets stay bare (`git`, not `git-installed`) — installation state is implicit in the target kind.
+
+### Rule 10 — No bash glue between target installs
+
+Lib functions must not place raw bash between `ucc_yaml_simple_target` calls that assumes a prior target materialized. Declare the dependency in YAML instead.
+
+**Bad** — assumes `pyenv` is on PATH after its install call, bypasses the dependency graph, and breaks in dry-run (prior target is a no-op):
+
+```bash
+ucc_yaml_simple_target "$cfg_dir" "$yaml" "pyenv"
+export PYENV_ROOT="$HOME/.pyenv"
+export PATH="$PYENV_ROOT/bin:$PATH"
+eval "$(pyenv init -)"               # ← bash glue
+ucc_yaml_simple_target "$cfg_dir" "$yaml" "python"
+```
+
+**Good** — declare the edge, let the framework order the calls, let each driver self-activate:
+
+```yaml
+pyenv:   { depends_on: [homebrew] }
+python:  { depends_on: [xz, pyenv] }
+```
+
+```bash
+ucc_yaml_simple_target "$cfg_dir" "$yaml" "pyenv"
+ucc_yaml_simple_target "$cfg_dir" "$yaml" "python"   # pkg driver's pyenv
+                                                     # backend self-activates
+```
+
+**Why this works**: the `pkg` driver calls `_pkg_<backend>_activate` during observe, and the exports persist in the caller shell. Subsequent targets see a fully-activated runtime without the caller lib function having to do it manually.
+
+**Exception**: `lib/tic_runner.sh` post-convergence verification runs have no observe pass to piggyback on and may re-establish `PYENV_ROOT` / `NVM_DIR` explicitly.
+
 ### Naming
 
 - Functions called directly from YAML (no leading underscore): `docker_resources_observe`, `brew_service_is_started`

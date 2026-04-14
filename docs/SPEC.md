@@ -113,9 +113,9 @@ not specified). Counts are real (`type` distribution per component).
 | `pip-group-utilities` | `pip` | `package` | Utility packages |  |  |
 | `pip-group-vector-dbs` | `pip` | `package` | Vector database packages |  |  |
 | `pip-group-web-testing` | `pip` | `package` | Web testing packages |  |  |
-| `pip-latest` | `pip-bootstrap` | `config` | pip |  |  |
-| `pyenv` | `pyenv-brew` | `package` | pyenv |  |  |
-| `python` | `pkg` | `package` | Python |  | `xz` |
+| `pip-latest` | `pip-bootstrap` | `config` | pip |  | `python` |
+| `pyenv` | `pyenv-brew` | `package` | pyenv |  | `homebrew` |
+| `python` | `pkg` | `package` | Python |  | `xz`, `pyenv` |
 | `unsloth` | `pip` | `package` | Unsloth |  |  |
 | `unsloth-studio` | `custom` | `runtime` | Unsloth Studio | macos | `unsloth` |
 | `unsloth-studio-service` | `custom` | `runtime` | Unsloth Studio | linux,wsl2 | `unsloth` |
