@@ -1330,7 +1330,7 @@ class UccSchedulerTests(unittest.TestCase):
             )
             self.assertEqual(result.returncode, 0, msg=result.stderr)
             self.assertIn("[warn", result.stdout)
-            self.assertIn("update remains externally managed", result.stdout)
+            self.assertIn("self-updating target — update deferred to built-in updater", result.stdout)
             self.assertNotIn("[policy", result.stdout)
 
     def test_parametric_target_skips_mutation_when_dependency_gate_failed(self) -> None:

@@ -661,7 +661,7 @@ done
 # One python3 call per file; exports _UCC_YTGT_<yaml_fn>_<target_fn>=base64(NUL-rows).
 # Setup functions read from these vars (base64 -d) instead of spawning python3.
 _UCC_YAML_BATCH_KEYS="profile actions.install actions.update \
-  driver.externally_managed_updates type oracle.configured observe_cmd \
+  driver.self_updating type oracle.configured observe_cmd \
   state_model observe_success observe_failure driver.probe \
   desired_cmd desired_value dependency_gate driver.kind \
   driver.service_name driver.package_ref driver.app_path \
@@ -680,7 +680,7 @@ _UCC_YAML_BATCH_KEYS="profile actions.install actions.update \
   driver.script_name driver.formula driver.launchd_dir driver.nvm_dir \
   driver.apt_ref driver.dnf_ref driver.pacman_ref \
   driver.version_cmd driver.github_repo driver.fallback_install_url \
-  driver.fallback_install_args driver.update_cmd driver.externally_managed_updates \
+  driver.fallback_install_args driver.update_cmd driver.self_updating \
   driver.repo driver.dest driver.branch requires \
   display_name driver.backend driver.curl_args driver.installer_url \
   driver.isolation driver.isolation.kind driver.isolation.name \

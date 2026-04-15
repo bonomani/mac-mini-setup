@@ -78,7 +78,7 @@ DRIVER_SCHEMA = {
     "nvm-version":            {"required": ["version", "nvm_dir"], "optional": []},
     "docker-compose-service": {"required": ["service_name"], "optional": []},
     "compose-file":           {"required": ["path_env"], "optional": []},
-    "custom-daemon":          {"required": ["bin", "process"], "optional": ["github_repo", "log_path", "start_cmd", "externally_managed_updates"]},
+    "custom-daemon":          {"required": ["bin", "process"], "optional": ["github_repo", "log_path", "start_cmd", "self_updating"]},
     "json-merge":             {"required": ["settings_relpath", "patch_relpath"], "optional": []},
     "setting":                {"required": ["backend", "key", "value"], "optional": ["domain", "type", "requires_sudo"]},
     "pkg":                    {"required": ["backends"], "optional": ["bin", "github_repo", "migration_safety", "curl_args", "greedy_auto_updates"]},
@@ -90,7 +90,7 @@ DRIVER_SCHEMA = {
     "git-global":             {"required": [], "optional": []},
     "build-deps":             {"required": [], "optional": []},
     "git-repo":               {"required": ["repo", "dest"], "optional": ["branch", "upstream"]},
-    "package":                {"required": ["ref"], "optional": ["cask", "greedy_auto_updates", "previous_ref", "apt_ref", "dnf_ref", "pacman_ref", "fallback_install_url", "fallback_install_args", "update_cmd", "bin", "externally_managed_updates"]},
+    "package":                {"required": ["ref"], "optional": ["cask", "greedy_auto_updates", "previous_ref", "apt_ref", "dnf_ref", "pacman_ref", "fallback_install_url", "fallback_install_args", "update_cmd", "bin", "self_updating"]},
     "capability":             {"required": ["probe"], "optional": []},
     "compose-apply":          {"required": ["path_env"], "optional": ["pull_policy_env"]},
 }

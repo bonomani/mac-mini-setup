@@ -658,14 +658,14 @@ _ucc_target_filtered_out() {
 ucc_yaml_simple_target() {
   local cfg_dir="$1" yaml="$2" target="$3"
   _ucc_target_filtered_out "$target" "$cfg_dir" "$yaml" && return 0
-  local fn profile install_cmd update_cmd externally_managed_updates driver_kind
+  local fn profile install_cmd update_cmd self_updating driver_kind
   local obs_type="" obs_oracle="" obs_cmd="" obs_model="" obs_success="" obs_failure=""
   local _ev_b64=""
   fn="${target//[^a-zA-Z0-9]/_}"
   profile="configured"
   install_cmd=""
   update_cmd=""
-  externally_managed_updates=""
+  self_updating=""
   driver_kind=""
   while IFS=$'\t' read -r -d '' key value; do
     if [[ "$key" == "__evidence__" ]]; then _ev_b64="$value"; continue; fi
@@ -673,7 +673,7 @@ ucc_yaml_simple_target() {
       profile)                           [[ -n "$value" ]] && profile="$value" ;;
       actions.install)                   install_cmd="$value" ;;
       actions.update)                    update_cmd="$value" ;;
-      driver.externally_managed_updates) externally_managed_updates="$value" ;;
+      driver.self_updating) self_updating="$value" ;;
       driver.kind)                       driver_kind="$value" ;;
       type)                              obs_type="$value" ;;
       oracle.configured)                 obs_oracle="$value" ;;
@@ -683,7 +683,7 @@ ucc_yaml_simple_target() {
       observe_failure)                   obs_failure="$value" ;;
     esac
   done < <(_ucc_ytgt_source "$cfg_dir" "$yaml" "$target" \
-      profile actions.install actions.update driver.externally_managed_updates driver.kind \
+      profile actions.install actions.update driver.self_updating driver.kind \
       type oracle.configured observe_cmd state_model observe_success observe_failure)
   [[ -z "$update_cmd" ]] && update_cmd="$install_cmd"
   # Derive state_model from (profile, type) when omitted — matches the
@@ -727,7 +727,7 @@ ucc_yaml_simple_target() {
   [[ -n "$install_cmd" || "$driver_dispatched" == "1" ]] && args+=(--install "_uyst_ins_${fn}")
   [[ -n "$install_cmd" || "$driver_dispatched" == "1" ]] && args+=(--update "_uyst_upd_${fn}")
   [[ "$driver_dispatched" == "1" ]] && args+=(--recover "_uyst_rec_${fn}")
-  [[ "$externally_managed_updates" == "true" || "$externally_managed_updates" == "1" || "$externally_managed_updates" == "yes" ]] && \
+  [[ "$self_updating" == "true" || "$self_updating" == "1" || "$self_updating" == "yes" ]] && \
     args+=(--warn-on-update-failure)
   ucc_target "${args[@]}"
 }
@@ -1036,7 +1036,7 @@ _ucc_observe_yaml_runtime_oracle_target() {
 ucc_yaml_runtime_target() {
   local cfg_dir="$1" yaml="$2" target="$3" install_fn="${4:-}" update_fn="${5:-}"
   _ucc_target_filtered_out "$target" "$cfg_dir" "$yaml" && return 0
-  local fn install_cmd update_cmd externally_managed_updates=""
+  local fn install_cmd update_cmd self_updating=""
   local obs_configured="" obs_runtime="" obs_driver=""
   local obs_stopped_inst="" obs_stopped_rt="" obs_stopped_health="" obs_stopped_deps=""
   local _ev_b64=""
@@ -1051,7 +1051,7 @@ ucc_yaml_runtime_target() {
       oracle.configured)                 obs_configured="$value" ;;
       oracle.runtime)                    obs_runtime="$value" ;;
       driver.kind)                       obs_driver="$value" ;;
-      driver.externally_managed_updates) externally_managed_updates="$value" ;;
+      driver.self_updating) self_updating="$value" ;;
       stopped_installation)              obs_stopped_inst="$value" ;;
       stopped_runtime)                   obs_stopped_rt="$value" ;;
       stopped_health)                    obs_stopped_health="$value" ;;
@@ -1059,7 +1059,7 @@ ucc_yaml_runtime_target() {
     esac
   done < <(_ucc_ytgt_source "$cfg_dir" "$yaml" "$target" \
       actions.install actions.update oracle.configured oracle.runtime \
-      driver.kind driver.externally_managed_updates stopped_installation stopped_runtime \
+      driver.kind driver.self_updating stopped_installation stopped_runtime \
       stopped_health stopped_dependencies)
   [[ -z "$update_cmd" ]] && update_cmd="$install_cmd"
   # A dispatched driver handles install/update even when actions.* are absent from YAML
@@ -1114,7 +1114,7 @@ ucc_yaml_runtime_target() {
   # Externally-managed updates (e.g. Ollama.app auto-updates itself, ollama
   # binary updates come from upstream installer, not a CLI command) → treat
   # post-action still-outdated as [warn], not [fail].
-  [[ "$externally_managed_updates" == "true" || "$externally_managed_updates" == "1" || "$externally_managed_updates" == "yes" ]] && \
+  [[ "$self_updating" == "true" || "$self_updating" == "1" || "$self_updating" == "yes" ]] && \
     args+=(--warn-on-update-failure)
   ucc_target_service "${args[@]}"
 }
@@ -1522,7 +1522,7 @@ _ucc_execute_target() {
             "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$verified" "$axes"),\"observed_after\":$(_ucc_state_obj "$verified")}" \
             "{\"observation\":\"ok\",\"outcome\":\"changed\",\"completion\":\"complete\",\"proof\":{\"change\":\"update_applied\"}}"
         elif [[ "$warn_on_update_failure" == "1" ]]; then
-          _ucc_emit_target_line "$profile" "warn" "$display_name" "update remains externally managed  $(_ucc_compose_evidence "$name" "${verified:-$observed}" "$axes" "$evidence_fn")"
+          _ucc_emit_target_line "$profile" "warn" "$display_name" "self-updating target — update deferred to built-in updater  $(_ucc_compose_evidence "$name" "${verified:-$observed}" "$axes" "$evidence_fn")"
           _ucc_record_outcome "$profile" "$name" "" "warn" "unchanged" "$msg_id" "$started_at" \
             "{}" "{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"policy\",\"message\":\"update must be applied externally\"}"
         else
@@ -1545,7 +1545,7 @@ _ucc_execute_target() {
           "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$desired" "$axes")}" \
           "{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"policy\",\"message\":\"transition requires admin privileges\"}"
       elif [[ "$warn_on_update_failure" == "1" ]]; then
-        _ucc_emit_target_line "$profile" "warn" "$display_name" "update remains externally managed  $(_ucc_compose_evidence "$name" "$observed" "$axes" "$evidence_fn")"
+        _ucc_emit_target_line "$profile" "warn" "$display_name" "self-updating target — update deferred to built-in updater  $(_ucc_compose_evidence "$name" "$observed" "$axes" "$evidence_fn")"
         _ucc_record_outcome "$profile" "$name" "" "warn" "unchanged" "$msg_id" "$started_at" \
           "{}" "{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"policy\",\"message\":\"update must be applied externally\"}"
       else
@@ -1643,7 +1643,7 @@ _ucc_execute_target() {
         "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$verified" "$axes"),\"observed_after\":$(_ucc_state_obj "$verified")}" \
         "{\"observation\":\"ok\",\"outcome\":\"changed\",\"completion\":\"complete\",\"proof\":{\"change\":\"verify_pass\"}}"
     elif [[ "$warn_on_update_failure" == "1" && "$action_context" == "update" ]]; then
-      _ucc_emit_target_line "$profile" "warn" "$display_name" "update remains externally managed  $(_ucc_compose_evidence "$name" "${verified:-$observed}" "$axes" "$evidence_fn")"
+      _ucc_emit_target_line "$profile" "warn" "$display_name" "self-updating target — update deferred to built-in updater  $(_ucc_compose_evidence "$name" "${verified:-$observed}" "$axes" "$evidence_fn")"
       _ucc_record_outcome "$profile" "$name" "" "warn" "unchanged" "$msg_id" "$started_at" \
         "{}" "{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"policy\",\"message\":\"update must be applied externally\"}"
     elif [[ $action_rc -eq 0 ]]; then

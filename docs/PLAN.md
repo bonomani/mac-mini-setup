@@ -2,7 +2,7 @@
 
 ## Open
 
-Three items open (#54–#56 from ollama internet research 2026-04-15).
+Two items open (#54–#55 from ollama internet research 2026-04-15).
 Refactor sweep #43–#53 all shipped 2026-04-15. Three deferred (#2
 cross-platform Docker, #4 Phase C1, #6 Docker unattended Checkpoint C),
 four closed not-a-bug (#16 via #34, #24, #27, #36; #29 confirmed
@@ -69,7 +69,7 @@ suite green. Pip venv isolation shipped (2026-04-14).
 | 53 | ~~Reassess deferred items~~ | ✅ DONE 2026-04-15 (`36dde0d`) — #16 closed (subsumed by #34); #6 moved Deferred → In-progress (only Mac mini clean-state e2e remains). | — |
 | 54 | Ollama daemon version probe via `/api/version` instead of `ollama --version` — the CLI binary version (currently 0.20.6) can differ from the running daemon version (Ollama.app bundle 0.20.5) and both differ from GitHub latest (0.20.7). Upstream check currently compares CLI binary vs GitHub, missing the actual running daemon state. Use `curl -s http://$api_host:$api_port/api/version` when `driver.endpoints` are declared. | Open 2026-04-15 | Low |
 | 55 | Detect Ollama install method (`.app` SQLite settings DB vs brew) to adapt behavior. Presence of `~/Library/Application Support/Ollama/db.sqlite` → `.app` install → self-updating via Squirrel. Else → brew-managed → use `kind: service, backend: brew` semantics. Could also read `auto_update_enabled` from SQLite to surface in the evidence line. | Open 2026-04-15 | Low |
-| 56 | Rename `externally_managed_updates` → clearer semantic. The flag currently means "can't update synchronously within this run" but reads as "framework has no way to update at all" — which is misleading since operators CAN manage via Ollama.app UI, SQLite poke, or brew migration. Options: (A) rename to `async_updates`, (B) change log message from "update remains externally managed" to "update deferred to external updater", or (C) split into `self_updating` + `can_migrate_to`. | Open 2026-04-15 | Low |
+| 56 | ~~Rename `externally_managed_updates` → clearer semantic~~ | ✅ DONE 2026-04-15 — renamed YAML field to `self_updating` across all files (ucc_targets.sh, validator schema, install.sh batch keys, ai-apps.yaml, homebrew.yaml, test assertions). Log message changed from "update remains externally managed" to "self-updating target — update deferred to built-in updater". No backward-compat kept (clean break). | — |
 
 ### Unified `update-policy` pref
 

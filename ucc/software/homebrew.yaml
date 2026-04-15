@@ -48,7 +48,7 @@ targets:
     provided_by_tool: macos-installer
     driver:
       kind: custom
-      externally_managed_updates: true
+      self_updating: true
     oracle:
       configured: xcode_clt_is_installed
     observe_cmd: xcode_clt_observe
