@@ -2,13 +2,15 @@
 
 ## Open
 
-Two items open (#54–#55 from ollama internet research 2026-04-15).
-Refactor sweep #43–#53 all shipped 2026-04-15. Three deferred (#2
-cross-platform Docker, #4 Phase C1, #6 Docker unattended Checkpoint C),
-four closed not-a-bug (#16 via #34, #24, #27, #36; #29 confirmed
-intentional). Forty-four items (#13–#56) opened 2026-04-14/15; the
-ollama fix (commit ee60dc1) achieved 100 ok / 0 FAILED but revealed
-three semantic issues around externally-managed daemons.
+No ollama items open as of 2026-04-15 end-of-day. Refactor sweep
+#43–#53 shipped 2026-04-15. Ollama internet-research items #54–#57
+shipped 2026-04-15 — daemon version probe (`/api/version`), install-
+method evidence (`install=app`/`cli`), and automated apply of staged
+Squirrel updates via SIGTERM + async poll (Ollama converges
+0.20.6 → 0.20.7 unattended). Driver running-check refactor #58
+shipped same day. Three items deferred (#2 cross-platform Docker,
+#4 Phase C1, #6 Docker unattended Checkpoint C), four closed
+not-a-bug (#16 via #34, #24, #27, #36; #29 confirmed intentional).
 Docker install/launch is fully functional (tested 2026-04-13). Test
 suite green. Pip venv isolation shipped (2026-04-14).
 
@@ -67,9 +69,11 @@ suite green. Pip venv isolation shipped (2026-04-14).
 | 51 | ~~Driver capabilities registry~~ | ✅ DONE 2026-04-15 (`994cfa5`) — `_ucc_driver_dispatch` now logs (debug) when a non-custom kind is missing observe/action. Once per (kind, op) pair. | — |
 | 52 | ~~Logging consistency~~ | ✅ DONE 2026-04-15 (`994cfa5`) — service.sh now log_warns on every failure path (brew_install, brew_upgrade, brew services start, launchctl load, unknown backend) with target context. | — |
 | 53 | ~~Reassess deferred items~~ | ✅ DONE 2026-04-15 (`36dde0d`) — #16 closed (subsumed by #34); #6 moved Deferred → In-progress (only Mac mini clean-state e2e remains). | — |
-| 54 | Ollama daemon version probe via `/api/version` instead of `ollama --version` — the CLI binary version (currently 0.20.6) can differ from the running daemon version (Ollama.app bundle 0.20.5) and both differ from GitHub latest (0.20.7). Upstream check currently compares CLI binary vs GitHub, missing the actual running daemon state. Use `curl -s http://$api_host:$api_port/api/version` when `driver.endpoints` are declared. | Open 2026-04-15 | Low |
-| 55 | Detect Ollama install method (`.app` SQLite settings DB vs brew) to adapt behavior. Presence of `~/Library/Application Support/Ollama/db.sqlite` → `.app` install → self-updating via Squirrel. Else → brew-managed → use `kind: service, backend: brew` semantics. Could also read `auto_update_enabled` from SQLite to surface in the evidence line. | Open 2026-04-15 | Low |
+| 54 | ~~Ollama daemon version probe via `/api/version`~~ | ✅ DONE 2026-04-15 (`bc58c4a`) — custom-daemon gains `driver.version_probe_path`. When set and the daemon is running, HTTP-probe the endpoint for `{"version":"X.Y.Z"}` instead of `bin --version`. Running daemon version is now authoritative for the outdated check (CLI binary can lag the .app bundle). | — |
+| 55 | ~~Surface Ollama install method in evidence~~ | ✅ DONE 2026-04-15 (`bc58c4a`) — custom-daemon gains `driver.install_app_path`. Evidence line shows `install=app` when the path exists, `install=cli` otherwise. `.app` install signals Squirrel self-updating. SQLite DB read for `auto_update_enabled` not needed — path presence is sufficient signal. | — |
 | 56 | ~~Rename `externally_managed_updates` → clearer semantic~~ | ✅ DONE 2026-04-15 — renamed YAML field to `self_updating` across all files (ucc_targets.sh, validator schema, install.sh batch keys, ai-apps.yaml, homebrew.yaml, test assertions). Log message changed from "update remains externally managed" to "self-updating target — update deferred to built-in updater". No backward-compat kept (clean break). | — |
+| 57 | ~~Apply staged Squirrel updates for Ollama~~ | ✅ DONE 2026-04-15 (`5dba726`, cleanup `a74b7b6`) — `_update_ollama` in `lib/ai_apps.sh` now detects a staged bundle at `~/Library/Caches/ollama/updates/*/Ollama-darwin.zip`, SIGTERMs the app (AppleScript `quit` is canceled by the app's confirm dialog non-interactively), relaunches, and polls `/api/version` for up to ~60s — Squirrel's ShipIt runs async after relaunch and swaps the bundle. End-to-end: ollama converged 0.20.6 → 0.20.7 unattended. Custom-daemon driver's generic apply path dropped in cleanup — unreachable because ollama overrides driver dispatch with wrapper functions. `driver.pending_update_glob` kept for evidence (`update=pending`). | — |
+| 58 | ~~Share running-check between observe + evidence in custom-daemon~~ | ✅ DONE 2026-04-15 (`f16bd43`) — `_ucc_driver_custom_daemon_running` helper unifies the pgrep + HTTP-fallback check. Fixes silent drift where evidence used pgrep-only and (when pgrep missed an externally-managed daemon) fell back to stale `bin --version` instead of the authoritative HTTP version probe. −23/+18 lines. | — |
 
 ### Unified `update-policy` pref
 
