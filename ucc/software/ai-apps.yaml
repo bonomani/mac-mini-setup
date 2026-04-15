@@ -193,6 +193,14 @@ targets:
       # Presence of the .app bundle signals a self-updating install
       # (Squirrel). Surfaced in evidence as `install=app` vs `install=cli`.
       install_app_path: /Applications/Ollama.app
+      # Squirrel stages downloaded updates here; presence of the zip
+      # means "downloaded, restart to apply" (same signal the GUI shows).
+      # When action=update and a match exists, we quit+relaunch so
+      # Squirrel's ShipIt swaps the bundle.
+      pending_update_glob: ~/Library/Caches/ollama/updates/*/Ollama-darwin.zip
+      # Graceful AppleScript quit so Squirrel's update hook runs; a
+      # SIGKILL would skip the swap.
+      restart_stop_cmd: osascript -e 'tell application "Ollama" to quit'
     endpoints:
     - name: Ollama API
       scheme: http

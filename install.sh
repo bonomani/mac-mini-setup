@@ -687,6 +687,7 @@ _UCC_YAML_BATCH_KEYS="profile actions.install actions.update \
   driver.log_path driver.migration_safety driver.pull_policy_env \
   driver.requires_sudo driver.start_cmd driver.subkind driver.upstream \
   driver.version_probe_path driver.install_app_path \
+  driver.pending_update_glob driver.restart_stop_cmd \
   update_class"
 _seen_yaml_files=()
 for _i in "${!_DISP_COMPS[@]}"; do

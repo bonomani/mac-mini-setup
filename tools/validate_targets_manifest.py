@@ -78,7 +78,7 @@ DRIVER_SCHEMA = {
     "nvm-version":            {"required": ["version", "nvm_dir"], "optional": []},
     "docker-compose-service": {"required": ["service_name"], "optional": []},
     "compose-file":           {"required": ["path_env"], "optional": []},
-    "custom-daemon":          {"required": ["bin", "process"], "optional": ["github_repo", "log_path", "start_cmd", "self_updating", "version_probe_path", "install_app_path"]},
+    "custom-daemon":          {"required": ["bin", "process"], "optional": ["github_repo", "log_path", "start_cmd", "self_updating", "version_probe_path", "install_app_path", "pending_update_glob", "restart_stop_cmd"]},
     "json-merge":             {"required": ["settings_relpath", "patch_relpath"], "optional": []},
     "setting":                {"required": ["backend", "key", "value"], "optional": ["domain", "type", "requires_sudo"]},
     "pkg":                    {"required": ["backends"], "optional": ["bin", "github_repo", "migration_safety", "curl_args", "greedy_auto_updates"]},
