@@ -365,6 +365,51 @@ PY
     _ucc_wait_for_runtime_probe "curl -fsS \"$_OLLAMA_API_URL\" >/dev/null 2>&1"
   }
   _update_ollama() {
+    # Ollama.app path: when Squirrel has staged an update bundle
+    # (~/Library/Caches/ollama/updates/*/Ollama-darwin.zip), the normal
+    # `curl | sh` installer doesn't apply it — the .app bundle is swapped
+    # by ShipIt (Squirrel's helper) after a clean termination. We SIGTERM
+    # the app (AppleScript `quit` gets canceled by the app's confirm
+    # dialog in non-interactive contexts), relaunch, and poll /api/version
+    # until ShipIt finishes the async swap (up to ~60s post-restart).
+    local _staged
+    _staged="$(compgen -G "$HOME/Library/Caches/ollama/updates/*/Ollama-darwin.zip" | head -1)"
+    if [[ -n "$_staged" && "${HOST_PLATFORM:-}" == "macos" \
+          && -d "${UCC_OLLAMA_APP_PATH:-/Applications/Ollama.app}" ]]; then
+      log_info "ollama: applying staged update via Squirrel restart (${_staged})"
+      local _pre_ver
+      _pre_ver="$(curl -fsS --max-time 2 "$_OLLAMA_API_URL" 2>/dev/null \
+        | grep -oE '[0-9]+(\.[0-9]+){1,3}' | head -1 || true)"
+      pkill -TERM -f 'Ollama.app/Contents/MacOS/Ollama' 2>/dev/null || true
+      local _s=0
+      while (( _s < 40 )) && pgrep -f 'Ollama.app/Contents/MacOS/Ollama' >/dev/null 2>&1; do
+        sleep 0.5
+        _s=$((_s + 1))
+      done
+      _start_ollama || return $?
+      # Squirrel's ShipIt runs asynchronously after relaunch. Poll for a
+      # version change (or staged-zip removal) to confirm the swap landed.
+      # On success, the next observe() will see the new version.
+      local _ver_url="http://${_OLLAMA_API_HOST}:${_OLLAMA_API_PORT}/api/version"
+      local _t=0 _api_ver=""
+      while (( _t < 120 )); do
+        _api_ver="$(curl -fsS --max-time 2 "$_ver_url" 2>/dev/null \
+          | grep -oE '[0-9]+(\.[0-9]+){1,3}' | head -1 || true)"
+        if [[ -n "$_api_ver" && -n "$_pre_ver" && "$_api_ver" != "$_pre_ver" ]]; then
+          log_info "ollama: update applied (${_pre_ver} → ${_api_ver})"
+          return 0
+        fi
+        if ! compgen -G "$HOME/Library/Caches/ollama/updates/*/Ollama-darwin.zip" >/dev/null 2>&1; then
+          # Zip removed = Squirrel finished even if version poll didn't catch the swap
+          log_info "ollama: staged update consumed by Squirrel"
+          return 0
+        fi
+        sleep 0.5
+        _t=$((_t + 1))
+      done
+      # Squirrel didn't finish in our window; treat as deferred warn, not fail
+      return 124
+    fi
     curl -fsSL "$_OLLAMA_INSTALLER_URL" | sh || return 1
     _start_ollama
   }
