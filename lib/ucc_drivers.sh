@@ -59,9 +59,11 @@ _ucc_driver_dispatch() {
     # (kind, op) pair so it surfaces in real runs without flooding.
     case "$op" in
       observe|action)
+        # Per-process dedup of missing-op warnings. `declare -g` (not export)
+        # keeps the flag in the shell, out of the child-process env.
         local _seen_var="_UCC_DRV_MISSING_${kind//[^a-zA-Z0-9]/_}_${op}"
         if [[ -z "${!_seen_var:-}" ]]; then
-          export "$_seen_var=1"
+          declare -g "$_seen_var=1"
           log_debug "driver '$kind' missing required op '_ucc_driver_${kind//-/_}_${op}' — falling through (target: $target)"
         fi
         ;;
