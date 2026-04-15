@@ -1033,6 +1033,24 @@ _ucc_observe_yaml_runtime_oracle_target() {
     --dependencies "$stopped_dependencies"
 }
 
+# Register a runtime target from YAML.
+#
+# Usage: ucc_yaml_runtime_target <cfg_dir> <yaml> <target> [install_fn] [update_fn]
+#
+# When install_fn / update_fn are omitted, the framework synthesizes
+# wrappers that dispatch to the driver via _ucc_run_yaml_action (→
+# _ucc_driver_action → _ucc_driver_<kind>_action). Observe and evidence
+# always go through the driver regardless.
+#
+# When install_fn / update_fn are passed, they REPLACE the synthesized
+# driver-dispatch wrappers. The driver's `_action` function is then
+# never called for this target — only its `_observe` and `_evidence`.
+# Pass explicit wrappers only when the install/update logic is
+# genuinely heterogeneous (e.g. Squirrel-swap vs curl|sh vs brew
+# services for ollama) or when no existing driver handles the
+# mechanism (e.g. custom launchd plist generation). Otherwise prefer
+# pure driver dispatch — simpler, keeps driver improvements like
+# #57's apply-flow reachable.
 ucc_yaml_runtime_target() {
   local cfg_dir="$1" yaml="$2" target="$3" install_fn="${4:-}" update_fn="${5:-}"
   _ucc_target_filtered_out "$target" "$cfg_dir" "$yaml" && return 0
