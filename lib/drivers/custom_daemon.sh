@@ -8,6 +8,16 @@
 #                   runs it and waits up to 5s for the process to
 #                   appear. When unset, action stays a no-op
 #                   (backward compatible).
+# driver.version_probe_path: optional HTTP path on the first endpoint
+#                   returning JSON `{"version":"X.Y.Z"}`. When set and
+#                   the daemon is running, this is the source of truth
+#                   for the installed version (CLI binary may differ
+#                   from the running daemon — e.g. Ollama.app bundle
+#                   vs. brew-installed CLI). Falls back to `bin --version`.
+# driver.install_app_path: optional filesystem path that, when it
+#                   exists, signals the daemon is installed as a
+#                   macOS .app bundle (self-updating via Squirrel).
+#                   Surfaced in evidence as `install=app` vs `install=cli`.
 
 _ucc_driver_custom_daemon_observe() {
   local cfg_dir="$1" yaml="$2" target="$3"
@@ -35,15 +45,17 @@ _ucc_driver_custom_daemon_observe() {
       running=1
     fi
   fi
-  # Outdated check: when driver.github_repo is set and the binary reports
-  # a parseable version, compare against the latest GitHub release tag.
+  # Outdated check: when driver.github_repo is set and a parseable version
+  # can be obtained, compare against the latest GitHub release tag.
   # Reuses _pkg_github_latest_tag + _pkg_version_lt helpers from pkg.sh.
+  # Version source preference:
+  #   1. driver.version_probe_path (authoritative — running daemon version)
+  #   2. `bin --version` (CLI binary — may differ from daemon, e.g. Ollama.app)
   if [[ "${UIC_PREF_UPSTREAM_CHECK:-0}" == "1" ]]; then
     local repo; repo="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.github_repo" 2>/dev/null || true)"
     if [[ -n "$repo" ]] && declare -f _pkg_github_latest_tag >/dev/null 2>&1; then
       local installed latest
-      installed="$("$bin" --version 2>/dev/null | head -1 \
-        | grep -oE '[0-9]+(\.[0-9]+){1,3}' | head -1)"
+      installed="$(_ucc_driver_custom_daemon_version "$cfg_dir" "$yaml" "$target" "$running")"
       latest="$(_pkg_github_latest_tag "$repo" 2>/dev/null)"
       if [[ -n "$installed" && -n "$latest" ]] \
          && declare -f _pkg_version_lt >/dev/null 2>&1 \
@@ -97,17 +109,66 @@ _ucc_driver_custom_daemon_action() {
   return 0
 }
 
+# Resolve the installed version of the daemon.
+# Preference: driver.version_probe_path (when the daemon is running) →
+# `bin --version` fallback. Caller passes `running` flag (0|1) so we skip
+# the HTTP probe when the daemon is known to be down.
+_ucc_driver_custom_daemon_version() {
+  local cfg_dir="$1" yaml="$2" target="$3" running="${4:-0}"
+  local probe_path ver bin
+  probe_path="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.version_probe_path" 2>/dev/null || true)"
+  if [[ -n "$probe_path" && "$running" == "1" ]]; then
+    local url="" row scheme host port
+    if _ucc_endpoint_fields "$cfg_dir" "$yaml" "$target" "" 2>/dev/null; then
+      row="$_UCC_ENDPOINT_FIELDS_VALUE"
+      scheme="$(_ucc_tsv_field "$row" 3)"
+      host="$(_ucc_tsv_field "$row" 4)"
+      port="$(_ucc_tsv_field "$row" 5)"
+      if [[ -n "$scheme" && -n "$host" ]]; then
+        [[ -n "$port" ]] || port="$(_ucc_endpoint_default_port "$scheme" 2>/dev/null || true)"
+        url="${scheme}://${host}"
+        [[ -n "$port" ]] && url="${url}:${port}"
+        [[ "$probe_path" == /* ]] || probe_path="/$probe_path"
+        url="${url}${probe_path}"
+        ver="$(curl -fsS --max-time "$(_ucc_curl_timeout probe)" "$url" 2>/dev/null \
+          | grep -oE '[0-9]+(\.[0-9]+){1,3}' | head -1)"
+      fi
+    fi
+  fi
+  if [[ -z "$ver" ]]; then
+    bin="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.bin" 2>/dev/null || true)"
+    [[ -n "$bin" ]] || return 1
+    ver="$("$bin" --version 2>/dev/null | head -1 \
+      | grep -oE '[0-9]+(\.[0-9]+){1,3}' | head -1)"
+  fi
+  [[ -n "$ver" ]] || return 1
+  printf '%s' "$ver"
+}
+
 _ucc_driver_custom_daemon_evidence() {
   local cfg_dir="$1" yaml="$2" target="$3"
-  local bin ver path log_path
+  local bin ver path log_path app_path running=0 install_kind
   bin="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.bin")"
   [[ -n "$bin" ]] || return 1
-  ver="$("$bin" --version 2>/dev/null | head -1 | awk '{print $NF}')"
+  # Running check (cheap) — gates version probe
+  local process
+  process="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.process" 2>/dev/null || true)"
+  if [[ -n "$process" ]] && pgrep -f "$process" >/dev/null 2>&1; then
+    running=1
+  fi
+  ver="$(_ucc_driver_custom_daemon_version "$cfg_dir" "$yaml" "$target" "$running" 2>/dev/null || true)"
   path="$(command -v "$bin" 2>/dev/null || true)"
   log_path="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.log_path" 2>/dev/null || true)"
+  app_path="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.install_app_path" 2>/dev/null || true)"
+  if [[ -n "$app_path" && -e "$app_path" ]]; then
+    install_kind="app"
+  elif [[ -n "$app_path" ]]; then
+    install_kind="cli"
+  fi
   [[ -n "$ver" ]] || return 1
   printf 'version=%s' "$ver"
-  [[ -n "$path"     ]] && printf '  path=%s' "$path"
-  [[ -n "$log_path" ]] && printf '  log=%s' "$log_path"
+  [[ -n "$install_kind" ]] && printf '  install=%s' "$install_kind"
+  [[ -n "$path"         ]] && printf '  path=%s' "$path"
+  [[ -n "$log_path"     ]] && printf '  log=%s' "$log_path"
   # latest= appended by generic _ucc_driver_github_latest in ucc_drivers.sh
 }

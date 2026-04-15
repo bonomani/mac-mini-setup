@@ -173,7 +173,7 @@ targets:
       bin: ollama
       process: 'ollama (serve|app)'
       # `open -a Ollama` is idempotent (no error if already running) and
-      # handles the case where the daemon is externally managed by Ollama.app.
+      # handles the case where the daemon is externally managed by Ollama.app
       # Top-level fallback_start_cmd (`ollama serve`) is for non-app installs.
       start_cmd: open -a Ollama
       github_repo: ollama/ollama
@@ -185,6 +185,14 @@ targets:
       # but can't push the update synchronously — the .app applies it
       # asynchronously. Treat post-update still-outdated as [warn] not [fail].
       self_updating: true
+      # Probe the running daemon for its actual version — CLI binary
+      # version (e.g. brew-installed 0.20.6) can lag the .app bundle
+      # (0.20.5) that's actually serving requests. /api/version returns
+      # {"version":"X.Y.Z"}.
+      version_probe_path: /api/version
+      # Presence of the .app bundle signals a self-updating install
+      # (Squirrel). Surfaced in evidence as `install=app` vs `install=cli`.
+      install_app_path: /Applications/Ollama.app
     endpoints:
     - name: Ollama API
       scheme: http

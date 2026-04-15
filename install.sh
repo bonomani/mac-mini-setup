@@ -680,12 +680,13 @@ _UCC_YAML_BATCH_KEYS="profile actions.install actions.update \
   driver.script_name driver.formula driver.launchd_dir driver.nvm_dir \
   driver.apt_ref driver.dnf_ref driver.pacman_ref \
   driver.version_cmd driver.github_repo driver.fallback_install_url \
-  driver.fallback_install_args driver.update_cmd driver.self_updating \
+  driver.fallback_install_args driver.update_cmd \
   driver.repo driver.dest driver.branch requires \
   display_name driver.backend driver.curl_args driver.installer_url \
   driver.isolation driver.isolation.kind driver.isolation.name \
   driver.log_path driver.migration_safety driver.pull_policy_env \
   driver.requires_sudo driver.start_cmd driver.subkind driver.upstream \
+  driver.version_probe_path driver.install_app_path \
   update_class"
 _seen_yaml_files=()
 for _i in "${!_DISP_COMPS[@]}"; do
