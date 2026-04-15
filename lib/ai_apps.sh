@@ -390,7 +390,8 @@ PY
       # Squirrel's ShipIt runs asynchronously after relaunch. Poll for a
       # version change (or staged-zip removal) to confirm the swap landed.
       # On success, the next observe() will see the new version.
-      local _ver_url="http://${_OLLAMA_API_HOST}:${_OLLAMA_API_PORT}/api/version"
+      local _ver_url=""
+      _ver_url="$(_ucc_endpoint_base_url "$cfg_dir" "$yaml" ollama 2>/dev/null)/api/version"
       local _t=0 _api_ver=""
       while (( _t < 120 )); do
         _api_ver="$(curl -fsS --max-time 2 "$_ver_url" 2>/dev/null \

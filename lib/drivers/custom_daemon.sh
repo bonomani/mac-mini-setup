@@ -137,21 +137,12 @@ _ucc_driver_custom_daemon_version() {
   local probe_path ver bin
   probe_path="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.version_probe_path" 2>/dev/null || true)"
   if [[ -n "$probe_path" && "$running" == "1" ]]; then
-    local url="" row scheme host port
-    if _ucc_endpoint_fields "$cfg_dir" "$yaml" "$target" "" 2>/dev/null; then
-      row="$_UCC_ENDPOINT_FIELDS_VALUE"
-      scheme="$(_ucc_tsv_field "$row" 3)"
-      host="$(_ucc_tsv_field "$row" 4)"
-      port="$(_ucc_tsv_field "$row" 5)"
-      if [[ -n "$scheme" && -n "$host" ]]; then
-        [[ -n "$port" ]] || port="$(_ucc_endpoint_default_port "$scheme" 2>/dev/null || true)"
-        url="${scheme}://${host}"
-        [[ -n "$port" ]] && url="${url}:${port}"
-        [[ "$probe_path" == /* ]] || probe_path="/$probe_path"
-        url="${url}${probe_path}"
-        ver="$(curl -fsS --max-time "$(_ucc_curl_timeout probe)" "$url" 2>/dev/null \
-          | grep -oE '[0-9]+(\.[0-9]+){1,3}' | head -1)"
-      fi
+    local base url
+    if base="$(_ucc_endpoint_base_url "$cfg_dir" "$yaml" "$target" "" 2>/dev/null)"; then
+      [[ "$probe_path" == /* ]] || probe_path="/$probe_path"
+      url="${base}${probe_path}"
+      ver="$(curl -fsS --max-time "$(_ucc_curl_timeout probe)" "$url" 2>/dev/null \
+        | grep -oE '[0-9]+(\.[0-9]+){1,3}' | head -1)"
     fi
   fi
   if [[ -z "$ver" ]]; then

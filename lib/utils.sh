@@ -726,27 +726,42 @@ _ucc_endpoint_fields() {
   return 1
 }
 
-_ucc_endpoint_url() {
+# Return "scheme://host[:port]" for the named (or first) endpoint of a target.
+# Derives port from scheme when the port field is empty. Returns 1 if the
+# endpoint declares a full `url` instead of scheme/host/port, or has neither.
+_ucc_endpoint_base_url() {
   local cfg_dir="$1" yaml="$2" target="$3" endpoint_name="${4:-}"
-  local row="" url="" scheme="" host="" port="" path=""
+  local row scheme host port
   _ucc_endpoint_fields "$cfg_dir" "$yaml" "$target" "$endpoint_name" || return 1
   row="$_UCC_ENDPOINT_FIELDS_VALUE"
-  url="$(_ucc_tsv_field "$row" 2)"
   scheme="$(_ucc_tsv_field "$row" 3)"
   host="$(_ucc_tsv_field "$row" 4)"
   port="$(_ucc_tsv_field "$row" 5)"
+  [[ -n "$scheme" && -n "$host" ]] || return 1
+  [[ -n "$port" ]] || port="$(_ucc_endpoint_default_port "$scheme" 2>/dev/null || true)"
+  if [[ -n "$port" ]]; then
+    printf '%s://%s:%s' "$scheme" "$host" "$port"
+  else
+    printf '%s://%s' "$scheme" "$host"
+  fi
+}
+
+_ucc_endpoint_url() {
+  local cfg_dir="$1" yaml="$2" target="$3" endpoint_name="${4:-}"
+  local row url path base
+  _ucc_endpoint_fields "$cfg_dir" "$yaml" "$target" "$endpoint_name" || return 1
+  row="$_UCC_ENDPOINT_FIELDS_VALUE"
+  url="$(_ucc_tsv_field "$row" 2)"
+  if [[ -n "$url" ]]; then
+    printf '%s' "$url"
+    return 0
+  fi
+  base="$(_ucc_endpoint_base_url "$cfg_dir" "$yaml" "$target" "$endpoint_name")" || return 1
   path="$(_ucc_tsv_field "$row" 6)"
-  [[ -n "$url" ]] || {
-    [[ -n "$scheme" && -n "$host" ]] || return 1
-    [[ -n "$port" ]] || port="$(_ucc_endpoint_default_port "$scheme" 2>/dev/null || true)"
-    url="${scheme}://${host}"
-    [[ -n "$port" ]] && url="${url}:${port}"
-    if [[ -n "$path" ]]; then
-      [[ "$path" == /* ]] || path="/$path"
-      url="${url}${path}"
-    fi
-  }
-  printf '%s' "$url"
+  if [[ -n "$path" ]]; then
+    [[ "$path" == /* ]] || path="/$path"
+  fi
+  printf '%s%s' "$base" "$path"
 }
 
 _ucc_http_probe_endpoint() {
