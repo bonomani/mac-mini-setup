@@ -177,6 +177,12 @@ targets:
       # Top-level fallback_start_cmd (`ollama serve`) is for non-app installs.
       start_cmd: open -a Ollama
       github_repo: ollama/ollama
+      # Ollama on macOS updates via Ollama.app's built-in auto-updater or
+      # `brew upgrade ollama`; there's no `ollama update` CLI command. When
+      # the upstream check reports a newer version, the framework can't
+      # actually push the update — treat post-update still-outdated as
+      # [warn] instead of [fail]. See docs.ollama.com/faq.
+      externally_managed_updates: true
     endpoints:
     - name: Ollama API
       scheme: http

@@ -59,6 +59,11 @@ _ucc_driver_dispatch() {
     # (kind, op) pair so it surfaces in real runs without flooding.
     case "$op" in
       observe|action)
+        # Skip the warning for `capability` kind — it intentionally has no
+        # `_ucc_driver_capability_observe` because capability targets are
+        # dispatched via `_ucc_observe_yaml_capability_target` in ucc_targets.sh,
+        # not through the driver registry.
+        [[ "$kind" == "capability" ]] && return 1
         # Per-process dedup of missing-op warnings. `declare -g` (not export)
         # keeps the flag in the shell, out of the child-process env.
         local _seen_var="_UCC_DRV_MISSING_${kind//[^a-zA-Z0-9]/_}_${op}"

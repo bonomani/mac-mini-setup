@@ -261,6 +261,12 @@ _ucc_observed_prefers_update_action() {
   local observed="$1"
   [[ "$observed" == "outdated" || "$observed" == "needs-update" ]] && return 0
   _ucc_is_json_obj "$observed" || return 1
+  # Runtime targets can be Running+Outdated (externally-managed daemon needs
+  # upgrade, e.g. ollama 0.20.6 vs github 0.20.7). Update action is the right
+  # choice — the daemon is up, we just want the newer binary.
+  if [[ "$observed" == *'"runtime_state":"Running"'* && "$observed" == *'"health_state":"Outdated"'* ]]; then
+    return 0
+  fi
   [[ "$observed" == *'"runtime_state":"Stopped"'* ]] || return 1
   # Both Degraded (drift/broken) and Outdated (new version available) trigger
   # the update action when the target is already installed/configured.
@@ -959,6 +965,13 @@ _ucc_observe_yaml_runtime_target() {
     case "$_driver_state" in
       absent)  ucc_asm_state --installation Absent --runtime NeverStarted --health Unavailable --admin Enabled --dependencies DepsUnknown ;;
       running) ucc_asm_runtime_desired ;;
+      outdated)
+        # Daemon is running but a newer version exists upstream. Treat as
+        # Running+Outdated (analogous to Installed+Outdated for packages).
+        # Previously fell through to the default [*] case → Stopped+Degraded
+        # which caused scheduler to trigger install action and FAIL when the
+        # daemon was actually up (e.g. ollama 0.20.6 when 0.20.7 on GitHub).
+        ucc_asm_state --installation Configured --runtime Running --health Outdated --admin Enabled --dependencies DepsReady ;;
       stopped)
         local _sh _sd _v
         _v="_UCC_RT_STOPPED_HEALTH_${fn}"; _sh="${!_v:-Degraded}"
@@ -1023,7 +1036,7 @@ _ucc_observe_yaml_runtime_oracle_target() {
 ucc_yaml_runtime_target() {
   local cfg_dir="$1" yaml="$2" target="$3" install_fn="${4:-}" update_fn="${5:-}"
   _ucc_target_filtered_out "$target" "$cfg_dir" "$yaml" && return 0
-  local fn install_cmd update_cmd
+  local fn install_cmd update_cmd externally_managed_updates=""
   local obs_configured="" obs_runtime="" obs_driver=""
   local obs_stopped_inst="" obs_stopped_rt="" obs_stopped_health="" obs_stopped_deps=""
   local _ev_b64=""
@@ -1033,19 +1046,20 @@ ucc_yaml_runtime_target() {
   while IFS=$'\t' read -r -d '' key value; do
     if [[ "$key" == "__evidence__" ]]; then _ev_b64="$value"; continue; fi
     case "$key" in
-      actions.install)             install_cmd="$value" ;;
-      actions.update)              update_cmd="$value" ;;
-      oracle.configured)           obs_configured="$value" ;;
-      oracle.runtime)              obs_runtime="$value" ;;
-      driver.kind)                 obs_driver="$value" ;;
-      stopped_installation)        obs_stopped_inst="$value" ;;
-      stopped_runtime)             obs_stopped_rt="$value" ;;
-      stopped_health)              obs_stopped_health="$value" ;;
-      stopped_dependencies)        obs_stopped_deps="$value" ;;
+      actions.install)                   install_cmd="$value" ;;
+      actions.update)                    update_cmd="$value" ;;
+      oracle.configured)                 obs_configured="$value" ;;
+      oracle.runtime)                    obs_runtime="$value" ;;
+      driver.kind)                       obs_driver="$value" ;;
+      driver.externally_managed_updates) externally_managed_updates="$value" ;;
+      stopped_installation)              obs_stopped_inst="$value" ;;
+      stopped_runtime)                   obs_stopped_rt="$value" ;;
+      stopped_health)                    obs_stopped_health="$value" ;;
+      stopped_dependencies)              obs_stopped_deps="$value" ;;
     esac
   done < <(_ucc_ytgt_source "$cfg_dir" "$yaml" "$target" \
       actions.install actions.update oracle.configured oracle.runtime \
-      driver.kind stopped_installation stopped_runtime \
+      driver.kind driver.externally_managed_updates stopped_installation stopped_runtime \
       stopped_health stopped_dependencies)
   [[ -z "$update_cmd" ]] && update_cmd="$install_cmd"
   # A dispatched driver handles install/update even when actions.* are absent from YAML
@@ -1097,6 +1111,11 @@ ucc_yaml_runtime_target() {
   )
   [[ -n "$install_fn" ]] && args+=(--install "$install_fn")
   [[ -n "$update_fn" ]] && args+=(--update "$update_fn")
+  # Externally-managed updates (e.g. Ollama.app auto-updates itself, ollama
+  # binary updates come from upstream installer, not a CLI command) → treat
+  # post-action still-outdated as [warn], not [fail].
+  [[ "$externally_managed_updates" == "true" || "$externally_managed_updates" == "1" || "$externally_managed_updates" == "yes" ]] && \
+    args+=(--warn-on-update-failure)
   ucc_target_service "${args[@]}"
 }
 

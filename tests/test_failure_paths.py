@@ -180,6 +180,51 @@ class ExitCodeConventionTests(unittest.TestCase):
         self.assertIn("non-conventional rc=200", r.stderr)
 
 
+class CustomDaemonHttpFallbackTests(unittest.TestCase):
+    """Tests for lib/drivers/custom_daemon.sh observe HTTP fallback (added
+    to fix the intermittent ollama [fail] that survived fix #42).
+
+    These tests stub the YAML lookups + binary-exists check directly rather
+    than go through a real manifest, because custom_daemon_observe's code
+    path is linear and the YAML reads are the only external dependencies
+    that matter for testing the fallback branch."""
+
+    def _run_observe(self, http_succeeds: bool) -> subprocess.CompletedProcess:
+        http_ret = "return 0" if http_succeeds else "return 1"
+        return _bash(f"""\
+            source "{ROOT}/lib/ucc_log.sh"
+            source "{ROOT}/lib/utils.sh"
+            source "{ROOT}/lib/ucc_brew.sh"
+            source "{ROOT}/lib/ucc_targets.sh"
+            source "{ROOT}/lib/ucc_drivers.sh"
+            # Stub YAML reads: return a stub binary name + unmatched process pattern
+            _ucc_yaml_target_get() {{
+              case "$4" in
+                driver.bin)     echo "/bin/ls" ;;  # /bin/ls always exists
+                driver.process) echo "pattern-that-never-matches-xyzzy123" ;;
+                *) echo "" ;;
+              esac
+            }}
+            # Override pgrep to always miss (simulates the race condition)
+            pgrep() {{ return 1; }}
+            # Stub HTTP probe result
+            _ucc_http_probe_endpoint() {{ {http_ret}; }}
+            _ucc_driver_custom_daemon_observe /tmp /tmp/fake.yaml fake-target
+        """)
+
+    def test_pgrep_miss_with_http_success_reports_running(self):
+        """pgrep miss + HTTP success → 'running' (was 'stopped' before fix)."""
+        r = self._run_observe(http_succeeds=True)
+        self.assertEqual(r.returncode, 0, msg=r.stderr)
+        self.assertIn("running", r.stdout)
+
+    def test_pgrep_miss_http_fail_reports_stopped(self):
+        """pgrep miss + HTTP fail → 'stopped' (genuinely down)."""
+        r = self._run_observe(http_succeeds=False)
+        self.assertEqual(r.returncode, 0, msg=r.stderr)
+        self.assertIn("stopped", r.stdout)
+
+
 class ObserveOnlyWordingTests(unittest.TestCase):
     """Tests for capability target wording when no install_fn (added in #40).
     Uses ucc_target directly with no --install fn to verify the code path."""

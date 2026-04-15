@@ -18,11 +18,22 @@ _ucc_driver_custom_daemon_observe() {
     printf 'absent'
     return
   fi
-  # Determine running state.
+  # Determine running state. Two signals, checked in order:
+  #   1. pgrep matches driver.process pattern (cheap, local)
+  #   2. HTTP probe on first endpoint (authoritative, catches externally-
+  #      managed daemons where pgrep pattern races or misses — e.g. Ollama.app
+  #      vs. brew install; both expose the same API, but pgrep matches only
+  #      one at a time during start/restart transitions)
   local process running=0
   process="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.process")"
   if [[ -n "$process" ]] && pgrep -f "$process" >/dev/null 2>&1; then
     running=1
+  elif declare -f _ucc_http_probe_endpoint >/dev/null 2>&1; then
+    # pgrep missed — try HTTP fallback if endpoints are declared on the target.
+    # Cheap (<1s) and conclusive: if the API answers, the daemon IS up.
+    if _ucc_http_probe_endpoint "$cfg_dir" "$yaml" "$target" "" 2>/dev/null; then
+      running=1
+    fi
   fi
   # Outdated check: when driver.github_repo is set and the binary reports
   # a parseable version, compare against the latest GitHub release tag.
