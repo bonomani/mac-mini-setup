@@ -7,12 +7,15 @@ No ollama items open as of 2026-04-15 end-of-day. Refactor sweep
 shipped 2026-04-15 — daemon version probe (`/api/version`), install-
 method evidence (`install=app`/`cli`), and automated apply of staged
 Squirrel updates via SIGTERM + async poll (Ollama converges
-0.20.6 → 0.20.7 unattended). Driver running-check refactor #58
-shipped same day. Three items deferred (#2 cross-platform Docker,
-#4 Phase C1, #6 Docker unattended Checkpoint C), four closed
-not-a-bug (#16 via #34, #24, #27, #36; #29 confirmed intentional).
-Docker install/launch is fully functional (tested 2026-04-13). Test
-suite green. Pip venv isolation shipped (2026-04-14).
+0.20.6 → 0.20.7 unattended). Driver cleanup #58 + unify sweep #59–#61
+shared 3 new utils.sh helpers (`_ucc_endpoint_base_url`,
+`_ucc_parse_version`, `_ucc_wait_until`) across custom-daemon, pkg,
+and ai_apps — ~60 lines of duplication removed. Three items deferred
+(#2 cross-platform Docker, #4 Phase C1, #6 Docker unattended
+Checkpoint C), four closed not-a-bug (#16 via #34, #24, #27, #36;
+#29 confirmed intentional). Docker install/launch is fully functional
+(tested 2026-04-13). Test suite green. Pip venv isolation shipped
+(2026-04-14).
 
 | # | Item | Status | Priority |
 |---|---|---|---|
@@ -74,6 +77,9 @@ suite green. Pip venv isolation shipped (2026-04-14).
 | 56 | ~~Rename `externally_managed_updates` → clearer semantic~~ | ✅ DONE 2026-04-15 — renamed YAML field to `self_updating` across all files (ucc_targets.sh, validator schema, install.sh batch keys, ai-apps.yaml, homebrew.yaml, test assertions). Log message changed from "update remains externally managed" to "self-updating target — update deferred to built-in updater". No backward-compat kept (clean break). | — |
 | 57 | ~~Apply staged Squirrel updates for Ollama~~ | ✅ DONE 2026-04-15 (`5dba726`, cleanup `a74b7b6`) — `_update_ollama` in `lib/ai_apps.sh` now detects a staged bundle at `~/Library/Caches/ollama/updates/*/Ollama-darwin.zip`, SIGTERMs the app (AppleScript `quit` is canceled by the app's confirm dialog non-interactively), relaunches, and polls `/api/version` for up to ~60s — Squirrel's ShipIt runs async after relaunch and swaps the bundle. End-to-end: ollama converged 0.20.6 → 0.20.7 unattended. Custom-daemon driver's generic apply path dropped in cleanup — unreachable because ollama overrides driver dispatch with wrapper functions. `driver.pending_update_glob` kept for evidence (`update=pending`). | — |
 | 58 | ~~Share running-check between observe + evidence in custom-daemon~~ | ✅ DONE 2026-04-15 (`f16bd43`) — `_ucc_driver_custom_daemon_running` helper unifies the pgrep + HTTP-fallback check. Fixes silent drift where evidence used pgrep-only and (when pgrep missed an externally-managed daemon) fell back to stale `bin --version` instead of the authoritative HTTP version probe. −23/+18 lines. | — |
+| 59 | ~~Unify endpoint base-URL construction~~ | ✅ DONE 2026-04-15 (`95e5da2`) — `_ucc_endpoint_base_url` in `lib/utils.sh` returns `scheme://host[:port]` with default-port derivation. Replaces 15-line inline builds in `_ucc_endpoint_url`, `_ucc_driver_custom_daemon_version`, and `_update_ollama`. Latter stops hand-composing `http://${_OLLAMA_API_HOST}:${_OLLAMA_API_PORT}/...` from raw YAML vars (per Rule 2). −25 lines net. | — |
+| 60 | ~~Unify version-string parsing~~ | ✅ DONE 2026-04-15 (`4f226d6`) — `_ucc_parse_version` pipe-based helper (`ver=$(cmd \| _ucc_parse_version)`). Replaces 5 occurrences of `grep -oE '[0-9]+(\.[0-9]+){1,3}' \| head -1` across custom_daemon.sh (2×), pkg.sh, ai_apps.sh (2×). app_bundle.sh + host_detect.sh left alone — different intended regex semantics. | — |
+| 61 | ~~Unify polling-loop pattern~~ | ✅ DONE 2026-04-15 (`b495235`) — `_ucc_wait_until <timeout-s> <interval-s> <cmd...>` in `lib/utils.sh`. Refactors 3 ad-hoc `while (( i < N ))` loops: custom-daemon's "wait for process to appear", `_update_ollama`'s "wait for process to disappear" post-SIGTERM, and the Squirrel-swap poll (two-condition success wrapped in a local `_swap_landed` fn). Existing eval-based `_ucc_wait_for_runtime_probe` untouched — different semantic contract. | — |
 
 ### Unified `update-policy` pref
 
