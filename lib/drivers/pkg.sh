@@ -100,8 +100,7 @@ _pkg_curl_update()  { _pkg_curl_install "$1"; }
 _pkg_curl_version() {
   local bin="${_PKG_BIN:-}"
   [[ -n "$bin" ]] || return 0
-  "$bin" --version 2>/dev/null | head -1 \
-    | grep -oE '[0-9]+(\.[0-9]+){1,3}' | head -1
+  "$bin" --version 2>/dev/null | head -1 | _ucc_parse_version
 }
 # True (0) if upstream GitHub release is strictly newer than installed binary.
 # Gated on UIC_PREF_UPSTREAM_CHECK=1 (network call). Reads driver.github_repo

@@ -764,6 +764,16 @@ _ucc_endpoint_url() {
   printf '%s%s' "$base" "$path"
 }
 
+# Extract the first dotted-int version substring from stdin (1-3 dots,
+# i.e. N, N.N, N.N.N, or N.N.N.N). Prints the match; returns 1 if none.
+# Pipe usage: `ver="$(cmd | _ucc_parse_version)"`.
+_ucc_parse_version() {
+  local ver
+  ver="$(grep -oE '[0-9]+(\.[0-9]+){1,3}' | head -1)"
+  [[ -n "$ver" ]] || return 1
+  printf '%s' "$ver"
+}
+
 _ucc_http_probe_endpoint() {
   local cfg_dir="$1" yaml="$2" target="$3" endpoint_name="${4:-}"
   _ucc_http_probe_endpoint_timeout "$cfg_dir" "$yaml" "$target" "$endpoint_name" 5

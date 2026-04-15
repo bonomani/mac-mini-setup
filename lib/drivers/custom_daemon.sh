@@ -142,14 +142,13 @@ _ucc_driver_custom_daemon_version() {
       [[ "$probe_path" == /* ]] || probe_path="/$probe_path"
       url="${base}${probe_path}"
       ver="$(curl -fsS --max-time "$(_ucc_curl_timeout probe)" "$url" 2>/dev/null \
-        | grep -oE '[0-9]+(\.[0-9]+){1,3}' | head -1)"
+        | _ucc_parse_version || true)"
     fi
   fi
   if [[ -z "$ver" ]]; then
     bin="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.bin" 2>/dev/null || true)"
     [[ -n "$bin" ]] || return 1
-    ver="$("$bin" --version 2>/dev/null | head -1 \
-      | grep -oE '[0-9]+(\.[0-9]+){1,3}' | head -1)"
+    ver="$("$bin" --version 2>/dev/null | head -1 | _ucc_parse_version || true)"
   fi
   [[ -n "$ver" ]] || return 1
   printf '%s' "$ver"

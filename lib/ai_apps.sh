@@ -379,7 +379,7 @@ PY
       log_info "ollama: applying staged update via Squirrel restart (${_staged})"
       local _pre_ver
       _pre_ver="$(curl -fsS --max-time 2 "$_OLLAMA_API_URL" 2>/dev/null \
-        | grep -oE '[0-9]+(\.[0-9]+){1,3}' | head -1 || true)"
+        | _ucc_parse_version || true)"
       pkill -TERM -f 'Ollama.app/Contents/MacOS/Ollama' 2>/dev/null || true
       local _s=0
       while (( _s < 40 )) && pgrep -f 'Ollama.app/Contents/MacOS/Ollama' >/dev/null 2>&1; do
@@ -395,7 +395,7 @@ PY
       local _t=0 _api_ver=""
       while (( _t < 120 )); do
         _api_ver="$(curl -fsS --max-time 2 "$_ver_url" 2>/dev/null \
-          | grep -oE '[0-9]+(\.[0-9]+){1,3}' | head -1 || true)"
+          | _ucc_parse_version || true)"
         if [[ -n "$_api_ver" && -n "$_pre_ver" && "$_api_ver" != "$_pre_ver" ]]; then
           log_info "ollama: update applied (${_pre_ver} → ${_api_ver})"
           return 0
