@@ -21,17 +21,11 @@
 # driver.pending_update_glob: optional filesystem glob pointing to a
 #                   staged update bundle (e.g. Squirrel's downloaded
 #                   `.zip` in `~/Library/Caches/<app>/updates/*/`).
-#                   When any file matches and `action=update`, the
-#                   driver stops the daemon via restart_stop_cmd and
-#                   restarts it via start_cmd so the self-updater can
-#                   swap the bundle on next launch. Also surfaced in
-#                   evidence as `update=pending` when a match exists.
-# driver.restart_stop_cmd: optional graceful-quit command used before
-#                   restart (e.g. `osascript -e 'tell application
-#                   "Ollama" to quit'`). Required for the pending-
-#                   update apply flow — a graceful quit lets the
-#                   self-updater (Squirrel's ShipIt) run its swap
-#                   hook; SIGKILL would skip it.
+#                   Surfaced in evidence as `update=pending` when a
+#                   match exists. Applying the staged update is the
+#                   caller's responsibility — Squirrel-managed apps
+#                   need `quitAndInstall()` semantics that can't be
+#                   replicated generically across daemons.
 
 _ucc_driver_custom_daemon_observe() {
   local cfg_dir="$1" yaml="$2" target="$3"
@@ -88,11 +82,9 @@ _ucc_driver_custom_daemon_observe() {
 
 _ucc_driver_custom_daemon_action() {
   local cfg_dir="$1" yaml="$2" target="$3" action="$4"
-  local start_cmd process stop_cmd glob
+  local start_cmd process
   start_cmd="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.start_cmd" 2>/dev/null || true)"
   process="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.process" 2>/dev/null || true)"
-  stop_cmd="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.restart_stop_cmd" 2>/dev/null || true)"
-  glob="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.pending_update_glob" 2>/dev/null || true)"
   # Fall back to top-level fallback_start_cmd when driver.start_cmd unset
   # (e.g. ollama: app-installed, no per-driver start; rely on top-level cmd).
   if [[ -z "$start_cmd" ]]; then
@@ -105,27 +97,6 @@ _ucc_driver_custom_daemon_action() {
   # confused operators when the daemon was actually running via Ollama.app
   # but pgrep raced with our observe.
   [[ -n "$start_cmd" ]] || return 124
-  # Pending-update apply flow: when update action + staged bundle present
-  # + graceful stop_cmd configured, quit the app so the self-updater
-  # (e.g. Squirrel's ShipIt) can swap the bundle, then restart.
-  if [[ "$action" == "update" && -n "$glob" && -n "$stop_cmd" ]] \
-     && _ucc_driver_custom_daemon_pending_update "$glob"; then
-    log_info "custom-daemon: ${target} applying staged update via restart"
-    ucc_run sh -c "$stop_cmd" || true
-    if [[ -n "$process" ]]; then
-      local _stop_s="${UCC_DAEMON_STOP_WAIT_S:-20}"
-      local _stop_attempts=$(( _stop_s * 2 ))
-      local j=0
-      while (( j < _stop_attempts )); do
-        pgrep -f "$process" >/dev/null 2>&1 || break
-        sleep 0.5
-        j=$((j + 1))
-      done
-      if pgrep -f "$process" >/dev/null 2>&1; then
-        log_warn "custom-daemon: ${target} stop_cmd ran but process '${process}' still alive after ${_stop_s}s — proceeding with restart anyway"
-      fi
-    fi
-  fi
   ucc_run sh -c "$start_cmd" || return $?
   # Wait for the process to appear, so observe sees "running".
   # Default 15s window (30 × 0.5s) — `open -a` is async on macOS and the

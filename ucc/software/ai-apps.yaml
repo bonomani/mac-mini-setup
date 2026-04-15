@@ -195,12 +195,10 @@ targets:
       install_app_path: /Applications/Ollama.app
       # Squirrel stages downloaded updates here; presence of the zip
       # means "downloaded, restart to apply" (same signal the GUI shows).
-      # When action=update and a match exists, we quit+relaunch so
-      # Squirrel's ShipIt swaps the bundle.
+      # Surfaced in evidence as `update=pending`. The actual apply lives
+      # in `_update_ollama` (lib/ai_apps.sh) since the apply needs the
+      # SIGTERM-restart-poll sequence specific to Squirrel's ShipIt.
       pending_update_glob: ~/Library/Caches/ollama/updates/*/Ollama-darwin.zip
-      # Graceful AppleScript quit so Squirrel's update hook runs; a
-      # SIGKILL would skip the swap.
-      restart_stop_cmd: osascript -e 'tell application "Ollama" to quit'
     endpoints:
     - name: Ollama API
       scheme: http
