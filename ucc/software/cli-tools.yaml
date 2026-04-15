@@ -16,7 +16,6 @@ targets:
     component: cli-tools
     profile: configured
     type: package
-    state_model: package
     display_name: Git
     driver:
       kind: pkg
@@ -28,7 +27,6 @@ targets:
     component: cli-tools
     profile: configured
     type: config
-    state_model: config
     display_name: Git global config
     depends_on:
     - git
@@ -38,7 +36,6 @@ targets:
     component: cli-tools
     profile: configured
     type: package
-    state_model: package
     display_name: jq
     driver:
       kind: pkg
@@ -50,7 +47,6 @@ targets:
     component: cli-tools
     profile: configured
     type: package
-    state_model: package
     display_name: wget
     driver:
       kind: pkg
@@ -62,7 +58,6 @@ targets:
     component: cli-tools
     profile: configured
     type: package
-    state_model: package
     display_name: curl
     driver:
       kind: pkg
@@ -74,7 +69,6 @@ targets:
     component: cli-tools
     profile: configured
     type: package
-    state_model: package
     display_name: htop
     driver:
       kind: pkg
@@ -86,7 +80,6 @@ targets:
     component: cli-tools
     profile: configured
     type: package
-    state_model: package
     display_name: btop
     driver:
       kind: pkg
@@ -98,7 +91,6 @@ targets:
     component: cli-tools
     profile: configured
     type: package
-    state_model: package
     display_name: tmux
     driver:
       kind: pkg
@@ -110,7 +102,6 @@ targets:
     component: cli-tools
     profile: configured
     type: package
-    state_model: package
     display_name: fzf
     driver:
       kind: pkg
@@ -122,7 +113,6 @@ targets:
     component: cli-tools
     profile: configured
     type: package
-    state_model: package
     display_name: ripgrep
     driver:
       kind: pkg
@@ -134,7 +124,6 @@ targets:
     component: cli-tools
     profile: configured
     type: package
-    state_model: package
     display_name: fd
     driver:
       kind: pkg
@@ -146,7 +135,6 @@ targets:
     component: cli-tools
     profile: configured
     type: package
-    state_model: package
     display_name: tree
     driver:
       kind: pkg
@@ -158,7 +146,6 @@ targets:
     component: cli-tools
     profile: configured
     type: package
-    state_model: package
     display_name: uv
     driver:
       kind: pkg
@@ -170,7 +157,6 @@ targets:
     component: cli-tools
     profile: configured
     type: package
-    state_model: package
     display_name: pnpm
     driver:
       kind: pkg
@@ -182,7 +168,6 @@ targets:
     component: cli-tools
     profile: configured
     type: package
-    state_model: package
     display_name: GCC
     update_class: lib
     driver:
@@ -195,7 +180,6 @@ targets:
     component: cli-tools
     profile: configured
     type: package
-    state_model: package
     display_name: GitHub CLI
     driver:
       kind: pkg
@@ -207,7 +191,6 @@ targets:
     component: cli-tools
     profile: configured
     type: package
-    state_model: package
     display_name: llama.cpp
     driver:
       kind: pkg
@@ -219,7 +202,6 @@ targets:
     component: cli-tools
     profile: configured
     type: package
-    state_model: package
     display_name: OpenCode
     driver:
       kind: pkg
@@ -232,7 +214,6 @@ targets:
     component: cli-tools
     profile: configured
     type: package
-    state_model: package
     display_name: aria2
     driver:
       kind: pkg
@@ -244,7 +225,6 @@ targets:
     component: cli-tools
     profile: configured
     type: package
-    state_model: package
     display_name: CMake
     driver:
       kind: pkg
@@ -256,7 +236,6 @@ targets:
     component: cli-tools
     profile: configured
     type: config
-    state_model: config
     display_name: Oh My Zsh
     driver:
       kind: script-installer
@@ -268,7 +247,6 @@ targets:
     component: cli-tools
     profile: configured
     type: config
-    state_model: config
     display_name: Agnoster theme
     depends_on:
     - oh-my-zsh
@@ -281,7 +259,6 @@ targets:
     component: cli-tools
     profile: configured
     type: config
-    state_model: config
     display_name: ~/bin in PATH
     driver:
       kind: path-export
@@ -291,7 +268,6 @@ targets:
     component: cli-tools
     profile: configured
     type: config
-    state_model: config
     display_name: ai-healthcheck
     depends_on:
     - home-bin-in-path
@@ -304,7 +280,6 @@ targets:
     component: cli-tools
     profile: configured
     type: package
-    state_model: package
     display_name: iTerm2
     requires: macos
     driver:
@@ -317,7 +292,6 @@ targets:
     component: cli-tools
     profile: configured
     type: package
-    state_model: package
     display_name: LM Studio
     requires: macos
     driver:

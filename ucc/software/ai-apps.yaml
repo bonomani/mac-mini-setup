@@ -53,7 +53,6 @@ targets:
     component: ai-apps
     profile: parametric
     type: config
-    state_model: parametric
     display_name: compose file
     depends_on:
     - ai-apps-template
@@ -190,7 +189,6 @@ targets:
     component: ai-apps
     profile: configured
     type: package
-    state_model: package
     display_name: Ollama llama3.2
     depends_on:
     - ollama
@@ -202,7 +200,6 @@ targets:
     component: ai-apps
     profile: configured
     type: package
-    state_model: package
     display_name: Ollama nomic-embed-text
     depends_on:
     - ollama
@@ -214,7 +211,6 @@ targets:
     component: ai-apps
     profile: configured
     type: package
-    state_model: package
     display_name: Ollama qwen3:latest
     depends_on:
     - ollama
@@ -226,7 +222,6 @@ targets:
     component: ai-apps
     profile: configured
     type: package
-    state_model: package
     display_name: Ollama llama3.1:8b
     depends_on:
     - ollama
@@ -238,7 +233,6 @@ targets:
     component: ai-apps
     profile: configured
     type: package
-    state_model: package
     display_name: Ollama mistral:7b
     depends_on:
     - ollama
@@ -250,7 +244,6 @@ targets:
     component: ai-apps
     profile: configured
     type: package
-    state_model: package
     display_name: Ollama qwen2.5-coder:32b
     depends_on:
     - ollama
@@ -262,7 +255,6 @@ targets:
     component: ai-apps
     profile: configured
     type: package
-    state_model: package
     display_name: Ollama llama3.1:70b
     depends_on:
     - ollama

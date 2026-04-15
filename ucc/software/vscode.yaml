@@ -17,7 +17,6 @@ targets:
     component: vscode-stack
     profile: configured
     type: package
-    state_model: package
     display_name: Visual Studio Code
     requires: macos
     driver:
@@ -31,7 +30,6 @@ targets:
     component: vscode-stack
     profile: configured
     type: config
-    state_model: config
     display_name: VS Code CLI
     requires: macos
     depends_on:
@@ -47,7 +45,6 @@ targets:
     component: vscode-stack
     profile: configured
     type: config
-    state_model: config
     display_name: VS Code settings
     depends_on:
     - vscode
@@ -61,7 +58,6 @@ targets:
     component: vscode-stack
     profile: configured
     type: package
-    state_model: package
     display_name: VS Code Python
     depends_on:
     - vscode-code-cmd
@@ -73,7 +69,6 @@ targets:
     component: vscode-stack
     profile: configured
     type: package
-    state_model: package
     display_name: VS Code Pylance
     depends_on:
     - vscode-code-cmd
@@ -85,7 +80,6 @@ targets:
     component: vscode-stack
     profile: configured
     type: package
-    state_model: package
     display_name: VS Code Jupyter
     depends_on:
     - vscode-code-cmd
@@ -97,7 +91,6 @@ targets:
     component: vscode-stack
     profile: configured
     type: package
-    state_model: package
     display_name: VS Code C/C++
     depends_on:
     - vscode-code-cmd
@@ -109,7 +102,6 @@ targets:
     component: vscode-stack
     profile: configured
     type: package
-    state_model: package
     display_name: VS Code Continue
     depends_on:
     - vscode-code-cmd
@@ -121,7 +113,6 @@ targets:
     component: vscode-stack
     profile: configured
     type: package
-    state_model: package
     display_name: VS Code GitLens
     depends_on:
     - vscode-code-cmd
@@ -133,7 +124,6 @@ targets:
     component: vscode-stack
     profile: configured
     type: package
-    state_model: package
     display_name: VS Code Dev Containers
     depends_on:
     - vscode-code-cmd

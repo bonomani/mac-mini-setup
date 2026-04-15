@@ -43,7 +43,6 @@ targets:
     component: ai-python-stack
     profile: configured
     type: package
-    state_model: package
     display_name: pyenv
     depends_on:
     - homebrew
@@ -53,7 +52,6 @@ targets:
     component: ai-python-stack
     profile: configured
     type: package
-    state_model: package
     display_name: XZ Utils
     update_class: lib
     driver:
@@ -66,7 +64,6 @@ targets:
     component: ai-python-stack
     profile: configured
     type: package
-    state_model: package
     display_name: Python
     depends_on:
     - xz
@@ -79,7 +76,6 @@ targets:
     component: ai-python-stack
     profile: configured
     type: config
-    state_model: config
     display_name: pip
     depends_on:
     - python
@@ -102,7 +98,6 @@ targets:
     component: ai-python-stack
     profile: configured
     type: package
-    state_model: package
     display_name: Unsloth
     depends_on:
     - python-venv-available
@@ -160,7 +155,6 @@ targets:
     component: ai-python-stack
     profile: configured
     type: package
-    state_model: package
     display_name: PyTorch packages
     depends_on:
     - python-venv-available
@@ -176,7 +170,6 @@ targets:
     component: ai-python-stack
     profile: configured
     type: package
-    state_model: package
     display_name: Hugging Face packages
     depends_on:
     - python-venv-available
@@ -193,7 +186,6 @@ targets:
     component: ai-python-stack
     profile: configured
     type: package
-    state_model: package
     display_name: LangChain packages
     depends_on:
     - python-venv-available
@@ -210,7 +202,6 @@ targets:
     component: ai-python-stack
     profile: configured
     type: package
-    state_model: package
     display_name: LlamaIndex packages
     depends_on:
     - python-venv-available
@@ -226,7 +217,6 @@ targets:
     component: ai-python-stack
     profile: configured
     type: package
-    state_model: package
     display_name: LLM client packages
     depends_on:
     - python-venv-available
@@ -242,7 +232,6 @@ targets:
     component: ai-python-stack
     profile: configured
     type: package
-    state_model: package
     display_name: Vector database packages
     depends_on:
     - python-venv-available
@@ -258,7 +247,6 @@ targets:
     component: ai-python-stack
     profile: configured
     type: package
-    state_model: package
     display_name: Jupyter packages
     depends_on:
     - python-venv-available
@@ -274,7 +262,6 @@ targets:
     component: ai-python-stack
     profile: configured
     type: package
-    state_model: package
     display_name: Serving packages
     depends_on:
     - python-venv-available
@@ -290,7 +277,6 @@ targets:
     component: ai-python-stack
     profile: configured
     type: package
-    state_model: package
     display_name: Data science packages
     depends_on:
     - python-venv-available
@@ -306,7 +292,6 @@ targets:
     component: ai-python-stack
     profile: configured
     type: package
-    state_model: package
     display_name: Utility packages
     depends_on:
     - python-venv-available
@@ -322,7 +307,6 @@ targets:
     component: ai-python-stack
     profile: configured
     type: package
-    state_model: package
     display_name: Python dev tools
     depends_on:
     - python-venv-available
@@ -338,7 +322,6 @@ targets:
     component: ai-python-stack
     profile: configured
     type: package
-    state_model: package
     display_name: Optimum packages
     depends_on:
     - python-venv-available
@@ -354,7 +337,6 @@ targets:
     component: ai-python-stack
     profile: configured
     type: package
-    state_model: package
     display_name: Web testing packages
     depends_on:
     - python-venv-available

@@ -358,7 +358,7 @@ _ucc_policy_warn_detail() {
 
 _ucc_observe_yaml_simple_target() {
   local cfg_dir="$1" yaml="$2" target="$3"
-  local target_type configured_cmd observe_cmd state_model success_raw failure_raw raw_state
+  local target_type profile configured_cmd observe_cmd state_model success_raw failure_raw raw_state
   local fn="${target//[^a-zA-Z0-9]/_}"
   local _cached_var="_UCC_OBS_CACHED_${fn}"
 
@@ -373,6 +373,7 @@ _ucc_observe_yaml_simple_target() {
   else
     while IFS=$'\t' read -r -d '' key value; do
       case "$key" in
+        profile)           profile="$value" ;;
         type)              target_type="$value" ;;
         oracle.configured) configured_cmd="$value" ;;
         observe_cmd)       observe_cmd="$value" ;;
@@ -380,10 +381,26 @@ _ucc_observe_yaml_simple_target() {
         observe_success)   success_raw="$value" ;;
         observe_failure)   failure_raw="$value" ;;
       esac
-    done < <(_ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" type oracle.configured observe_cmd state_model observe_success observe_failure)
+    done < <(_ucc_yaml_target_get_many "$cfg_dir" "$yaml" "$target" profile type oracle.configured observe_cmd state_model observe_success observe_failure)
   fi
   [[ -n "$target_type" ]] || target_type="config"
-  [[ -n "$state_model" ]] || state_model="$target_type"
+  # Derive state_model from (profile, type) when omitted:
+  #   type=package                         → state_model=package
+  #   type=config, profile=parametric      → state_model=parametric
+  #   type=config, profile≠parametric      → state_model=config
+  # For runtime/capability/precondition, fall back to target_type (legacy behavior).
+  if [[ -z "$state_model" ]]; then
+    case "$target_type" in
+      package) state_model="package" ;;
+      config)
+        if [[ "$profile" == "parametric" ]]; then
+          state_model="parametric"
+        else
+          state_model="config"
+        fi ;;
+      *) state_model="$target_type" ;;
+    esac
+  fi
 
   local driver_raw
   if driver_raw="$(_ucc_driver_observe "$cfg_dir" "$yaml" "$target")"; then
@@ -663,6 +680,19 @@ ucc_yaml_simple_target() {
       profile actions.install actions.update driver.externally_managed_updates driver.kind \
       type oracle.configured observe_cmd state_model observe_success observe_failure)
   [[ -z "$update_cmd" ]] && update_cmd="$install_cmd"
+  # Derive state_model from (profile, type) when omitted — matches the
+  # derivation in _ucc_observe_yaml_simple_target. Keeps YAML tidy by
+  # letting targets skip `state_model: foo` when it's the default for
+  # their (profile, type) combination.
+  if [[ -z "$obs_model" ]]; then
+    case "$obs_type" in
+      package) obs_model="package" ;;
+      config)
+        if [[ "$profile" == "parametric" ]]; then obs_model="parametric"
+        else obs_model="config"; fi ;;
+      *) obs_model="$obs_type" ;;
+    esac
+  fi
   # A dispatched driver handles install/update even when actions.* are absent from YAML
   local driver_dispatched=0
   [[ -n "$driver_kind" && "$driver_kind" != "custom" ]] && driver_dispatched=1

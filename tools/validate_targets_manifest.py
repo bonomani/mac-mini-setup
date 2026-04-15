@@ -382,7 +382,10 @@ def _validate_generated_target_collection(
             errors.append(f"generated target '{item}' in section '{section_name}' must use profile 'configured'")
         if target.get("type") != "package":
             errors.append(f"generated target '{item}' in section '{section_name}' must use type 'package'")
-        if target.get("state_model") != "package":
+        # state_model is either omitted (derives to 'package' via profile+type)
+        # or must be explicitly 'package'.
+        _sm = target.get("state_model")
+        if _sm is not None and _sm != "package":
             errors.append(f"generated target '{item}' in section '{section_name}' must use state_model 'package'")
         explicit_tool = isinstance(target.get("provided_by_tool"), str) and target.get("provided_by_tool", "").strip()
         implicit_tool = _driver_provided_by(target)
@@ -791,10 +794,31 @@ def validate(manifest, known_gates):
                     if not isinstance(value, str) or not value.strip():
                         errors.append(f"target '{name}' actions '{key}' must be a non-empty string")
 
+        # state_model is derivable from (profile, type) for all current targets:
+        #   type=package                  → state_model=package
+        #   type=config, profile=parametric → state_model=parametric
+        #   type=config, profile=configured → state_model=config
+        #   type=runtime/capability       → no state_model (None)
+        # When state_model is omitted in YAML, we derive the expected value.
+        # If it's present, it must match the derived value (or the legacy
+        # 'precondition' exception below).
+        def _derive_state_model(ttype, prof):
+            if ttype == "package":
+                return "package"
+            if ttype == "config":
+                return "parametric" if prof == "parametric" else "config"
+            return None  # runtime, capability, precondition → no state_model
+
         state_model = data.get("state_model")
+        _derived = _derive_state_model(target_type, profile)
         oracle = data.get("oracle")
         if state_model is not None and state_model not in KNOWN_STATE_MODELS:
             errors.append(f"target '{name}' has unknown state_model '{state_model}'")
+        # Fill in derived value when omitted — lets YAML drop redundant lines.
+        # IMPORTANT: do NOT mutate data[] here; that would append state_model
+        # at the end of the dict and break the canonical-key-order check.
+        if state_model is None and _derived is not None:
+            state_model = _derived
         if target_type == "package" and state_model != "package":
             errors.append(f"target '{name}' type 'package' requires state_model 'package'")
         if target_type == "package":

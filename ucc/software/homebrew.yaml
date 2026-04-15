@@ -34,7 +34,6 @@ targets:
     component: software-bootstrap
     profile: configured
     type: package
-    state_model: package
     display_name: Build dependencies
     requires: linux,wsl2
     provided_by_tool: native-package-manager
@@ -44,7 +43,6 @@ targets:
     component: software-bootstrap
     profile: configured
     type: package
-    state_model: package
     display_name: Xcode Command Line Tools
     requires: macos
     provided_by_tool: macos-installer
@@ -64,7 +62,6 @@ targets:
     component: software-bootstrap
     profile: configured
     type: package
-    state_model: package
     display_name: Homebrew
     depends_on:
     - network-available
@@ -84,7 +81,6 @@ targets:
     component: software-bootstrap
     profile: parametric
     type: config
-    state_model: parametric
     display_name: Homebrew analytics
     depends_on:
     - homebrew

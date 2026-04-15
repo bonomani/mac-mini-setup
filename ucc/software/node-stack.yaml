@@ -14,7 +14,6 @@ targets:
     component: node-stack
     profile: configured
     type: package
-    state_model: package
     display_name: nvm
     driver:
       kind: nvm
@@ -24,7 +23,6 @@ targets:
     component: node-stack
     profile: configured
     type: package
-    state_model: package
     display_name: Node.js LTS
     driver:
       kind: nvm-version
@@ -34,7 +32,6 @@ targets:
     component: node-stack
     profile: configured
     type: config
-    state_model: config
     display_name: Brew node unlinked
     depends_on:
     - node-lts
@@ -45,7 +42,6 @@ targets:
     component: node-stack
     profile: configured
     type: package
-    state_model: package
     display_name: Codex CLI
     depends_on:
     - node-lts
@@ -58,7 +54,6 @@ targets:
     component: node-stack
     profile: configured
     type: package
-    state_model: package
     display_name: Claude Code CLI
     depends_on:
     - node-lts
@@ -71,7 +66,6 @@ targets:
     component: node-stack
     profile: configured
     type: package
-    state_model: package
     display_name: BMAD Method CLI
     depends_on:
     - node-lts

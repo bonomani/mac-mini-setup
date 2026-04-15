@@ -422,7 +422,10 @@ class UccManifestValidationTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("generated target 'cli-fake' in section 'cli_tools' requires provided_by_tool", result.stderr)
 
-    def test_validator_requires_state_model_for_package_targets(self) -> None:
+    def test_validator_rejects_wrong_state_model_for_package_targets(self) -> None:
+        """type=package with an explicit wrong state_model is rejected.
+        (Omitting state_model is now allowed — it auto-derives to 'package'
+        per the profile/type dedup refactor 2026-04-15.)"""
         with tempfile.TemporaryDirectory() as tmp:
             ucc_dir = _write_manifest(
                 Path(tmp),
@@ -437,6 +440,7 @@ class UccManifestValidationTests(unittest.TestCase):
                         component: fake
                         profile: configured
                         type: package
+                        state_model: config
                     """
                 ),
             )

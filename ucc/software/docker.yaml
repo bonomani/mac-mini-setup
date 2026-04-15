@@ -94,7 +94,6 @@ targets:
     component: docker
     profile: parametric
     type: config
-    state_model: parametric
     display_name: Docker resources
     depends_on:
     - docker-available
@@ -116,7 +115,6 @@ targets:
     component: docker
     profile: parametric
     type: config
-    state_model: parametric
     display_name: Privileged port mapping
     depends_on:
     - docker-desktop

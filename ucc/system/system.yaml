@@ -28,7 +28,6 @@ targets:
     component: system
     profile: parametric
     type: config
-    state_model: parametric
     display_name: AC sleep
 
     admin_required: true
@@ -43,7 +42,6 @@ targets:
     component: system
     profile: parametric
     type: config
-    state_model: parametric
     display_name: Disk sleep
 
     admin_required: true
@@ -58,7 +56,6 @@ targets:
     component: system
     profile: parametric
     type: config
-    state_model: parametric
     display_name: Standby
 
     admin_required: true
@@ -74,7 +71,6 @@ targets:
     component: system
     profile: parametric
     type: config
-    state_model: parametric
     display_name: App Nap
 
     driver:
@@ -90,7 +86,6 @@ targets:
     component: system
     profile: parametric
     type: config
-    state_model: parametric
     display_name: Finder hidden files
 
     driver:
@@ -106,7 +101,6 @@ targets:
     component: system
     profile: parametric
     type: config
-    state_model: parametric
     display_name: Filename extensions
 
     driver:
@@ -122,7 +116,6 @@ targets:
     component: system
     profile: parametric
     type: config
-    state_model: parametric
     display_name: Dock auto-hide
 
     driver:
@@ -139,7 +132,6 @@ targets:
     component: system
     profile: parametric
     type: config
-    state_model: parametric
     display_name: Software Update schedule
 
     admin_required: true
@@ -150,7 +142,6 @@ targets:
     component: system
     profile: parametric
     type: config
-    state_model: parametric
     display_name: Automatic update checks
 
     admin_required: true
@@ -168,7 +159,6 @@ targets:
     component: system
     profile: parametric
     type: config
-    state_model: parametric
     display_name: Automatic update downloads
 
     admin_required: true
@@ -186,7 +176,6 @@ targets:
     component: system
     profile: parametric
     type: config
-    state_model: parametric
     display_name: Automatic macOS updates
 
     admin_required: true
@@ -204,7 +193,6 @@ targets:
     component: system
     profile: parametric
     type: config
-    state_model: parametric
     display_name: Configuration data updates
 
     admin_required: true
@@ -222,7 +210,6 @@ targets:
     component: system
     profile: parametric
     type: config
-    state_model: parametric
     display_name: Security updates
 
     admin_required: true
@@ -241,7 +228,6 @@ targets:
     component: system
     profile: parametric
     type: config
-    state_model: parametric
     display_name: System composition
 
     depends_on:
