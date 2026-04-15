@@ -36,23 +36,8 @@ _ucc_driver_custom_daemon_observe() {
     printf 'absent'
     return
   fi
-  # Determine running state. Two signals, checked in order:
-  #   1. pgrep matches driver.process pattern (cheap, local)
-  #   2. HTTP probe on first endpoint (authoritative, catches externally-
-  #      managed daemons where pgrep pattern races or misses — e.g. Ollama.app
-  #      vs. brew install; both expose the same API, but pgrep matches only
-  #      one at a time during start/restart transitions)
-  local process running=0
-  process="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.process")"
-  if [[ -n "$process" ]] && pgrep -f "$process" >/dev/null 2>&1; then
-    running=1
-  elif declare -f _ucc_http_probe_endpoint >/dev/null 2>&1; then
-    # pgrep missed — try HTTP fallback if endpoints are declared on the target.
-    # Cheap (<1s) and conclusive: if the API answers, the daemon IS up.
-    if _ucc_http_probe_endpoint "$cfg_dir" "$yaml" "$target" "" 2>/dev/null; then
-      running=1
-    fi
-  fi
+  local running=0
+  _ucc_driver_custom_daemon_running "$cfg_dir" "$yaml" "$target" && running=1
   # Outdated check: when driver.github_repo is set and a parseable version
   # can be obtained, compare against the latest GitHub release tag.
   # Reuses _pkg_github_latest_tag + _pkg_version_lt helpers from pkg.sh.
@@ -128,6 +113,21 @@ _ucc_driver_custom_daemon_pending_update() {
   compgen -G "$expanded" >/dev/null 2>&1
 }
 
+# Return 0 iff the daemon is running. Two signals, checked in order:
+#   1. pgrep matches driver.process pattern (cheap, local)
+#   2. HTTP probe on first endpoint (authoritative, catches externally-
+#      managed daemons where the pgrep pattern races or misses — e.g.
+#      Ollama.app vs. brew install; both expose the same API, but pgrep
+#      matches only one at a time during start/restart transitions).
+_ucc_driver_custom_daemon_running() {
+  local cfg_dir="$1" yaml="$2" target="$3"
+  local process
+  process="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.process" 2>/dev/null || true)"
+  [[ -n "$process" ]] && pgrep -f "$process" >/dev/null 2>&1 && return 0
+  declare -f _ucc_http_probe_endpoint >/dev/null 2>&1 || return 1
+  _ucc_http_probe_endpoint "$cfg_dir" "$yaml" "$target" "" 2>/dev/null
+}
+
 # Resolve the installed version of the daemon.
 # Preference: driver.version_probe_path (when the daemon is running) →
 # `bin --version` fallback. Caller passes `running` flag (0|1) so we skip
@@ -169,12 +169,7 @@ _ucc_driver_custom_daemon_evidence() {
   local bin ver path log_path app_path running=0 install_kind glob update_state
   bin="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.bin")"
   [[ -n "$bin" ]] || return 1
-  # Running check (cheap) — gates version probe
-  local process
-  process="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.process" 2>/dev/null || true)"
-  if [[ -n "$process" ]] && pgrep -f "$process" >/dev/null 2>&1; then
-    running=1
-  fi
+  _ucc_driver_custom_daemon_running "$cfg_dir" "$yaml" "$target" && running=1
   ver="$(_ucc_driver_custom_daemon_version "$cfg_dir" "$yaml" "$target" "$running" 2>/dev/null || true)"
   path="$(command -v "$bin" 2>/dev/null || true)"
   log_path="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.log_path" 2>/dev/null || true)"
