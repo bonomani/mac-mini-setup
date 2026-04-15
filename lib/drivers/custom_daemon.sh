@@ -84,18 +84,12 @@ _ucc_driver_custom_daemon_action() {
   [[ -n "$start_cmd" ]] || return 124
   ucc_run sh -c "$start_cmd" || return $?
   # Wait for the process to appear, so observe sees "running".
-  # Default 15s window (30 × 0.5s) — `open -a` is async on macOS and the
-  # daemon helper process can take several seconds to spawn under load.
+  # Default 15s window — `open -a` is async on macOS and the daemon
+  # helper process can take several seconds to spawn under load.
   # Override via UCC_DAEMON_WAIT_S=<seconds>.
   if [[ -n "$process" ]]; then
     local _wait_s="${UCC_DAEMON_WAIT_S:-15}"
-    local _attempts=$(( _wait_s * 2 ))  # 0.5s sleeps
-    local i=0
-    while (( i < _attempts )); do
-      pgrep -f "$process" >/dev/null 2>&1 && return 0
-      sleep 0.5
-      i=$((i + 1))
-    done
+    _ucc_wait_until "$_wait_s" 0.5 pgrep -f "$process" && return 0
     log_warn "custom-daemon: ${target} start_cmd ran but process '${process}' did not appear within ${_wait_s}s — returning warn (rc=124) instead of fail"
     return 124
   fi

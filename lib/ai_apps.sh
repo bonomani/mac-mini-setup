@@ -381,33 +381,29 @@ PY
       _pre_ver="$(curl -fsS --max-time 2 "$_OLLAMA_API_URL" 2>/dev/null \
         | _ucc_parse_version || true)"
       pkill -TERM -f 'Ollama.app/Contents/MacOS/Ollama' 2>/dev/null || true
-      local _s=0
-      while (( _s < 40 )) && pgrep -f 'Ollama.app/Contents/MacOS/Ollama' >/dev/null 2>&1; do
-        sleep 0.5
-        _s=$((_s + 1))
-      done
+      _not_running() { ! pgrep -f 'Ollama.app/Contents/MacOS/Ollama' >/dev/null 2>&1; }
+      _ucc_wait_until 20 0.5 _not_running
       _start_ollama || return $?
       # Squirrel's ShipIt runs asynchronously after relaunch. Poll for a
       # version change (or staged-zip removal) to confirm the swap landed.
       # On success, the next observe() will see the new version.
       local _ver_url=""
       _ver_url="$(_ucc_endpoint_base_url "$cfg_dir" "$yaml" ollama 2>/dev/null)/api/version"
-      local _t=0 _api_ver=""
-      while (( _t < 120 )); do
-        _api_ver="$(curl -fsS --max-time 2 "$_ver_url" 2>/dev/null \
-          | _ucc_parse_version || true)"
-        if [[ -n "$_api_ver" && -n "$_pre_ver" && "$_api_ver" != "$_pre_ver" ]]; then
-          log_info "ollama: update applied (${_pre_ver} → ${_api_ver})"
+      _swap_landed() {
+        local _cur
+        _cur="$(curl -fsS --max-time 2 "$_ver_url" 2>/dev/null | _ucc_parse_version || true)"
+        if [[ -n "$_cur" && -n "$_pre_ver" && "$_cur" != "$_pre_ver" ]]; then
+          log_info "ollama: update applied (${_pre_ver} → ${_cur})"
           return 0
         fi
+        # Zip removed = Squirrel finished even if version poll missed the swap
         if ! compgen -G "$HOME/Library/Caches/ollama/updates/*/Ollama-darwin.zip" >/dev/null 2>&1; then
-          # Zip removed = Squirrel finished even if version poll didn't catch the swap
           log_info "ollama: staged update consumed by Squirrel"
           return 0
         fi
-        sleep 0.5
-        _t=$((_t + 1))
-      done
+        return 1
+      }
+      _ucc_wait_until 60 0.5 _swap_landed && return 0
       # Squirrel didn't finish in our window; treat as deferred warn, not fail
       return 124
     fi

@@ -764,6 +764,21 @@ _ucc_endpoint_url() {
   printf '%s%s' "$base" "$path"
 }
 
+# Poll <cmd ...> until it exits 0 or <timeout-s> seconds elapse. Interval
+# may be fractional (sleep(1) accepts it on macOS + Linux). Returns 0 on
+# success, 1 on timeout. Example:
+#   _ucc_wait_until 15 0.5 pgrep -f "$process"
+#   _ucc_wait_until 60 0.5 _version_changed
+_ucc_wait_until() {
+  local timeout="$1" interval="$2"; shift 2
+  local deadline=$(( $(date +%s) + timeout ))
+  while (( $(date +%s) < deadline )); do
+    "$@" >/dev/null 2>&1 && return 0
+    sleep "$interval"
+  done
+  return 1
+}
+
 # Extract the first dotted-int version substring from stdin (1-3 dots,
 # i.e. N, N.N, N.N.N, or N.N.N.N). Prints the match; returns 1 if none.
 # Pipe usage: `ver="$(cmd | _ucc_parse_version)"`.
