@@ -72,3 +72,7 @@ node_modules/
 # --- Fichiers système ---
 .DS_Store
 Thumbs.db
+
+# --- Claude Code (settings.json is tracked; local overrides + locks are not) ---
+.claude/scheduled_tasks.lock
+.claude/settings.local.json
