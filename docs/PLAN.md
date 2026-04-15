@@ -2,14 +2,13 @@
 
 ## Open
 
-Zero items open. All 11 refactoring tickets (#43–#53) shipped
-2026-04-15 in 7 commit batches: #46 (batch keys), #50 (pip
-constraint extraction), #43/#44/#45 (hardcoded values), #47 (bulk
-invalidation), #48/#49/#53 (docs), #51/#52 (logging consistency).
-Three deferred (#2 cross-platform Docker, #4 Phase C1, #6 Docker
-unattended Checkpoint C — in-progress via #16 close), four closed
-not-a-bug (#16 via #34, #24, #27, #36; #29 confirmed intentional).
-Forty-one items (#13–#53) opened/closed 2026-04-14/15.
+Three items open (#54–#56 from ollama internet research 2026-04-15).
+Refactor sweep #43–#53 all shipped 2026-04-15. Three deferred (#2
+cross-platform Docker, #4 Phase C1, #6 Docker unattended Checkpoint C),
+four closed not-a-bug (#16 via #34, #24, #27, #36; #29 confirmed
+intentional). Forty-four items (#13–#56) opened 2026-04-14/15; the
+ollama fix (commit ee60dc1) achieved 100 ok / 0 FAILED but revealed
+three semantic issues around externally-managed daemons.
 Docker install/launch is fully functional (tested 2026-04-13). Test
 suite green. Pip venv isolation shipped (2026-04-14).
 
@@ -68,6 +67,9 @@ suite green. Pip venv isolation shipped (2026-04-14).
 | 51 | ~~Driver capabilities registry~~ | ✅ DONE 2026-04-15 (`994cfa5`) — `_ucc_driver_dispatch` now logs (debug) when a non-custom kind is missing observe/action. Once per (kind, op) pair. | — |
 | 52 | ~~Logging consistency~~ | ✅ DONE 2026-04-15 (`994cfa5`) — service.sh now log_warns on every failure path (brew_install, brew_upgrade, brew services start, launchctl load, unknown backend) with target context. | — |
 | 53 | ~~Reassess deferred items~~ | ✅ DONE 2026-04-15 (`36dde0d`) — #16 closed (subsumed by #34); #6 moved Deferred → In-progress (only Mac mini clean-state e2e remains). | — |
+| 54 | Ollama daemon version probe via `/api/version` instead of `ollama --version` — the CLI binary version (currently 0.20.6) can differ from the running daemon version (Ollama.app bundle 0.20.5) and both differ from GitHub latest (0.20.7). Upstream check currently compares CLI binary vs GitHub, missing the actual running daemon state. Use `curl -s http://$api_host:$api_port/api/version` when `driver.endpoints` are declared. | Open 2026-04-15 | Low |
+| 55 | Detect Ollama install method (`.app` SQLite settings DB vs brew) to adapt behavior. Presence of `~/Library/Application Support/Ollama/db.sqlite` → `.app` install → self-updating via Squirrel. Else → brew-managed → use `kind: service, backend: brew` semantics. Could also read `auto_update_enabled` from SQLite to surface in the evidence line. | Open 2026-04-15 | Low |
+| 56 | Rename `externally_managed_updates` → clearer semantic. The flag currently means "can't update synchronously within this run" but reads as "framework has no way to update at all" — which is misleading since operators CAN manage via Ollama.app UI, SQLite poke, or brew migration. Options: (A) rename to `async_updates`, (B) change log message from "update remains externally managed" to "update deferred to external updater", or (C) split into `self_updating` + `can_migrate_to`. | Open 2026-04-15 | Low |
 
 ### Unified `update-policy` pref
 
