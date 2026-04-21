@@ -69,9 +69,9 @@ _ucc_driver_nvm_version_observe() {
     return
   fi
   local installed
-  installed="$(bash -c "source \"\$HOME/$nvm_dir/nvm.sh\" 2>/dev/null && nvm ls \"$ver\" 2>/dev/null" \
-    | grep -oE "v${ver}\.[0-9]+\.[0-9]+" | head -1 | sed 's/^v//')"
-  if [[ -z "$installed" ]]; then
+  installed="$(bash -c "source \"\$HOME/$nvm_dir/nvm.sh\" 2>/dev/null && nvm version \"$ver\" 2>/dev/null" \
+    | sed 's/^v//' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)"
+  if [[ -z "$installed" || "$installed" == "N/A" ]]; then
     printf 'absent'
     return
   fi
