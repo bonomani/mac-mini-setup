@@ -63,6 +63,7 @@ targets:
     profile: configured
     type: package
     display_name: Homebrew
+    requires: macos
     depends_on:
     - network-available
     - xcode-command-line-tools?macos
@@ -82,6 +83,7 @@ targets:
     profile: parametric
     type: config
     display_name: Homebrew analytics
+    requires: macos
     depends_on:
     - homebrew
     driver:

@@ -51,6 +51,7 @@ not specified). Counts are real (`type` distribution per component).
 | `build-tools` | 3 | 3 | 0 | 0 | 0 |
 | `cli-tools` | 26 | 21 | 5 | 0 | 0 |
 | `docker` | 5 | 0 | 2 | 2 | 1 |
+| `linux-system` | 3 | 0 | 0 | 0 | 3 |
 | `network-services` | 5 | 1 | 0 | 2 | 2 |
 | `node-stack` | 6 | 5 | 1 | 0 | 0 |
 | `software-bootstrap` | 5 | 3 | 1 | 0 | 1 |
@@ -171,12 +172,20 @@ not specified). Counts are real (`type` distribution per component).
 | `docker-privileged-ports` | `custom` | `config` | Privileged port mapping | macos | `docker-desktop` |
 | `docker-resources` | `custom` | `config` | Docker resources |  | `docker-available` |
 
+### linux-system  (3 targets)
+
+| Target | Kind | Type | Display name | requires | depends_on |
+|---|---|---|---|---|---|
+| `cgroup2-available` | `capability` | `capability` | cgroup v2 (unified hierarchy) | linux,wsl2 |  |
+| `systemd-available` | `capability` | `capability` | systemd (PID 1) | linux,wsl2 |  |
+| `user-linger-enabled` | `capability` | `capability` | user systemd linger | linux,wsl2 | `systemd-available` |
+
 ### network-services  (5 targets)
 
 | Target | Kind | Type | Display name | requires | depends_on |
 |---|---|---|---|---|---|
-| `ariaflow-dashboard` | `service` | `runtime` | Ariaflow Dashboard | launchd,systemd | `mdns-available` |
-| `ariaflow-server` | `service` | `runtime` | Ariaflow Server | launchd,systemd | `networkquality-available?macos`, `mdns-available`, `avahi?linux,wsl2` |
+| `ariaflow-dashboard` | `service` | `runtime` | Ariaflow Dashboard | macos | `mdns-available` |
+| `ariaflow-server` | `service` | `runtime` | Ariaflow Server | macos | `networkquality-available?macos`, `mdns-available`, `avahi?linux,wsl2` |
 | `avahi` | `pkg` | `package` | Avahi (mDNS) | linux,wsl2 |  |
 | `mdns-available` | `capability` | `capability` | mDNS/Bonjour |  |  |
 | `networkquality-available` | `capability` | `capability` | networkQuality | macos |  |
@@ -185,7 +194,7 @@ not specified). Counts are real (`type` distribution per component).
 
 | Target | Kind | Type | Display name | requires | depends_on |
 |---|---|---|---|---|---|
-| `brew-node-unlinked` | `brew-unlink` | `config` | Brew node unlinked |  | `node-lts` |
+| `brew-node-unlinked` | `brew-unlink` | `config` | Brew node unlinked | macos | `node-lts` |
 | `node-lts` | `nvm-version` | `package` | Node.js LTS |  |  |
 | `npm-global-@anthropic-ai/claude-code` | `pkg` | `package` | Claude Code CLI |  | `node-lts` |
 | `npm-global-@openai/codex` | `pkg` | `package` | Codex CLI |  | `node-lts` |
@@ -196,9 +205,9 @@ not specified). Counts are real (`type` distribution per component).
 
 | Target | Kind | Type | Display name | requires | depends_on |
 |---|---|---|---|---|---|
-| `brew-analytics=off` | `brew-analytics` | `config` | Homebrew analytics |  | `homebrew` |
+| `brew-analytics=off` | `brew-analytics` | `config` | Homebrew analytics | macos | `homebrew` |
 | `build-deps` | `build-deps` | `package` | Build dependencies | linux,wsl2 |  |
-| `homebrew` | `custom` | `package` | Homebrew |  | `network-available`, `xcode-command-line-tools?macos`, `build-deps?!brew` |
+| `homebrew` | `custom` | `package` | Homebrew | macos | `network-available`, `xcode-command-line-tools?macos`, `build-deps?!brew` |
 | `network-available` | `capability` | `capability` | Network connectivity |  |  |
 | `xcode-command-line-tools` | `custom` | `package` | Xcode Command Line Tools | macos |  |
 
@@ -319,8 +328,8 @@ See [`docs/driver-feature-matrix.md`](driver-feature-matrix.md) — auto-generat
 
 ## 11. Counts (live)
 
-- Components: **10**
-- Targets: **114**
+- Components: **11**
+- Targets: **117**
 - Distinct driver kinds: **26**
 - Preferences: **7**
 - Gates: **1**
@@ -334,8 +343,8 @@ Top 10 driver kinds by target count:
 | `pkg` | 43 |
 | `pip` | 14 |
 | `setting` | 12 |
+| `capability` | 11 |
 | `custom` | 10 |
-| `capability` | 8 |
 | `docker-compose-service` | 5 |
 | `home-artifact` | 2 |
 | `service` | 2 |

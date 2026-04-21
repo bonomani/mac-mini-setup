@@ -122,7 +122,9 @@ _homebrew_install() {
       installer_url) installer_url="$value" ;;
     esac
   done < <(yaml_get_many "$CFG_DIR" "$YAML_PATH" shell_config_file installer_url)
-  /bin/bash -c "$(curl -fsSL "$installer_url")"
+  local _ni=0
+  [[ "${UCC_INTERACTIVE:-0}" != "1" ]] && _ni=1
+  NONINTERACTIVE="$_ni" /bin/bash -c "$(curl -fsSL "$installer_url")"
   _homebrew_ensure_shellenv "$shell_config"
 }
 

@@ -33,6 +33,7 @@ targets:
     profile: configured
     type: config
     display_name: Brew node unlinked
+    requires: macos
     depends_on:
     - node-lts
     driver:
