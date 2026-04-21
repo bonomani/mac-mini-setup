@@ -491,7 +491,14 @@ _ucc_driver_pip_action() {
         rc=$?
         ;;
       update)
-        [[ "$update_policy" == "install-only" ]] && return 0
+        # install-only policy: don't upgrade, but signal warn (124) if
+        # packages are outdated so the framework emits [warn] not [fail].
+        if [[ "$update_policy" == "install-only" ]]; then
+          if _pip_venv_pkgs_outdated "$vname" "$pkgs"; then
+            return 124  # warn: outdated but upgrade blocked by policy
+          fi
+          return 0
+        fi
         if _pip_update_would_conflict "$pip_cmd" "$pkgs"; then
           return 0
         fi
@@ -532,7 +539,14 @@ _ucc_driver_pip_action() {
       ;;
     update)
       # Respect update policy: lib-class targets skip upgrades under balanced.
-      [[ "$update_policy" == "install-only" ]] && return 0
+      # Return 124 (warn) if packages are outdated so the framework emits
+      # [warn] instead of [fail] on the verify pass.
+      if [[ "$update_policy" == "install-only" ]]; then
+        if _pip_pkgs_outdated "$pkgs"; then
+          return 124  # warn: outdated but upgrade blocked by policy
+        fi
+        return 0
+      fi
       # Non-destructive update: dry-run first; if the resolver would
       # leave any other already-installed package with an unsatisfied
       # constraint ("X requires Y<Z, but you have Y>=Z"), skip the
