@@ -169,8 +169,18 @@ _ucc_driver_vscode_marketplace_provided_by() { printf 'vscode-marketplace'; }
 _ucc_driver_pyenv_version_depends_on()     { printf 'pyenv'; }
 _ucc_driver_pyenv_version_provided_by()    { printf 'pyenv'; }
 
-_ucc_driver_pyenv_brew_depends_on()        { printf 'homebrew'; }
-_ucc_driver_pyenv_brew_provided_by()       { printf 'brew'; }
+_ucc_driver_pyenv_brew_depends_on() {
+  case "${HOST_PLATFORM:-macos}" in
+    macos) printf 'homebrew' ;;
+    *)     : ;;  # git-clone path has no package-manager prerequisite
+  esac
+}
+_ucc_driver_pyenv_brew_provided_by() {
+  case "${HOST_PLATFORM:-macos}" in
+    macos) printf 'brew' ;;
+    *)     printf 'git' ;;
+  esac
+}
 
 _ucc_driver_nvm_depends_on()               { printf 'homebrew'; }
 _ucc_driver_nvm_provided_by()              { printf 'nvm-installer'; }

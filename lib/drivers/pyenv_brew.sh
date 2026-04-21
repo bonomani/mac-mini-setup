@@ -1,11 +1,42 @@
 #!/usr/bin/env bash
 # lib/drivers/pyenv_brew.sh — driver.kind: pyenv-brew
-# Installs pyenv + plugins via brew, adds shell init snippet.
+# Installs pyenv + plugins. On macOS via brew; on Linux/WSL via git clone
+# (upstream-recommended path; Ubuntu universe does not ship pyenv).
 # Reads pyenv_packages and zsh_config from YAML.
+
+# Upstream git sources for the git-clone path. Keyed by pyenv_packages entry.
+_ucc_pyenv_git_url() {
+  case "$1" in
+    pyenv)             printf 'https://github.com/pyenv/pyenv.git' ;;
+    pyenv-virtualenv)  printf 'https://github.com/pyenv/pyenv-virtualenv.git' ;;
+    *) return 1 ;;
+  esac
+}
+
+# Resolve clone destination under $PYENV_ROOT (main) or its plugins dir.
+_ucc_pyenv_git_dest() {
+  local root="${PYENV_ROOT:-$HOME/.pyenv}"
+  case "$1" in
+    pyenv)            printf '%s' "$root" ;;
+    pyenv-virtualenv) printf '%s/plugins/pyenv-virtualenv' "$root" ;;
+    *) return 1 ;;
+  esac
+}
 
 _ucc_driver_pyenv_brew_observe() {
   local cfg_dir="$1" yaml="$2" target="$3"
-  brew_observe pyenv
+  if [[ "${HOST_PLATFORM:-macos}" == "macos" ]]; then
+    brew_observe pyenv
+    return
+  fi
+  local root="${PYENV_ROOT:-$HOME/.pyenv}"
+  if [[ -x "$root/bin/pyenv" && -d "$root/.git" ]]; then
+    local ver
+    ver="$("$root/bin/pyenv" --version 2>/dev/null | awk '{print $2}')"
+    printf '%s' "${ver:-installed}"
+  else
+    printf 'absent'
+  fi
 }
 
 _ucc_driver_pyenv_brew_action() {
@@ -15,24 +46,65 @@ _ucc_driver_pyenv_brew_action() {
   while IFS=$'\t' read -r -d '' key value; do
     case "$key" in zsh_config) zsh_config="$value" ;; esac
   done < <(yaml_get_many "$cfg_dir" "$yaml" zsh_config)
-  case "$action" in
-    install)
-      # shellcheck disable=SC2086
-      [[ -n "$pkgs" ]] && brew_install $pkgs
-      [[ -n "$zsh_config" ]] && grep -q 'pyenv init' "$HOME/$zsh_config" 2>/dev/null || \
-        cat "$cfg_dir/scripts/pyenv-zshrc-snippet" >> "$HOME/$zsh_config"
-      ;;
-    update)
-      # shellcheck disable=SC2086
-      [[ -n "$pkgs" ]] && brew_upgrade $pkgs
-      ;;
-  esac
+
+  if [[ "${HOST_PLATFORM:-macos}" == "macos" ]]; then
+    case "$action" in
+      install)
+        # shellcheck disable=SC2086
+        [[ -n "$pkgs" ]] && brew_install $pkgs
+        [[ -n "$zsh_config" ]] && grep -q 'pyenv init' "$HOME/$zsh_config" 2>/dev/null || \
+          cat "$cfg_dir/scripts/pyenv-zshrc-snippet" >> "$HOME/$zsh_config"
+        ;;
+      update)
+        # shellcheck disable=SC2086
+        [[ -n "$pkgs" ]] && brew_upgrade $pkgs
+        ;;
+    esac
+    return
+  fi
+
+  # Non-macOS: git-clone each package in pyenv_packages into PYENV_ROOT.
+  command -v git >/dev/null 2>&1 || { log_error "pyenv: git required for non-macOS install"; return 1; }
+  local pkg url dest
+  for pkg in $pkgs; do
+    url="$(_ucc_pyenv_git_url "$pkg")"  || { log_warn "pyenv: unknown git source for '$pkg'"; continue; }
+    dest="$(_ucc_pyenv_git_dest "$pkg")" || continue
+    case "$action" in
+      install)
+        if [[ -d "$dest/.git" ]]; then
+          ucc_run git -C "$dest" fetch --quiet --tags origin || true
+        else
+          ucc_run mkdir -p "$(dirname "$dest")"
+          ucc_run git clone --depth 1 "$url" "$dest" || return 1
+        fi
+        ;;
+      update)
+        if [[ -d "$dest/.git" ]]; then
+          ucc_run git -C "$dest" pull --ff-only --quiet || return 1
+        else
+          ucc_run git clone --depth 1 "$url" "$dest" || return 1
+        fi
+        ;;
+    esac
+  done
 }
 
 _ucc_driver_pyenv_brew_evidence() {
   local cfg_dir="$1" yaml="$2" target="$3"
   local ver root
-  ver="$(pyenv --version 2>/dev/null | awk '{print $2}')"
-  root="$(pyenv root 2>/dev/null || true)"
-  [[ -n "$ver" ]] && printf 'version=%s  root=%s' "$ver" "$root"
+  root="${PYENV_ROOT:-$HOME/.pyenv}"
+  if command -v pyenv >/dev/null 2>&1; then
+    ver="$(pyenv --version 2>/dev/null | awk '{print $2}')"
+    root="$(pyenv root 2>/dev/null || printf '%s' "$root")"
+  elif [[ -x "$root/bin/pyenv" ]]; then
+    ver="$("$root/bin/pyenv" --version 2>/dev/null | awk '{print $2}')"
+  fi
+  local backend
+  case "${HOST_PLATFORM:-macos}" in
+    macos) backend=brew ;;
+    *)     backend=git  ;;
+  esac
+  printf 'backend=%s' "$backend"
+  [[ -n "$ver" ]]  && printf '  version=%s' "$ver"
+  [[ -n "$root" ]] && printf '  root=%s' "$root"
 }

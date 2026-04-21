@@ -44,8 +44,6 @@ targets:
     profile: configured
     type: package
     display_name: pyenv
-    depends_on:
-    - homebrew
     driver:
       kind: pyenv-brew
   xz:

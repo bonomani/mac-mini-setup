@@ -210,6 +210,17 @@ targets:
       - brew: opencode
       bin: opencode
       github_repo: sst/opencode
+  cli-pi:
+    component: cli-tools
+    profile: configured
+    type: package
+    display_name: Pi Coding Agent
+    driver:
+      kind: pkg
+      backends:
+      - npm: '@mariozechner/pi-coding-agent'
+      bin: pi
+      github_repo: mariozechner/pi
   cli-aria2:
     component: cli-tools
     profile: configured
@@ -232,6 +243,30 @@ targets:
       - brew: cmake
       - native-pm: cmake
       bin: cmake
+  nftables:
+    component: cli-tools
+    profile: configured
+    type: package
+    display_name: nftables
+    requires: linux,wsl2
+    driver:
+      kind: pkg
+      backends:
+      - native-pm: nftables
+      bin: nft
+  firewalld:
+    component: cli-tools
+    profile: configured
+    type: package
+    display_name: firewalld
+    requires: linux,wsl2
+    depends_on:
+    - nftables
+    driver:
+      kind: pkg
+      backends:
+      - native-pm: firewalld
+      bin: firewall-cmd
   oh-my-zsh:
     component: cli-tools
     profile: configured
@@ -300,6 +335,28 @@ targets:
       - brew-cask: lm-studio
       bin: lm-studio
       greedy_auto_updates: 'true'
+  vmware-fusion:
+    component: cli-tools
+    profile: configured
+    type: package
+    display_name: VMware Fusion
+    requires: macos
+    driver:
+      kind: pkg
+      backends:
+      - brew-cask: vmware-fusion
+      bin: vmrun
+      greedy_auto_updates: 'true'
+  vmware-workstation:
+    component: cli-tools
+    profile: configured
+    type: package
+    display_name: VMware Workstation (Windows host)
+    requires: wsl2
+    driver:
+      kind: pkg
+      backends:
+      - winget: VMware.WorkstationPro
 cli_tools:
 - cli-jq
 - cli-wget

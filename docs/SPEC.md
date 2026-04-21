@@ -49,7 +49,7 @@ not specified). Counts are real (`type` distribution per component).
 | `ai-apps` | 16 | 7 | 1 | 7 | 0 |
 | `ai-python-stack` | 23 | 17 | 1 | 2 | 3 |
 | `build-tools` | 3 | 3 | 0 | 0 | 0 |
-| `cli-tools` | 26 | 21 | 5 | 0 | 0 |
+| `cli-tools` | 31 | 26 | 5 | 0 | 0 |
 | `docker` | 5 | 0 | 2 | 2 | 1 |
 | `linux-system` | 3 | 0 | 0 | 0 | 3 |
 | `network-services` | 5 | 1 | 0 | 2 | 2 |
@@ -115,7 +115,7 @@ not specified). Counts are real (`type` distribution per component).
 | `pip-group-vector-dbs` | `pip` | `package` | Vector database packages |  | `python-venv-available` |
 | `pip-group-web-testing` | `pip` | `package` | Web testing packages |  | `python-venv-available` |
 | `pip-latest` | `pip-bootstrap` | `config` | pip |  | `python` |
-| `pyenv` | `pyenv-brew` | `package` | pyenv |  | `homebrew` |
+| `pyenv` | `pyenv-brew` | `package` | pyenv |  |  |
 | `python` | `pkg` | `package` | Python |  | `xz`, `pyenv` |
 | `python-venv-available` | `capability` | `capability` | Python venv module |  | `python` |
 | `unsloth` | `pip` | `package` | Unsloth |  | `python-venv-available` |
@@ -131,7 +131,7 @@ not specified). Counts are real (`type` distribution per component).
 | `rustup` | `pkg` | `package` | rustup |  |  |
 | `xrdp` | `pkg` | `package` | xrdp | linux,wsl2 |  |
 
-### cli-tools  (26 targets)
+### cli-tools  (31 targets)
 
 | Target | Kind | Type | Display name | requires | depends_on |
 |---|---|---|---|---|---|
@@ -148,19 +148,24 @@ not specified). Counts are real (`type` distribution per component).
 | `cli-jq` | `pkg` | `package` | jq |  |  |
 | `cli-llama.cpp` | `pkg` | `package` | llama.cpp |  |  |
 | `cli-opencode` | `pkg` | `package` | OpenCode |  |  |
+| `cli-pi` | `pkg` | `package` | Pi Coding Agent |  |  |
 | `cli-pnpm` | `pkg` | `package` | pnpm |  |  |
 | `cli-ripgrep` | `pkg` | `package` | ripgrep |  |  |
 | `cli-tmux` | `pkg` | `package` | tmux |  |  |
 | `cli-tree` | `pkg` | `package` | tree |  |  |
 | `cli-uv` | `pkg` | `package` | uv |  |  |
 | `cli-wget` | `pkg` | `package` | wget |  |  |
+| `firewalld` | `pkg` | `package` | firewalld | linux,wsl2 | `nftables` |
 | `git` | `pkg` | `package` | Git |  |  |
 | `git-global-config` | `git-global` | `config` | Git global config |  | `git` |
 | `home-bin-in-path` | `path-export` | `config` | ~/bin in PATH |  |  |
 | `iterm2` | `pkg` | `package` | iTerm2 | macos |  |
 | `lm-studio` | `pkg` | `package` | LM Studio | macos |  |
+| `nftables` | `pkg` | `package` | nftables | linux,wsl2 |  |
 | `oh-my-zsh` | `script-installer` | `config` | Oh My Zsh |  |  |
 | `omz-theme-agnoster` | `zsh-config` | `config` | Agnoster theme |  | `oh-my-zsh` |
+| `vmware-fusion` | `pkg` | `package` | VMware Fusion | macos |  |
+| `vmware-workstation` | `pkg` | `package` | VMware Workstation (Windows host) | wsl2 |  |
 
 ### docker  (5 targets)
 
@@ -329,7 +334,7 @@ See [`docs/driver-feature-matrix.md`](driver-feature-matrix.md) — auto-generat
 ## 11. Counts (live)
 
 - Components: **11**
-- Targets: **117**
+- Targets: **122**
 - Distinct driver kinds: **26**
 - Preferences: **7**
 - Gates: **1**
@@ -340,7 +345,7 @@ Top 10 driver kinds by target count:
 
 | Kind | Targets |
 |---|---:|
-| `pkg` | 43 |
+| `pkg` | 48 |
 | `pip` | 14 |
 | `setting` | 12 |
 | `capability` | 11 |

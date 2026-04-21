@@ -31,7 +31,7 @@ _DRIVER_META_STATIC = {
     "pip-bootstrap":         ("python",         "pip"),
     "npm-global":            ("node-lts",       "npm"),
     "vscode-marketplace":    ("vscode-code-cmd","vscode-marketplace"),
-    "pyenv-brew":            ("homebrew",       "brew"),
+    "pyenv-brew":            (None,             None),  # platform-aware: brew on macOS, git clone elsewhere
     "nvm":                   ("homebrew",       "nvm-installer"),
     "nvm-version":           ("nvm",            "nvm"),
     "service":               (None,             None),  # backend-aware, see lib/drivers/service.sh
@@ -48,6 +48,14 @@ _PACKAGE_DRIVER_META = {
     "wsl2":  ("build-deps", "native-package-manager"),
 }
 
+# Platform-aware driver meta for "pyenv-brew" driver
+_PYENV_DRIVER_META = {
+    "macos": ("homebrew", "brew"),
+    "linux": (None,       "git"),
+    "wsl":   (None,       "git"),
+    "wsl2":  (None,       "git"),
+}
+
 def _resolve_driver_meta():
     """Build the effective DRIVER_META dict, resolving platform-aware entries."""
     meta = dict(_DRIVER_META_STATIC)
@@ -57,6 +65,10 @@ def _resolve_driver_meta():
     for candidate in [variant, platform, "macos"]:
         if candidate in _PACKAGE_DRIVER_META:
             meta["package"] = _PACKAGE_DRIVER_META[candidate]
+            break
+    for candidate in [variant, platform, "macos"]:
+        if candidate in _PYENV_DRIVER_META:
+            meta["pyenv-brew"] = _PYENV_DRIVER_META[candidate]
             break
     return meta
 
@@ -529,6 +541,8 @@ PKG_BACKEND_META = {
     "ollama":    ("ollama",          "ollama"),
     "vscode":    ("vscode-code-cmd", "vscode-marketplace"),
     "curl":      (None,              "curl"),
+    "winget":    (None,              "winget"),
+    "git":       (None,              "git"),
 }
 
 
