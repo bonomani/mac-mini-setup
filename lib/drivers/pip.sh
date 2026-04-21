@@ -92,7 +92,8 @@ _pip_venv_ensure() {
   "$pip_path" install -q --upgrade pip 2>/dev/null || true
 }
 
-# Run `pip check` inside a venv and warn on internal dependency conflicts.
+# Run `pip check` inside a venv. When conflicts are found, attempt to
+# resolve them by downgrading transitive deps to the max compatible version.
 # Cached per-process: each venv is checked at most once per run.
 _pip_venv_check_conflicts() {
   local name="$1"
@@ -104,10 +105,65 @@ _pip_venv_check_conflicts() {
   pip_path="$(_pip_venv_pip_cmd "$name")"
   output="$("$pip_path" check 2>/dev/null || true)"
   if [[ -n "$output" ]] && ! printf '%s' "$output" | grep -q "No broken requirements found"; then
-    log_warn "pip/venv '$name': dependency conflicts detected"
-    printf '%s\n' "$output" | head -10 | while IFS= read -r line; do
+    log_warn "pip/venv '$name': dependency conflicts detected — attempting auto-resolve"
+    _pip_resolve_check_conflicts "$pip_path" "$output" "$name"
+  fi
+}
+
+# Parse `pip check` conflict lines and downgrade transitive deps to max
+# compatible versions. Each line has the form:
+#   X ver requires Y[extras]<constraint, but you have Y ver which is incompatible.
+# We extract "Y<constraint" (stripping extras), then `pip install 'Y<constraint'`
+# so pip picks the highest version satisfying all constraints.
+_pip_resolve_check_conflicts() {
+  local pip_path="$1" check_output="$2" venv_name="${3:-global}"
+  local constraints=() seen="" line spec pkg_spec
+  while IFS= read -r line; do
+    [[ "$line" == *", but you have"* ]] || continue
+    # Extract requirement spec. pip output varies by version:
+    #   new pip: "X requires Y<Z, but you have Y V which is incompatible."
+    #   old pip: "X has requirement Y<Z, but you have Y V."
+    if [[ "$line" == *" requires "* ]]; then
+      spec="${line#* requires }"
+    elif [[ "$line" == *" has requirement "* ]]; then
+      spec="${line#* has requirement }"
+    else
+      continue
+    fi
+    spec="${spec%%, but*}"
+    # Strip extras like [http] from package name
+    pkg_spec="$(printf '%s' "$spec" | sed 's/\[[^]]*\]//g')"
+    [[ -n "$pkg_spec" ]] || continue
+    # Deduplicate (same transitive dep may conflict with multiple packages)
+    local pkg_name="${pkg_spec%%[<>=!]*}"
+    [[ "$seen" == *"|${pkg_name}|"* ]] && continue
+    seen="${seen}|${pkg_name}|"
+    constraints+=("$pkg_spec")
+  done <<< "$check_output"
+  if [[ ${#constraints[@]} -eq 0 ]]; then
+    printf '%s\n' "$check_output" | head -10 | while IFS= read -r line; do
       [[ -n "$line" ]] && log_warn "  ${line}"
     done
+    return
+  fi
+  log_info "pip/venv '$venv_name': pinning ${#constraints[@]} transitive dep(s): ${constraints[*]}"
+  local pin_args=()
+  for spec in "${constraints[@]}"; do
+    pin_args+=("$spec")
+  done
+  "$pip_path" install -q "${pin_args[@]}" 2>&1 | tail -5 | while IFS= read -r line; do
+    [[ -n "$line" ]] && log_info "  ${line}"
+  done
+  # Re-check
+  local recheck
+  recheck="$("$pip_path" check 2>/dev/null || true)"
+  if [[ -n "$recheck" ]] && ! printf '%s' "$recheck" | grep -q "No broken requirements found"; then
+    log_warn "pip/venv '$venv_name': conflicts remain after auto-resolve"
+    printf '%s\n' "$recheck" | head -5 | while IFS= read -r line; do
+      [[ -n "$line" ]] && log_warn "  ${line}"
+    done
+  else
+    log_info "pip/venv '$venv_name': all conflicts resolved"
   fi
 }
 
@@ -447,7 +503,9 @@ _ucc_driver_pip_action() {
     # Invalidate outdated caches after state-changing action.
     local _iv; _iv="$(_pip_venv_outdated_cache_var "$vname")"; unset "$_iv"
     _ucc_cache_invalidate "pip-outdated-venv-${vname//[^a-zA-Z0-9]/_}"
-    # Warn on internal conflicts (cached per-venv per-process)
+    # Check + resolve internal conflicts. Invalidate per-process cache first
+    # since the upgrade may have introduced new transitive-dep conflicts.
+    local _cv="_PIP_VENV_CHECKED_${vname//[^a-zA-Z0-9]/_}"; unset "$_cv"
     _pip_venv_check_conflicts "$vname"
     # Constraint-bound check: pip's `--upgrade-strategy only-if-needed` won't
     # pull versions that would break peer constraints, but `pip list --outdated`
