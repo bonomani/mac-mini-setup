@@ -2,6 +2,19 @@
 
 ## Open
 
+### 2026-04-28 — Dep cascade does not propagate `[policy]` status to dependents
+
+After the cleanup batch shipped (4874c09), `oh-my-zsh` still fails because:
+
+- `cli-zsh` resolves to `[policy]` on this WSL host (apt needs sudo, non-interactive).
+- `oh-my-zsh` lists `depends_on: [cli-zsh]` but the framework reports `deps: cli-zsh=unknown` and runs `oh-my-zsh`'s install action anyway. Installer aborts with "Zsh is not installed."
+
+The dep-resolution pass (`_ucc_check_deps_recursive` in `lib/ucc_targets.sh`) treats any dep whose status is policy/admin-required as `unknown` rather than blocking the dependent. Same pattern would affect any target whose dep is sudo-skipped: `omz-theme-agnoster` already cascades correctly (`[dep-fail]`) when `oh-my-zsh` fails — but `oh-my-zsh` itself should never have run.
+
+**Fix:** treat dep status `policy` (rc=125 / "admin required") as a hard block — dependent gets `[dep-skip]` (or `[dep-fail]` if framework prefers binary states) with `reason="dependency requires admin"`. Make sure status reading inside the dep check sees "policy" rather than collapsing it to "unknown".
+
+**Acceptance:** on a non-interactive run with no sudo cached, `oh-my-zsh` shows `[skip]` / `[dep-skip]` not `[fail]`, and the run summary reports 0 FAILED (only `[policy]` for sudo-required apt items).
+
 
 No ollama items open as of 2026-04-15 end-of-day. Refactor sweep
 #43–#53 shipped 2026-04-15. Ollama internet-research items #54–#57
