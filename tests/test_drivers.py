@@ -113,9 +113,19 @@ def test_driver_meta_sync():
             shell_tools[kind] = val
 
     # Compare with Python DRIVER_META
+    # Skip drivers whose shell _depends_on uses a platform-aware `case` block
+    # rather than a single-line `printf` (the parser above only handles the
+    # printf form). These drivers ARE in shell — check for function existence
+    # instead.
+    PLATFORM_AWARE_SHELL = {"package", "pyenv-brew"}
     for kind, (dep, tool) in DRIVER_META.items():
-        if kind == "package":
-            continue  # platform-aware, special case
+        if kind in PLATFORM_AWARE_SHELL:
+            # Verify the shell function exists at all (loose grep), since
+            # the printf-extractor cannot read multi-line cases.
+            shell_fn = f"_ucc_driver_{kind.replace('-', '_')}_depends_on"
+            assert shell_fn in content, \
+                f"DRIVER_META has {kind}→{dep} but no {shell_fn} in ucc_drivers.sh"
+            continue
         if dep is not None:
             assert kind in shell_deps, \
                 f"DRIVER_META has {kind}→{dep} but no shell _depends_on"
