@@ -11,12 +11,15 @@ for _bp in /opt/homebrew/bin/brew /usr/local/bin/brew /home/linuxbrew/.linuxbrew
 done
 unset _bp
 
-# Ensure pyenv shims are in PATH for every component subshell
+# Ensure pyenv shims are in PATH for every component subshell.
+# Wrap both eval calls to absorb any stderr the generated init script
+# emits (e.g. on shells where some helper functions fail to define), so
+# sourcing utils.sh stays silent in tests/probes.
 if [[ -d "$HOME/.pyenv" ]]; then
   export PYENV_ROOT="$HOME/.pyenv"
   export PATH="$PYENV_ROOT/bin:$PATH"
-  eval "$(pyenv init --path 2>/dev/null)" || true
-  eval "$(pyenv init - 2>/dev/null)" || true
+  { eval "$(pyenv init --path 2>/dev/null)" || true; } 2>/dev/null
+  { eval "$(pyenv init - 2>/dev/null)" || true; } 2>/dev/null
 fi
 
 # Stable interpreter for framework-internal manifest queries (validate_targets_manifest.py,
