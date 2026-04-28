@@ -14,24 +14,24 @@
 cli_usage() {
   cat <<EOF
 
-Usage: $0 [options] [component|target ...]
+Usage: $0 [options] [component|item ...]
 
-Without arguments, uses default-selection preference (all or none).
-Pass a component name to run that component.
-Pass a target name (not a component) to run only that target.
+Without arguments, uses the default-selection preference (all or none).
+Pass a component name to set up that component.
+Pass an item name (not a component) to set up just that item.
 
 Options:
-  --mode install    Install missing components (default)
-  --mode update     Update already-installed components
-  --all             Select all components and targets
-  --none            Select nothing (show current state only)
-  --mode check      Observe current state without changing anything (drift detection)
+  --mode install    Install missing items (default)
+  --mode update     Update items that are already installed
+  --all             Select every component and item
+  --none            Select nothing (just show current state)
+  --mode check      Show current state without making changes (drift check)
   --dry-run         Show what would change without applying it
-  --interactive     Prompt for preferences and confirm each change
-  --no-interactive  Skip all prompts (CI/automation mode)
-  --preflight       Evaluate UIC gates and preferences; do NOT converge
-  --pref key=value  Set a UIC preference for this run only (repeatable)
-  --show-overrides  Print user overrides (UCC_OVERRIDE__* env + target-overrides.yaml) and exit
+  --interactive     Ask for preferences and confirm each change
+  --no-interactive  Skip every prompt (CI/automation mode)
+  --preflight       Run preflight checks and preferences; do not set anything up
+  --pref key=value  Set one preference for this run (repeatable)
+  --show-overrides  Print local overrides and exit
   --debug           Show DEBUG-level output
   -h, --help        Show this help
 
@@ -45,7 +45,7 @@ Examples:
   $0 --mode update --dry-run            # preview updates
   $0 ollama ai-python-stack             # run specific components
   $0 --mode update ollama               # update Ollama only
-  $0 unsloth-studio                     # run single target (auto-resolves component)
+  $0 unsloth-studio                     # run a single item (the component is resolved automatically)
   $0 --pref preferred-driver-policy=migrate docker  # migrate Docker from DMG to brew-cask
 
 EOF

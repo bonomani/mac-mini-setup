@@ -1,10 +1,10 @@
 # Mac Mini AI Setup
 
-Scripts to set up an AI workstation.
-macOS remains the primary target, while Linux and WSL2 run the portable subset
-and skip unsupported components automatically.
-The repo also declares a local system-level composition target so the governed
-state can describe the whole machine, not only individual components.
+Scripts to set up an AI workstation. macOS is the primary platform;
+Linux and WSL2 run the portable subset and skip components that don't
+apply. The repo also describes the whole machine as one piece, not
+just the individual apps, so its overall state can be checked end to
+end.
 
 ## Governance
 
@@ -181,19 +181,19 @@ chmod +x install.sh
 ./install.sh --none
 ```
 
-If you want admin-gated targets such as the `pmset-*` / `defaults-*` /
-`softwareupdate-*` system targets to converge in the same run without
+If you want admin-gated items such as the `pmset-*` / `defaults-*` /
+`softwareupdate-*` system items to be applied in the same run without
 prompts, open a non-interactive sudo ticket first:
 
 ```bash
 sudo -v && ./install.sh
 ```
 
-## Target Selection
+## Selection
 
 `defaults/selection.yaml` ships repository defaults — read-only at runtime.
 User overrides live in `~/.ai-stack/selection.yaml` and persist across runs.
-The interactive prompt asks per-target whether to enable or disable, and
+The interactive prompt asks per item whether to enable or disable, and
 writes the choice to the user-local file.
 
 Components are derived from the YAML manifests and serve as pure
@@ -205,18 +205,18 @@ whole installer.
 ### Display modes
 
 The `skip-display-mode` preference controls output verbosity:
-- `full` (default): every target is shown with its current state
-- `fast`: hides non-selected targets and unrelated components — good for
-  targeted runs like `./install.sh ariaflow-server`
+- `full` (default): every item is shown with its current state
+- `fast`: hides items that aren't selected and unrelated components —
+  good for narrow runs like `./install.sh ariaflow-server`
 
-### Preferred driver policy
+### Preferred install method
 
-When a target is detected installed via a non-preferred driver (e.g.
-ollama installed via curl while the preferred driver is brew), the script
-prompts inline with three choices: migrate now, ignore permanently, or
-warn next run. Permanent ignores are saved to
-`~/.ai-stack/target-overrides.yaml` so the prompt only appears once per
-target.
+When an item is found installed by a method other than the preferred
+one (e.g. ollama installed via curl while the preferred install method
+is brew), the script prompts with three choices: switch to the
+preferred method now, ignore permanently, or warn next run. Permanent
+ignores are saved to `~/.ai-stack/target-overrides.yaml` so the prompt
+only appears once per item.
 
 ## macOS Validation
 

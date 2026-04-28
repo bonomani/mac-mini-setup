@@ -153,10 +153,16 @@ The original top three refactors in this section are now completed:
 Docker platform split, first-pass parametric helper, and `pkg.sh`
 backend split. The current refactor priority list is:
 
-1. **Plain-language wording cleanup** — highest user-facing value now.
-   Reduce user-facing jargon (`UCC`, `target`, `driver`, `profile`,
-   `converge`) in README and CLI/help text while preserving internal
-   YAML/code/governance terms.
+1. ✅ **Plain-language wording cleanup** — DONE 2026-04-28.
+   `./install.sh --help` rewritten in plain language ("item" / "set up"
+   / "preflight checks" instead of "target" / "converge" / "UIC gates").
+   README intro paragraph + "Display modes" + "Selection" / "Preferred
+   install method" sections rewritten the same way. Internal/governance
+   terms (BGS, BISS, ASM, UCC, UIC, TIC, `target-overrides.yaml`,
+   `UCC_OVERRIDE__*`) preserved where they label official artifacts.
+   `tests/test_cli_help_wording.py` pins the help text against future
+   regressions (plain-vocab present, jargon absent, "target" only in
+   example commands).
 2. **Split `ucc_targets.sh`** — largest remaining shell hotspot
    (~1838 lines). Separate registration, dependency resolution,
    execution, rendering/status, and evidence/ASM mapping.
@@ -183,8 +189,8 @@ backend split. The current refactor priority list is:
    dies in command substitutions; migrate to `_ucc_cache_*` disk cache
    if GitHub outdated checks become noisy or slow.
 
-Top three to do next: plain-language wording cleanup, split
-`ucc_targets.sh`, split `validate_targets_manifest.py`.
+Top three to do next: split `ucc_targets.sh`, split
+`validate_targets_manifest.py`, split `utils.sh`.
 
 The completed refactors are retained below as closure notes.
 
