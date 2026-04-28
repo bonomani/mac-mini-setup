@@ -187,7 +187,7 @@ _ucc_deps_for_target() {
   if [[ -n "$cache" ]]; then
     printf '%s\n' "$cache" | awk -F'\t' -v t="$target" '$1==t{print $2; exit}' | tr ',' '\n'
   else
-    python3 "$UCC_TARGETS_QUERY_SCRIPT" "$3" "$target" "$UCC_TARGETS_MANIFEST" 2>/dev/null || true
+    "${UCC_FRAMEWORK_PYTHON:-python3}" "$UCC_TARGETS_QUERY_SCRIPT" "$3" "$target" "$UCC_TARGETS_MANIFEST" 2>/dev/null || true
   fi
 }
 

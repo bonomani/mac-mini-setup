@@ -30,7 +30,7 @@ ucc_eval_evidence_from_yaml() {
     if [[ -n "${!_cached_var:-}" ]]; then
       [[ -n "${!_ev_var:-}" ]] && printf '%s' "${!_ev_var}" | base64 -d
     else
-      python3 "$cfg_dir/tools/read_config.py" --evidence "$yaml" "$target" 2>/dev/null
+      "${UCC_FRAMEWORK_PYTHON:-python3}" "$cfg_dir/tools/read_config.py" --evidence "$yaml" "$target" 2>/dev/null
     fi
   )
 }
@@ -48,7 +48,7 @@ _ucc_ytgt_source() {
   if [[ -n "${!cache_var:-}" ]]; then
     printf '%s' "${!cache_var}" | base64 -d
   else
-    python3 "$cfg_dir/tools/read_config.py" --target-get-many-with-evidence "$yaml" "$target" "$@" 2>/dev/null || true
+    "${UCC_FRAMEWORK_PYTHON:-python3}" "$cfg_dir/tools/read_config.py" --target-get-many-with-evidence "$yaml" "$target" "$@" 2>/dev/null || true
   fi
 }
 
@@ -156,7 +156,7 @@ _ucc_yaml_target_get() {
   if [[ -n "${!cache_var:-}" ]]; then
     val="$(printf '%s' "${!cache_var}" | base64 -d | awk -v k="$key" -F'\t' 'BEGIN{RS="\0"} $1==k{print $2; exit}')"
   else
-    val="$(python3 "$cfg_dir/tools/read_config.py" --target-get "$yaml" "$target" "$key" 2>/dev/null || true)"
+    val="$("${UCC_FRAMEWORK_PYTHON:-python3}" "$cfg_dir/tools/read_config.py" --target-get "$yaml" "$target" "$key" 2>/dev/null || true)"
   fi
   printf '%s' "${val:-$default}"
 }
@@ -176,7 +176,7 @@ _ucc_yaml_target_get_many() {
       'BEGIN{RS="\0"; n=split(keys,ka,"|"); for(i=1;i<=n;i++) want[ka[i]]=1}
        $1 in want {printf "%s\t%s\0",$1,$2}'
   else
-    python3 "$cfg_dir/tools/read_config.py" --target-get-many "$yaml" "$target" "$@" 2>/dev/null || true
+    "${UCC_FRAMEWORK_PYTHON:-python3}" "$cfg_dir/tools/read_config.py" --target-get-many "$yaml" "$target" "$@" 2>/dev/null || true
   fi
 }
 
@@ -315,7 +315,7 @@ _ucc_display_name() {
 
   if [[ -n "${UCC_TARGETS_MANIFEST:-}" && -n "${UCC_TARGETS_QUERY_SCRIPT:-}" ]]; then
     if [[ -e "${UCC_TARGETS_MANIFEST}" && -f "${UCC_TARGETS_QUERY_SCRIPT}" ]]; then
-      display_name="$(python3 "$UCC_TARGETS_QUERY_SCRIPT" --display-name "$target" "$UCC_TARGETS_MANIFEST" 2>/dev/null || true)"
+      display_name="$("${UCC_FRAMEWORK_PYTHON:-python3}" "$UCC_TARGETS_QUERY_SCRIPT" --display-name "$target" "$UCC_TARGETS_MANIFEST" 2>/dev/null || true)"
       [[ -n "$display_name" ]] || display_name="$target"
     fi
   fi
@@ -1368,7 +1368,7 @@ _ucc_target_direct_deps() {
   if [[ -n "${_UCC_ALL_DEPS_CACHE:-}" ]]; then
     printf '%s\n' "$_UCC_ALL_DEPS_CACHE" | awk -F'\t' -v tgt="$t" '$1==tgt{print $2; exit}' | tr ',' '\n'
   else
-    python3 "$UCC_TARGETS_QUERY_SCRIPT" --deps "$t" "$UCC_TARGETS_MANIFEST" 2>/dev/null || true
+    "${UCC_FRAMEWORK_PYTHON:-python3}" "$UCC_TARGETS_QUERY_SCRIPT" --deps "$t" "$UCC_TARGETS_MANIFEST" 2>/dev/null || true
   fi
 }
 
@@ -1709,7 +1709,7 @@ ucc_flush_registered_targets() {
   if [[ -n "${_UCC_ALL_ORDERED_CACHE:-}" ]]; then
     ordered="$(printf '%s\n' "$_UCC_ALL_ORDERED_CACHE" | awk -F'\t' -v c="$component" '$1==c{print $2; exit}' | tr ',' '\n')"
   elif [[ -n "${UCC_TARGETS_MANIFEST:-}" && -n "${UCC_TARGETS_QUERY_SCRIPT:-}" ]]; then
-    ordered="$(python3 "$UCC_TARGETS_QUERY_SCRIPT" --ordered-targets "$component" "$UCC_TARGETS_MANIFEST" 2>/dev/null || true)"
+    ordered="$("${UCC_FRAMEWORK_PYTHON:-python3}" "$UCC_TARGETS_QUERY_SCRIPT" --ordered-targets "$component" "$UCC_TARGETS_MANIFEST" 2>/dev/null || true)"
   fi
 
   while IFS= read -r target; do

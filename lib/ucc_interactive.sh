@@ -12,7 +12,7 @@ _interactive_load_components() {
   for _c in "${COMPONENTS[@]}"; do
     [[ "$_c" == "verify" ]] && continue
     _BROWSE_COMPS+=("$_c")
-    _COMP_TARGETS_DATA+=("$(python3 "$_QUERY_SCRIPT" --ordered-targets "$_c" "$_MANIFEST_DIR" 2>/dev/null)")
+    _COMP_TARGETS_DATA+=("$("${UCC_FRAMEWORK_PYTHON:-python3}" "$_QUERY_SCRIPT" --ordered-targets "$_c" "$_MANIFEST_DIR" 2>/dev/null)")
   done
 }
 
@@ -123,7 +123,7 @@ _interactive_browse() {
       fi
       _show_menu
     else
-      if python3 "$_QUERY_SCRIPT" --find-target "$_input" "$_MANIFEST_DIR" >/dev/null 2>&1; then
+      if "${UCC_FRAMEWORK_PYTHON:-python3}" "$_QUERY_SCRIPT" --find-target "$_input" "$_MANIFEST_DIR" >/dev/null 2>&1; then
         _resolve_target "$_input"
         echo "  Added: $_input"
       else

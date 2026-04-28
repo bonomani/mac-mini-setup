@@ -12,7 +12,7 @@ _component_has_selected_targets() {
   while IFS= read -r _t; do
     [[ -z "$_t" ]] && continue
     [[ "${UCC_TARGET_SET:-}" == *"${_t}|"* ]] && return 0
-  done < <(python3 "$_QUERY_SCRIPT" --ordered-targets "$comp" "$_MANIFEST_DIR" 2>/dev/null)
+  done < <("${UCC_FRAMEWORK_PYTHON:-python3}" "$_QUERY_SCRIPT" --ordered-targets "$comp" "$_MANIFEST_DIR" 2>/dev/null)
   return 1
 }
 
@@ -39,5 +39,5 @@ _record_component_platform_skip() {
   while IFS= read -r t; do
     [[ -n "$t" ]] || continue
     _ucc_record_target_status "$t" "platform-skipped"
-  done < <(python3 "$UCC_TARGETS_QUERY_SCRIPT" --ordered-targets "$comp" "$UCC_TARGETS_MANIFEST" 2>/dev/null || true)
+  done < <("${UCC_FRAMEWORK_PYTHON:-python3}" "$UCC_TARGETS_QUERY_SCRIPT" --ordered-targets "$comp" "$UCC_TARGETS_MANIFEST" 2>/dev/null || true)
 }

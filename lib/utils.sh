@@ -19,6 +19,21 @@ if [[ -d "$HOME/.pyenv" ]]; then
   eval "$(pyenv init - 2>/dev/null)" || true
 fi
 
+# Stable interpreter for framework-internal manifest queries (validate_targets_manifest.py,
+# read_config.py). Pinned away from pyenv shims so a broken/PyYAML-less user Python
+# can't crash the framework. Override with UCC_FRAMEWORK_PYTHON to force a specific path.
+if [[ -z "${UCC_FRAMEWORK_PYTHON:-}" ]]; then
+  for _fp in /usr/bin/python3 /opt/homebrew/bin/python3 /usr/local/bin/python3; do
+    if [[ -x "$_fp" ]] && "$_fp" -c 'import yaml' 2>/dev/null; then
+      export UCC_FRAMEWORK_PYTHON="$_fp"
+      break
+    fi
+  done
+  : "${UCC_FRAMEWORK_PYTHON:=python3}"
+  export UCC_FRAMEWORK_PYTHON
+fi
+unset _fp
+
 # Check if a command exists
 is_installed() { command -v "$1" &>/dev/null; }
 
@@ -233,7 +248,7 @@ home_file_exists() { [[ -f "$HOME/$1" ]]; }
 # Uses implicit $CFG_DIR context.
 ai_apps_template_exists() {
   local tpl
-  tpl="$(python3 "$CFG_DIR/tools/read_config.py" --get "$CFG_DIR/ucc/software/ai-apps.yaml" stack.definition_template 2>/dev/null || true)"
+  tpl="$("${UCC_FRAMEWORK_PYTHON:-python3}" "$CFG_DIR/tools/read_config.py" --get "$CFG_DIR/ucc/software/ai-apps.yaml" stack.definition_template 2>/dev/null || true)"
   [[ -n "$tpl" ]] && [[ -f "$CFG_DIR/$tpl" ]]
 }
 
@@ -658,7 +673,7 @@ handle_unmanaged_brew_package() {
 yaml_get_many() {
   local d="$1" y="$2"
   shift 2
-  python3 "$d/tools/read_config.py" --get-many "$y" "$@" 2>/dev/null
+  "${UCC_FRAMEWORK_PYTHON:-python3}" "$d/tools/read_config.py" --get-many "$y" "$@" 2>/dev/null
 }
 
 # yaml_target_get_many <cfg_dir> <yaml_path> <target> <key1> [key2 ...]
@@ -666,16 +681,16 @@ yaml_get_many() {
 yaml_target_get_many() {
   local d="$1" y="$2" t="$3"
   shift 3
-  python3 "$d/tools/read_config.py" --target-get-many "$y" "$t" "$@" 2>/dev/null
+  "${UCC_FRAMEWORK_PYTHON:-python3}" "$d/tools/read_config.py" --target-get-many "$y" "$t" "$@" 2>/dev/null
 }
 
 # yaml_list <cfg_dir> <yaml_path> <section>
 # Output each item in a YAML list section, one per line.
-yaml_list() { python3 "$1/tools/read_config.py" --list "$2" "$3" 2>/dev/null; }
+yaml_list() { "${UCC_FRAMEWORK_PYTHON:-python3}" "$1/tools/read_config.py" --list "$2" "$3" 2>/dev/null; }
 
 # yaml_records <cfg_dir> <yaml_path> <section> <field1> [field2 ...]
 # Output tab-delimited records from a YAML list-of-dicts section.
-yaml_records() { local d="$1" y="$2" s="$3"; shift 3; python3 "$d/tools/read_config.py" --records "$y" "$s" "$@" 2>/dev/null; }
+yaml_records() { local d="$1" y="$2" s="$3"; shift 3; "${UCC_FRAMEWORK_PYTHON:-python3}" "$d/tools/read_config.py" --records "$y" "$s" "$@" 2>/dev/null; }
 
 _ucc_endpoint_default_port() {
   case "${1:-}" in

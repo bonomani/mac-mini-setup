@@ -11,7 +11,7 @@ _tic_component_config() {
     printf '%s' "${_TIC_DISPATCH_CONFIGS[$i]}"
     return 0
   done
-  dispatch="$(python3 "$cfg_dir/tools/validate_targets_manifest.py" --dispatch "$comp" "$cfg_dir/ucc" 2>/dev/null || true)"
+  dispatch="$("${UCC_FRAMEWORK_PYTHON:-python3}" "$cfg_dir/tools/validate_targets_manifest.py" --dispatch "$comp" "$cfg_dir/ucc" 2>/dev/null || true)"
   config="$(printf '%s\n' "$dispatch" | sed -n '4p')"
   _TIC_DISPATCH_COMPS+=("$comp")
   _TIC_DISPATCH_CONFIGS+=("$config")

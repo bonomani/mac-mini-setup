@@ -83,7 +83,7 @@ source "$DIR/lib/summary.sh"
 # ============================================================
 _MANIFEST_DIR="$DIR/ucc"
 _QUERY_SCRIPT="$DIR/tools/validate_targets_manifest.py"
-_all_dispatch=$(python3 "$_QUERY_SCRIPT" --all-dispatch "$_MANIFEST_DIR" 2>/dev/null || true)
+_all_dispatch=$("${UCC_FRAMEWORK_PYTHON:-python3}" "$_QUERY_SCRIPT" --all-dispatch "$_MANIFEST_DIR" 2>/dev/null || true)
 
 # ============================================================
 #  UIC gate condition functions (read-only, no side effects)
@@ -99,7 +99,7 @@ _load_components() {
   elif [[ -d "$_MANIFEST_DIR" && -x "$(command -v python3)" && -f "$_QUERY_SCRIPT" ]]; then
     while IFS= read -r component; do
       [[ -n "$component" ]] && components+=("$component")
-    done < <(python3 "$_QUERY_SCRIPT" --components "$_MANIFEST_DIR" 2>/dev/null || true)
+    done < <("${UCC_FRAMEWORK_PYTHON:-python3}" "$_QUERY_SCRIPT" --components "$_MANIFEST_DIR" 2>/dev/null || true)
   fi
   components+=("verify")
   printf '%s\n' "${components[@]}"
@@ -304,7 +304,7 @@ fi
 if [[ "${_EXPLICIT_TARGETS:-0}" == "1" && "${UCC_INTERACTIVE:-0}" == "1" && -c /dev/tty ]]; then
   for _et in "${TO_RUN[@]}"; do
     # Only prompt for actual targets, not components
-    python3 "$_QUERY_SCRIPT" --find-target "$_et" "$_MANIFEST_DIR" >/dev/null 2>&1 || continue
+    "${UCC_FRAMEWORK_PYTHON:-python3}" "$_QUERY_SCRIPT" --find-target "$_et" "$_MANIFEST_DIR" >/dev/null 2>&1 || continue
     _is_disabled=0
     [[ "${UCC_DISABLED_TARGETS}" == *"${_et}|"* ]] && _is_disabled=1
     if [[ $_is_disabled -eq 1 ]]; then
@@ -396,7 +396,7 @@ while IFS= read -r _cache_line; do
       esac
       ;;
   esac
-done < <(python3 "$_QUERY_SCRIPT" --all-caches "$_MANIFEST_DIR" 2>/dev/null || true)
+done < <("${UCC_FRAMEWORK_PYTHON:-python3}" "$_QUERY_SCRIPT" --all-caches "$_MANIFEST_DIR" 2>/dev/null || true)
 unset _current_section _cache_line
 
 # --- Interactive: component/target selection (before prefs) ----
@@ -597,7 +597,7 @@ export UCC_TARGETS_QUERY_SCRIPT="$DIR/tools/validate_targets_manifest.py"
 mkdir -p "$HOME/.ai-stack/runs"
 
 if [[ -d "$DIR/ucc" && -x "$(command -v python3)" ]]; then
-  if ! python3 "$DIR/tools/validate_targets_manifest.py" "$DIR/ucc" >/dev/null; then
+  if ! "${UCC_FRAMEWORK_PYTHON:-python3}" "$DIR/tools/validate_targets_manifest.py" "$DIR/ucc" >/dev/null; then
     log_error "Invalid orchestration manifest directory: $DIR/ucc"
   fi
 fi
@@ -703,7 +703,7 @@ for _i in "${!_DISP_COMPS[@]}"; do
   # One python3 call per YAML file; outputs shell export statements read by eval
   while IFS= read -r _export_stmt; do
     [[ -n "$_export_stmt" ]] && eval "$_export_stmt"
-  done < <(python3 "$DIR/tools/read_config.py" \
+  done < <("${UCC_FRAMEWORK_PYTHON:-python3}" "$DIR/tools/read_config.py" \
     --split-yaml-batch "$_yaml_fn" "$DIR/$_yaml_file" \
     $(printf '%s\n' "$_UCC_YAML_BATCH_KEYS") 2>/dev/null || true)
 done
@@ -715,7 +715,7 @@ _run_comp() {
     log_warn "Component $comp blocked by UIC hard gate — outcome=failed, failure_class=permanent, reason=gate_failed"
     # Count targets in the blocked component and record them as skipped
     local _skip_count
-    _skip_count=$(python3 "$_QUERY_SCRIPT" --ordered-targets "$comp" "$_MANIFEST_DIR" 2>/dev/null | wc -l)
+    _skip_count=$("${UCC_FRAMEWORK_PYTHON:-python3}" "$_QUERY_SCRIPT" --ordered-targets "$comp" "$_MANIFEST_DIR" 2>/dev/null | wc -l)
     _skip_count=$(( _skip_count + 0 ))  # ensure numeric
     [[ -n "${UCC_SUMMARY_FILE:-}" && $_skip_count -gt 0 ]] && \
       printf '%s|%d|%d|%d|%d\n' "$comp" 0 0 0 "$_skip_count" >> "$UCC_SUMMARY_FILE" 2>/dev/null || true

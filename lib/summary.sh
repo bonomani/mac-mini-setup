@@ -96,7 +96,7 @@ print_summary_section() {
       # If all counters are zero, count targets as skipped
       if [[ $_all_zero -eq 1 ]]; then
         local _comp_target_count
-        _comp_target_count=$(python3 "${UCC_TARGETS_QUERY_SCRIPT:-$DIR/tools/validate_targets_manifest.py}" \
+        _comp_target_count=$("${UCC_FRAMEWORK_PYTHON:-python3}" "${UCC_TARGETS_QUERY_SCRIPT:-$DIR/tools/validate_targets_manifest.py}" \
           --ordered-targets "$_comp" "${UCC_TARGETS_MANIFEST:-$DIR/ucc}" 2>/dev/null | wc -l)
         _comp_target_count=$(( _comp_target_count + 0 ))
         if [[ $_comp_target_count -gt 0 ]]; then
