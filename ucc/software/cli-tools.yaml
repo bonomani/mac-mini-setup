@@ -243,6 +243,39 @@ targets:
       - brew: cmake
       - native-pm: cmake
       bin: cmake
+  cli-hyperfine:
+    component: cli-tools
+    profile: configured
+    type: package
+    display_name: hyperfine
+    driver:
+      kind: pkg
+      backends:
+      - brew: hyperfine
+      - native-pm: hyperfine
+      bin: hyperfine
+  cli-just:
+    component: cli-tools
+    profile: configured
+    type: package
+    display_name: just
+    driver:
+      kind: pkg
+      backends:
+      - brew: just
+      - native-pm: just
+      bin: just
+  cli-watchexec:
+    component: cli-tools
+    profile: configured
+    type: package
+    display_name: watchexec
+    driver:
+      kind: pkg
+      backends:
+      - brew: watchexec
+      - native-pm: watchexec
+      bin: watchexec
   nftables:
     component: cli-tools
     profile: configured
@@ -376,6 +409,9 @@ cli_tools:
 - cli-opencode
 - cli-aria2
 - cli-cmake
+- cli-hyperfine
+- cli-just
+- cli-watchexec
 casks:
 - iterm2
 - lm-studio
