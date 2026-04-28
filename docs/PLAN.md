@@ -105,14 +105,14 @@ not finished.
 
 #### Problems discovered
 
-- Test/runtime consistency:
-  - `tests/test_capability_driver.py` assumes `network-available` always succeeds, but the live probe is network-dependent and correctly fails offline.
-  - `tests/test_drivers.py` uses brittle source parsing and produces a false `pyenv-brew` metadata mismatch.
-  - `lib/utils.sh` emits `pyenv` stderr while merely being sourced, which contaminates probe/test output.
+- Test/runtime consistency: ✅ fixed 2026-04-28
+  - ~~`tests/test_capability_driver.py` assumes `network-available` always succeeds~~ → stubbed `network_is_available` in test (54bb83e).
+  - ~~`tests/test_drivers.py` uses brittle source parsing for `pyenv-brew`~~ → exclude platform-aware drivers from printf-line extractor (46bc839).
+  - ~~`lib/utils.sh` emits `pyenv` stderr while sourced~~ → wrap eval in brace-group + 2>/dev/null (469833a).
 
 - Validation/tooling consistency:
   - `tools/validate_setup_state_artifact.py` is documented as a runnable validator but currently depends on an external sibling ASM repo and fails when that file is absent.
-  - `tools/format_targets_manifest.py --check ucc` currently reports drift on every manifest YAML.
+  - ~~`tools/format_targets_manifest.py --check ucc` reports drift on every manifest YAML~~ → re-formatted, now clean (5ec510a).
 
 - Governance/doc consistency:
   - Component counts and scope wording disagree across `BGS.md`, `docs/bgs-decision.yaml`, `docs/biss-classification.md`, `docs/bgs-compliance-report.md`, `docs/setup-state-model.md`, and `docs/SPEC.md`.
