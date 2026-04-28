@@ -179,30 +179,23 @@ Other dynamic parametrics (none active beyond the two Docker callers
 today) can adopt the helper as they appear; pmset/defaults/softwareupdate
 targets are command-based, not JSON-merge, so they stay out of scope.
 
-#### 3. `pkg.sh` backend split
+#### 3. `pkg.sh` backend split — 🟡 IN PROGRESS 2026-04-28 (slice 1/9)
 
-**Goal:** reduce risk in the largest multi-backend driver file without
-changing package behavior.
+First slice extracted the GitHub release backend (16 funcs, 159 LOC)
+from `lib/drivers/pkg.sh` (729 → 572 LOC) into
+`lib/drivers/pkg_github.sh`, sourced from `pkg.sh` so existing call
+sites in `custom_daemon.sh` / `nvm.sh` (which probe via `declare -f`)
+keep working unchanged. Mechanical move only — no behavior change.
 
-**Plan:**
-- Keep dispatcher functions in `lib/drivers/pkg.sh`: backend loading,
-  selection, observe/action/recover/evidence.
-- Move backend families into focused files:
-  `pkg_brew.sh`, `pkg_npm.sh`, `pkg_github.sh`, `pkg_curl.sh`,
-  `pkg_native_pm.sh`, `pkg_winget.sh`, `pkg_pyenv.sh`,
-  `pkg_ollama.sh`, and `pkg_vscode.sh`.
-- Source backend files from `pkg.sh` or `lib/ucc_drivers.sh` before the
-  dispatcher runs.
-- Split one backend at a time, starting with GitHub release helpers
-  because they are self-contained and already have new URL-helper tests.
-- After each split, run `tests/test_driver_smoke.py`,
-  `tests/test_drivers.py`, Docker/cross-platform tests if touched, and
-  manifest validation.
-- Keep the first pass mechanical. Behavior changes should be separate
-  commits after the split is stable.
+`tests/test_pkg_github_split.py` pins: pkg_github.sh carries the
+github funcs, pkg.sh no longer defines them, pkg.sh sources the new
+file, sourcing pkg.sh transitively pulls in `_pkg_github_install` and
+`_pkg_github_latest_tag`.
 
-**Non-goal:** do not combine backend extraction with package-manager
-policy changes.
+Remaining slices (one backend each, mechanical): `pkg_npm.sh`,
+`pkg_curl.sh`, `pkg_brew.sh` (formula + cask), `pkg_native_pm.sh`,
+`pkg_pyenv.sh`, `pkg_ollama.sh`, `pkg_vscode.sh`, `pkg_winget.sh`.
+Split incrementally as touched; do not combine with policy changes.
 
 ### 2026-04-28 consistency audit
 
