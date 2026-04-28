@@ -11,11 +11,13 @@ preferences:
 - name: ollama-model-autopull
   default: none
   options: none|small|medium|large
-  rationale: none prevents automatic multi-GB downloads; pull models manually when ready. small=≤3B, medium=≤8B, large=all
+  rationale: "none prevents automatic multi-GB downloads; pull models manually when\
+    \ ready. small=\u22643B, medium=\u22648B, large=all"
 - name: ai-apps-image-policy
   default: reuse-local
   options: reuse-local|always-pull
-  rationale: reuse-local starts the compose stack from locally available images for faster runs; always-pull refreshes images before stack startup and updates
+  rationale: reuse-local starts the compose stack from locally available images for
+    faster runs; always-pull refreshes images before stack startup and updates
 ollama_installer_url: https://ollama.com/install.sh
 brew_service_name: ollama
 api_host: 127.0.0.1
@@ -163,41 +165,16 @@ targets:
     profile: runtime
     type: runtime
     display_name: Ollama
-    # custom-daemon backend needs an init system to autostart:
-    # launchd (macOS) or systemd (Linux/WSL2 with systemd=true).
-    # On WSL2 without systemd the daemon can't be started — skip gracefully.
-    requires: launchd,systemd
     provided_by_tool: ollama-installer
     driver:
       kind: custom-daemon
       bin: ollama
-      process: 'ollama (serve|app)'
-      # `open -a Ollama` is idempotent (no error if already running) and
-      # handles the case where the daemon is externally managed by Ollama.app
-      # Top-level fallback_start_cmd (`ollama serve`) is for non-app installs.
+      process: ollama (serve|app)
       start_cmd: open -a Ollama
       github_repo: ollama/ollama
-      # Ollama.app has its own auto-updater (Squirrel) managed via the app's
-      # UI ("Auto-download updates" toggle, stored in
-      # ~/Library/Application Support/Ollama/db.sqlite as auto_update_enabled).
-      # There's no `ollama update` CLI command. When the upstream check
-      # reports a newer version, the framework triggers the update action
-      # but can't push the update synchronously — the .app applies it
-      # asynchronously. Treat post-update still-outdated as [warn] not [fail].
       self_updating: true
-      # Probe the running daemon for its actual version — CLI binary
-      # version (e.g. brew-installed 0.20.6) can lag the .app bundle
-      # (0.20.5) that's actually serving requests. /api/version returns
-      # {"version":"X.Y.Z"}.
       version_probe_path: /api/version
-      # Presence of the .app bundle signals a self-updating install
-      # (Squirrel). Surfaced in evidence as `install=app` vs `install=cli`.
       install_app_path: /Applications/Ollama.app
-      # Squirrel stages downloaded updates here; presence of the zip
-      # means "downloaded, restart to apply" (same signal the GUI shows).
-      # Surfaced in evidence as `update=pending`. The actual apply lives
-      # in `_update_ollama` (lib/ai_apps.sh) since the apply needs the
-      # SIGTERM-restart-poll sequence specific to Squirrel's ShipIt.
       pending_update_glob: ~/Library/Caches/ollama/updates/*/Ollama-darwin.zip
     endpoints:
     - name: Ollama API
@@ -207,6 +184,7 @@ targets:
       path: ${api_tags_path}
       note: ollama pull <model>
     stopped_health: Unavailable
+    requires: launchd,systemd
   ollama-model-llama3.2:
     component: ai-apps
     profile: configured

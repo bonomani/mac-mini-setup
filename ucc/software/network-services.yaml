@@ -15,12 +15,12 @@ targets:
     profile: capability
     type: capability
     display_name: networkQuality
-    requires: macos
     driver:
       kind: capability
       probe: networkquality_is_available
     evidence:
       path: bin_path networkQuality
+    requires: macos
   mdns-available:
     component: network-services
     profile: capability
@@ -31,34 +31,30 @@ targets:
       probe: mdns_is_available
     evidence:
       path: bin_path dns-sd avahi-publish-service
-
   avahi:
     component: network-services
     profile: configured
     type: package
     display_name: Avahi (mDNS)
-    requires: linux,wsl2
     driver:
       kind: pkg
       backends:
-        - native-pm: avahi-utils
-    desired_value: "@present"
-
+      - native-pm: avahi-utils
+    desired_value: '@present'
+    requires: linux,wsl2
   ariaflow-server:
     component: network-services
     profile: runtime
     type: runtime
     display_name: Ariaflow Server
-    requires: macos
     depends_on:
     - networkquality-available?macos
     - mdns-available
     - avahi?linux,wsl2
-
     driver:
       kind: service
-      backend: brew
       ref: bonomani/ariaflow/ariaflow-server
+      backend: brew
     endpoints:
     - name: aria2 RPC
       scheme: http
@@ -70,20 +66,21 @@ targets:
       host: 127.0.0.1
       port: ${ariaflow_port}
       path: /api/status
+    requires: macos
   ariaflow-dashboard:
     component: network-services
     profile: runtime
     type: runtime
     display_name: Ariaflow Dashboard
-    requires: macos
     depends_on:
     - mdns-available
     driver:
       kind: service
-      backend: brew
       ref: bonomani/ariaflow/ariaflow-dashboard
+      backend: brew
     endpoints:
     - name: ariaflow dashboard
       scheme: http
       host: 127.0.0.1
       port: ${ariaflow_dashboard_port}
+    requires: macos

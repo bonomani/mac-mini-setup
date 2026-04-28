@@ -35,16 +35,15 @@ targets:
     profile: configured
     type: package
     display_name: Build dependencies
-    requires: linux,wsl2
     provided_by_tool: native-package-manager
     driver:
       kind: build-deps
+    requires: linux,wsl2
   xcode-command-line-tools:
     component: software-bootstrap
     profile: configured
     type: package
     display_name: Xcode Command Line Tools
-    requires: macos
     provided_by_tool: macos-installer
     driver:
       kind: custom
@@ -58,12 +57,12 @@ targets:
     actions:
       install: _xcode_clt_trigger
       update: xcode_clt_update
+    requires: macos
   homebrew:
     component: software-bootstrap
     profile: configured
     type: package
     display_name: Homebrew
-    requires: macos
     depends_on:
     - network-available
     - xcode-command-line-tools?macos
@@ -78,14 +77,15 @@ targets:
     actions:
       install: _homebrew_install
       update: _homebrew_upgrade
+    requires: macos
   brew-analytics=off:
     component: software-bootstrap
     profile: parametric
     type: config
     display_name: Homebrew analytics
-    requires: macos
     depends_on:
     - homebrew
     driver:
       kind: brew-analytics
     desired_value: ${analytics_desired}
+    requires: macos

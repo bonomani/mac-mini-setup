@@ -8,8 +8,8 @@ platforms:
 - wsl2
 vscode_cli_path: /Applications/Visual Studio Code.app/Contents/Resources/app/bin/code
 vscode_cli_link_relpath: bin/code
-vscode_code_cmd_hint: "Symlink created. If 'code' is still missing in new shells,\
-  \ run: Cmd+Shift+P > Shell Command: Install code command in PATH"
+vscode_code_cmd_hint: 'Symlink created. If ''code'' is still missing in new shells,
+  run: Cmd+Shift+P > Shell Command: Install code command in PATH'
 vscode_settings_relpath: Library/Application Support/Code/User/settings.json
 vscode_settings_patch: ucc/software/vscode-settings.json
 targets:
@@ -18,7 +18,6 @@ targets:
     profile: configured
     type: package
     display_name: Visual Studio Code
-    requires: macos
     driver:
       kind: app-bundle
       app_path: /Applications/Visual Studio Code.app
@@ -26,12 +25,12 @@ targets:
       update_api: https://update.code.visualstudio.com/api/releases/stable
       download_url_tpl: https://update.code.visualstudio.com/{version}/darwin-universal/stable
       package_ext: zip
+    requires: macos
   vscode-code-cmd:
     component: vscode-stack
     profile: configured
     type: config
     display_name: VS Code CLI
-    requires: macos
     depends_on:
     - vscode
     driver:
@@ -41,6 +40,7 @@ targets:
       link_relpath: ${vscode_cli_link_relpath}
       cmd: code
       hint: ${vscode_code_cmd_hint}
+    requires: macos
   vscode-settings:
     component: vscode-stack
     profile: configured

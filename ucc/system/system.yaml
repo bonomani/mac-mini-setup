@@ -11,30 +11,26 @@ restart_processes:
 - Dock
 - SystemUIServer
 targets:
-  # ── Capabilities ─────────────────────────────────────────────
   sudo-available:
     component: system
     profile: capability
     type: capability
     display_name: sudo access
-
     driver:
       kind: capability
       probe: sudo_is_available
     evidence:
       status: sudo_is_available
-  # ── Power management (pmset) ─────────────────────────────────
   pmset-ac-sleep=0:
     component: system
     profile: parametric
     type: config
     display_name: AC sleep
-
     admin_required: true
     driver:
       kind: setting
-      backend: pmset
       key: sleep
+      backend: pmset
       value: '0'
       requires_sudo: true
     desired_value: '0'
@@ -43,12 +39,11 @@ targets:
     profile: parametric
     type: config
     display_name: Disk sleep
-
     admin_required: true
     driver:
       kind: setting
-      backend: pmset
       key: disksleep
+      backend: pmset
       value: '0'
       requires_sudo: true
     desired_value: '0'
@@ -57,28 +52,24 @@ targets:
     profile: parametric
     type: config
     display_name: Standby
-
     admin_required: true
     driver:
       kind: setting
-      backend: pmset
       key: standby
+      backend: pmset
       value: '0'
       requires_sudo: true
     desired_value: '0'
-  # ── macOS defaults (user-defaults) ───────────────────────────
   app-nap=disabled:
     component: system
     profile: parametric
     type: config
     display_name: App Nap
-
     driver:
       kind: setting
-
-      backend: defaults
       domain: NSGlobalDomain
       key: NSAppSleepDisabled
+      backend: defaults
       value: 'YES'
       type: bool
     desired_value: '1'
@@ -87,13 +78,11 @@ targets:
     profile: parametric
     type: config
     display_name: Finder hidden files
-
     driver:
       kind: setting
-
-      backend: defaults
       domain: com.apple.finder
       key: AppleShowAllFiles
+      backend: defaults
       value: 'true'
       type: bool
     desired_value: '1'
@@ -102,13 +91,11 @@ targets:
     profile: parametric
     type: config
     display_name: Filename extensions
-
     driver:
       kind: setting
-
-      backend: defaults
       domain: NSGlobalDomain
       key: AppleShowAllExtensions
+      backend: defaults
       value: 'true'
       type: bool
     desired_value: '1'
@@ -117,23 +104,19 @@ targets:
     profile: parametric
     type: config
     display_name: Dock auto-hide
-
     driver:
       kind: setting
-
-      backend: defaults
       domain: com.apple.dock
       key: autohide
+      backend: defaults
       value: 'true'
       type: bool
     desired_value: '1'
-  # ── Software Update policy ───────────────────────────────────
   softwareupdate-schedule=on:
     component: system
     profile: parametric
     type: config
     display_name: Software Update schedule
-
     admin_required: true
     driver:
       kind: softwareupdate-schedule
@@ -143,16 +126,13 @@ targets:
     profile: parametric
     type: config
     display_name: Automatic update checks
-
     admin_required: true
     driver:
       kind: setting
-
-      backend: defaults
-
-      requires_sudo: true
       domain: ${softwareupdate_domain}
       key: AutomaticCheckEnabled
+      backend: defaults
+      requires_sudo: true
       value: '1'
     desired_value: '1'
   softwareupdate-auto-download=1:
@@ -160,16 +140,13 @@ targets:
     profile: parametric
     type: config
     display_name: Automatic update downloads
-
     admin_required: true
     driver:
       kind: setting
-
-      backend: defaults
-
-      requires_sudo: true
       domain: ${softwareupdate_domain}
       key: AutomaticDownload
+      backend: defaults
+      requires_sudo: true
       value: '1'
     desired_value: '1'
   softwareupdate-auto-install-macos=1:
@@ -177,16 +154,13 @@ targets:
     profile: parametric
     type: config
     display_name: Automatic macOS updates
-
     admin_required: true
     driver:
       kind: setting
-
-      backend: defaults
-
-      requires_sudo: true
       domain: ${softwareupdate_domain}
       key: AutomaticallyInstallMacOSUpdates
+      backend: defaults
+      requires_sudo: true
       value: '1'
     desired_value: '1'
   softwareupdate-config-data=1:
@@ -194,16 +168,13 @@ targets:
     profile: parametric
     type: config
     display_name: Configuration data updates
-
     admin_required: true
     driver:
       kind: setting
-
-      backend: defaults
-
-      requires_sudo: true
       domain: ${softwareupdate_domain}
       key: ConfigDataInstall
+      backend: defaults
+      requires_sudo: true
       value: '1'
     desired_value: '1'
   softwareupdate-critical-updates=1:
@@ -211,25 +182,20 @@ targets:
     profile: parametric
     type: config
     display_name: Security updates
-
     admin_required: true
     driver:
       kind: setting
-
-      backend: defaults
-
-      requires_sudo: true
       domain: ${softwareupdate_domain}
       key: CriticalUpdateInstall
+      backend: defaults
+      requires_sudo: true
       value: '1'
     desired_value: '1'
-  # ── System composition (OS-level targets only) ───────────────
   system-composition:
     component: system
     profile: parametric
     type: config
     display_name: System composition
-
     depends_on:
     - sudo-available
     - pmset-ac-sleep=0

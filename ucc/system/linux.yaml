@@ -12,29 +12,28 @@ targets:
     profile: capability
     type: capability
     display_name: cgroup v2 (unified hierarchy)
-    requires: linux,wsl2
     driver:
       kind: capability
       probe: cgroup2_is_available
     evidence:
       fstype: cgroup2_fstype
+    requires: linux,wsl2
   systemd-available:
     component: linux-system
     profile: capability
     type: capability
     display_name: systemd (PID 1)
-    requires: linux,wsl2
     driver:
       kind: capability
       probe: systemd_is_available
     evidence:
       version: systemd_version
+    requires: linux,wsl2
   user-linger-enabled:
     component: linux-system
     profile: capability
     type: capability
     display_name: user systemd linger
-    requires: linux,wsl2
     depends_on:
     - systemd-available
     driver:
@@ -42,3 +41,4 @@ targets:
       probe: user_linger_is_enabled
     evidence:
       user: echo_var "${USER}"
+    requires: linux,wsl2

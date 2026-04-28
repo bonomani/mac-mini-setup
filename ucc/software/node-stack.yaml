@@ -33,18 +33,17 @@ targets:
     profile: configured
     type: config
     display_name: Brew node unlinked
-    requires: macos
     depends_on:
     - node-lts
     driver:
       kind: brew-unlink
       formula: ${node_formula}
+    requires: macos
   npm-global-@openai/codex:
     component: node-stack
     profile: configured
     type: package
     display_name: Codex CLI
-    update_class: lib
     depends_on:
     - node-lts
     driver:
@@ -52,6 +51,7 @@ targets:
       backends:
       - npm: '@openai/codex'
       bin: codex
+    update_class: lib
   npm-global-@anthropic-ai/claude-code:
     component: node-stack
     profile: configured

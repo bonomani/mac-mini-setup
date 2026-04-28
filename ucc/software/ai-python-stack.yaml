@@ -10,13 +10,15 @@ preferences:
 - name: python-version
   default: 3.12.3
   options: 3.11.9|3.12.3|3.13.0
-  rationale: 3.12.3 is the tested stable release with best ML library support; 3.13 is newer but less tested with PyTorch/HF
+  rationale: 3.12.3 is the tested stable release with best ML library support; 3.13
+    is newer but less tested with PyTorch/HF
 - name: pytorch-device
   default: mps
   options: mps|cpu
   platforms:
   - macos
-  rationale: mps uses Apple Silicon Metal GPU for ML acceleration; cpu works everywhere but is significantly slower
+  rationale: mps uses Apple Silicon Metal GPU for ML acceleration; cpu works everywhere
+    but is significantly slower
 unsloth_label: ai.unsloth.studio
 unsloth_plist_marker: <!-- ai.unsloth.studio v2 -->
 unsloth_plist_relpath: Library/LaunchAgents/ai.unsloth.studio.plist
@@ -38,7 +40,6 @@ pip_bootstrap:
 - setuptools
 - wheel
 targets:
-  # ── Python lifecycle (pyenv → python → pip) ─────────────────
   pyenv:
     component: ai-python-stack
     profile: configured
@@ -51,13 +52,13 @@ targets:
     profile: configured
     type: package
     display_name: XZ Utils
-    update_class: lib
     driver:
       kind: pkg
       backends:
       - brew: xz
       - native-pm: xz-utils
       bin: xz
+    update_class: lib
   python:
     component: ai-python-stack
     profile: configured
@@ -91,7 +92,6 @@ targets:
       probe: python_venv_is_available
     evidence:
       status: python_venv_status
-  # ── Pip packages ─────────────────────────────────────────────
   unsloth:
     component: ai-python-stack
     profile: configured
@@ -112,7 +112,6 @@ targets:
     profile: runtime
     type: runtime
     display_name: Unsloth Studio (launchd)
-    requires: macos
     depends_on:
     - unsloth
     driver:
@@ -128,12 +127,12 @@ targets:
       scheme: http
       host: 127.0.0.1
       port: ${unsloth_port}
+    requires: macos
   unsloth-studio-service:
     component: ai-python-stack
     profile: runtime
     type: runtime
     display_name: Unsloth Studio (systemd)
-    requires: linux,wsl2
     depends_on:
     - unsloth
     driver:
@@ -149,6 +148,7 @@ targets:
       scheme: http
       host: 127.0.0.1
       port: ${unsloth_port}
+    requires: linux,wsl2
   pip-group-pytorch:
     component: ai-python-stack
     profile: configured
@@ -381,7 +381,6 @@ targets:
     profile: capability
     type: capability
     display_name: Metal MPS
-    requires: macos
     depends_on:
     - pip-group-pytorch
     driver:
@@ -390,12 +389,12 @@ targets:
     evidence:
       gpu: echo_var "${gpu_backend}"
       status: torch_mps_status
+    requires: macos
   cuda-available:
     component: ai-python-stack
     profile: capability
     type: capability
     display_name: NVIDIA CUDA
-    requires: linux,wsl2
     depends_on:
     - pip-group-pytorch
     driver:
@@ -404,6 +403,7 @@ targets:
     evidence:
       device: torch_cuda_device_name
       status: torch_cuda_status
+    requires: linux,wsl2
 pip_groups:
 - pip-group-pytorch
 - pip-group-huggingface

@@ -169,13 +169,13 @@ targets:
     profile: configured
     type: package
     display_name: GCC
-    update_class: lib
     driver:
       kind: pkg
       backends:
       - brew: gcc
       - native-pm: gcc
       bin: gcc
+    update_class: lib
   cli-gh:
     component: cli-tools
     profile: configured
@@ -321,37 +321,37 @@ targets:
     profile: configured
     type: package
     display_name: Clang
-    update_class: lib
     driver:
       kind: pkg
       backends:
       - brew: llvm
       - native-pm: clang
       bin: clang
+    update_class: lib
   cli-llvm:
     component: cli-tools
     profile: configured
     type: package
     display_name: LLVM
-    update_class: lib
     driver:
       kind: pkg
       backends:
       - brew: llvm
       - native-pm: llvm-dev
       bin: llvm-config
+    update_class: lib
   cli-lld:
     component: cli-tools
     profile: configured
     type: package
     display_name: LLD linker
-    update_class: lib
     driver:
       kind: pkg
       backends:
       - brew: lld
       - native-pm: lld
       bin: ld.lld
+    update_class: lib
   cli-mold:
     component: cli-tools
     profile: configured
@@ -530,18 +530,17 @@ targets:
     profile: configured
     type: package
     display_name: nftables
-    requires: linux,wsl2
     driver:
       kind: pkg
       backends:
       - native-pm: nftables
       bin: nft
+    requires: linux,wsl2
   firewalld:
     component: cli-tools
     profile: configured
     type: package
     display_name: firewalld
-    requires: linux,wsl2
     depends_on:
     - nftables
     driver:
@@ -549,6 +548,7 @@ targets:
       backends:
       - native-pm: firewalld
       bin: firewall-cmd
+    requires: linux,wsl2
   cli-zsh:
     component: cli-tools
     profile: configured
@@ -611,47 +611,47 @@ targets:
     profile: configured
     type: package
     display_name: iTerm2
-    requires: macos
     driver:
       kind: pkg
       backends:
       - brew-cask: iterm2
       bin: iterm2
       greedy_auto_updates: 'true'
+    requires: macos
   lm-studio:
     component: cli-tools
     profile: configured
     type: package
     display_name: LM Studio
-    requires: macos
     driver:
       kind: pkg
       backends:
       - brew-cask: lm-studio
       bin: lm-studio
       greedy_auto_updates: 'true'
+    requires: macos
   vmware-fusion:
     component: cli-tools
     profile: configured
     type: package
     display_name: VMware Fusion
-    requires: macos
     driver:
       kind: pkg
       backends:
       - brew-cask: vmware-fusion
       bin: vmrun
       greedy_auto_updates: 'true'
+    requires: macos
   vmware-workstation:
     component: cli-tools
     profile: configured
     type: package
     display_name: VMware Workstation (Windows host)
-    requires: wsl2
     driver:
       kind: pkg
       backends:
       - winget: VMware.WorkstationPro
+    requires: wsl2
 cli_tools:
 - cli-jq
 - cli-wget

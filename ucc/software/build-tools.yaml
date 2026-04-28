@@ -18,7 +18,7 @@ targets:
       - brew: rustup
       - native-pm: rustup
       - curl: https://sh.rustup.rs
-      curl_args: '-y'
+      curl_args: -y
       bin: rustup
       github_repo: rust-lang/rustup
   rdpilot:
@@ -36,10 +36,10 @@ targets:
     profile: configured
     type: package
     display_name: xrdp
-    requires: linux,wsl2
     driver:
       kind: pkg
       backends:
       - native-pm: xrdp
       bin: xrdp
       github_repo: neutrinolabs/xrdp
+    requires: linux,wsl2
