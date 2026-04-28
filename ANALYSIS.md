@@ -11,54 +11,61 @@ orchestration, driver-based package management, and post-convergence verificatio
 install.sh
   ├── UIC (Pre-convergence)
   │   ├── Gate evaluation (1 gate: supported-platform)
-  │   └── Preference resolution (14 preferences)
+  │   └── Preference resolution
   ├── UCC (Convergence)
-  │   ├── Component runners (9 components + verify)
-  │   ├── Driver dispatch (33 drivers)
-  │   └── Target orchestration (108 targets across 9 YAML files)
+  │   ├── Component runners (11 components)
+  │   ├── Driver dispatch (~32 driver kinds incl. probes)
+  │   └── Target orchestration (~147 targets across 11 YAML files)
   ├── TIC (Verification)
-  │   ├── Software verify (11 tests)
-  │   ├── System verify (6 tests)
-  │   └── Integration tests (6 tests)
+  │   └── Software / system verify + integration tests
   └── Summary + Services
+```
+
+Live counts come from `ucc/**/*.yaml`. Re-derive with:
+
+```bash
+grep -hE 'component:[[:space:]]' ucc -r | awk -F'component:' '{print $2}' | awk '{print $1}' | sort -u
 ```
 
 ## Components
 
 | Component | YAML | Platforms | Targets | Description |
 |-----------|------|-----------|---------|-------------|
-| software-bootstrap | homebrew.yaml | all | 5 | Xcode CLT, build-deps, Homebrew, analytics, network |
-| cli-tools | cli-tools.yaml | all | — | Git, CLI tools, Oh My Zsh |
-| node-stack | node-stack.yaml | all | — | Node.js, nvm, npm global packages |
-| vscode-stack | vscode.yaml | all | — | VS Code, extensions, settings |
-| docker | docker.yaml | macos | 3 | Docker Desktop + resources + capabilities |
+| software-bootstrap | homebrew.yaml | all | 5 | Xcode CLT, build-deps, Homebrew, analytics |
+| cli-tools | cli-tools.yaml | all | 54 | Git, CLI tools, Oh My Zsh, language toolchains |
+| node-stack | node-stack.yaml | all | 6 | Node.js, nvm, npm global packages |
+| vscode-stack | vscode.yaml | all | 10 | VS Code, extensions, settings |
+| docker | docker.yaml | macos | 5 | Docker Desktop + resources + capabilities |
 | ai-apps | ai-apps.yaml | all | 16 | Ollama + models + Docker Compose services |
-| ai-python-stack | ai-python-stack.yaml | all | 18 | PyTorch, HF, LangChain, pip groups, GPU probes |
-| build-tools | build-tools.yaml | all | — | Build tools |
+| ai-python-stack | ai-python-stack.yaml | all | 25 | PyTorch, HF, LangChain, pip groups, GPU probes |
+| build-tools | build-tools.yaml | all | 3 | Build tools |
+| network-services | network-services.yaml | all | 5 | mDNS / network reachability capabilities |
 | system | system.yaml | macos | 15 | pmset, defaults, softwareupdate, sudo, composition |
+| linux-system | linux.yaml | linux,wsl2 | 3 | Linux/WSL2 system-layer targets |
 
 ## Driver Architecture
 
-33 drivers across 4 classes. See `DRIVER_ARCHITECTURE.md` for full details.
+See `DRIVER_ARCHITECTURE.md` and the generated `docs/driver-feature-matrix.md`
+for the authoritative driver inventory.
 
-- **Package** (15): `package`, `brew`, `app-bundle`, `pip`, `npm-global`, `pyenv-brew`,
-  `pyenv-version`, `nvm`, `nvm-version`, `vscode-marketplace`, `ollama-model`, `pip-bootstrap`,
-  `build-deps`, `git-repo`, `curl-installer`
-- **Config** (13): `brew-analytics`, `brew-unlink`, `json-merge`, `user-defaults`, `pmset`,
-  `softwareupdate-defaults`, `softwareupdate-schedule`, `cli-symlink`,
-  `script-installer`, `zsh-config`, `path-export`, `bin-script`, `git-global`
-- **Runtime** (5): `brew-service`, `docker-compose-service`, `launchd`, `custom-daemon`, `compose-file`
+The driver surface is consolidating around three shared dispatchers — `pkg`
+(package install/upgrade across backends), `setting` (declarative config
+values), and `service` (runtime lifecycle). Specialized kinds (`pip`,
+`custom-daemon`, `script-installer`, `path-export`, …) remain where the
+shared dispatchers don't yet cover the semantics.
 
 Key features:
 - **Driver-implied dependencies**: drivers declare `depends_on` and `provided_by_tool` — YAML targets don't repeat them
-- **Platform-aware `package` driver**: dispatches to brew (macOS) or apt/dnf/curl (Linux/WSL2) with curl fallback
-- **Driver schema validation**: required/optional keys enforced at validation time
+- **Platform-aware `pkg` driver**: dispatches to brew (macOS) or native PM (Linux/WSL2) with GitHub-release fallback
+- **Driver schema validation**: required/optional keys enforced at validation time (`tools/validate_targets_manifest.py`)
 - **`requires:` field**: declares platform impossibilities (e.g. `requires: linux,wsl2`)
 - **Conditional deps**: `target?condition` with OR, version compare, negation
-- **Host fingerprint**: os/version/arch/pm for platform-aware dispatch
-- **`git-repo` driver**: clones and updates git repositories
-- **`curl-installer` driver**: install via curl-based installers
-- **30 unit tests** in `tests/`
+- **Host fingerprint**: os/version/arch/pm/init-system for platform-aware dispatch
+
+## Tests
+
+Run `python3 -m pytest tests/ -q`. Suite size grows with regression coverage;
+re-derive with `python3 -m pytest tests/ --collect-only -q | tail -1`.
 
 ## Gates
 
@@ -66,9 +73,9 @@ Key features:
 |------|------|---------|
 | supported-platform | hard/global | Block unsupported platforms |
 
-All other preconditions are now **capability/precondition targets**: sudo-available,
-networkquality-available, ai-apps-template, network-available,
-docker-available, mps-available, cuda-available.
+All other preconditions are **capability targets** (suffix `-available`):
+sudo-available, network-available, docker-available, mdns-available,
+mps-available, cuda-available, networkquality-available, etc.
 
 ## Usage
 

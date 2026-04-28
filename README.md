@@ -123,7 +123,7 @@ state can describe the whole machine, not only individual components.
 
 | File | Type | Purpose | Key Notes |
 |---|---|---|---|
-| `tests/` | Python | Unit tests | 30 unit tests across 8 test files  |
+| `tests/` | Python | Unit + regression tests | Run with `python3 -m pytest tests/` |
 
 ### BGS compliance check
 
@@ -181,9 +181,9 @@ chmod +x install.sh
 ./install.sh --none
 ```
 
-If you want admin-gated targets such as `macos-defaults` or
-`macos-software-update` to converge in the same run without prompts, open a
-non-interactive sudo ticket first:
+If you want admin-gated targets such as the `pmset-*` / `defaults-*` /
+`softwareupdate-*` system targets to converge in the same run without
+prompts, open a non-interactive sudo ticket first:
 
 ```bash
 sudo -v && ./install.sh

@@ -6,8 +6,8 @@
 
 _display_component_name() {
   case "$1" in
-    macos-software-update) printf 'macOS software update' ;;
     system) printf 'System' ;;
+    linux-system) printf 'Linux system' ;;
     verify) printf 'Verification' ;;
     *)      printf '%s' "$1" ;;
   esac

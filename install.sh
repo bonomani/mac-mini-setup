@@ -8,7 +8,7 @@
 #  BGS slice: BGS-State-Modeled-Governed
 #    BISS classification -> ASM state model -> UIC preflight -> UCC convergence
 #    TIC verification is kept as additional evidence over the resulting state
-#  See: ./BGS.md and ./docs/bgs-decision.md
+#  See: ./BGS.md and ./docs/bgs-decision.yaml
 #
 #  BISS (Boundary Interaction Semantic Standard)
 #  -----------------------------------------------
