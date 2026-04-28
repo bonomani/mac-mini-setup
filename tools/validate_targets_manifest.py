@@ -19,6 +19,7 @@ KNOWN_TARGET_TYPES = {
     "service",
 }
 KNOWN_STATE_MODELS = {"package", "config", "parametric"}
+KNOWN_UPDATE_CLASSES = {"tool", "lib"}
 KNOWN_PLATFORMS = {"macos", "linux", "wsl", "wsl1", "wsl2"}
 
 # Maps driver.kind → (implicit depends_on target, provided_by_tool)
@@ -165,6 +166,7 @@ CANONICAL_TARGET_KEY_ORDER = [
     "soft_depends_on",
     "provided_by_tool",
     "admin_required",
+    "update_class",
     "driver",
     "runtime_manager",
     "probe_kind",
@@ -727,6 +729,13 @@ def validate(manifest, known_gates):
             errors.append(f"target '{name}' has unknown type '{target_type}'")
         if not component:
             errors.append(f"target '{name}' missing component")
+
+        update_class = data.get("update_class")
+        if update_class is not None and update_class not in KNOWN_UPDATE_CLASSES:
+            errors.append(
+                f"target '{name}' has unknown update_class '{update_class}' "
+                f"(allowed: {sorted(KNOWN_UPDATE_CLASSES)})"
+            )
 
         for field in (
             "display_name",

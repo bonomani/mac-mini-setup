@@ -169,13 +169,13 @@ targets:
     profile: configured
     type: package
     display_name: GCC
+    update_class: lib
     driver:
       kind: pkg
       backends:
       - brew: gcc
       - native-pm: gcc
       bin: gcc
-    update_class: lib
   cli-gh:
     component: cli-tools
     profile: configured
@@ -321,37 +321,37 @@ targets:
     profile: configured
     type: package
     display_name: Clang
+    update_class: lib
     driver:
       kind: pkg
       backends:
       - brew: llvm
       - native-pm: clang
       bin: clang
-    update_class: lib
   cli-llvm:
     component: cli-tools
     profile: configured
     type: package
     display_name: LLVM
+    update_class: lib
     driver:
       kind: pkg
       backends:
       - brew: llvm
       - native-pm: llvm-dev
       bin: llvm-config
-    update_class: lib
   cli-lld:
     component: cli-tools
     profile: configured
     type: package
     display_name: LLD linker
+    update_class: lib
     driver:
       kind: pkg
       backends:
       - brew: lld
       - native-pm: lld
       bin: ld.lld
-    update_class: lib
   cli-mold:
     component: cli-tools
     profile: configured

@@ -52,13 +52,13 @@ targets:
     profile: configured
     type: package
     display_name: XZ Utils
+    update_class: lib
     driver:
       kind: pkg
       backends:
       - brew: xz
       - native-pm: xz-utils
       bin: xz
-    update_class: lib
   python:
     component: ai-python-stack
     profile: configured
