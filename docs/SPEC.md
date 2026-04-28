@@ -49,7 +49,7 @@ not specified). Counts are real (`type` distribution per component).
 | `ai-apps` | 16 | 7 | 1 | 7 | 0 |
 | `ai-python-stack` | 23 | 17 | 1 | 2 | 3 |
 | `build-tools` | 3 | 3 | 0 | 0 | 0 |
-| `cli-tools` | 31 | 26 | 5 | 0 | 0 |
+| `cli-tools` | 34 | 29 | 5 | 0 | 0 |
 | `docker` | 5 | 0 | 2 | 2 | 1 |
 | `linux-system` | 3 | 0 | 0 | 0 | 3 |
 | `network-services` | 5 | 1 | 0 | 2 | 2 |
@@ -131,7 +131,7 @@ not specified). Counts are real (`type` distribution per component).
 | `rustup` | `pkg` | `package` | rustup |  |  |
 | `xrdp` | `pkg` | `package` | xrdp | linux,wsl2 |  |
 
-### cli-tools  (31 targets)
+### cli-tools  (34 targets)
 
 | Target | Kind | Type | Display name | requires | depends_on |
 |---|---|---|---|---|---|
@@ -145,7 +145,9 @@ not specified). Counts are real (`type` distribution per component).
 | `cli-gcc` | `pkg` | `package` | GCC |  |  |
 | `cli-gh` | `pkg` | `package` | GitHub CLI |  |  |
 | `cli-htop` | `pkg` | `package` | htop |  |  |
+| `cli-hyperfine` | `pkg` | `package` | hyperfine |  |  |
 | `cli-jq` | `pkg` | `package` | jq |  |  |
+| `cli-just` | `pkg` | `package` | just |  |  |
 | `cli-llama.cpp` | `pkg` | `package` | llama.cpp |  |  |
 | `cli-opencode` | `pkg` | `package` | OpenCode |  |  |
 | `cli-pi` | `pkg` | `package` | Pi Coding Agent |  |  |
@@ -154,6 +156,7 @@ not specified). Counts are real (`type` distribution per component).
 | `cli-tmux` | `pkg` | `package` | tmux |  |  |
 | `cli-tree` | `pkg` | `package` | tree |  |  |
 | `cli-uv` | `pkg` | `package` | uv |  |  |
+| `cli-watchexec` | `pkg` | `package` | watchexec |  |  |
 | `cli-wget` | `pkg` | `package` | wget |  |  |
 | `firewalld` | `pkg` | `package` | firewalld | linux,wsl2 | `nftables` |
 | `git` | `pkg` | `package` | Git |  |  |
@@ -334,7 +337,7 @@ See [`docs/driver-feature-matrix.md`](driver-feature-matrix.md) — auto-generat
 ## 11. Counts (live)
 
 - Components: **11**
-- Targets: **122**
+- Targets: **125**
 - Distinct driver kinds: **26**
 - Preferences: **7**
 - Gates: **1**
@@ -345,7 +348,7 @@ Top 10 driver kinds by target count:
 
 | Kind | Targets |
 |---|---:|
-| `pkg` | 48 |
+| `pkg` | 51 |
 | `pip` | 14 |
 | `setting` | 12 |
 | `capability` | 11 |

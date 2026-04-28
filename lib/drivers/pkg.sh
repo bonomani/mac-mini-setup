@@ -38,21 +38,59 @@ _pkg_brew_version()   { _brew_cached_version "$1"; }
 _pkg_brew_outdated()  { [[ "$(brew_observe "$1" "${_PKG_UPDATE_CLASS:-tool}")" == "outdated" ]]; }
 
 # npm-global
+# Split "<name>[@<version>]" honoring scoped names (@scope/name[@version]).
+_pkg_npm_split_ref() {
+  local ref="$1" name version=""
+  if [[ "$ref" == @*/*@* ]]; then
+    name="${ref%@*}"; version="${ref##*@}"
+  elif [[ "$ref" != @* && "$ref" == *@* ]]; then
+    name="${ref%@*}"; version="${ref##*@}"
+  else
+    name="$ref"
+  fi
+  printf '%s\t%s' "$name" "$version"
+}
+_pkg_npm_name()    { local s; s="$(_pkg_npm_split_ref "$1")"; printf '%s' "${s%$'\t'*}"; }
+_pkg_npm_pinned()  { local s; s="$(_pkg_npm_split_ref "$1")"; printf '%s' "${s#*$'\t'}"; }
 _pkg_npm_available()  { _npm_ensure_path; }
 _pkg_npm_activate()   { _npm_ensure_path; }
 _pkg_npm_observe()    {
-  local pkg="$1" v
-  v="$(npm_global_version "$pkg")"
+  local ref="$1" name pin v
+  name="$(_pkg_npm_name "$ref")"
+  pin="$(_pkg_npm_pinned "$ref")"
+  v="$(npm_global_version "$name")"
   [[ -z "$v" ]] && { printf 'absent'; return; }
-  if _pkg_npm_outdated "$pkg"; then
+  if [[ -n "$pin" ]]; then
+    [[ "$v" == "$pin" ]] && { printf '%s' "$v"; return; }
+    printf 'outdated'; return
+  fi
+  local policy="${UIC_PREF_TOOL_UPDATE:-always-upgrade}"
+  [[ "${_PKG_UPDATE_CLASS:-tool}" == "lib" ]] && policy="${UIC_PREF_LIB_UPDATE:-install-only}"
+  if [[ "$policy" == "always-upgrade" ]] && _pkg_npm_outdated "$name"; then
     printf 'outdated'
   else
     printf '%s' "$v"
   fi
 }
 _pkg_npm_install()    { npm_global_install "$1"; }
-_pkg_npm_update()     { npm_global_update  "$1"; }
-_pkg_npm_version()    { npm_global_version "$1"; }
+# Version-pinned updates are sensitive (may downgrade): require interactive
+# mode. Unpinned refs follow the usual `npm update -g` path.
+_pkg_npm_update()     {
+  local ref="$1" name pin cur
+  name="$(_pkg_npm_name "$ref")"
+  pin="$(_pkg_npm_pinned "$ref")"
+  if [[ -n "$pin" ]]; then
+    cur="$(npm_global_version "$name")"
+    if [[ "${UCC_INTERACTIVE:-0}" != "1" ]]; then
+      log_warn "npm-global ${name}: pinned to ${pin} but currently ${cur:-absent}; skipping (re-run with --interactive to apply pin)"
+      return 0
+    fi
+    npm_global_install "$ref"
+    return $?
+  fi
+  npm_global_update "$name"
+}
+_pkg_npm_version()    { npm_global_version "$(_pkg_npm_name "$1")"; }
 # Cache `npm outdated -g --json` once per process; opt-in via the brew
 # livecheck flag (same trade-off — slow network call).
 _pkg_npm_outdated() {

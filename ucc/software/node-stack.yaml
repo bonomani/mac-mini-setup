@@ -44,6 +44,7 @@ targets:
     profile: configured
     type: package
     display_name: Codex CLI
+    update_class: lib
     depends_on:
     - node-lts
     driver:
