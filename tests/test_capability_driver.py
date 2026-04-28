@@ -133,10 +133,12 @@ class CapabilityDispatcherRoundTripTests(unittest.TestCase):
         self.assertEqual(out.strip(), "capability")
 
     def test_observe_round_trip_running(self):
-        """When the probe function succeeds (here network_is_available),
-        the capability observer reports runtime_state=Running."""
+        """When the probe function succeeds, the capability observer reports
+        runtime_state=Running. Stubs network_is_available so the test passes
+        offline (the live probe was the previous fragility)."""
         out = self._bash(
             'source lib/ucc.sh && source lib/utils.sh && '
+            'network_is_available() { return 0; } && '
             '_ucc_observe_yaml_capability_target "$(pwd)" '
             '"$(pwd)/ucc/software/homebrew.yaml" "network-available"'
         )
