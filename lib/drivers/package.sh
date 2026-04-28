@@ -127,8 +127,8 @@ _pkg_native_version() {
 _pkg_native_install() {
   local backend="$1" pkg="$2"
   if sudo_not_available; then
-    log_warn "Installing '$pkg' via $backend requires sudo — run: sudo -v"
-    return 1
+    log_warn "Installing '$pkg' via $backend requires sudo — run: sudo -v (or pass --interactive)"
+    return 125
   fi
   case "$backend" in
     apt)    ucc_run run_elevated apt-get install -y "$pkg" ;;
@@ -142,8 +142,8 @@ _pkg_native_install() {
 _pkg_native_upgrade() {
   local backend="$1" pkg="$2"
   if sudo_not_available; then
-    log_warn "Upgrading '$pkg' via $backend requires sudo — run: sudo -v"
-    return 1
+    log_warn "Upgrading '$pkg' via $backend requires sudo — run: sudo -v (or pass --interactive)"
+    return 125
   fi
   case "$backend" in
     apt)    ucc_run run_elevated apt-get install --only-upgrade -y "$pkg" ;;
