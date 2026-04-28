@@ -105,9 +105,11 @@ PY
 # Echo override value for <target> <key>, return 0 if found.
 _ucc_user_override_get() {
   local target="$1" key="$2"
-  # 1. env var
+  # 1. env var (sanitize: bash var names allow only [A-Za-z0-9_])
   local env_target="${target//-/_}"
+  env_target="${env_target//[^A-Za-z0-9_]/_}"
   local env_key="${key//./_}"
+  env_key="${env_key//[^A-Za-z0-9_]/_}"
   local env_var="UCC_OVERRIDE__${env_target}__${env_key}"
   if [[ -n "${!env_var:-}" ]]; then
     printf '%s' "${!env_var}"

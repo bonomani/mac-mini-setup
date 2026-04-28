@@ -2,6 +2,25 @@
 
 ## Open
 
+### 2026-04-28 — Issues from `--no-interactive --all` install run (`/tmp/install-all.log`)
+
+Final summary: 54 ok, 2 changed, 2 FAILED, skip=5. Run completed but several issues observed:
+
+1. **Segfault in `lib/ucc_selection.sh:27`** — `python3 ... --dep-components` segfaults (core dumped). Likely pyenv-shim PATH issue: framework prepends `~/.pyenv/shims` so `python3` may resolve to a pyenv build that crashes or lacks PyYAML. System `/usr/bin/python3` is healthy. **Fix:** introduce `UCC_FRAMEWORK_PYTHON` (default `/usr/bin/python3` if exists else `python3`), use it in `ucc_selection.sh` and all `validate_targets_manifest.py` callsites. Non-fatal but pollutes stderr and may skip dep resolution silently.
+
+2. **`UCC_OVERRIDE__<name>__<key>: invalid variable name`** (10 occurrences) — `lib/ucc_targets.sh:112` builds bash variable names from target names containing `.`, `@`, `/` (e.g. `npm_global_@openai/codex`, `cli_llama.cpp`). Bash rejects them. **Fix:** sanitize the target name (strip/replace `[^A-Za-z0-9_]` → `_`) before constructing the override variable, or switch to an associative array keyed by raw name.
+
+3. **`oh-my-zsh` install fails on Linux** — installer aborts with "Zsh is not installed. Please install zsh first." **Fix:** add `zsh` as a `depends_on` (package target) for `oh-my-zsh`, or add platform/zsh-presence guard to the target.
+
+4. **`vmware-workstation` returns rc=20 from winget** — winget reports "Aucun package ne correspond aux critères sélectionnés" (no match). Driver returns rc=20, framework warns "non-conventional rc=20 — treating as fail". **Fix:** either map winget "no match" → rc=125 (admin/availability), or guard the target with `requires:` for the actual host where it's intended (looks like it's running on a Linux/WSL host where winget package isn't found in the configured source).
+
+5. **Cosmetic: French winget output leaks in run log** — `Aucun package ne correspond aux critères saisis.` printed bare. Driver should suppress winget stderr/stdout on no-match path, only logging a structured `[skip]`/`[policy]`.
+
+6. **`omz-theme-agnoster` cascades `[dep-fail]`** — direct consequence of #3; resolves once oh-my-zsh installs.
+
+Acceptance: clean `--no-interactive --all` run on this WSL host with no segfaults, no `invalid variable name` lines, and only legitimate `[policy]`/`[skip]` for sudo-required apt packages.
+
+
 No ollama items open as of 2026-04-15 end-of-day. Refactor sweep
 #43–#53 shipped 2026-04-15. Ollama internet-research items #54–#57
 shipped 2026-04-15 — daemon version probe (`/api/version`), install-
@@ -16,6 +35,13 @@ Checkpoint C), four closed not-a-bug (#16 via #34, #24, #27, #36;
 #29 confirmed intentional). Docker install/launch is fully functional
 (tested 2026-04-13). Test suite green. Pip venv isolation shipped
 (2026-04-14).
+
+2026-04-28 consistency audit reopened a focused cleanup set: 2 test
+failures, broken ASM-validator wiring, manifest-format drift, several
+stale architecture/governance docs, and a few remaining config-policy
+values still hardcoded in shell. Driver direction is still good
+(`pkg`/`setting`/`service` carry most targets), but consolidation is
+not finished.
 
 | # | Item | Status | Priority |
 |---|---|---|---|
@@ -81,6 +107,47 @@ Checkpoint C), four closed not-a-bug (#16 via #34, #24, #27, #36;
 | 60 | ~~Unify version-string parsing~~ | ✅ DONE 2026-04-15 (`4f226d6`) — `_ucc_parse_version` pipe-based helper (`ver=$(cmd \| _ucc_parse_version)`). Replaces 5 occurrences of `grep -oE '[0-9]+(\.[0-9]+){1,3}' \| head -1` across custom_daemon.sh (2×), pkg.sh, ai_apps.sh (2×). app_bundle.sh + host_detect.sh left alone — different intended regex semantics. | — |
 | 61 | ~~Unify polling-loop pattern~~ | ✅ DONE 2026-04-15 (`b495235`) — `_ucc_wait_until <timeout-s> <interval-s> <cmd...>` in `lib/utils.sh`. Refactors 3 ad-hoc `while (( i < N ))` loops: custom-daemon's "wait for process to appear", `_update_ollama`'s "wait for process to disappear" post-SIGTERM, and the Squirrel-swap poll (two-condition success wrapped in a local `_swap_landed` fn). Existing eval-based `_ucc_wait_for_runtime_probe` untouched — different semantic contract. | — |
 | 62 | ~~Audit `ucc_yaml_runtime_target` wrapper-override pattern~~ | ✅ DONE 2026-04-15 — 3 call sites inventoried. ollama (ai_apps.sh) = C, justified by heterogeneous apply paths (Squirrel/curl/brew/.app). unsloth-studio + unsloth-studio-service (unsloth_studio.sh) = B, both generate init-system unit files from templates with no matching driver kind. Zero A-sites (pure wrappers), so no deletions. Risk documented at the function itself — added docstring warning that passing `install_fn`/`update_fn` REPLACES driver dispatch, so improvements like #57's apply flow become unreachable. Catches the #57-debugging landmine for the next developer. | — |
+| 63 | Consistency audit — capability test assumes network access | Open — `tests/test_capability_driver.py` expects `network-available` to be Running, but the probe uses live `curl https://github.com`; offline/sandboxed runs correctly return Stopped/Unavailable. Make the test deterministic and keep capability semantics explicit. | High |
+| 64 | Consistency audit — driver meta sync test parses shell too naively | Open — `tests/test_drivers.py` only recognizes single-line `printf` metadata declarations and falsely reports `pyenv-brew` out of sync. Replace the grep-style parser or compare through executable interfaces. | High |
+| 65 | Consistency audit — ASM artifact validator contract is broken | Open — `tools/validate_setup_state_artifact.py` requires an explicit artifact path and an external `../asm/tools/validate_software_state.py`, so the repo-local validation path currently fails. Fix the validator contract and align docs with the real dependency model. | High |
+| 66 | Consistency audit — canonical manifest formatting is drifting | Open — `python3 tools/format_targets_manifest.py --check ucc` currently flags all 11 manifest YAMLs. Reformat the manifests and, if needed, tighten the pre-commit drift checks so this stays enforced. | High |
+| 67 | Consistency audit — governance component counts disagree | Open — `BGS.md` / `docs/bgs-decision.yaml` say 10 governed components, while `docs/biss-classification.md` and `docs/bgs-compliance-report.md` say 14, but the live UCC tree currently has 11 manifest components before TIC. Normalize the canonical count and terminology everywhere. | High |
+| 68 | Consistency audit — setup model and generated spec disagree on scope | Open — `docs/setup-state-model.md` still describes 10 components and duplicates `system`, while generated `docs/SPEC.md` lists the live 11-component manifest set. Reconcile the narrative model docs with the generated truth. | High |
+| 69 | Consistency audit — README / ANALYSIS / DRIVER_ARCHITECTURE are stale | Open — inventories, target counts, driver lists, test counts, and file references drifted far from the live tree. Refresh the human-maintained docs or generate more of them from source. | Medium |
+| 70 | Consistency audit — stale identifiers remain in code/docs | Open — examples include `docs/bgs-decision.md` in `install.sh`, `macos-defaults` / `macos-software-update` in README text, and old display aliases in `lib/ucc_display.sh`. Remove or rename leftover legacy identifiers. | Medium |
+| 71 | Continue driver consolidation around `pkg` / `setting` / `service` | Open — current factoring is directionally correct, but there are still 26 active kinds, 16 `pip` targets, and 10 `custom` targets. Audit which remaining special cases are justified and which should fold into shared drivers. | Medium |
+| 72 | Move remaining policy/config literals out of shell | Open — project-policy values like the network probe URL, legacy display labels, and some source-location defaults still live in shell helpers instead of YAML/defaults. Push desired-state and policy knobs into declarative config where practical. | Medium |
+| 73 | Make sourced helpers quiet and side-effect free | Open — sourcing `lib/utils.sh` currently emits `pyenv` rehash noise on this host. Helper load paths should not mutate or pollute stdout/stderr during tests and machine-readable probes. | Medium |
+
+### 2026-04-28 consistency audit
+
+#### Problems discovered
+
+- Test/runtime consistency:
+  - `tests/test_capability_driver.py` assumes `network-available` always succeeds, but the live probe is network-dependent and correctly fails offline.
+  - `tests/test_drivers.py` uses brittle source parsing and produces a false `pyenv-brew` metadata mismatch.
+  - `lib/utils.sh` emits `pyenv` stderr while merely being sourced, which contaminates probe/test output.
+
+- Validation/tooling consistency:
+  - `tools/validate_setup_state_artifact.py` is documented as a runnable validator but currently depends on an external sibling ASM repo and fails when that file is absent.
+  - `tools/format_targets_manifest.py --check ucc` currently reports drift on every manifest YAML.
+
+- Governance/doc consistency:
+  - Component counts and scope wording disagree across `BGS.md`, `docs/bgs-decision.yaml`, `docs/biss-classification.md`, `docs/bgs-compliance-report.md`, `docs/setup-state-model.md`, and `docs/SPEC.md`.
+  - `README.md`, `ANALYSIS.md`, and `DRIVER_ARCHITECTURE.md` are stale on target counts, driver inventories, managed components, tests, and some file references.
+  - A few legacy names remain in code/docs (`docs/bgs-decision.md`, `macos-defaults`, `macos-software-update`, legacy display aliases).
+
+- Architecture/factoring follow-up:
+  - The main consolidation path is sound (`pkg` = 70 targets, `setting` = 12, `service` = 2), but the driver surface is still wider than it should be (`pip` = 16, `custom` = 10, 26 active kinds total).
+  - Some policy/config values are still hardcoded in shell even though they describe desired behavior better suited to YAML or `defaults/`.
+
+#### Recommended execution order
+
+1. Fix the 2 failing tests and the noisy helper sourcing so the suite is trustworthy again.
+2. Repair the ASM validator contract and reformat the manifests so repo-local validation paths are real.
+3. Normalize the canonical component/scope count, then sweep the stale human-maintained docs against that canonical source.
+4. Clean up legacy identifiers and leftover hardcoded policy values.
+5. Reassess the remaining specialized drivers and reduce the `custom` / `pip` tail where the abstraction now exists.
 
 ### Unified `update-policy` pref
 
