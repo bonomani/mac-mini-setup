@@ -49,7 +49,7 @@ not specified). Counts are real (`type` distribution per component).
 | `ai-apps` | 16 | 7 | 1 | 7 | 0 |
 | `ai-python-stack` | 25 | 19 | 1 | 2 | 3 |
 | `build-tools` | 3 | 3 | 0 | 0 | 0 |
-| `cli-tools` | 53 | 48 | 5 | 0 | 0 |
+| `cli-tools` | 54 | 49 | 5 | 0 | 0 |
 | `docker` | 5 | 0 | 2 | 2 | 1 |
 | `linux-system` | 3 | 0 | 0 | 0 | 3 |
 | `network-services` | 5 | 1 | 0 | 2 | 2 |
@@ -133,7 +133,7 @@ not specified). Counts are real (`type` distribution per component).
 | `rustup` | `pkg` | `package` | rustup |  |  |
 | `xrdp` | `pkg` | `package` | xrdp | linux,wsl2 |  |
 
-### cli-tools  (53 targets)
+### cli-tools  (54 targets)
 
 | Target | Kind | Type | Display name | requires | depends_on |
 |---|---|---|---|---|---|
@@ -179,6 +179,7 @@ not specified). Counts are real (`type` distribution per component).
 | `cli-watchexec` | `pkg` | `package` | watchexec |  |  |
 | `cli-wget` | `pkg` | `package` | wget |  |  |
 | `cli-z3` | `pkg` | `package` | Z3 SMT solver |  |  |
+| `cli-zsh` | `pkg` | `package` | zsh |  |  |
 | `firewalld` | `pkg` | `package` | firewalld | linux,wsl2 | `nftables` |
 | `git` | `pkg` | `package` | Git |  |  |
 | `git-global-config` | `git-global` | `config` | Git global config |  | `git` |
@@ -186,7 +187,7 @@ not specified). Counts are real (`type` distribution per component).
 | `iterm2` | `pkg` | `package` | iTerm2 | macos |  |
 | `lm-studio` | `pkg` | `package` | LM Studio | macos |  |
 | `nftables` | `pkg` | `package` | nftables | linux,wsl2 |  |
-| `oh-my-zsh` | `script-installer` | `config` | Oh My Zsh |  |  |
+| `oh-my-zsh` | `script-installer` | `config` | Oh My Zsh |  | `cli-zsh` |
 | `omz-theme-agnoster` | `zsh-config` | `config` | Agnoster theme |  | `oh-my-zsh` |
 | `vmware-fusion` | `pkg` | `package` | VMware Fusion | macos |  |
 | `vmware-workstation` | `pkg` | `package` | VMware Workstation (Windows host) | wsl2 |  |
@@ -358,7 +359,7 @@ See [`docs/driver-feature-matrix.md`](driver-feature-matrix.md) — auto-generat
 ## 11. Counts (live)
 
 - Components: **11**
-- Targets: **146**
+- Targets: **147**
 - Distinct driver kinds: **26**
 - Preferences: **7**
 - Gates: **1**
@@ -369,7 +370,7 @@ Top 10 driver kinds by target count:
 
 | Kind | Targets |
 |---|---:|
-| `pkg` | 70 |
+| `pkg` | 71 |
 | `pip` | 16 |
 | `setting` | 12 |
 | `capability` | 11 |

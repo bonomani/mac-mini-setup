@@ -549,11 +549,24 @@ targets:
       backends:
       - native-pm: firewalld
       bin: firewall-cmd
+  cli-zsh:
+    component: cli-tools
+    profile: configured
+    type: package
+    display_name: zsh
+    driver:
+      kind: pkg
+      backends:
+      - brew: zsh
+      - native-pm: zsh
+      bin: zsh
   oh-my-zsh:
     component: cli-tools
     profile: configured
     type: config
     display_name: Oh My Zsh
+    depends_on:
+    - cli-zsh
     driver:
       kind: script-installer
       install_url: ${omz_installer_url}
