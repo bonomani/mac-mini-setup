@@ -47,7 +47,7 @@ not specified). Counts are real (`type` distribution per component).
 | Component | Targets | type=package | type=config | type=runtime | type=capability |
 |---|---:|---:|---:|---:|---:|
 | `ai-apps` | 16 | 7 | 1 | 7 | 0 |
-| `ai-python-stack` | 23 | 17 | 1 | 2 | 3 |
+| `ai-python-stack` | 25 | 19 | 1 | 2 | 3 |
 | `build-tools` | 3 | 3 | 0 | 0 | 0 |
 | `cli-tools` | 34 | 29 | 5 | 0 | 0 |
 | `docker` | 5 | 0 | 2 | 2 | 1 |
@@ -95,7 +95,7 @@ not specified). Counts are real (`type` distribution per component).
 | `openhands-runtime` | `docker-compose-service` | `runtime` | OpenHands |  | `ai-stack-compose-running` |
 | `qdrant-runtime` | `docker-compose-service` | `runtime` | Qdrant |  | `ai-stack-compose-running` |
 
-### ai-python-stack  (23 targets)
+### ai-python-stack  (25 targets)
 
 | Target | Kind | Type | Display name | requires | depends_on |
 |---|---|---|---|---|---|
@@ -103,11 +103,13 @@ not specified). Counts are real (`type` distribution per component).
 | `mps-available` | `capability` | `capability` | Metal MPS | macos | `pip-group-pytorch` |
 | `pip-group-data-science` | `pip` | `package` | Data science packages |  | `python-venv-available` |
 | `pip-group-dev-tools` | `pip` | `package` | Python dev tools |  | `python-venv-available` |
+| `pip-group-formal` | `pip` | `package` | Formal verification packages |  | `python-venv-available` |
 | `pip-group-huggingface` | `pip` | `package` | Hugging Face packages |  | `python-venv-available` |
 | `pip-group-jupyter` | `pip` | `package` | Jupyter packages |  | `python-venv-available` |
 | `pip-group-langchain` | `pip` | `package` | LangChain packages |  | `python-venv-available` |
 | `pip-group-llamaindex` | `pip` | `package` | LlamaIndex packages |  | `python-venv-available` |
 | `pip-group-llm-clients` | `pip` | `package` | LLM client packages |  | `python-venv-available` |
+| `pip-group-lsp` | `pip` | `package` | LSP server packages |  | `python-venv-available` |
 | `pip-group-optimum` | `pip` | `package` | Optimum packages |  | `python-venv-available` |
 | `pip-group-pytorch` | `pip` | `package` | PyTorch packages |  | `python-venv-available` |
 | `pip-group-serving` | `pip` | `package` | Serving packages |  | `python-venv-available` |
@@ -337,7 +339,7 @@ See [`docs/driver-feature-matrix.md`](driver-feature-matrix.md) — auto-generat
 ## 11. Counts (live)
 
 - Components: **11**
-- Targets: **125**
+- Targets: **127**
 - Distinct driver kinds: **26**
 - Preferences: **7**
 - Gates: **1**
@@ -349,7 +351,7 @@ Top 10 driver kinds by target count:
 | Kind | Targets |
 |---|---:|
 | `pkg` | 51 |
-| `pip` | 14 |
+| `pip` | 16 |
 | `setting` | 12 |
 | `capability` | 11 |
 | `custom` | 10 |

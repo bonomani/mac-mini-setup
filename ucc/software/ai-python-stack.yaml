@@ -224,7 +224,7 @@ targets:
         kind: venv
         name: ai-modern
       probe_pkg: openai
-      install_packages: openai anthropic
+      install_packages: openai anthropic tiktoken
       min_version: ''
   pip-group-vector-dbs:
     component: ai-python-stack
@@ -344,7 +344,37 @@ targets:
         kind: venv
         name: ai-modern
       probe_pkg: pytest
-      install_packages: pytest beautifulsoup4 playwright mypy coverage
+      install_packages: pytest hypothesis beautifulsoup4 playwright mypy coverage
+      min_version: ''
+  pip-group-formal:
+    component: ai-python-stack
+    profile: configured
+    type: package
+    display_name: Formal verification packages
+    depends_on:
+    - python-venv-available
+    driver:
+      kind: pip
+      isolation:
+        kind: venv
+        name: ai-modern
+      probe_pkg: z3-solver
+      install_packages: z3-solver
+      min_version: ''
+  pip-group-lsp:
+    component: ai-python-stack
+    profile: configured
+    type: package
+    display_name: LSP server packages
+    depends_on:
+    - python-venv-available
+    driver:
+      kind: pip
+      isolation:
+        kind: venv
+        name: ai-modern
+      probe_pkg: pygls
+      install_packages: pygls
       min_version: ''
   mps-available:
     component: ai-python-stack
@@ -388,3 +418,5 @@ pip_groups:
 - pip-group-dev-tools
 - pip-group-optimum
 - pip-group-web-testing
+- pip-group-formal
+- pip-group-lsp
