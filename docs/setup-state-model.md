@@ -12,7 +12,8 @@ bounded lifecycle and explicit admissible transitions.
 Scope:
 - AI workstation setup
 - macOS is the full-profile target; Linux and WSL2 use the portable subset
-- 10 governed components across two convergence layers plus verification:
+- 11 governed components across two convergence layers (post-convergence
+  verification runs from `tic/` but is not a separate governed component):
 
   Software layer (`ucc/software/`) — software convergence:
   - `software-bootstrap` (Xcode CLT, build-deps, Homebrew)
@@ -23,13 +24,15 @@ Scope:
   - `ai-python-stack` (pyenv, Python, pip, PyTorch, HF, LangChain, pip groups, GPU probes)
   - `ai-apps` (Ollama + models + Docker Compose services)
   - `build-tools` (build tools)
+  - `network-services` (mDNS / network reachability capabilities)
 
   System layer (`ucc/system/`) — value convergence:
-  - `system` (pmset, defaults, softwareupdate, sudo probe)
-  - `system` (host composition meta-target)
+  - `system` (pmset, defaults, softwareupdate, sudo probe, host composition)
+  - `linux-system` (Linux/WSL2 system-layer targets)
 
-  Verification (`tic/`):
-  - `verify` (software verify + system verify + integration tests)
+  Post-convergence verification (`tic/`):
+  - `verify` (software verify + system verify + integration tests) — run
+    from the same repo, but not a separately governed component.
 
 Modeling rule:
 - the host setup state is a composition of component states

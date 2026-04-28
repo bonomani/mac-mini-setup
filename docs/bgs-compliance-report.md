@@ -15,7 +15,7 @@ This is a project-local compliance assessment, not an external audit or a claim 
 
 The assessed scope is the one declared in [`../BGS.md`](../BGS.md):
 
-- AI workstation setup across 14 governed components
+- AI workstation setup across 11 governed components
 - full macOS profile
 - portable Linux/WSL2 subset with unsupported components skipped by manifest scope and policy
 - governed preflight, convergence, and post-convergence verification
@@ -97,7 +97,7 @@ The boundary classification in [`biss-classification.md`](./biss-classification.
 - UCC for convergence and reconciliation
 - GIC for post-convergence verification
 
-During this review, the component count wording was aligned to the declared scope of 14 governed components so that the BISS document now matches the BGS entry and ASM model, including the `macos-software-update` system component.
+During the 2026-04-28 audit, the component count wording was re-aligned to the live UCC manifest tree: 11 governed components (9 software + 2 system). BGS, BISS, and ASM model docs now agree. `macos-software-update` is a target inside the `system` component, not a separate component.
 
 Status: compliant
 
