@@ -111,8 +111,12 @@ docker_daemon_status() {
 }
 
 # Return 0 if the network is reachable (can resolve + connect to a public host).
+# Probe URL is configurable via UCC_NETWORK_PROBE_URL — defaults to GitHub
+# because the framework already requires github.com reachability for
+# pkg/github-release backends and pyenv plugins.
 network_is_available() {
-  curl -fsS --connect-timeout "$(_ucc_curl_timeout probe)" --max-time "$(_ucc_curl_timeout endpoint)" https://github.com >/dev/null 2>&1
+  local url="${UCC_NETWORK_PROBE_URL:-https://github.com}"
+  curl -fsS --connect-timeout "$(_ucc_curl_timeout probe)" --max-time "$(_ucc_curl_timeout endpoint)" "$url" >/dev/null 2>&1
 }
 
 # Print network connectivity status.
