@@ -49,7 +49,7 @@ not specified). Counts are real (`type` distribution per component).
 | `ai-apps` | 16 | 7 | 1 | 7 | 0 |
 | `ai-python-stack` | 25 | 19 | 1 | 2 | 3 |
 | `build-tools` | 3 | 3 | 0 | 0 | 0 |
-| `cli-tools` | 52 | 47 | 5 | 0 | 0 |
+| `cli-tools` | 53 | 48 | 5 | 0 | 0 |
 | `docker` | 5 | 0 | 2 | 2 | 1 |
 | `linux-system` | 3 | 0 | 0 | 0 | 3 |
 | `network-services` | 5 | 1 | 0 | 2 | 2 |
@@ -133,7 +133,7 @@ not specified). Counts are real (`type` distribution per component).
 | `rustup` | `pkg` | `package` | rustup |  |  |
 | `xrdp` | `pkg` | `package` | xrdp | linux,wsl2 |  |
 
-### cli-tools  (52 targets)
+### cli-tools  (53 targets)
 
 | Target | Kind | Type | Display name | requires | depends_on |
 |---|---|---|---|---|---|
@@ -148,6 +148,7 @@ not specified). Counts are real (`type` distribution per component).
 | `cli-coq` | `pkg` | `package` | Coq proof assistant |  |  |
 | `cli-cosign` | `pkg` | `package` | cosign (Sigstore) |  | `home-bin-in-path` |
 | `cli-curl` | `pkg` | `package` | curl |  |  |
+| `cli-cvc5` | `pkg` | `package` | cvc5 SMT solver |  | `home-bin-in-path` |
 | `cli-fd` | `pkg` | `package` | fd |  |  |
 | `cli-fzf` | `pkg` | `package` | fzf |  |  |
 | `cli-gcc` | `pkg` | `package` | GCC |  |  |
@@ -357,7 +358,7 @@ See [`docs/driver-feature-matrix.md`](driver-feature-matrix.md) — auto-generat
 ## 11. Counts (live)
 
 - Components: **11**
-- Targets: **145**
+- Targets: **146**
 - Distinct driver kinds: **26**
 - Preferences: **7**
 - Gates: **1**
@@ -368,7 +369,7 @@ Top 10 driver kinds by target count:
 
 | Kind | Targets |
 |---|---:|
-| `pkg` | 69 |
+| `pkg` | 70 |
 | `pip` | 16 |
 | `setting` | 12 |
 | `capability` | 11 |

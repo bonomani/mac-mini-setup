@@ -287,6 +287,24 @@ targets:
       - brew: z3
       - native-pm: z3
       bin: z3
+  cli-cvc5:
+    component: cli-tools
+    profile: configured
+    type: package
+    display_name: cvc5 SMT solver
+    depends_on:
+    - home-bin-in-path
+    driver:
+      kind: pkg
+      backends:
+      - brew: cvc5
+      - github:
+          repo: cvc5/cvc5
+          asset: cvc5-Linux-{arch}-static.zip
+          extract: zip
+          bin_path_in_archive: cvc5-Linux-{arch}-static/bin/cvc5
+      bin: cvc5
+      github_repo: cvc5/cvc5
   cli-coq:
     component: cli-tools
     profile: configured
@@ -644,6 +662,7 @@ cli_tools:
 - cli-just
 - cli-watchexec
 - cli-z3
+- cli-cvc5
 - cli-coq
 - cli-clang
 - cli-llvm
