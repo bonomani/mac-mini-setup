@@ -385,7 +385,10 @@ _pkg_winget_cmd() {
 _pkg_winget_observe() {
   local ref="$1" wcmd ver
   wcmd="$(_pkg_winget_cmd)"
+  # `winget list` writes "no match" diagnostics to stdout (not stderr), so we
+  # must filter both streams to avoid leaking localized status into the run log.
   ver="$($wcmd list --id "$ref" --exact --accept-source-agreements 2>/dev/null \
+    | grep -vE 'No package|Aucun package|Kein Paket|Nessun pacchetto|Ningún paquete|没有' \
     | tail -n +2 | awk '{for(i=1;i<=NF;i++) if($i ~ /^[0-9]+\./) {print $i; exit}}')"
   if [[ -z "$ver" ]]; then
     printf 'absent'
@@ -399,16 +402,42 @@ _pkg_winget_observe() {
 }
 _pkg_winget_install() {
   local wcmd; wcmd="$(_pkg_winget_cmd)"
-  ucc_run $wcmd install --id "$1" --exact --accept-source-agreements --accept-package-agreements --silent
+  local out rc
+  out="$(ucc_run $wcmd install --id "$1" --exact --accept-source-agreements --accept-package-agreements --silent 2>&1)"
+  rc=$?
+  if [[ $rc -ne 0 ]]; then
+    printf '%s\n' "$out" >&2
+    # winget rc=20 (and locale-translated "no package matches" output) ⇒ not
+    # available on this host's configured sources. Treat as policy/availability
+    # rather than fail so the run summary reflects "skip" not FAILED.
+    if [[ $rc -eq 20 ]] || printf '%s' "$out" | grep -qiE 'no package|aucun package|kein paket|nessun pacchetto|ningún paquete|没有'; then
+      log_warn "winget: package '$1' not found in configured sources — treating as unavailable (admin required to add source)"
+      return 125
+    fi
+    return 1
+  fi
+  printf '%s\n' "$out"
 }
 _pkg_winget_update() {
   local wcmd; wcmd="$(_pkg_winget_cmd)"
-  ucc_run $wcmd upgrade --id "$1" --exact --accept-source-agreements --accept-package-agreements --silent
+  local out rc
+  out="$(ucc_run $wcmd upgrade --id "$1" --exact --accept-source-agreements --accept-package-agreements --silent 2>&1)"
+  rc=$?
+  if [[ $rc -ne 0 ]]; then
+    printf '%s\n' "$out" >&2
+    if [[ $rc -eq 20 ]] || printf '%s' "$out" | grep -qiE 'no package|aucun package|kein paket|nessun pacchetto|ningún paquete|没有'; then
+      log_warn "winget: package '$1' not found in configured sources — treating as unavailable"
+      return 125
+    fi
+    return 1
+  fi
+  printf '%s\n' "$out"
 }
 _pkg_winget_version() {
   local ref="$1" wcmd
   wcmd="$(_pkg_winget_cmd)"
   $wcmd list --id "$ref" --exact --accept-source-agreements 2>/dev/null \
+    | grep -vE 'No package|Aucun package|Kein Paket|Nessun pacchetto|Ningún paquete|没有' \
     | tail -n +2 | awk '{for(i=1;i<=NF;i++) if($i ~ /^[0-9]+\./) {print $i; exit}}'
 }
 _pkg_winget_outdated() {
@@ -416,6 +445,7 @@ _pkg_winget_outdated() {
   local ref="$1" wcmd
   wcmd="$(_pkg_winget_cmd)"
   $wcmd upgrade --id "$ref" --exact --accept-source-agreements 2>/dev/null \
+    | grep -vE 'No package|Aucun package|Kein Paket|Nessun pacchetto|Ningún paquete|没有' \
     | grep -qi "$ref"
 }
 
