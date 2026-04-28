@@ -163,9 +163,16 @@ backend split. The current refactor priority list is:
    `tests/test_cli_help_wording.py` pins the help text against future
    regressions (plain-vocab present, jargon absent, "target" only in
    example commands).
-2. **Split `ucc_targets.sh`** — largest remaining shell hotspot
-   (~1838 lines). Separate registration, dependency resolution,
-   execution, rendering/status, and evidence/ASM mapping.
+2. 🟡 **Split `ucc_targets.sh`** — IN PROGRESS 2026-04-28 (slice 1).
+   Largest remaining shell hotspot (1838 LOC). Slice 1 extracted the
+   YAML target-field reader + user-override layer into
+   `lib/ucc_targets_yaml.sh` (12 funcs, 223 LOC). `ucc_targets.sh`
+   sources the new file near the top so all downstream lifecycle
+   functions resolve their helpers unchanged. `tests/test_ucc_targets_split.py`
+   pins the boundary. Live `--dry-run --no-interactive --all` confirmed
+   exit 0, 58 ok / 5 skip / 0 fail. Remaining slices (future commits):
+   per-profile observe/apply (capability/parametric/runtime), brew
+   runtime formula subsystem, registration + execution + flush.
 3. **Split `validate_targets_manifest.py`** — largest Python hotspot
    (~1532 lines). Separate schema rules, condition parsing, dependency
    graph, canonical ordering, driver metadata, and CLI wrapper.
