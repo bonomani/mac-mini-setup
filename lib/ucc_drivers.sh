@@ -99,13 +99,13 @@ _ucc_driver_github_latest() {
   [[ -n "$repo" ]] || return 0
   # Try releases first
   local _t; _t="$(_ucc_curl_timeout probe)"
-  local latest; latest="$(curl -fsS --max-time "$_t" "https://api.github.com/repos/${repo}/releases/latest" 2>/dev/null \
+  local latest; latest="$(curl -fsS --max-time "$_t" "$(_ucc_github_api_url "repos/${repo}/releases/latest")" 2>/dev/null \
     | awk -F'"' '/"tag_name"/{print $4}' | sed 's/^v//')"
   if [[ -n "$latest" ]]; then
     printf '  latest=%s' "$latest"
   else
     # No releases — check latest commit (short hash), label differently
-    latest="$(curl -fsS --max-time "$_t" "https://api.github.com/repos/${repo}/commits/HEAD" 2>/dev/null \
+    latest="$(curl -fsS --max-time "$_t" "$(_ucc_github_api_url "repos/${repo}/commits/HEAD")" 2>/dev/null \
       | awk -F'"' '/"sha"/{print substr($4,1,7); exit}')"
     [[ -n "$latest" ]] && printf '  latest-commit=%s' "$latest"
   fi

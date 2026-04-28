@@ -168,7 +168,7 @@ _pkg_github_install() {
 
   local tag version os arch arch_alt
   tag="$(curl -fsS --max-time "$(_ucc_curl_timeout probe)" \
-    "https://api.github.com/repos/${repo}/releases/latest" 2>/dev/null \
+    "$(_ucc_github_api_url "repos/${repo}/releases/latest")" 2>/dev/null \
     | awk -F'"' '/"tag_name"/{print $4; exit}')"
   [[ -n "$tag" ]] || { log_warn "github ${repo}: failed to fetch latest tag"; return 1; }
   version="${tag#v}"
@@ -179,7 +179,7 @@ _pkg_github_install() {
 
   local asset url tmp
   asset="$(_pkg_github_template "$asset_tpl" "$version" "$tag" "$os" "$arch" "$arch_alt")"
-  url="https://github.com/${repo}/releases/download/${tag}/${asset}"
+  url="$(_ucc_github_web_url "${repo}/releases/download/${tag}/${asset}")"
   tmp="$(mktemp -d)"
   log_info "github ${repo}: downloading ${asset} (tag=${tag})"
   if ! ucc_run curl -fsSL --max-time "$(_ucc_curl_timeout download)" -o "$tmp/$asset" "$url"; then
@@ -315,7 +315,7 @@ _pkg_github_latest_tag() {
     printf '%s' "$cached"
     return 0
   fi
-  local tag; tag="$(curl -fsS --max-time "$(_ucc_curl_timeout probe)" "https://api.github.com/repos/${repo}/releases/latest" 2>/dev/null \
+  local tag; tag="$(curl -fsS --max-time "$(_ucc_curl_timeout probe)" "$(_ucc_github_api_url "repos/${repo}/releases/latest")" 2>/dev/null \
     | awk -F'"' '/"tag_name"/{print $4}' | sed 's/^v//')"
   if [[ -z "$tag" ]]; then
     export _PKG_GH_TAG_CACHE="${_PKG_GH_TAG_CACHE:+${_PKG_GH_TAG_CACHE}

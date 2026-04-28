@@ -332,3 +332,56 @@ def test_lib_sourced_has_no_side_effects():
         f"sourcing produced unexpected output: {result.stdout!r}"
     assert result.stderr == "", \
         f"sourcing produced unexpected stderr: {result.stderr!r}"
+
+
+def test_assisted_install_orchestrator_order_and_cleanup(tmp_path):
+    """The top-level assisted path is WSL-testable when its destructive
+    dependencies are stubbed. This pins the control-flow contract:
+    password -> askpass -> sudo validation -> EULA -> brew cask ->
+    quarantine strip -> vmnetd seed."""
+    fake_home = tmp_path / "home"
+    fake_home.mkdir()
+    events = tmp_path / "events"
+    settings_rel = "Library/Group Containers/group.com.docker/settings-store.json"
+    script = textwrap.dedent(f'''\
+        set -e
+        export CFG_DIR="{REPO_ROOT}"
+        export YAML_PATH="{REPO_ROOT / 'ucc/software/docker.yaml'}"
+        export HOME="{fake_home}"
+        export UCC_SUDO_PASS="pw"
+        export EVENTS="{events}"
+        log_info() {{ printf 'INFO: %s\\n' "$*" >&2; }}
+        yaml_get_many() {{
+          printf 'docker_desktop_cask_id\\tdocker-desktop\\0'
+          printf 'docker_desktop_app_path\\t/Applications/Docker.app\\0'
+          printf 'settings_relpath\\t{settings_rel}\\0'
+        }}
+        sudo() {{
+          printf 'sudo %s\\n' "$*" >> "$EVENTS"
+          return 0
+        }}
+        brew_cask_install() {{
+          printf 'brew_cask_install %s\\n' "$*" >> "$EVENTS"
+          return 0
+        }}
+        source "{LIB}"
+        _docker_strip_quarantine() {{
+          printf 'strip %s\\n' "$*" >> "$EVENTS"
+          return 0
+        }}
+        _docker_assisted_seed_vmnetd() {{
+          printf 'seed %s\\n' "$*" >> "$EVENTS"
+          return 0
+        }}
+        _docker_assisted_install
+        cat "$EVENTS"
+    ''')
+    result = _run_bash(script)
+    assert result.returncode == 0, f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    lines = [line for line in result.stdout.splitlines() if line]
+    assert lines == [
+        "sudo -A -v",
+        "brew_cask_install docker-desktop",
+        "strip /Applications/Docker.app",
+        "seed /Applications/Docker.app",
+    ]

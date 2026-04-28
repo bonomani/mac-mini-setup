@@ -2,25 +2,33 @@
 # lib/drivers/pyenv_brew.sh — driver.kind: pyenv-brew
 # Installs pyenv + plugins. On macOS via brew; on Linux/WSL via git clone
 # (upstream-recommended path; Ubuntu universe does not ship pyenv).
-# Reads pyenv_packages and zsh_config from YAML.
+# Reads pyenv_packages, pyenv_git_sources, and zsh_config from YAML.
 
 # Upstream git sources for the git-clone path. Keyed by pyenv_packages entry.
 _ucc_pyenv_git_url() {
-  case "$1" in
-    pyenv)             printf 'https://github.com/pyenv/pyenv.git' ;;
-    pyenv-virtualenv)  printf 'https://github.com/pyenv/pyenv-virtualenv.git' ;;
-    *) return 1 ;;
-  esac
+  local cfg_dir="$1" yaml="$2" pkg="$3" name url dest
+  while IFS=$'\t' read -r name url dest; do
+    [[ "$name" == "$pkg" ]] || continue
+    printf '%s' "$url"
+    return 0
+  done < <(yaml_records "$cfg_dir" "$yaml" pyenv_git_sources name url dest)
+  return 1
 }
 
 # Resolve clone destination under $PYENV_ROOT (main) or its plugins dir.
 _ucc_pyenv_git_dest() {
-  local root="${PYENV_ROOT:-$HOME/.pyenv}"
-  case "$1" in
-    pyenv)            printf '%s' "$root" ;;
-    pyenv-virtualenv) printf '%s/plugins/pyenv-virtualenv' "$root" ;;
-    *) return 1 ;;
-  esac
+  local cfg_dir="$1" yaml="$2" pkg="$3" root="${PYENV_ROOT:-$HOME/.pyenv}" name url dest
+  while IFS=$'\t' read -r name url dest; do
+    [[ "$name" == "$pkg" ]] || continue
+    [[ -n "$dest" ]] || return 1
+    if [[ "$dest" == "." ]]; then
+      printf '%s' "$root"
+      return 0
+    fi
+    printf '%s/%s' "$root" "${dest#./}"
+    return 0
+  done < <(yaml_records "$cfg_dir" "$yaml" pyenv_git_sources name url dest)
+  return 1
 }
 
 _ucc_driver_pyenv_brew_observe() {
@@ -67,8 +75,8 @@ _ucc_driver_pyenv_brew_action() {
   command -v git >/dev/null 2>&1 || { log_error "pyenv: git required for non-macOS install"; return 1; }
   local pkg url dest
   for pkg in $pkgs; do
-    url="$(_ucc_pyenv_git_url "$pkg")"  || { log_warn "pyenv: unknown git source for '$pkg'"; continue; }
-    dest="$(_ucc_pyenv_git_dest "$pkg")" || continue
+    url="$(_ucc_pyenv_git_url "$cfg_dir" "$yaml" "$pkg")"  || { log_warn "pyenv: unknown git source for '$pkg'"; continue; }
+    dest="$(_ucc_pyenv_git_dest "$cfg_dir" "$yaml" "$pkg")" || continue
     case "$action" in
       install)
         if [[ -d "$dest/.git" ]]; then

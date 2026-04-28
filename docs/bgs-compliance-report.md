@@ -1,13 +1,17 @@
 # BGS Compliance Report
 
-Date: 2026-03-28
+Date: 2026-04-28
 Project: `mac-mini-setup`
 Claimed slice: `BGS-State-Modeled-Governed`
 Assessment basis: repo-local artifacts, executable validators, and local runtime evidence
 
 ## Executive Summary
 
-`mac-mini-setup` is materially compliant with its claimed `BGS-State-Modeled-Governed` slice based on the governance entry, decision record, BISS classification, ASM-aligned state model, executable validators, and available runtime UCC evidence present at review time.
+`mac-mini-setup` is materially compliant with its claimed
+`BGS-State-Modeled-Governed` slice based on the governance entry,
+decision record, BISS classification, ASM-aligned state model,
+executable validators, generated documentation checks, and available
+runtime UCC evidence present at review time.
 
 This is a project-local compliance assessment, not an external audit or a claim about stronger rigor overlays such as `RIG`.
 
@@ -51,22 +55,27 @@ The following checks were run during this review:
 python3 tools/validate_setup_state_artifact.py docs/setup-state-artifact.yaml
 python3 tools/validate_targets_manifest.py ucc
 python3 tools/format_targets_manifest.py --check ucc
+python3 tools/build-spec.py --check
+python3 tools/build-driver-matrix.py --check
 ```
 
 Observed results:
 
 - ASM artifact validator: `VALID docs/setup-state-artifact.yaml`
-- orchestration validator: `OK: 94 orchestration targets validated`
+- orchestration validator: `OK: 147 orchestration targets validated`
 - manifest formatter check: pass
+- generated spec check: `OK: SPEC.md is in sync`
+- generated driver matrix check: `OK: driver-feature-matrix.md is in sync`
 - runtime evidence present locally:
-  - `4` declaration artifacts under `~/.ai-stack/runs/`
-  - `4` result artifacts under `~/.ai-stack/runs/`
+  - `166` declaration artifacts under `~/.ai-stack/runs/`
+  - `166` result artifacts under `~/.ai-stack/runs/`
 
 ## Compliance Findings
 
 ### 1. Governance entry is present and specific
 
-The repository contains a dedicated BGS project entry in [`../BGS.md`](../BGS.md) with:
+The repository contains a dedicated BGS project entry in
+[`../BGS.md`](../BGS.md) with:
 
 - explicit slice selection
 - declared scope
@@ -75,6 +84,8 @@ The repository contains a dedicated BGS project entry in [`../BGS.md`](../BGS.md
 - review and validation dates
 - concrete next-read pointers
 
+The entry was refreshed on 2026-04-28 after the consistency audit.
+
 Status: compliant
 
 ### 2. Decision record is present and materially complete
@@ -82,7 +93,7 @@ Status: compliant
 The decision record in [`bgs-decision.yaml`](./bgs-decision.yaml) includes:
 
 - pinned suite and member refs
-- claimed members and overlay
+- claimed members and no additional overlays
 - declared external controls
 - evidence references
 - explicit limitations
@@ -97,7 +108,10 @@ The boundary classification in [`biss-classification.md`](./biss-classification.
 - UCC for convergence and reconciliation
 - GIC for post-convergence verification
 
-During the 2026-04-28 audit, the component count wording was re-aligned to the live UCC manifest tree: 11 governed components (9 software + 2 system). BGS, BISS, and ASM model docs now agree. `macos-software-update` is a target inside the `system` component, not a separate component.
+During the 2026-04-28 audit, the component count wording was
+re-aligned to the live UCC manifest tree: 11 governed components
+(9 software + 2 system). BGS, BISS, ASM model docs, README inventory,
+and generated SPEC now agree.
 
 Status: compliant
 
@@ -121,7 +135,22 @@ The implementation structure and inventory show:
 - UCC declaration/result generation in the installer and runtime libraries
 - TIC verification as read-only post-convergence evidence
 
-This is consistent with the claimed slice and with the stated limitation that TIC evidence is not folded back into UCC state.
+This is consistent with the claimed slice and with the stated limitation
+that TIC evidence is not folded back into UCC state.
+
+Status: compliant
+
+### 6. Generated governance-facing docs are drift-checked
+
+`tools/check-bgs.sh` now runs the external BGS validator when available
+and always runs local generated-doc drift checks for:
+
+- `docs/SPEC.md`
+- `docs/driver-feature-matrix.md`
+
+Both generated-doc checks passed during this review. The external BGS
+validator is intentionally optional because it lives outside this repo
+under `../BGSPrivate/bgs` by default.
 
 Status: compliant
 
@@ -133,13 +162,24 @@ These do not invalidate the current slice claim, but they remain important:
 - TIC remains verification evidence, not convergence
 - credentials, IAM, and most privacy controls are delegated to upstream tooling
 - runtime evidence is partly outside the repository under `~/.ai-stack/runs/`
-- some behavior remains policy-soft rather than hard-blocking, such as the sudo gate for `macos-defaults`
-- the project claims the `Basic` overlay only, not `RIG`
+- some behavior remains policy-soft rather than hard-blocking, such as
+  admin-required targets that skip or cascade when no non-interactive
+  sudo ticket exists
+- the project uses `Basic` rigor semantics and does not claim `RIG`
 - package targets use a project-local `state_model: package` mapping layered onto the ASM software profile
-- externally managed updates and non-interactive admin-required targets remain project-local execution conventions rather than upstream suite-standardized semantics
+- self-updating apps and non-interactive admin-required targets remain
+  project-local execution conventions rather than upstream
+  suite-standardized semantics
+- Docker Desktop assisted first install is still awaiting clean-state
+  Mac mini Checkpoint C validation; this is an implementation
+  verification gap, not a BGS slice-selection gap
 
 ## Verdict
 
-As of 2026-03-28, `mac-mini-setup` is materially compliant with its declared `BGS-State-Modeled-Governed` slice on the basis of the reviewed artifacts and executed validators.
+As of 2026-04-28, `mac-mini-setup` is materially compliant with its
+declared `BGS-State-Modeled-Governed` slice on the basis of the reviewed
+artifacts and executed validators.
 
-The current claim should still be read with the limitations above: this is a `Basic`-overlay, project-local compliance posture with explicit delegated controls and a macOS-first full profile.
+The current claim should still be read with the limitations above: this
+is a Basic-rigor, project-local compliance posture with explicit
+delegated controls and a macOS-first full profile.

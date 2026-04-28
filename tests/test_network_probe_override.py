@@ -46,6 +46,42 @@ grep -F 'https://example.invalid/ping' "$RECORD"
         rc, out = _bash(script)
         self.assertEqual(rc, 0, out)
 
+    def test_github_api_base_override_is_used_by_latest_tag_helper(self):
+        """GitHub release lookups use the shared API URL builder."""
+        script = r'''
+set -e
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+cat > "$tmp/curl" <<'SH'
+#!/usr/bin/env bash
+for a in "$@"; do printf '%s\n' "$a"; done > "$RECORD"
+printf '{"tag_name":"v1.2.3"}\n'
+exit 0
+SH
+chmod +x "$tmp/curl"
+export PATH="$tmp:$PATH"
+export RECORD="$tmp/args"
+export UCC_GITHUB_API_BASE_URL="https://github-api.example.test"
+source lib/utils.sh
+source lib/drivers/pkg.sh
+test "$(_pkg_github_latest_tag owner/repo)" = "1.2.3"
+grep -F 'https://github-api.example.test/repos/owner/repo/releases/latest' "$RECORD"
+'''
+        rc, out = _bash(script)
+        self.assertEqual(rc, 0, out)
+
+    def test_github_web_base_override_builds_release_download_url(self):
+        """The release download URL is built from the shared web base helper."""
+        script = r'''
+set -e
+export UCC_GITHUB_WEB_BASE_URL="https://github-web.example.test/root/"
+source lib/utils.sh
+test "$(_ucc_github_web_url owner/repo/releases/download/v1/tool)" = \
+  "https://github-web.example.test/root/owner/repo/releases/download/v1/tool"
+'''
+        rc, out = _bash(script)
+        self.assertEqual(rc, 0, out)
+
     def test_default_url_when_unset(self):
         """Without override, default URL is github.com."""
         script = r'''

@@ -35,6 +35,13 @@ zsh_config: .zshrc
 pyenv_packages:
 - pyenv
 - pyenv-virtualenv
+pyenv_git_sources:
+- name: pyenv
+  url: https://github.com/pyenv/pyenv.git
+  dest: .
+- name: pyenv-virtualenv
+  url: https://github.com/pyenv/pyenv-virtualenv.git
+  dest: plugins/pyenv-virtualenv
 pip_bootstrap:
 - pip
 - setuptools

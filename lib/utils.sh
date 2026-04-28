@@ -92,8 +92,19 @@ torch_cuda_device_name() {
 # Probes the socket directly via curl /_ping to avoid dependency on the
 # docker CLI being in PATH (unreliable on Apple Silicon where
 # /usr/local/bin is not always available in sub-shells).
+docker_socket_path() {
+  if [[ -n "${UCC_DOCKER_SOCKET:-}" ]]; then
+    printf '%s' "$UCC_DOCKER_SOCKET"
+    return
+  fi
+  case "${HOST_PLATFORM:-macos}" in
+    macos) printf '%s/.docker/run/docker.sock' "$HOME" ;;
+    *)     printf '/var/run/docker.sock' ;;
+  esac
+}
+
 docker_daemon_is_running() {
-  local sock="$HOME/.docker/run/docker.sock"
+  local sock; sock="$(docker_socket_path)"
   if [[ -S "$sock" ]]; then
     curl -sf --unix-socket "$sock" http://localhost/_ping >/dev/null 2>&1
   else
@@ -117,6 +128,18 @@ docker_daemon_status() {
 network_is_available() {
   local url="${UCC_NETWORK_PROBE_URL:-https://github.com}"
   curl -fsS --connect-timeout "$(_ucc_curl_timeout probe)" --max-time "$(_ucc_curl_timeout endpoint)" "$url" >/dev/null 2>&1
+}
+
+# GitHub endpoint builders shared by drivers. Environment overrides keep tests
+# and private mirrors from hardcoding public github.com inside driver logic.
+_ucc_github_api_url() {
+  local path="${1#/}" base="${UCC_GITHUB_API_BASE_URL:-https://api.github.com}"
+  printf '%s/%s' "${base%/}" "$path"
+}
+
+_ucc_github_web_url() {
+  local path="${1#/}" base="${UCC_GITHUB_WEB_BASE_URL:-https://github.com}"
+  printf '%s/%s' "${base%/}" "$path"
 }
 
 # Print network connectivity status.

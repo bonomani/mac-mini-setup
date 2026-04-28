@@ -11,7 +11,7 @@ source change.
 - **BGS slice**: `BGS-State-Modeled-Governed`
 - **BGS version ref**: `bgs@58c1467`
 - **Decision record**: [`./docs/bgs-decision.yaml`](./docs/bgs-decision.yaml)
-- **Last reviewed**: 2026-04-07
+- **Last reviewed**: 2026-04-28
 
 ### Goal (hand-editable)
 
@@ -197,10 +197,10 @@ not specified). Counts are real (`type` distribution per component).
 | Target | Kind | Type | Display name | requires | depends_on |
 |---|---|---|---|---|---|
 | `docker-available` | `capability` | `capability` | Docker available |  | `docker-daemon` |
-| `docker-daemon` | `custom` | `runtime` | Docker daemon |  | `docker-desktop` |
-| `docker-desktop` | `custom` | `runtime` | Docker Desktop |  | `homebrew` |
+| `docker-daemon` | `custom` | `runtime` | Docker daemon |  | `docker-desktop?macos` |
+| `docker-desktop` | `custom` | `runtime` | Docker Desktop | macos | `homebrew` |
 | `docker-privileged-ports` | `custom` | `config` | Privileged port mapping | macos | `docker-desktop` |
-| `docker-resources` | `custom` | `config` | Docker resources |  | `docker-available` |
+| `docker-resources` | `custom` | `config` | Docker resources | macos | `docker-available` |
 
 ### linux-system  (3 targets)
 

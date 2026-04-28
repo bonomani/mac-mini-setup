@@ -19,8 +19,8 @@ decision_record_path: "./docs/bgs-decision.yaml"
 inventory_path: "./README.md#repository-inventory"
 orchestration_root: "./ucc/"
 verification_root: "./tic/"
-last_reviewed: 2026-04-07
-last_validated: 2026-04-07
+last_reviewed: 2026-04-28
+last_validated: 2026-04-28
 bgs_version_ref: bgs@58c1467
 bgs_canonical: ../BGSPrivate/bgs
 read_next:

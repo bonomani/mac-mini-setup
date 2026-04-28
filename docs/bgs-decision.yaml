@@ -91,7 +91,7 @@ evidence_refs:
   - ./lib/summary.sh
 
 owner: bonomani
-date: 2026-04-07
+date: 2026-04-28
 
 limitations:
   - macOS remains the full-profile target. Linux/WSL2 run most software

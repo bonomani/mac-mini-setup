@@ -143,6 +143,25 @@ def test_github_repo_valid():
     print("PASS: All github_repo values are valid")
 
 
+def test_pyenv_git_sources_cover_packages():
+    """pyenv-brew git sources are YAML data, not a hardcoded shell case."""
+    with open(os.path.join(UCC_DIR, "software", "ai-python-stack.yaml")) as fh:
+        data = yaml.safe_load(fh) or {}
+    packages = set(data.get("pyenv_packages") or [])
+    sources = {item.get("name"): item for item in data.get("pyenv_git_sources") or []}
+    assert packages <= set(sources), \
+        f"pyenv_git_sources missing entries for: {sorted(packages - set(sources))}"
+    for name in packages:
+        source = sources[name]
+        assert source.get("url"), f"pyenv_git_sources.{name}.url is required"
+        assert source.get("dest"), f"pyenv_git_sources.{name}.dest is required"
+    with open(os.path.join(REPO_ROOT, "lib", "drivers", "pyenv_brew.sh")) as fh:
+        content = fh.read()
+    assert "pyenv/pyenv.git" not in content
+    assert "pyenv-virtualenv.git" not in content
+    print("PASS: pyenv git sources are declared in YAML")
+
+
 if __name__ == "__main__":
     test_all_drivers_have_schema()
     test_all_drivers_in_known_sets()
@@ -150,4 +169,5 @@ if __name__ == "__main__":
     test_driver_no_unexpected_keys()
     test_driver_meta_sync()
     test_github_repo_valid()
+    test_pyenv_git_sources_cover_packages()
     print("\nAll driver tests passed.")

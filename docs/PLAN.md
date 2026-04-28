@@ -28,11 +28,11 @@ not finished.
 | # | Item | Status | Priority |
 |---|---|---|---|
 | 1 | ~~Auto-include dependency components~~ | ✅ DONE 2026-04-13 (`8f59b2e`, `2117c51`) | — |
-| 2 | Docker cross-platform (WSL2/Linux) | Design + compat matrix ready | Low |
+| 2 | Docker cross-platform (WSL2/Linux) | Partial 2026-04-28 — Docker component now supports Linux/WSL2 for existing Docker Engine detection/start: `docker-daemon` depends on `docker-desktop` only on macOS, daemon socket defaults to `/var/run/docker.sock` off macOS, and systemd hosts can start `docker.service`. Docker Desktop install/resources remain macOS-only; native package install still out of scope. | Medium |
 | 3 | ~~Minimize env size (145KB `_UCC_*` bloat)~~ | ✅ DONE 2026-04-13 (`9862f89`) — cleanup in `ucc_reset_registered_targets` | — |
 | 4 | Phase C1 — drift helper | Waiting-for-consumer | Low |
 | 5 | ~~`docker-privileged-ports` target~~ | ✅ DONE 2026-04-13 (`f064f39`, `d50b28f`) | — |
-| 6 | Docker unattended first install — Checkpoint C | In-progress — core shipped, only Mac mini clean-state e2e remains | In-progress |
+| 6 | Docker unattended first install — Checkpoint C | Improved 2026-04-28 — added WSL unit coverage for the assisted-install orchestrator order (sudo validation → EULA prewrite → brew cask → quarantine → vmnetd seed). Remaining risk is clean-state Mac mini e2e for Homebrew cask sudo/postflight, first-launch dialogs, vmnetd seeding, and daemon startup. See 2026-04-28 deep audit below. | In-progress |
 | 7 | ~~Fix test suite — 43 failing integration tests~~ | ✅ DONE 2026-04-13 — 159 pass, 1 skipped, 0 failed | — |
 | 8 | ~~Driver convention: `_<driver>_state()` helper~~ | ✅ DONE 2026-04-13 — 7 drivers extracted, 12 share only cached YAML reads (no duplication) | — |
 | 9 | ~~Extract install.sh functions to lib/~~ | ✅ DONE 2026-04-13 — install.sh 1225→991 lines (`c463e5c`) | — |
@@ -98,8 +98,110 @@ not finished.
 | 69 | ~~Consistency audit — README / ANALYSIS / DRIVER_ARCHITECTURE are stale~~ | ✅ DONE 2026-04-28 — ANALYSIS.md rewritten with live counts (11 components, 11 YAML, ~147 targets, 32 driver kinds); README test-row generalized; DRIVER_ARCHITECTURE had no stale numerics. | — |
 | 70 | ~~Consistency audit — stale identifiers remain in code/docs~~ | ✅ DONE 2026-04-28 — `install.sh` ref to `bgs-decision.md` → `.yaml`; README `macos-defaults`/`macos-software-update` → `pmset-*`/`defaults-*`/`softwareupdate-*`; `lib/ucc_display.sh` legacy `macos-software-update` alias dropped, added `linux-system` mapping. | — |
 | 71 | ~~Continue driver consolidation around `pkg` / `setting` / `service`~~ | ✅ AUDIT 2026-04-28 — inventoried tail. Live: 26 kinds, 71 `pkg`, 16 `pip`, 12 `setting`, 11 `capability`, 10 `custom`. The 10 `custom` targets are each genuinely heterogeneous (bootstrap: `homebrew`, `xcode-command-line-tools`; meta: `system-composition`, `ai-apps-template`; init-system unit gen: `unsloth-studio*`; Docker lifecycle: 4 distinct top-level orchestrators). The 16 `pip` targets are all `pip-group-*` already sharing the same driver — folding them further would not reduce the surface. The remaining specialized kinds (`pip-bootstrap`, `pyenv-brew`, `nvm`, `nvm-version`, `git-repo`, `git-global`, `script-installer`, `zsh-config`, `path-export`, `app-bundle`, `json-merge`, `home-artifact`, `softwareupdate-schedule`, `brew-analytics`, `brew-unlink`, `build-deps`, `compose-apply`, `compose-file`, `docker-compose-service`, `custom-daemon`) each carry distinct semantics not covered by `pkg`/`setting`/`service`. No further consolidation is justified at the current scale. Future folds should be triggered by *new* targets that look like duplicates of an existing kind, not by re-shaping existing ones. | — |
-| 72 | Move remaining policy/config literals out of shell | Partial — network probe URL now `UCC_NETWORK_PROBE_URL` env-overridable (default github.com); legacy display label `macos-software-update` removed (#70). Remaining: GitHub-release base URLs in `pkg.sh`/`ucc_drivers.sh` (`api.github.com`/`github.com/.../releases/...`), `pyenv-brew` plugin URLs. Lower priority — these are protocol endpoints, less "policy" than infra constants. | Low |
+| 72 | ~~Move remaining policy/config literals out of shell~~ | ✅ DONE 2026-04-28 — network probe URL is `UCC_NETWORK_PROBE_URL`-overridable; GitHub API/web release URLs now use shared `_ucc_github_api_url` / `_ucc_github_web_url` helpers with `UCC_GITHUB_*_BASE_URL` overrides; `pyenv-brew` plugin clone URLs/destinations moved to `pyenv_git_sources` YAML. | — |
 | 73 | ~~Make sourced helpers quiet and side-effect free~~ | ✅ DONE 2026-04-28 (469833a) — wrapped pyenv eval calls in brace group with `2>/dev/null`. | — |
+| 74 | ~~BGS compliance refresh~~ | ✅ DONE 2026-04-28 — BGS entry dates refreshed; decision record date refreshed; compliance report updated from stale 2026-03-28 / 94-target evidence to current validator results (147 targets, generated docs in sync, 166 declaration + 166 result artifacts). Remaining caveat is Docker Checkpoint C, not BGS slice selection. | — |
+
+### 2026-04-28 BGS compliance audit findings
+
+- **Verdict:** BGS compliance is materially sound for the declared
+  `BGS-State-Modeled-Governed` slice. The external BGS validator passed
+  through `tools/check-bgs.sh`.
+- **Stale evidence fixed:** `docs/bgs-compliance-report.md` still
+  reported the 2026-03-28 review, 94 orchestration targets, and only
+  4 declaration/result artifacts. It now reflects the live 2026-04-28
+  state: 147 targets, generated docs in sync, and 166 declaration +
+  166 result artifacts.
+- **Scope consistency:** BGS, BISS, ASM model docs, README inventory,
+  generated SPEC, and governance component-count tests agree on 11
+  governed components (9 software + 2 system). TIC remains evidence,
+  not a separately governed component.
+- **Overlay wording corrected:** the decision record has
+  `overlays_used: []`; the report now describes `Basic` as rigor
+  semantics rather than as a claimed BGS overlay.
+- **Remaining caveat:** Docker Desktop assisted first install still
+  needs clean-state Mac mini Checkpoint C. This is an implementation
+  verification gap, not a BGS slice-selection blocker.
+- **Process guard:** `tools/check-bgs.sh` now provides the relevant
+  pre-commit guard: external BGS validation when available plus local
+  generated-doc drift checks for `docs/SPEC.md` and
+  `docs/driver-feature-matrix.md`.
+
+### 2026-04-28 next high-value refactors
+
+These are the three refactors with the best risk/reward ratio. They
+should be done in this order because each one reduces coupling for the
+next.
+
+#### 1. Docker platform split — ✅ DONE 2026-04-28
+
+`lib/docker.sh` (542 lines) split into three files:
+- `lib/docker_common.sh` — portable daemon helpers (`_docker_ready`,
+  `docker_version`, `docker_daemon_configured`, `run_docker_from_yaml`)
+  and the `_docker_daemon_start` dispatcher.
+- `lib/docker_engine.sh` — Linux/WSL `_docker_engine_start` (socket
+  probe + systemctl start gated on `/systemd` fingerprint).
+- `lib/docker_desktop_macos.sh` — all macOS-only logic
+  (`docker_desktop_*`, `docker_resources_*`, `docker_privileged_ports_*`,
+  `_docker_launch`, `_docker_cask_ensure`, `_docker_settings_store_patch`,
+  `_docker_strip_quarantine`, `_docker_bootstrap_complete`,
+  `_docker_kill_zombies`, `_docker_desktop_install`).
+
+`lib/docker.sh` reduced to a backward-compat loader that sources the
+three new files, so `tests/test_docker_cross_platform.py` and the YAML
+`libs: docker docker_unattended` directive keep working unchanged.
+`tests/test_docker_lib_split.py` pins the boundary (engine file has no
+osascript/open/xattr/`/Applications`; macOS file carries the macOS-only
+funcs; engine sources independently and policy-skips on no-init-system).
+
+#### 2. Parametric settings / drift helper
+
+**Goal:** avoid one-off observe/desired/apply code for value-convergence
+targets and give #4 Phase C1 a concrete caller-driven shape.
+
+**Plan:**
+- Inventory current parametric/value targets: `docker-resources`,
+  `docker-privileged-ports`, `pmset-*`, `defaults-*`,
+  `softwareupdate-*`, `vscode-settings`, `git-global-config`, and the
+  compose-file marker target.
+- Define the smallest common contract: read current value, render
+  desired value, compare, apply update, emit evidence.
+- Add a small helper, likely `lib/ucc_parametric.sh`, rather than a
+  broad framework rewrite.
+- Migrate one low-risk caller first, preferably `docker-resources` or a
+  simple `setting` target.
+- Add tests for equal-value no-op, drift detection, missing file/key,
+  and apply writing only intended keys.
+- Migrate additional callers only after the first caller is stable.
+- Leave complex cases like compose-file until the helper proves useful.
+
+**Non-goal:** do not design a generic drift API before at least one real
+caller is migrated.
+
+#### 3. `pkg.sh` backend split
+
+**Goal:** reduce risk in the largest multi-backend driver file without
+changing package behavior.
+
+**Plan:**
+- Keep dispatcher functions in `lib/drivers/pkg.sh`: backend loading,
+  selection, observe/action/recover/evidence.
+- Move backend families into focused files:
+  `pkg_brew.sh`, `pkg_npm.sh`, `pkg_github.sh`, `pkg_curl.sh`,
+  `pkg_native_pm.sh`, `pkg_winget.sh`, `pkg_pyenv.sh`,
+  `pkg_ollama.sh`, and `pkg_vscode.sh`.
+- Source backend files from `pkg.sh` or `lib/ucc_drivers.sh` before the
+  dispatcher runs.
+- Split one backend at a time, starting with GitHub release helpers
+  because they are self-contained and already have new URL-helper tests.
+- After each split, run `tests/test_driver_smoke.py`,
+  `tests/test_drivers.py`, Docker/cross-platform tests if touched, and
+  manifest validation.
+- Keep the first pass mechanical. Behavior changes should be separate
+  commits after the split is stable.
+
+**Non-goal:** do not combine backend extraction with package-manager
+policy changes.
 
 ### 2026-04-28 consistency audit
 
@@ -1209,7 +1311,115 @@ Key discoveries during Checkpoint C testing:
   `DisplayedOnboarding`, `ShowInstallScreen`,
   `OpenUIOnStartupDisabled`, `RequireVmnetd`.
 
-#### Step 11 — `docker-privileged-ports-available` target
+#### 2026-04-28 deep audit — what is actually left
+
+The earlier execution plan below is historically useful but stale:
+Steps 2-7 already landed. Current live state:
+
+- `ucc/software/docker.yaml` declares `docker-first-install` with
+  default `manual` and opt-in `assisted`.
+- `libs: docker docker_unattended` sources both `lib/docker.sh` and
+  `lib/docker_unattended.sh` for the Docker component.
+- `_docker_desktop_install` dispatches to `_docker_assisted_install`
+  when `_docker_bootstrap_complete` is false and
+  `UIC_PREF_DOCKER_FIRST_INSTALL=assisted`.
+- `_docker_assisted_install` implements password acquisition,
+  `SUDO_ASKPASS`, `sudo -A -v` validation, EULA/headless prewrite,
+  brew cask install, quarantine stripping, and best-effort vmnetd
+  seeding.
+- Daemon startup is intentionally handled by the separate
+  `docker-daemon` target via `_docker_daemon_start` / `_docker_launch`;
+  assisted install does **not** launch Docker directly anymore.
+- `docker-privileged-ports` exists as a parametric target and reuses
+  `_docker_assisted_seed_vmnetd`; this supersedes the older "Step 11"
+  target sketch below.
+- WSL-runnable coverage exists in `tests/test_docker_unattended.py` for
+  password source order, askpass file permissions, cleanup, EULA merge,
+  launchd plist extraction, missing-binary failure, and sourcing
+  side-effect freedom.
+
+**Remaining unknowns that only a clean Mac mini can answer:**
+
+1. **Homebrew cask sudo path:** confirm `brew_cask_install
+   docker-desktop` under exported `SUDO_ASKPASS` handles all internal
+   `/usr/bin/sudo -A` calls, including cask postflight symlinks, with no
+   GUI or terminal prompt.
+2. **First-launch dialog suppression:** confirm the five settings keys
+   are still sufficient for the installed Docker Desktop version and no
+   EULA/onboarding/auth dialog appears.
+3. **vmnetd seeding compatibility:** confirm the bundled
+   `com.docker.vmnetd` path still exists, `codesign -v --strict` passes,
+   the XML plist extraction heuristic finds the launchd plist, and
+   `/Library` install/bootstrap succeeds.
+4. **Target split behavior:** confirm `docker-desktop` reaches
+   installed/configured state, then `docker-daemon` starts Docker via
+   `_docker_launch` and socket `/_ping` readiness within the configured
+   timeout.
+5. **Failure hygiene:** wrong password, missing `UCC_SUDO_PASS` in
+   non-interactive mode, and any vmnetd failure must stop or degrade
+   cleanly without leaving a broken Docker install or leaked askpass
+   files.
+6. **Privileged-port target semantics:** current observe requires only
+   vmnetd binary + `RequireVmnetd: true`, not launchd loaded. This is
+   intentional for Docker Desktop 4.x Apple Silicon where vmnetd is
+   on-demand theatre, but the Mac mini run should confirm that enabling
+   the target does not block normal daemon startup.
+
+**Immediate critical work: run a Mac mini Checkpoint C with evidence.**
+
+Use the live implementation, not the older helper sketches. For each
+case, capture the `[PREF]`, `[docker]`, `[ok]/[fail]/[warn]`, and final
+summary sections plus these probes after the run:
+
+```bash
+test -S "$HOME/.docker/run/docker.sock" && \
+  curl -sf --unix-socket "$HOME/.docker/run/docker.sock" http://localhost/_ping
+test -f "$HOME/Library/Group Containers/group.com.docker/settings-store.json" && \
+  python3 - <<'PY'
+import json, os
+p = os.path.expanduser('~/Library/Group Containers/group.com.docker/settings-store.json')
+d = json.load(open(p))
+for k in ('LicenseTermsVersion','DisplayedOnboarding','ShowInstallScreen',
+          'OpenUIOnStartupDisabled','RequireVmnetd'):
+    print(f'{k}={d.get(k)!r}')
+PY
+test -f /Library/PrivilegedHelperTools/com.docker.vmnetd && \
+  codesign -v --strict /Library/PrivilegedHelperTools/com.docker.vmnetd
+```
+
+**Checkpoint C matrix (current, reduced to the decisive cases):**
+
+| Case | Command / setup | Expected |
+|---|---|---|
+| C1 | Clean Docker state; `./install.sh --pref docker-first-install=manual --no-interactive docker-desktop` | Fails fast with manual bootstrap message; no brew install, no settings write, no askpass files. |
+| C2 | Clean Docker state; `./install.sh --pref docker-first-install=assisted --no-interactive docker-desktop` without `UCC_SUDO_PASS` | Fails cleanly before writes, message names `UCC_SUDO_PASS`. |
+| C3 | Clean Docker state; wrong `UCC_SUDO_PASS`; assisted non-interactive | Fails at `sudo -A -v`; no Docker.app install, no `/Library/PrivilegedHelperTools/com.docker.vmnetd`. |
+| C4 | Clean Docker state; valid `UCC_SUDO_PASS`; assisted non-interactive `docker-desktop docker-daemon docker-available` | No prompts; Docker.app installed; settings have the five keys; socket `_ping` returns `OK`; summary has no Docker failure. |
+| C5 | Re-run C4 command after success | No-op or clean `[ok]`; `_docker_bootstrap_complete` skips assisted path. |
+| C6 | After successful C4, run `./install.sh --pref docker-first-install=manual --no-interactive docker-desktop docker-daemon` | Manual default path works because bootstrap is complete. |
+| C7 | Run `./install.sh --no-interactive docker-privileged-ports` with sudo available | Either converges to `binary=seeded setting=enabled` or emits a clear sudo/policy skip; daemon startup remains healthy after restart. |
+
+**Go / no-go criteria:**
+
+- Close item #6 only after C4, C5, and C6 pass on a clean Mac mini.
+- C7 can remain a separate follow-up if privileged ports are not needed
+  by any current service, but any failure must not regress Docker
+  daemon startup.
+- If C4 fails at brew cask install, instrument `brew_cask_install` /
+  Homebrew output first; do not change vmnetd or launch logic until the
+  sudo/postflight path is proven.
+- If C4 installs Docker.app but daemon startup fails, inspect
+  `_docker_launch`, socket `/info`, and the 500-state recovery path; do
+  not rerun assisted install repeatedly without a clean teardown.
+- If vmnetd seeding fails but C4 still reaches a healthy daemon with
+  `RequireVmnetd=false`, downgrade that step from hard requirement to
+  best-effort evidence and leave privileged-port convergence to C7.
+
+#### Step 11 — `docker-privileged-ports-available` target — superseded by live `docker-privileged-ports`
+
+This sketch is retained as historical design context. The live manifest
+now has a first-class `docker-privileged-ports` parametric target with
+the helper functions described here.
 
 vmnetd seeding should be a first-class UCC target, not embedded
 in the assisted orchestrator. Design:
