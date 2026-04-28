@@ -78,7 +78,7 @@ state can describe the whole machine, not only individual components.
 | File | Type | Purpose | Key Notes |
 |---|---|---|---|
 | `tools/read_config.py` | Python | Config reader | YAML access helper built on `yaml.safe_load` |
-| `tools/validate_setup_state_artifact.py` | Python | ASM artifact validator | Delegates to external ASM validator |
+| `tools/validate_setup_state_artifact.py` | Python | ASM artifact validator | Self-contained; validates artifact against axes in `docs/setup-state-model.md` |
 | `tools/validate_targets_manifest.py` | Python | UCC manifest validator | Checks targets, deps, components, dispatch, runtime endpoints |
 | `tools/format_targets_manifest.py` | Python | Manifest formatter | Enforces canonical target key ordering |
 
