@@ -163,7 +163,7 @@ backend split. The current refactor priority list is:
    `tests/test_cli_help_wording.py` pins the help text against future
    regressions (plain-vocab present, jargon absent, "target" only in
    example commands).
-2. 🟡 **Split `ucc_targets.sh`** — IN PROGRESS 2026-04-28 (slice 1).
+2. 🟡 **Split `ucc_targets.sh`** — IN PROGRESS 2026-04-28 (slices 1-2).
    Largest remaining shell hotspot (1838 LOC). Slice 1 extracted the
    YAML target-field reader + user-override layer into
    `lib/ucc_targets_yaml.sh` (12 funcs, 223 LOC). `ucc_targets.sh`
@@ -173,12 +173,23 @@ backend split. The current refactor priority list is:
    exit 0, 58 ok / 5 skip / 0 fail. Remaining slices (future commits):
    per-profile observe/apply (capability/parametric/runtime), brew
    runtime formula subsystem, registration + execution + flush.
-3. **Split `validate_targets_manifest.py`** — largest Python hotspot
-   (~1532 lines). Separate schema rules, condition parsing, dependency
-   graph, canonical ordering, driver metadata, and CLI wrapper.
-4. **Split `utils.sh`** — still broad (~937 lines). Separate framework
-   Python setup, YAML helpers, capability probes, cache helpers,
-   endpoint helpers, migration policy, and generic wait/version helpers.
+3. 🟡 **Split `validate_targets_manifest.py`** — IN PROGRESS 2026-04-28
+   (slice 1). Largest Python hotspot (1532 LOC). Slice 1 extracted the
+   condition-parsing block (`_host_match_values`, `_host_named_values`,
+   `_version_compare`, `_eval_single_condition`,
+   `_resolve_conditional_dep`) into `tools/_targets_validator_conditions.py`
+   and re-imports them at the same top-level names in the main module so
+   tests that do `from validate_targets_manifest import _resolve_conditional_dep`
+   keep working unchanged. 1532 → 1429 LOC. Remaining slices: schema
+   rules + driver metadata, dependency graph, canonical ordering, CLI.
+4. 🟡 **Split `utils.sh`** — IN PROGRESS 2026-04-28 (slice 1). 937 LOC.
+   Slice 1 extracted disk-cache helpers (`_ucc_cache_dir`, `_ucc_cache_path`,
+   `_ucc_cache_fresh`, `_ucc_cache_read`, `_ucc_cache_write`,
+   `_ucc_cache_invalidate`, `_ucc_cache_invalidate_glob`) into
+   `lib/utils_cache.sh`, sourced from utils.sh top so consumers
+   (brew livecheck, pip outdated, etc.) keep working unchanged.
+   937 → 858 LOC. Remaining slices: capability probes, migration safety,
+   endpoint helpers, framework-Python setup.
 5. **Reduce `install.sh`** — move dispatch construction, YAML batch
    preload, and component execution plumbing into libraries so
    `install.sh` is mostly CLI entrypoint and top-level orchestration.
