@@ -10,25 +10,22 @@ across multiple backends:
 Pin their behavior so future backend changes can't break upstream
 consumers via silent semantic drift.
 """
-import subprocess
+import sys
 import textwrap
 import unittest
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _shell_helpers import bash_in_repo  # noqa: E402
 
 
 def _bash(script: str, env: dict | None = None) -> tuple[int, str]:
-    full = (
-        "source lib/utils.sh; "
-        "source lib/drivers/pkg.sh; " + textwrap.dedent(script)
+    """Pre-source utils.sh + pkg.sh, then run the caller's snippet."""
+    return bash_in_repo(
+        "source lib/utils.sh; source lib/drivers/pkg.sh; "
+        + textwrap.dedent(script),
+        env=env,
     )
-    r = subprocess.run(
-        ["bash", "-c", full], cwd=REPO,
-        capture_output=True, text=True,
-        env={"PATH": "/usr/bin:/bin", **(env or {})},
-    )
-    return r.returncode, r.stdout + r.stderr
 
 
 class VersionLtTests(unittest.TestCase):

@@ -6,19 +6,12 @@ network_is_available. Audit item #72 (move policy literals out of
 shell). This test verifies the env override is honored AND that the
 default still works when unset.
 """
-import subprocess
+import sys
 import unittest
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parent.parent
-
-
-def _bash(script: str, env: dict | None = None) -> tuple[int, str]:
-    r = subprocess.run(
-        ["bash", "-c", script],
-        capture_output=True, text=True, cwd=REPO, env={"PATH": "/usr/bin:/bin", **(env or {})},
-    )
-    return r.returncode, r.stdout + r.stderr
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _shell_helpers import bash_in_repo as _bash  # noqa: E402
 
 
 class NetworkProbeOverrideTests(unittest.TestCase):

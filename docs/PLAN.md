@@ -193,13 +193,22 @@ backend split. The current refactor priority list is:
 5. **Reduce `install.sh`** — move dispatch construction, YAML batch
    preload, and component execution plumbing into libraries so
    `install.sh` is mostly CLI entrypoint and top-level orchestration.
-6. **Refactor `uic.sh`** — split preflight gates, preferences, platform
-   filtering, and preference display logic.
+6. 🟡 **Refactor `uic.sh`** — IN PROGRESS 2026-04-28 (slice 1).
+   Slice 1 extracted YAML loaders (`load_uic_gates`,
+   `load_uic_preferences`, `_uic_unquote_scalar`,
+   `_uic_parse_prefs_from_yaml`) into `lib/uic_yaml.sh` (176 LOC),
+   sourced from `uic.sh` after the gate/preference engine so loaders
+   keep calling `uic_gate` / `uic_preference` unchanged. 648 → 477 LOC.
 7. **Archive / slim `docs/PLAN.md`** — keep active plan current and
    move old investigations/stale sketches into `docs/archive/`.
-8. **Test helper consolidation** — share Python fixtures for shell
-   tests (`run_bash`, fake `curl`, fake `sudo`, fake YAML helpers,
-   temp path setup).
+8. 🟡 **Test helper consolidation** — IN PROGRESS 2026-04-28.
+   `tests/_shell_helpers.py` adds `bash_in_repo(script, env=, timeout=)`
+   that runs `bash -c` with `cwd=REPO`, minimal PATH, and combined
+   stdout+stderr return. `test_utils_helpers.py`,
+   `test_network_probe_override.py`, and `test_pkg_shared_helpers.py`
+   now import the shared helper instead of redefining `_bash`. Older
+   tests with custom env shapes left alone — fixture migration is
+   opportunistic, not a forced sweep.
 9. **Complete parametric helper adoption** — adopt the new helper only
    where real JSON/value-convergence duplication appears; do not force
    command-based settings into it.
