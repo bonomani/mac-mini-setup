@@ -179,7 +179,7 @@ Other dynamic parametrics (none active beyond the two Docker callers
 today) can adopt the helper as they appear; pmset/defaults/softwareupdate
 targets are command-based, not JSON-merge, so they stay out of scope.
 
-#### 3. `pkg.sh` backend split — 🟡 IN PROGRESS 2026-04-28 (slice 1/9)
+#### 3. `pkg.sh` backend split — ✅ DONE 2026-04-28 (9/9 slices)
 
 First slice extracted the GitHub release backend (16 funcs, 159 LOC)
 from `lib/drivers/pkg.sh` (729 → 572 LOC) into
@@ -192,10 +192,14 @@ github funcs, pkg.sh no longer defines them, pkg.sh sources the new
 file, sourcing pkg.sh transitively pulls in `_pkg_github_install` and
 `_pkg_github_latest_tag`.
 
-Remaining slices (one backend each, mechanical): `pkg_npm.sh`,
-`pkg_curl.sh`, `pkg_brew.sh` (formula + cask), `pkg_native_pm.sh`,
-`pkg_pyenv.sh`, `pkg_ollama.sh`, `pkg_vscode.sh`, `pkg_winget.sh`.
-Split incrementally as touched; do not combine with policy changes.
+All 9 backends extracted: `pkg_github.sh` (159 LOC), `pkg_npm.sh` (75),
+`pkg_curl.sh` (42), `pkg_brew.sh` (formula + cask, 22), `pkg_native_pm.sh`
+(29), `pkg_winget.sh` (79), `pkg_pyenv.sh` (23), `pkg_ollama.sh` (11),
+`pkg_vscode.sh` (78). `lib/drivers/pkg.sh` reduced from 729 LOC to 218
+(dispatcher + `_pkg_version_lt` shared helper + the brew/cask sources
+list). All sources wired from `pkg.sh`'s backend-registry section so
+existing `declare -f` probes in `custom_daemon.sh` / `nvm.sh` still
+resolve. Mechanical move only — no behavior change.
 
 ### 2026-04-28 consistency audit
 

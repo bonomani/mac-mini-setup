@@ -59,7 +59,15 @@ re-run the generator after any driver change.
 | `pip.sh` | `pip` | ✅ | ✅ | — | ✅ | ✅ | — | ✅ |
 | `pip_bootstrap.sh` | `pip-bootstrap` | ✅ | ✅ | — | ✅ | ✅ | — | — |
 | `pkg.sh` | `pkg` | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ |
+| `pkg_brew.sh` | (helpers only) | — | — | — | — | ✅ | — | ✅ |
+| `pkg_curl.sh` | (helpers only) | — | — | — | — | ✅ | — | ✅ |
 | `pkg_github.sh` | (helpers only) | — | — | — | — | ✅ | — | ✅ |
+| `pkg_native_pm.sh` | (helpers only) | — | — | — | — | ✅ | — | ✅ |
+| `pkg_npm.sh` | (helpers only) | — | — | — | — | ✅ | — | ✅ |
+| `pkg_ollama.sh` | (helpers only) | — | — | — | — | — | — | ✅ |
+| `pkg_pyenv.sh` | (helpers only) | — | — | — | — | — | — | ✅ |
+| `pkg_vscode.sh` | (helpers only) | — | — | — | — | ✅ | — | ✅ |
+| `pkg_winget.sh` | (helpers only) | — | — | — | — | ✅ | — | ✅ |
 | `pyenv_brew.sh` | `pyenv-brew` | ✅ | ✅ | — | ✅ | — | — | — |
 | `script_installer.sh` | `script-installer` | ✅ | ✅ | — | ✅ | ✅ | — | — |
 | `service.sh` | `service` | ✅ | ✅ | — | ✅ | ✅ | — | — |
@@ -68,7 +76,7 @@ re-run the generator after any driver change.
 | `vscode.sh` | `json-merge` | ✅ | ✅ | ✅ | ✅ | — | — | — |
 | `zsh_config.sh` | `zsh-config` | ✅ | ✅ | — | ✅ | — | — | — |
 
-**26 driver files**, of which 23 export at least one driver kind. The other 3 host helper functions only.
+**34 driver files**, of which 23 export at least one driver kind. The other 11 host helper functions only.
 
 ## `pkg` backends in detail
 

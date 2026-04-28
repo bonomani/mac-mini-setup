@@ -54,5 +54,44 @@ class PkgGithubSplitTests(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
 
 
+class PkgFullSplitTests(unittest.TestCase):
+    """Slices 2-9 (npm, curl, brew, native_pm, winget, pyenv, ollama, vscode).
+
+    Each backend file holds its own funcs and pkg.sh sources it before
+    dispatch.
+    """
+
+    BACKENDS = {
+        "pkg_npm.sh": ["_pkg_npm_observe", "_pkg_npm_install", "_pkg_npm_outdated"],
+        "pkg_curl.sh": ["_pkg_curl_install", "_pkg_curl_outdated"],
+        "pkg_brew.sh": ["_pkg_brew_install", "_pkg_brew_cask_install"],
+        "pkg_native_pm.sh": ["_pkg_native_pm_observe", "_pkg_native_pm_install"],
+        "pkg_winget.sh": ["_pkg_winget_observe", "_pkg_winget_install"],
+        "pkg_pyenv.sh": ["_pkg_pyenv_install", "_pkg_pyenv_observe"],
+        "pkg_ollama.sh": ["_pkg_ollama_install", "_pkg_ollama_observe"],
+        "pkg_vscode.sh": ["_pkg_vscode_install", "_pkg_vscode_outdated"],
+    }
+
+    def test_each_backend_file_carries_its_funcs(self):
+        for filename, fns in self.BACKENDS.items():
+            text = (REPO / "lib/drivers" / filename).read_text()
+            for fn in fns:
+                self.assertRegex(text, rf"(?m)^{re.escape(fn)}",
+                                 f"{filename} missing {fn}")
+
+    def test_pkg_sh_sources_every_backend(self):
+        text = PKG.read_text()
+        for filename in self.BACKENDS:
+            self.assertIn(filename, text, f"pkg.sh missing source of {filename}")
+
+    def test_pkg_sh_dispatcher_only(self):
+        # Dispatcher should be far smaller than the original 729 LOC.
+        self.assertLess(len(PKG.read_text().splitlines()), 300)
+
+    def test_version_lt_remains_in_pkg_sh(self):
+        # Shared by curl + vscode backends; stays in the dispatcher file.
+        self.assertRegex(PKG.read_text(), r"(?m)^_pkg_version_lt\(\)")
+
+
 if __name__ == "__main__":
     unittest.main()
