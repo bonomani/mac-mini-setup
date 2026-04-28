@@ -154,29 +154,30 @@ three new files, so `tests/test_docker_cross_platform.py` and the YAML
 osascript/open/xattr/`/Applications`; macOS file carries the macOS-only
 funcs; engine sources independently and policy-skips on no-init-system).
 
-#### 2. Parametric settings / drift helper
+#### 2. Parametric settings / drift helper — ✅ DONE 2026-04-28 (first pass)
 
-**Goal:** avoid one-off observe/desired/apply code for value-convergence
-targets and give #4 Phase C1 a concrete caller-driven shape.
+Inventory found that static-patch JSON parametrics (`vscode-settings`,
+`git-global-config`) already share `driver.kind: json-merge` in
+`lib/drivers/vscode.sh`. Only the *dynamic-patch* parametrics
+(`docker-resources`, `docker-privileged-ports`) duplicated the
+`mkdir .build/ + printf > patch.json + json_merge.py apply` boilerplate.
 
-**Plan:**
-- Inventory current parametric/value targets: `docker-resources`,
-  `docker-privileged-ports`, `pmset-*`, `defaults-*`,
-  `softwareupdate-*`, `vscode-settings`, `git-global-config`, and the
-  compose-file marker target.
-- Define the smallest common contract: read current value, render
-  desired value, compare, apply update, emit evidence.
-- Add a small helper, likely `lib/ucc_parametric.sh`, rather than a
-  broad framework rewrite.
-- Migrate one low-risk caller first, preferably `docker-resources` or a
-  simple `setting` target.
-- Add tests for equal-value no-op, drift detection, missing file/key,
-  and apply writing only intended keys.
-- Migrate additional callers only after the first caller is stable.
-- Leave complex cases like compose-file until the helper proves useful.
+Added `lib/ucc_parametric.sh` with two minimal helpers:
+- `_ucc_parametric_apply_json_patch <settings> <basename> <patch_json>` —
+  writes a computed patch string into `$CFG_DIR/.build/<basename>` and
+  applies it via `tools/drivers/json_merge.py`.
+- `_ucc_parametric_json_field <path> <key> [default]` — scalar JSON read
+  with default fallback when file/key is missing (drift-detection use).
 
-**Non-goal:** do not design a generic drift API before at least one real
-caller is migrated.
+Migrated `docker_resources_apply` and `docker_privileged_ports_apply`
+in `lib/docker_desktop_macos.sh` to use the helper (–11 lines net).
+`tests/test_ucc_parametric.py` pins 6 contracts: writes only patched
+keys, no-op on already-satisfied patch, scalar-read happy path,
+missing-file default, missing-key default, required-arg validation.
+
+Other dynamic parametrics (none active beyond the two Docker callers
+today) can adopt the helper as they appear; pmset/defaults/softwareupdate
+targets are command-based, not JSON-merge, so they stay out of scope.
 
 #### 3. `pkg.sh` backend split
 

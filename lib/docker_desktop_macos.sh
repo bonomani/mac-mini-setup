@@ -98,11 +98,10 @@ docker_resources_apply() {
   local _mem _cpu _swap _disk
   IFS=$'\t' read -r _mem _cpu _swap _disk <<< "$(_docker_resources_config)"
   local _mem_mib=$(( _mem * 1024 ))
-  local _patch_dir="$CFG_DIR/.build"
-  mkdir -p "$_patch_dir"
-  printf '{"memoryMiB": %d, "cpus": %d, "swapMiB": %d, "diskSizeMiB": %d}\n' \
-    "$_mem_mib" "$_cpu" "$_swap" "$_disk" > "$_patch_dir/docker-resources-patch.json"
-  ucc_run python3 "$CFG_DIR/tools/drivers/json_merge.py" apply "$settings_path" "$_patch_dir/docker-resources-patch.json"
+  local _patch_json
+  _patch_json="$(printf '{"memoryMiB": %d, "cpus": %d, "swapMiB": %d, "diskSizeMiB": %d}' \
+    "$_mem_mib" "$_cpu" "$_swap" "$_disk")"
+  _ucc_parametric_apply_json_patch "$settings_path" "docker-resources-patch.json" "$_patch_json"
   log_warn "Restart Docker Desktop to apply new resource settings"
 }
 
@@ -159,11 +158,7 @@ docker_privileged_ports_apply() {
   fi
 
   if [[ -f "$settings_path" ]]; then
-    local patch_dir="$CFG_DIR/.build"
-    mkdir -p "$patch_dir"
-    printf '{"RequireVmnetd": true}\n' > "$patch_dir/docker-vmnetd-patch.json"
-    python3 "$CFG_DIR/tools/drivers/json_merge.py" apply \
-      "$settings_path" "$patch_dir/docker-vmnetd-patch.json"
+    _ucc_parametric_apply_json_patch "$settings_path" "docker-vmnetd-patch.json" '{"RequireVmnetd": true}'
     log_warn "Restart Docker Desktop to apply privileged port mapping"
   fi
 }

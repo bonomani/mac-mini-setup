@@ -35,5 +35,7 @@ source "${_UCC_LIB_DIR}/ucc_targets.sh"
 source "${_UCC_LIB_DIR}/ucc_escalate.sh"
 # shellcheck source=lib/pip_common.sh
 source "${_UCC_LIB_DIR}/pip_common.sh"
+# shellcheck source=lib/ucc_parametric.sh
+source "${_UCC_LIB_DIR}/ucc_parametric.sh"
 # shellcheck source=lib/ucc_drivers.sh
 source "${_UCC_LIB_DIR}/ucc_drivers.sh"
