@@ -2,24 +2,6 @@
 
 ## Open
 
-### 2026-04-28 — Issues from `--no-interactive --all` install run (`/tmp/install-all.log`)
-
-Final summary: 54 ok, 2 changed, 2 FAILED, skip=5. Run completed but several issues observed:
-
-1. **Segfault in `lib/ucc_selection.sh:27`** — `python3 ... --dep-components` segfaults (core dumped). Likely pyenv-shim PATH issue: framework prepends `~/.pyenv/shims` so `python3` may resolve to a pyenv build that crashes or lacks PyYAML. System `/usr/bin/python3` is healthy. **Fix:** introduce `UCC_FRAMEWORK_PYTHON` (default `/usr/bin/python3` if exists else `python3`), use it in `ucc_selection.sh` and all `validate_targets_manifest.py` callsites. Non-fatal but pollutes stderr and may skip dep resolution silently.
-
-2. **`UCC_OVERRIDE__<name>__<key>: invalid variable name`** (10 occurrences) — `lib/ucc_targets.sh:112` builds bash variable names from target names containing `.`, `@`, `/` (e.g. `npm_global_@openai/codex`, `cli_llama.cpp`). Bash rejects them. **Fix:** sanitize the target name (strip/replace `[^A-Za-z0-9_]` → `_`) before constructing the override variable, or switch to an associative array keyed by raw name.
-
-3. **`oh-my-zsh` install fails on Linux** — installer aborts with "Zsh is not installed. Please install zsh first." **Fix:** add `zsh` as a `depends_on` (package target) for `oh-my-zsh`, or add platform/zsh-presence guard to the target.
-
-4. **`vmware-workstation` returns rc=20 from winget** — winget reports "Aucun package ne correspond aux critères sélectionnés" (no match). Driver returns rc=20, framework warns "non-conventional rc=20 — treating as fail". **Fix:** either map winget "no match" → rc=125 (admin/availability), or guard the target with `requires:` for the actual host where it's intended (looks like it's running on a Linux/WSL host where winget package isn't found in the configured source).
-
-5. **Cosmetic: French winget output leaks in run log** — `Aucun package ne correspond aux critères saisis.` printed bare. Driver should suppress winget stderr/stdout on no-match path, only logging a structured `[skip]`/`[policy]`.
-
-6. **`omz-theme-agnoster` cascades `[dep-fail]`** — direct consequence of #3; resolves once oh-my-zsh installs.
-
-Acceptance: clean `--no-interactive --all` run on this WSL host with no segfaults, no `invalid variable name` lines, and only legitimate `[policy]`/`[skip]` for sudo-required apt packages.
-
 
 No ollama items open as of 2026-04-15 end-of-day. Refactor sweep
 #43–#53 shipped 2026-04-15. Ollama internet-research items #54–#57
@@ -1924,6 +1906,15 @@ or shows `[skip]` with a reason — never a misleading `-> Running`
 that will fail at apply time.
 
 ## Closed
+
+### 2026-04-28 — `--no-interactive --all` install run cleanup
+
+All 6 issues from `/tmp/install-all.log` shipped:
+
+- `1cf73d1` — sanitize `UCC_OVERRIDE__<name>__<key>` for target names with `.`, `@`, `/` (npm scoped, `cli-llama.cpp`). Adds `tests/test_override_sanitize.py`.
+- `fdbc6c0` — pin manifest-query python to `UCC_FRAMEWORK_PYTHON` (resolved at `utils.sh` source time to a PyYAML-capable interpreter), eliminating pyenv-shim segfault. Patches all `validate_targets_manifest.py` and `read_config.py` callsites in `install.sh`, `lib/ucc_selection.sh`, `lib/ucc_targets.sh`, `lib/ucc_interactive.sh`, `lib/ucc_asm.sh`, `lib/component_runner.sh`, `lib/summary.sh`, `lib/tic_runner.sh`, `lib/utils.sh`. Adds `tests/test_framework_python.py` with regression guard.
+- `2476748` — add `cli-zsh` package target + `oh-my-zsh` `depends_on: cli-zsh`, fixing "Zsh is not installed" on Linux/WSL. Auto-resolves the `omz-theme-agnoster` dep-fail cascade.
+- `9ca184f` — winget `_pkg_winget_install` / `_update` map rc=20 (and locale-translated "no package" output for en/fr/de/it/es/zh) to rc=125 instead of rc=1. Also filters localized "no match" lines from observe/version/outdated so they no longer leak as bare French strings into the run log. Adds `tests/test_winget_unavailable.py`.
 
 ### 2026-04-13 session — Docker hardening and launch fix
 
