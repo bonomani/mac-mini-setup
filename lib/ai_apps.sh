@@ -339,8 +339,21 @@ PY
     fi
   fi
 
+  _ollama_installer_needs_skip() {
+    # Ollama installer pipes to sh which calls sudo internally to install
+    # systemd units / clean /usr/local/lib/ollama. In non-interactive mode
+    # without a cached sudo ticket the prompt would hang the framework.
+    # Return 0 (skip) only when we'd actually block.
+    [[ "${UCC_INTERACTIVE:-0}" == "1" ]] && return 1
+    [[ -n "${UCC_SUDO_PASS:-}" ]] && return 1
+    sudo -n true 2>/dev/null && return 1
+    log_warn "ollama installer requires sudo and we're non-interactive without a cached ticket — skipping (re-run with --interactive or pre-cache sudo)"
+    return 0
+  }
+
   _start_ollama() {
     if ! is_installed ollama; then
+      _ollama_installer_needs_skip && return 124
       curl -fsSL "$_OLLAMA_INSTALLER_URL" | sh || return 1
     fi
 
@@ -407,6 +420,7 @@ PY
       # Squirrel didn't finish in our window; treat as deferred warn, not fail
       return 124
     fi
+    _ollama_installer_needs_skip && return 124
     curl -fsSL "$_OLLAMA_INSTALLER_URL" | sh || return 1
     _start_ollama
   }
