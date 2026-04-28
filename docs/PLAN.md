@@ -149,9 +149,44 @@ the network cost ever shows up in profiling.
 
 ### 2026-04-28 next high-value refactors
 
-These are the three refactors with the best risk/reward ratio. They
-should be done in this order because each one reduces coupling for the
-next.
+The original top three refactors in this section are now completed:
+Docker platform split, first-pass parametric helper, and `pkg.sh`
+backend split. The current refactor priority list is:
+
+1. **Plain-language wording cleanup** — highest user-facing value now.
+   Reduce user-facing jargon (`UCC`, `target`, `driver`, `profile`,
+   `converge`) in README and CLI/help text while preserving internal
+   YAML/code/governance terms.
+2. **Split `ucc_targets.sh`** — largest remaining shell hotspot
+   (~1838 lines). Separate registration, dependency resolution,
+   execution, rendering/status, and evidence/ASM mapping.
+3. **Split `validate_targets_manifest.py`** — largest Python hotspot
+   (~1532 lines). Separate schema rules, condition parsing, dependency
+   graph, canonical ordering, driver metadata, and CLI wrapper.
+4. **Split `utils.sh`** — still broad (~937 lines). Separate framework
+   Python setup, YAML helpers, capability probes, cache helpers,
+   endpoint helpers, migration policy, and generic wait/version helpers.
+5. **Reduce `install.sh`** — move dispatch construction, YAML batch
+   preload, and component execution plumbing into libraries so
+   `install.sh` is mostly CLI entrypoint and top-level orchestration.
+6. **Refactor `uic.sh`** — split preflight gates, preferences, platform
+   filtering, and preference display logic.
+7. **Archive / slim `docs/PLAN.md`** — keep active plan current and
+   move old investigations/stale sketches into `docs/archive/`.
+8. **Test helper consolidation** — share Python fixtures for shell
+   tests (`run_bash`, fake `curl`, fake `sudo`, fake YAML helpers,
+   temp path setup).
+9. **Complete parametric helper adoption** — adopt the new helper only
+   where real JSON/value-convergence duplication appears; do not force
+   command-based settings into it.
+10. **GitHub latest cache fix** — `_PKG_GH_TAG_CACHE` self-population
+   dies in command substitutions; migrate to `_ucc_cache_*` disk cache
+   if GitHub outdated checks become noisy or slow.
+
+Top three to do next: plain-language wording cleanup, split
+`ucc_targets.sh`, split `validate_targets_manifest.py`.
+
+The completed refactors are retained below as closure notes.
 
 #### 1. Docker platform split — ✅ DONE 2026-04-28
 
@@ -251,320 +286,6 @@ resolve. Mechanical move only — no behavior change.
 4. Clean up legacy identifiers and leftover hardcoded policy values.
 5. Reassess the remaining specialized drivers and reduce the `custom` / `pip` tail where the abstraction now exists.
 
-### Unified `update-policy` pref
-
-**Problem:** Three correlated concerns are currently spread across two
-prefs (`package-update-policy` + `brew-livecheck`) with unclear naming.
-Without `brew-livecheck=1`, no driver detects outdated packages — 7
-drivers (brew, pip, pipx, nvm, custom-daemon, pkg, package,
-script-installer) all silently report `[ok]` for installed-but-outdated
-software. The pip driver also reuses `UIC_PREF_BREW_LIVECHECK` to gate
-its own `pip list --outdated` cache — a naming mismatch that makes the
-pref harder to reason about.
-
-**Solution:** Replace `package-update-policy` and `brew-livecheck` with
-a single `update-policy` pref:
-
-```yaml
-update-policy: conservative | balanced | aggressive
-```
-
-| Policy | Tools | Libs | Upstream check |
-|---|---|---|---|
-| `conservative` | install-only | install-only | off |
-| `balanced` | always-upgrade | install-only | on |
-| `aggressive` | always-upgrade | always-upgrade | on |
-
-**Default:** `balanced` — tools stay current automatically, libs stay
-stable until explicitly requested, upstream version checking enabled.
-
-#### Target classification via `update_class`
-
-The distinction is not about the driver — it's about whether upgrading
-can break other installed software. Declared per-target in YAML:
-
-```yaml
-git:
-  update_class: tool    # self-contained, safe to auto-upgrade
-
-xz:
-  update_class: lib     # shared dependency, upgrade can break consumers
-```
-
-| Class | Rule | Examples |
-|---|---|---|
-| `tool` (default) | Self-contained, no shared deps | jq, wget, git, ollama, iterm2, claude-code, nvm |
-| `lib` | Shared dependency graph, upgrade can break consumers | pip packages, xz, openssl, gcc, build-deps |
-
-**Driver defaults** (when `update_class` is not set in YAML):
-- `pip` (no isolation) → `lib`
-- `pip` (isolation=pipx) → `tool`
-- All other drivers → `tool`
-
-This lets brew formulae like `xz` or `openssl` opt into `lib` behavior
-while most brew packages stay as `tool`.
-
-#### Current code state (as of 2026-04-13)
-
-The two legacy prefs already work but are spread across drivers:
-- `UIC_PREF_PACKAGE_UPDATE_POLICY` — checked by `brew_refresh_caches`,
-  `brew_formula_observe`, `brew_cask_observe` (lib/ucc_brew.sh)
-- `UIC_PREF_BREW_LIVECHECK` — gates `brew livecheck` cache
-  (lib/ucc_brew.sh) **and** `pip list --outdated` + `pipx` PyPI check
-  (lib/drivers/pip.sh), despite the brew-specific name
-
-The pip driver has no equivalent of `UIC_PREF_PACKAGE_UPDATE_POLICY` —
-it always upgrades on `action=update` (gated only by
-`_pip_update_would_conflict`). The new `update-policy` must wire
-`lib`-class policy into `_ucc_driver_pip_action` so `balanced` skips
-pip upgrades while `aggressive` attempts them.
-
-#### Implementation steps
-
-1. **New pref**: add `update-policy` to UIC preferences (conservative |
-   balanced | aggressive). Default: `balanced`.
-2. **Internal expansion**: map the single pref to three internal vars:
-   - `UIC_PREF_UPSTREAM_CHECK` (on/off) — replaces `UIC_PREF_BREW_LIVECHECK`
-   - `UIC_PREF_TOOL_UPDATE` (install-only | always-upgrade)
-   - `UIC_PREF_LIB_UPDATE` (install-only | always-upgrade) — replaces
-     `UIC_PREF_PACKAGE_UPDATE_POLICY` for lib-class targets
-3. **Wire `update_class` into drivers**:
-   - `_ucc_driver_pip_action`: read target's `update_class` (default
-     `lib`); check `UIC_PREF_LIB_UPDATE` before attempting upgrade.
-     The `_pip_update_would_conflict` safety check remains active in all
-     modes — `aggressive` enables the upgrade attempt but the conflict
-     guard still prevents breakage.
-   - `brew_formula_observe` / `brew_cask_observe`: read target's
-     `update_class` (default `tool`); check the matching policy var.
-   - Other drivers (nvm, pkg, custom-daemon, script-installer): default
-     `tool`, check `UIC_PREF_TOOL_UPDATE`.
-4. **Mark targets**: add `update_class: lib` to brew formulae that are
-   shared dependencies: xz, openssl, gcc, icu4c, readline, etc.
-   Pip targets get `lib` by driver default so no YAML change needed.
-
-**Operator overrides:** `--pref update-policy=aggressive` for a full
-upgrade run. Or `--pref lib-update=always-upgrade` to override just
-the lib part while keeping the rest at `balanced`. Granular knobs:
-`--pref tool-update=install-only`, `--pref upstream-check=0`.
-
-### Pip venv isolation (`isolation.kind: venv`)
-
-**Problem:** All pip-group targets install into the global pyenv Python
-environment. Packages with incompatible dependency constraints break
-each other silently — pip reports conflicts but installs anyway. Three
-incompatible zones identified (2026-04-13):
-
-1. **unsloth/unsloth-zoo** — pins torch<2.11, datasets<4.4,
-   transformers≤5.5, trl≤0.24 — incompatible with modern HF stack
-2. **jupyter-ai-magics** — pins langchain<0.4 — incompatible with
-   langchain 1.x used by pip-group-langchain
-3. **datasets↔fsspec** — datasets 4.8 requires fsspec≤2026.2.0 but
-   serving group pulls fsspec 2026.3.0
-
-**Solution:** Extend the pip driver's existing `isolation` field from a
-scalar (`pipx`) to an object with `kind` and `name`:
-
-```yaml
-# No isolation (current default — global pip)
-pip-group-utilities:
-  driver:
-    kind: pip
-    install_packages: python-dotenv
-
-# pipx isolation (current — 1 venv per tool, no import sharing)
-some-cli-tool:
-  driver:
-    kind: pip
-    isolation:
-      kind: pipx
-    install_packages: some-tool
-
-# venv isolation (new — shared named venv)
-pip-group-pytorch:
-  driver:
-    kind: pip
-    isolation:
-      kind: venv
-      name: ai-modern
-    install_packages: torch torchvision torchaudio
-
-pip-group-langchain:
-  driver:
-    kind: pip
-    isolation:
-      kind: venv
-      name: ai-modern          # same venv, shares torch
-    install_packages: langchain langchain-core
-
-pip-group-jupyter:
-  driver:
-    kind: pip
-    isolation:
-      kind: venv
-      name: jupyter-ai         # separate venv
-    install_packages: jupyterlab jupyter-ai-magics
-```
-
-**Isolation modes:**
-
-| `isolation` | Behaviour |
-|---|---|
-| absent | pip global (current, unchanged) |
-| `kind: pipx` | 1 venv per package (current, unchanged) |
-| `kind: venv, name: X` | shared named venv X (new) |
-
-**Venv layout (3 environments):**
-
-| Venv | Pip groups | Why isolated |
-|---|---|---|
-| `ai-modern` | pytorch, huggingface, langchain, llamaindex, llm-clients, vector-dbs, serving, data-science, utilities, dev-tools, optimum | Main compatible stack |
-| `jupyter-ai` | jupyter, jupyter-ai-magics | langchain <0.4 conflict |
-| `unsloth` | unsloth, unsloth-zoo | torch/transformers/trl version pins |
-
-**Design rationale — follows existing patterns:**
-
-The framework already has three isolation architectures, all using the
-same `depends_on`-based pattern:
-
-| Tech | Infra target | Package targets | Isolation unit |
-|---|---|---|---|
-| Docker | `ai-stack-compose-running` | `open-webui-runtime` etc. | container |
-| Node | `nvm` → `node-lts` | `npm-global-claude-code` etc. | node version |
-| Brew | `homebrew` | `git`, `jq` etc. | Cellar prefix |
-| **Pip+venv** | (pip driver creates venv) | `pip-group-*` | **named venv** |
-
-Unlike the others, pip venv creation is handled inside the pip driver
-(like pipx), not as a separate infra target. The venv is created
-idempotently on first `pip install` into it. This matches the pipx
-pattern where `pipx install` creates the venv as a side effect.
-
-**Implementation steps:**
-
-1. **Parse `isolation` as object or scalar**: in `_ucc_driver_pip_observe`
-   and `_ucc_driver_pip_action`, read `driver.isolation` — if it has a
-   `.kind` subfield, use object form; if scalar `pipx`, treat as
-   `{kind: pipx}` for backward compat; if absent, global pip.
-2. **Venv management helpers**:
-   - `_pip_venv_ensure <name>` — create venv via `pyenv virtualenv
-     <python_version> <name>` if it doesn't exist
-   - `_pip_venv_activate <name>` — set PATH to
-     `~/.pyenv/versions/<name>/bin` so pip/python resolve to the venv
-   - `_pip_venv_pip_cmd <name>` — return the venv's pip path directly
-3. **Wire into observe**: when `isolation.kind=venv`, activate the venv
-   before running `pip list` / `_pip_cached_version` / outdated checks.
-   Version cache must be per-venv (key by venv name).
-4. **Wire into action**: when `isolation.kind=venv`, ensure venv exists,
-   then `pip install` into it. `_pip_update_would_conflict` dry-run
-   also runs inside the venv.
-5. **YAML migration**: add `isolation: {kind: venv, name: ...}` to all
-   pip-group targets in `ai-python-stack.yaml`. Group assignment per
-   the 3-venv table above.
-6. **pip_cache_versions per venv**: the global `_PIP_VERSIONS_CACHE`
-   must become per-venv. Use `_PIP_VERSIONS_CACHE_<VENV_NAME>` or a
-   keyed lookup.
-
-### Driver convention: `_<driver>_state()` helper
-
-Observe and evidence functions often share the same "read current
-state" logic. Rather than changing the dispatch protocol, each driver
-that shares logic should extract a `_<driver>_state()` helper. Observe
-calls it directly; evidence wraps it as `key=value`.
-
-**Extracted helpers (7/7 with real command duplication):**
-- `setting.sh` → `_setting_read_value()` (`5e4a86d`)
-- `swupdate_schedule.sh` → `_swupdate_schedule_state()` (`1bfeff6`)
-- `pip_bootstrap.sh` → `_pip_bootstrap_version()` (`63d775e`)
-- `git_global.sh` → `_git_global_read()` (`63d775e`)
-- `compose_file.sh` → `_compose_file_resolve_path()` (`63d775e`)
-- `nvm.sh` → `_nvm_resolve_dir()` + `_nvm_self_version()` (`63d775e`)
-- `app_bundle.sh` → `_app_bundle_plist_version()` (`63d775e`)
-
-**Not extracted (12 — share only cached YAML field reads, no command duplication):**
-brew, build_deps, compose_apply, custom_daemon, git_repo, home_artifact,
-path_export, pip, script_installer, service, vscode/json-merge, zsh_config.
-
-**Not applicable:** brew_unlink, docker_compose_service (different logic);
-npm, package, pkg (dispatchers).
-
-### Extract install.sh functions to lib/
-
-install.sh is 1,225 lines with 25 functions. Several groups are pure
-logic with no install flow dependency — they belong in dedicated lib
-files for separation of concerns and testability.
-
-**Phase 1 — `lib/ucc_selection.sh`** (selection/resolution logic):
-- `_resolve_component()` (lines 406–437) — resolves component + auto-includes deps
-- `_resolve_selection()` (lines 442–456) — dispatches component vs target args
-- `_resolve_target()` (lines 394–404) — resolves single target to UCC_TARGET_SET
-- Related state: `_resolved[]`, `UCC_TARGET_SET`, `_MANIFEST_DIR`, `_QUERY_SCRIPT`
-
-**Phase 2 — `lib/ucc_interactive.sh`** (interactive browser):
-- Component/target selection browser (lines 667–750)
-- `_show_menu()`, `_get_comp_targets()`, browse loop
-- Related state: `_BROWSE_COMPS[]`, `_COMP_TARGETS_DATA[]`, `UCC_TARGET_SET`
-
-**Phase 3 — `lib/ucc_display.sh`** (display/plan output):
-- `print_execution_plan()` (lines 1025–1038)
-- `_display_component_name()` (lines 1013–1023)
-- `_collect_layer_components()` (lines 985–1012)
-
-**Expected result:** install.sh drops to ~900 lines. Each lib file
-can be sourced independently and unit-tested.
-
-### Unify batch cache access in `_ucc_yaml_target_get_many`
-
-`_ucc_yaml_target_get_many()` (line 165 in ucc_targets.sh) always
-calls python3 directly, bypassing the pre-loaded `_UCC_YTGT_*` batch
-cache that install.sh populates at startup.
-
-**Call sites that bypass cache:**
-- Line 755: `_ucc_observe_yaml_parametric_target` — observe_cmd, dependency_gate
-- Line 781: `_ucc_evidence_yaml_parametric_target` — observe_cmd
-- Line 801: `_ucc_yaml_parametric_desired_value` — desired_cmd, desired_value
-- Line 921: `_ucc_observe_yaml_runtime_oracle_target` — oracle.configured, oracle.runtime, stopped_*
-
-All these keys are already in `_UCC_YAML_BATCH_KEYS` (install.sh
-line 1099). When the cache is populated, these calls should read from
-it instead of spawning python3.
-
-**Fix:** Make `_ucc_yaml_target_get_many()` check the batch cache
-first (same pattern as `_ucc_yaml_target_get` at line 154), falling
-back to python3 only when uncached.
-
-**Expected result:** 4–8 fewer python3 invocations per component run.
-
-### Fix test suite — 43 failing integration tests (DONE)
-
-All 43 failing tests fixed (2026-04-13). Final: 159 pass, 1 skipped.
-
-**Fixes applied:**
-
-| Cat | Fix | Commits |
-|---|---|---|
-| A | Source correct lib files (npm.sh, ollama_models.sh, vscode_ext.sh, homebrew.sh, pip_group.sh) | `7d5954f` |
-| B | Protect empty arrays with `${arr[@]+"..."}` | `95d78b1`, `9e61110` |
-| C | Update driver kinds (softwareupdate-defaults→setting, brew-formula→brew, brew-service→service) | `7d5954f` |
-| D | Export HOST_PLATFORM=macos in xcode test preambles | `7d5954f` |
-| E | Migrate capability fixtures to driver.kind: capability + driver.probe | `7d5954f` |
-| F | Fix driver dispatch fallthrough, PYTHONPATH for HOME override, stub renames, assertion updates | `7d5954f`, `6afdc7a` |
-
-**Bugs found and fixed during investigation:**
-- `_ucc_run_yaml_action`: non-custom drivers with no action handler blocked YAML actions → fixed with `&& return` fallthrough (`8316b31`)
-- `_ucc_driver_evidence`: driver evidence failure masked by `_ucc_driver_github_latest` → fixed with `|| return 1` (`9034539`)
-- `AI_SERVICES[@]` unbound in `ai_apps.sh` → protected (`7d5954f`)
-- `_write_compose_file` used local `stack_template_rel` (unbound in deferred mode) → use `_AI_APPS_TEMPLATE_FILE` (`6afdc7a`)
-- `sudo -n true` fails inside `$()` subshells on macOS (tty-bound tickets) → detect at startup, cache in `_UCC_SUDO_AVAILABLE` (`12c627a`)
-- `run_elevated` prompted for password in non-interactive mode → use `sudo -n` (`b79b2f5`)
-- `defaults write -bool 1` invalid on macOS (requires true/false) → normalize values (`308ebff`)
-- `softwareupdate --schedule` observe pattern didn't match actual output → fix grep (`274c5ce`)
-- Deprecated driver kinds `desktop-app`, `docker-compose` removed from code + validator (`d185edd`, `631682d`)
-
-**Refactorings applied:**
-- `_ucc_driver_dispatch` hub deduplication (-36 lines) (`6f55222`)
-- Dead desktop-app/docker-compose observe code removal (-129 lines) (`d185edd`)
-- `_ucc_env()` test preamble helper (-69 lines) (`00eb983`)
-- Driver observe/evidence dedup in setting.sh and swupdate_schedule.sh (`5e4a86d`, `1bfeff6`)
-
 ### Docker support on Windows (WSL2) and Linux
 
 Docker currently only runs on macOS (`platforms: [macos]` in
@@ -655,67 +376,6 @@ into external tools. Keep the exported env as small as possible.
 parametric target. A `_cfg_drift` helper would only matter if drivers
 themselves needed to short-circuit on drift before reaching the
 framework. None do. Defer until a driver actually wants this.
-
-### `docker-privileged-ports-available` — vmnetd as a first-class target
-
-Docker Desktop uses `com.docker.vmnetd` (a privileged LaunchDaemon)
-to bind ports below 1024. Since Docker Desktop 4.15, vmnetd is NOT
-installed on first launch — it's installed on-demand when a user
-first enables "Allow privileged port mapping" in Settings > Advanced.
-Without vmnetd, Docker shows a macOS Authorization Services dialog
-that blocks startup in non-interactive mode.
-
-The assisted install prewrite sets `RequireVmnetd: false` to suppress
-this dialog (safe default — all current services use ports >= 1024).
-This target would flip it to `true` and seed vmnetd when needed.
-
-**Target:** `docker-privileged-ports-available`
-
-```yaml
-docker-privileged-ports-available:
-  component: docker
-  profile: configured
-  type: config
-  state_model: parametric
-  display_name: Privileged port mapping
-  depends_on:
-  - docker-desktop
-  - sudo-available
-  driver:
-    kind: custom
-  observe_cmd: docker_privileged_ports_observe
-  desired_cmd: docker_privileged_ports_desired
-  actions:
-    install: docker_privileged_ports_apply
-```
-
-**Observe** (3 conditions, all must be true for "configured"):
-1. Binary exists: `/Library/PrivilegedHelperTools/com.docker.vmnetd`
-2. Launchd service loaded: `launchctl list | grep -q vmnetd`
-3. Settings key: `RequireVmnetd: true` in `settings-store.json`
-
-**Action** (fix whichever condition is missing):
-- Binary missing → seed from Docker.app (existing
-  `_docker_assisted_seed_vmnetd` + `_docker_assisted_extract_launchd_plist`)
-- Binary exists but not loaded → `launchctl bootstrap system ...`
-  (fixes the broken state where binary is present but service crashed)
-- `RequireVmnetd` not set → write to settings via `json_merge.py`
-
-**Dependency pattern:** always dispatched in `run_docker_from_yaml`
-(always try to enable when sudo is available). Services needing
-port < 1024 add `depends_on: docker-privileged-ports-available`.
-
-**Functions already exist:** `_docker_assisted_seed_vmnetd`,
-`_docker_assisted_extract_launchd_plist` in `lib/docker_unattended.sh`.
-Need new: `docker_privileged_ports_observe`,
-`docker_privileged_ports_desired`, `docker_privileged_ports_apply`.
-
-**Key discovery (2026-04-12):** the settings-store.json key that
-controls the dialog is `RequireVmnetd` (found by toggling
-Docker Desktop > Settings > Advanced > "Allow privileged port mapping"
-and diffing the JSON).
-
----
 
 ### Docker Desktop — fully unattended first install on macOS
 
