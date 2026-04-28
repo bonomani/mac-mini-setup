@@ -49,7 +49,7 @@ not specified). Counts are real (`type` distribution per component).
 | `ai-apps` | 16 | 7 | 1 | 7 | 0 |
 | `ai-python-stack` | 25 | 19 | 1 | 2 | 3 |
 | `build-tools` | 3 | 3 | 0 | 0 | 0 |
-| `cli-tools` | 36 | 31 | 5 | 0 | 0 |
+| `cli-tools` | 40 | 35 | 5 | 0 | 0 |
 | `docker` | 5 | 0 | 2 | 2 | 1 |
 | `linux-system` | 3 | 0 | 0 | 0 | 3 |
 | `network-services` | 5 | 1 | 0 | 2 | 2 |
@@ -133,12 +133,13 @@ not specified). Counts are real (`type` distribution per component).
 | `rustup` | `pkg` | `package` | rustup |  |  |
 | `xrdp` | `pkg` | `package` | xrdp | linux,wsl2 |  |
 
-### cli-tools  (36 targets)
+### cli-tools  (40 targets)
 
 | Target | Kind | Type | Display name | requires | depends_on |
 |---|---|---|---|---|---|
 | `ai-healthcheck` | `home-artifact` | `config` | ai-healthcheck |  | `home-bin-in-path` |
 | `cli-aria2` | `pkg` | `package` | aria2 |  |  |
+| `cli-binaryen` | `pkg` | `package` | Binaryen (wasm-opt) |  |  |
 | `cli-btop` | `pkg` | `package` | btop |  |  |
 | `cli-cmake` | `pkg` | `package` | CMake |  |  |
 | `cli-coq` | `pkg` | `package` | Coq proof assistant |  |  |
@@ -152,6 +153,8 @@ not specified). Counts are real (`type` distribution per component).
 | `cli-jq` | `pkg` | `package` | jq |  |  |
 | `cli-just` | `pkg` | `package` | just |  |  |
 | `cli-llama.cpp` | `pkg` | `package` | llama.cpp |  |  |
+| `cli-mold` | `pkg` | `package` | mold linker |  |  |
+| `cli-nasm` | `pkg` | `package` | NASM assembler |  |  |
 | `cli-opencode` | `pkg` | `package` | OpenCode |  |  |
 | `cli-pi` | `pkg` | `package` | Pi Coding Agent |  |  |
 | `cli-pnpm` | `pkg` | `package` | pnpm |  |  |
@@ -159,6 +162,7 @@ not specified). Counts are real (`type` distribution per component).
 | `cli-tmux` | `pkg` | `package` | tmux |  |  |
 | `cli-tree` | `pkg` | `package` | tree |  |  |
 | `cli-uv` | `pkg` | `package` | uv |  |  |
+| `cli-wabt` | `pkg` | `package` | WABT (WebAssembly Binary Toolkit) |  |  |
 | `cli-watchexec` | `pkg` | `package` | watchexec |  |  |
 | `cli-wget` | `pkg` | `package` | wget |  |  |
 | `cli-z3` | `pkg` | `package` | Z3 SMT solver |  |  |
@@ -341,7 +345,7 @@ See [`docs/driver-feature-matrix.md`](driver-feature-matrix.md) — auto-generat
 ## 11. Counts (live)
 
 - Components: **11**
-- Targets: **129**
+- Targets: **133**
 - Distinct driver kinds: **26**
 - Preferences: **7**
 - Gates: **1**
@@ -352,7 +356,7 @@ Top 10 driver kinds by target count:
 
 | Kind | Targets |
 |---|---:|
-| `pkg` | 53 |
+| `pkg` | 57 |
 | `pip` | 16 |
 | `setting` | 12 |
 | `capability` | 11 |

@@ -298,6 +298,50 @@ targets:
       - brew: coq
       - native-pm: coq
       bin: coqc
+  cli-mold:
+    component: cli-tools
+    profile: configured
+    type: package
+    display_name: mold linker
+    driver:
+      kind: pkg
+      backends:
+      - brew: mold
+      - native-pm: mold
+      bin: mold
+  cli-nasm:
+    component: cli-tools
+    profile: configured
+    type: package
+    display_name: NASM assembler
+    driver:
+      kind: pkg
+      backends:
+      - brew: nasm
+      - native-pm: nasm
+      bin: nasm
+  cli-wabt:
+    component: cli-tools
+    profile: configured
+    type: package
+    display_name: WABT (WebAssembly Binary Toolkit)
+    driver:
+      kind: pkg
+      backends:
+      - brew: wabt
+      - native-pm: wabt
+      bin: wat2wasm
+  cli-binaryen:
+    component: cli-tools
+    profile: configured
+    type: package
+    display_name: Binaryen (wasm-opt)
+    driver:
+      kind: pkg
+      backends:
+      - brew: binaryen
+      - native-pm: binaryen
+      bin: wasm-opt
   nftables:
     component: cli-tools
     profile: configured
@@ -436,6 +480,10 @@ cli_tools:
 - cli-watchexec
 - cli-z3
 - cli-coq
+- cli-mold
+- cli-nasm
+- cli-wabt
+- cli-binaryen
 casks:
 - iterm2
 - lm-studio
