@@ -102,6 +102,26 @@ not finished.
 | 73 | ~~Make sourced helpers quiet and side-effect free~~ | ✅ DONE 2026-04-28 (469833a) — wrapped pyenv eval calls in brace group with `2>/dev/null`. | — |
 | 74 | ~~BGS compliance refresh~~ | ✅ DONE 2026-04-28 — BGS entry dates refreshed; decision record date refreshed; compliance report updated from stale 2026-03-28 / 94-target evidence to current validator results (147 targets, generated docs in sync, 166 declaration + 166 result artifacts). Remaining caveat is Docker Checkpoint C, not BGS slice selection. | — |
 
+### 2026-04-28 finding — `_PKG_GH_TAG_CACHE` ineffective across calls
+
+While adding tests for `_pkg_github_latest_tag` (in
+`tests/test_pkg_shared_helpers.py`), the `export _PKG_GH_TAG_CACHE=...`
+inside the function is run from a `$(...)` command substitution at every
+caller (pkg_github / pkg_curl / custom_daemon / nvm). `$(...)` forks a
+subshell, so the export never propagates back to the parent — the cache
+populates inside the subshell, dies with it, and the next call re-hits
+the GitHub API. Pre-seeded caches (set by the parent shell) work fine,
+but the in-process self-population path is dead.
+
+Impact today is low (network latency only), but on outdated-checks
+across many GitHub-tracked targets this means N curl calls instead of
+1 per repo. Fix would change the cache from `export` to a tempfile
+under `$XDG_RUNTIME_DIR` (mirrors the `_BREW_*` disk caches). Out of
+scope for the current refactor sweep — pinning the working pre-seed
+behavior is enough to prevent further drift, and the framework-level
+disk-cache helpers (`_ucc_cache_*`) are the right migration target if
+the network cost ever shows up in profiling.
+
 ### 2026-04-28 BGS compliance audit findings
 
 - **Verdict:** BGS compliance is materially sound for the declared
