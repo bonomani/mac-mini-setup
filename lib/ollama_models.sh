@@ -56,9 +56,9 @@ load_ollama_models_from_yaml() {
 
   ollama_model_cache_list
   for group in "${groups[@]}"; do
-    while IFS= read -r target; do
+    while IFS= read -r -u 3 target; do
       [[ -n "$target" ]] || continue
       ucc_yaml_simple_target "$cfg_dir" "$yaml" "$target"
-    done < <(yaml_list "$cfg_dir" "$yaml" "$group")
+    done 3< <(yaml_list "$cfg_dir" "$yaml" "$group")
   done
 }

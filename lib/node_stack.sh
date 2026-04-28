@@ -27,8 +27,8 @@ run_node_stack_from_yaml() {
   # ---- npm global packages ----
   npm_global_cache_versions
   local _target
-  while IFS= read -r _target; do
+  while IFS= read -r -u 3 _target; do
     [[ -n "$_target" ]] && ucc_yaml_simple_target "$cfg_dir" "$yaml" "$_target"
-  done < <(yaml_list "$cfg_dir" "$yaml" npm_packages)
+  done 3< <(yaml_list "$cfg_dir" "$yaml" npm_packages)
 
 }

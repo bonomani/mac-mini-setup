@@ -9,8 +9,8 @@ run_build_tools_from_yaml() {
   manifest_dir="${UCC_TARGETS_MANIFEST:-$cfg_dir/ucc}"
   ordered="$(python3 "$query_script" --ordered-targets build-tools "$manifest_dir" 2>/dev/null || true)"
 
-  while IFS= read -r target; do
+  while IFS= read -r -u 3 target; do
     [[ -n "$target" ]] || continue
     ucc_yaml_simple_target "$cfg_dir" "$yaml" "$target"
-  done <<< "$ordered"
+  done 3<<< "$ordered"
 }

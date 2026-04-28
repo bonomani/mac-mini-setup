@@ -41,8 +41,8 @@ _vscode_extension_cached_version() {
 load_vscode_extensions_from_yaml() {
   local cfg_dir="$1" yaml="$2" target=""
   vscode_extensions_cache_versions
-  while IFS= read -r target; do
+  while IFS= read -r -u 3 target; do
     [[ -n "$target" ]] || continue
     ucc_yaml_simple_target "$cfg_dir" "$yaml" "$target"
-  done < <(yaml_list "$cfg_dir" "$yaml" vscode_extensions)
+  done 3< <(yaml_list "$cfg_dir" "$yaml" vscode_extensions)
 }

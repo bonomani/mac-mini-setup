@@ -9,7 +9,7 @@ _ucc_driver_path_export_observe() {
   bin_dir="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.bin_dir")"
   shell_profile="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.shell_profile")"
   [[ -n "$bin_dir" && -n "$shell_profile" ]] || return 1
-  if grep -q "export PATH=\"\$HOME/$bin_dir:\$PATH\"" "$HOME/$shell_profile" 2>/dev/null; then
+  if grep -qE "export PATH=\"(\\\$HOME|$HOME)/$bin_dir:\\\$PATH\"" "$HOME/$shell_profile" 2>/dev/null; then
     printf 'configured'
   else
     printf 'absent'

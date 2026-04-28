@@ -167,7 +167,9 @@ _pkg_github_install() {
   [[ -n "$extract" ]] || extract="binary"
 
   local tag version os arch arch_alt
-  tag="$(_pkg_github_latest_tag "$repo")"
+  tag="$(curl -fsS --max-time "$(_ucc_curl_timeout probe)" \
+    "https://api.github.com/repos/${repo}/releases/latest" 2>/dev/null \
+    | awk -F'"' '/"tag_name"/{print $4; exit}')"
   [[ -n "$tag" ]] || { log_warn "github ${repo}: failed to fetch latest tag"; return 1; }
   version="${tag#v}"
   os="$(_pkg_github_os)"
@@ -627,6 +629,7 @@ _ucc_driver_pkg_action() {
   _pkg_load_backends "$cfg_dir" "$yaml" "$target"
   _pkg_select_backend || { log_warn "pkg/${target}: no available backend"; return 1; }
   # Per-backend extras.
+  _PKG_BIN="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.bin" 2>/dev/null || true)"
   _PKG_CURL_ARGS="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.curl_args" 2>/dev/null || true)"
   _PKG_GREEDY="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "driver.greedy_auto_updates" 2>/dev/null || true)"
   _PKG_UPDATE_CLASS="$(_ucc_yaml_target_get "$cfg_dir" "$yaml" "$target" "update_class" 2>/dev/null || true)"

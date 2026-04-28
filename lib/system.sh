@@ -11,7 +11,7 @@ run_system_from_yaml() {
 
   # Probe sudo capability (informational — drivers guard their own actions)
 
-  while IFS= read -r target; do
+  while IFS= read -r -u 3 target; do
     [[ -n "$target" ]] || continue
 
     # system-composition is handled separately at the end
@@ -26,7 +26,7 @@ run_system_from_yaml() {
     # All targets run observe (read-only). Admin targets that need changes
     # will fail gracefully at the driver action level if sudo is unavailable.
     ucc_yaml_parametric_target "$cfg_dir" "$yaml" "$target"
-  done <<< "$ordered"
+  done 3<<< "$ordered"
 
   # Restart UI processes if any defaults changed
   if [[ "$UCC_DRY_RUN" != "1" && ${_UCC_CHANGED:-0} -gt 0 ]]; then

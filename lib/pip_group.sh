@@ -132,10 +132,10 @@ for p in json.load(sys.stdin):
 # Usage: load_pip_groups_from_yaml <cfg_dir> <yaml_path>
 load_pip_groups_from_yaml() {
   local cfg_dir="$1" yaml="$2" target=""
-  while IFS= read -r target; do
+  while IFS= read -r -u 3 target; do
     [[ -n "$target" ]] || continue
     ucc_yaml_simple_target "$cfg_dir" "$yaml" "$target"
-  done < <(yaml_list "$cfg_dir" "$yaml" pip_groups)
+  done 3< <(yaml_list "$cfg_dir" "$yaml" pip_groups)
 }
 
 # Combined runner for ai-python-stack: pip groups + unsloth studio + MPS note.
