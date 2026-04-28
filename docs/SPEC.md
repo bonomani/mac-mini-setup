@@ -49,7 +49,7 @@ not specified). Counts are real (`type` distribution per component).
 | `ai-apps` | 16 | 7 | 1 | 7 | 0 |
 | `ai-python-stack` | 25 | 19 | 1 | 2 | 3 |
 | `build-tools` | 3 | 3 | 0 | 0 | 0 |
-| `cli-tools` | 34 | 29 | 5 | 0 | 0 |
+| `cli-tools` | 36 | 31 | 5 | 0 | 0 |
 | `docker` | 5 | 0 | 2 | 2 | 1 |
 | `linux-system` | 3 | 0 | 0 | 0 | 3 |
 | `network-services` | 5 | 1 | 0 | 2 | 2 |
@@ -133,7 +133,7 @@ not specified). Counts are real (`type` distribution per component).
 | `rustup` | `pkg` | `package` | rustup |  |  |
 | `xrdp` | `pkg` | `package` | xrdp | linux,wsl2 |  |
 
-### cli-tools  (34 targets)
+### cli-tools  (36 targets)
 
 | Target | Kind | Type | Display name | requires | depends_on |
 |---|---|---|---|---|---|
@@ -141,6 +141,7 @@ not specified). Counts are real (`type` distribution per component).
 | `cli-aria2` | `pkg` | `package` | aria2 |  |  |
 | `cli-btop` | `pkg` | `package` | btop |  |  |
 | `cli-cmake` | `pkg` | `package` | CMake |  |  |
+| `cli-coq` | `pkg` | `package` | Coq proof assistant |  |  |
 | `cli-curl` | `pkg` | `package` | curl |  |  |
 | `cli-fd` | `pkg` | `package` | fd |  |  |
 | `cli-fzf` | `pkg` | `package` | fzf |  |  |
@@ -160,6 +161,7 @@ not specified). Counts are real (`type` distribution per component).
 | `cli-uv` | `pkg` | `package` | uv |  |  |
 | `cli-watchexec` | `pkg` | `package` | watchexec |  |  |
 | `cli-wget` | `pkg` | `package` | wget |  |  |
+| `cli-z3` | `pkg` | `package` | Z3 SMT solver |  |  |
 | `firewalld` | `pkg` | `package` | firewalld | linux,wsl2 | `nftables` |
 | `git` | `pkg` | `package` | Git |  |  |
 | `git-global-config` | `git-global` | `config` | Git global config |  | `git` |
@@ -339,7 +341,7 @@ See [`docs/driver-feature-matrix.md`](driver-feature-matrix.md) — auto-generat
 ## 11. Counts (live)
 
 - Components: **11**
-- Targets: **127**
+- Targets: **129**
 - Distinct driver kinds: **26**
 - Preferences: **7**
 - Gates: **1**
@@ -350,7 +352,7 @@ Top 10 driver kinds by target count:
 
 | Kind | Targets |
 |---|---:|
-| `pkg` | 51 |
+| `pkg` | 53 |
 | `pip` | 16 |
 | `setting` | 12 |
 | `capability` | 11 |

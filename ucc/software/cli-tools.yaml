@@ -276,6 +276,28 @@ targets:
       - brew: watchexec
       - native-pm: watchexec
       bin: watchexec
+  cli-z3:
+    component: cli-tools
+    profile: configured
+    type: package
+    display_name: Z3 SMT solver
+    driver:
+      kind: pkg
+      backends:
+      - brew: z3
+      - native-pm: z3
+      bin: z3
+  cli-coq:
+    component: cli-tools
+    profile: configured
+    type: package
+    display_name: Coq proof assistant
+    driver:
+      kind: pkg
+      backends:
+      - brew: coq
+      - native-pm: coq
+      bin: coqc
   nftables:
     component: cli-tools
     profile: configured
@@ -412,6 +434,8 @@ cli_tools:
 - cli-hyperfine
 - cli-just
 - cli-watchexec
+- cli-z3
+- cli-coq
 casks:
 - iterm2
 - lm-studio
