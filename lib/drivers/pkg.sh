@@ -577,7 +577,7 @@ _pkg_load_backends() {
   local cfg_dir="$1" yaml="$2" target="$3"
   _PKG_BE_NAMES=()
   _PKG_BE_REFS=()
-  local out
+  local out name ref
   out="$(python3 - "$cfg_dir" "$yaml" "$target" <<'PY' 2>/dev/null || true
 import sys, yaml, pathlib, re
 cfg_dir, yaml_path, target = sys.argv[1], sys.argv[2], sys.argv[3]

@@ -1415,6 +1415,14 @@ _ucc_check_deps_recursive() {
         "skip" "$(_ucc_display_name "$origin")" "${HOST_PLATFORM:-host}" "$dep"
       return 1
     fi
+    if [[ "$status" == "policy" ]]; then
+      # Dep skipped this run because admin privileges weren't available
+      # (rc=125). Don't run the dependent — its install would fail anyway
+      # without the dep present. Cascade as a clean [skip], not [fail].
+      printf '      [%-8s] %-40s dependency requires admin: %s\n' \
+        "skip" "$(_ucc_display_name "$origin")" "$dep"
+      return 1
+    fi
     if [[ -n "$status" ]]; then
       # Dep ran this session and did not fail; its transitive deps were already
       # validated before it executed — no need to recurse further.
@@ -1561,7 +1569,7 @@ _ucc_execute_target() {
       elif [[ $update_rc -eq 125 ]]; then
         _ucc_emit_target_line "$profile" "policy" "$display_name" \
           "$(_ucc_policy_detail "$name" "$observed" "$desired" "$axes" "$evidence_fn" "admin required")"
-        _ucc_record_outcome "$profile" "$name" "" "unchanged" "unchanged" "$msg_id" "$started_at" \
+        _ucc_record_outcome "$profile" "$name" "" "policy" "unchanged" "$msg_id" "$started_at" \
           "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$desired" "$axes")}" \
           "{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"policy\",\"message\":\"transition requires admin privileges\"}"
       elif [[ "$warn_on_update_failure" == "1" ]]; then
@@ -1616,7 +1624,7 @@ _ucc_execute_target() {
     fi
     _ucc_emit_target_line "$profile" "policy" "$display_name" \
       "$(_ucc_policy_detail "$name" "$observed" "$desired" "$axes" "$evidence_fn" "policy blocked")"
-    _ucc_record_outcome "$profile" "$name" "" "unchanged" "unchanged" "$msg_id" "$started_at" \
+    _ucc_record_outcome "$profile" "$name" "" "policy" "unchanged" "$msg_id" "$started_at" \
       "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$desired" "$axes")}" \
       "{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"policy\",\"message\":\"transition not applied - no install function declared\"}"
     return 0
@@ -1692,7 +1700,7 @@ _ucc_execute_target() {
   elif [[ $action_rc -eq 125 ]]; then
     _ucc_emit_target_line "$profile" "policy" "$display_name" \
       "$(_ucc_policy_detail "$name" "$observed" "$desired" "$axes" "$evidence_fn" "admin required")"
-    _ucc_record_outcome "$profile" "$name" "" "unchanged" "unchanged" "$msg_id" "$started_at" \
+    _ucc_record_outcome "$profile" "$name" "" "policy" "unchanged" "$msg_id" "$started_at" \
       "{\"observed_before\":$(_ucc_state_obj "$observed"),\"diff\":$(_ucc_diff_obj "$observed" "$desired" "$axes")}" \
       "{\"observation\":\"ok\",\"outcome\":\"unchanged\",\"inhibitor\":\"policy\",\"message\":\"transition requires admin privileges\"}"
   fi
