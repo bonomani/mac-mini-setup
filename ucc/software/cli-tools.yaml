@@ -298,6 +298,42 @@ targets:
       - brew: coq
       - native-pm: coq
       bin: coqc
+  cli-clang:
+    component: cli-tools
+    profile: configured
+    type: package
+    display_name: Clang
+    update_class: lib
+    driver:
+      kind: pkg
+      backends:
+      - brew: llvm
+      - native-pm: clang
+      bin: clang
+  cli-llvm:
+    component: cli-tools
+    profile: configured
+    type: package
+    display_name: LLVM
+    update_class: lib
+    driver:
+      kind: pkg
+      backends:
+      - brew: llvm
+      - native-pm: llvm-dev
+      bin: llvm-config
+  cli-lld:
+    component: cli-tools
+    profile: configured
+    type: package
+    display_name: LLD linker
+    update_class: lib
+    driver:
+      kind: pkg
+      backends:
+      - brew: lld
+      - native-pm: lld
+      bin: ld.lld
   cli-mold:
     component: cli-tools
     profile: configured
@@ -609,6 +645,9 @@ cli_tools:
 - cli-watchexec
 - cli-z3
 - cli-coq
+- cli-clang
+- cli-llvm
+- cli-lld
 - cli-mold
 - cli-nasm
 - cli-wabt
