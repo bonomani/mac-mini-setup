@@ -49,7 +49,7 @@ not specified). Counts are real (`type` distribution per component).
 | `ai-apps` | 16 | 7 | 1 | 7 | 0 |
 | `ai-python-stack` | 25 | 19 | 1 | 2 | 3 |
 | `build-tools` | 3 | 3 | 0 | 0 | 0 |
-| `cli-tools` | 44 | 39 | 5 | 0 | 0 |
+| `cli-tools` | 49 | 44 | 5 | 0 | 0 |
 | `docker` | 5 | 0 | 2 | 2 | 1 |
 | `linux-system` | 3 | 0 | 0 | 0 | 3 |
 | `network-services` | 5 | 1 | 0 | 2 | 2 |
@@ -133,17 +133,19 @@ not specified). Counts are real (`type` distribution per component).
 | `rustup` | `pkg` | `package` | rustup |  |  |
 | `xrdp` | `pkg` | `package` | xrdp | linux,wsl2 |  |
 
-### cli-tools  (44 targets)
+### cli-tools  (49 targets)
 
 | Target | Kind | Type | Display name | requires | depends_on |
 |---|---|---|---|---|---|
 | `ai-healthcheck` | `home-artifact` | `config` | ai-healthcheck |  | `home-bin-in-path` |
 | `cli-aria2` | `pkg` | `package` | aria2 |  |  |
 | `cli-b3sum` | `pkg` | `package` | BLAKE3 (b3sum) |  |  |
+| `cli-bazelisk` | `pkg` | `package` | Bazelisk |  | `home-bin-in-path` |
 | `cli-binaryen` | `pkg` | `package` | Binaryen (wasm-opt) |  |  |
 | `cli-btop` | `pkg` | `package` | btop |  |  |
 | `cli-cmake` | `pkg` | `package` | CMake |  |  |
 | `cli-coq` | `pkg` | `package` | Coq proof assistant |  |  |
+| `cli-cosign` | `pkg` | `package` | cosign (Sigstore) |  | `home-bin-in-path` |
 | `cli-curl` | `pkg` | `package` | curl |  |  |
 | `cli-fd` | `pkg` | `package` | fd |  |  |
 | `cli-fzf` | `pkg` | `package` | fzf |  |  |
@@ -155,6 +157,8 @@ not specified). Counts are real (`type` distribution per component).
 | `cli-jq` | `pkg` | `package` | jq |  |  |
 | `cli-just` | `pkg` | `package` | just |  |  |
 | `cli-llama.cpp` | `pkg` | `package` | llama.cpp |  |  |
+| `cli-mdbook` | `pkg` | `package` | mdBook |  | `home-bin-in-path` |
+| `cli-minisign` | `pkg` | `package` | minisign |  | `home-bin-in-path` |
 | `cli-mold` | `pkg` | `package` | mold linker |  |  |
 | `cli-nasm` | `pkg` | `package` | NASM assembler |  |  |
 | `cli-opencode` | `pkg` | `package` | OpenCode |  |  |
@@ -167,6 +171,7 @@ not specified). Counts are real (`type` distribution per component).
 | `cli-tree` | `pkg` | `package` | tree |  |  |
 | `cli-uv` | `pkg` | `package` | uv |  |  |
 | `cli-wabt` | `pkg` | `package` | WABT (WebAssembly Binary Toolkit) |  |  |
+| `cli-wasmtime` | `pkg` | `package` | Wasmtime |  | `home-bin-in-path` |
 | `cli-watchexec` | `pkg` | `package` | watchexec |  |  |
 | `cli-wget` | `pkg` | `package` | wget |  |  |
 | `cli-z3` | `pkg` | `package` | Z3 SMT solver |  |  |
@@ -349,7 +354,7 @@ See [`docs/driver-feature-matrix.md`](driver-feature-matrix.md) — auto-generat
 ## 11. Counts (live)
 
 - Components: **11**
-- Targets: **137**
+- Targets: **142**
 - Distinct driver kinds: **26**
 - Preferences: **7**
 - Gates: **1**
@@ -360,7 +365,7 @@ Top 10 driver kinds by target count:
 
 | Kind | Targets |
 |---|---:|
-| `pkg` | 61 |
+| `pkg` | 66 |
 | `pip` | 16 |
 | `setting` | 12 |
 | `capability` | 11 |

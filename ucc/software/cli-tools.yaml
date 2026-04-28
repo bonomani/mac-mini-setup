@@ -386,6 +386,91 @@ targets:
       - brew: graphviz
       - native-pm: graphviz
       bin: dot
+  cli-cosign:
+    component: cli-tools
+    profile: configured
+    type: package
+    display_name: cosign (Sigstore)
+    depends_on:
+    - home-bin-in-path
+    driver:
+      kind: pkg
+      backends:
+      - brew: cosign
+      - github:
+          repo: sigstore/cosign
+          asset: cosign-{os}-{arch_alt}
+      bin: cosign
+      github_repo: sigstore/cosign
+  cli-minisign:
+    component: cli-tools
+    profile: configured
+    type: package
+    display_name: minisign
+    depends_on:
+    - home-bin-in-path
+    driver:
+      kind: pkg
+      backends:
+      - brew: minisign
+      - github:
+          repo: jedisct1/minisign
+          asset: minisign-{version}-linux.tar.gz
+          extract: tar.gz
+          bin_path_in_archive: minisign-linux/{arch}/minisign
+      bin: minisign
+      github_repo: jedisct1/minisign
+  cli-bazelisk:
+    component: cli-tools
+    profile: configured
+    type: package
+    display_name: Bazelisk
+    depends_on:
+    - home-bin-in-path
+    driver:
+      kind: pkg
+      backends:
+      - brew: bazelisk
+      - github:
+          repo: bazelbuild/bazelisk
+          asset: bazelisk-{os}-{arch_alt}
+      bin: bazelisk
+      github_repo: bazelbuild/bazelisk
+  cli-mdbook:
+    component: cli-tools
+    profile: configured
+    type: package
+    display_name: mdBook
+    depends_on:
+    - home-bin-in-path
+    driver:
+      kind: pkg
+      backends:
+      - brew: mdbook
+      - github:
+          repo: rust-lang/mdBook
+          asset: mdbook-{tag}-{arch}-unknown-linux-gnu.tar.gz
+          extract: tar.gz
+      bin: mdbook
+      github_repo: rust-lang/mdBook
+  cli-wasmtime:
+    component: cli-tools
+    profile: configured
+    type: package
+    display_name: Wasmtime
+    depends_on:
+    - home-bin-in-path
+    driver:
+      kind: pkg
+      backends:
+      - brew: wasmtime
+      - github:
+          repo: bytecodealliance/wasmtime
+          asset: wasmtime-{tag}-{arch}-{os}.tar.xz
+          extract: tar.xz
+          bin_path_in_archive: wasmtime-{tag}-{arch}-{os}/wasmtime
+      bin: wasmtime
+      github_repo: bytecodealliance/wasmtime
   nftables:
     component: cli-tools
     profile: configured
@@ -532,6 +617,11 @@ cli_tools:
 - cli-skopeo
 - cli-pandoc
 - cli-graphviz
+- cli-cosign
+- cli-minisign
+- cli-bazelisk
+- cli-mdbook
+- cli-wasmtime
 casks:
 - iterm2
 - lm-studio

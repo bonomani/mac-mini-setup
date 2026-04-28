@@ -8,7 +8,7 @@ re-run the generator after any driver change.
 
 | Kind | Targets |
 |---|---:|
-| `pkg` | 61 |
+| `pkg` | 66 |
 | `pip` | 16 |
 | `setting` | 12 |
 | `capability` | 11 |
@@ -35,7 +35,7 @@ re-run the generator after any driver change.
 | `softwareupdate-schedule` | 1 |
 | `zsh-config` | 1 |
 
-**137 targets** across **26 distinct kinds**.
+**142 targets** across **26 distinct kinds**.
 
 ## Drivers by file
 
