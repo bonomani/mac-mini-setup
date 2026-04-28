@@ -49,7 +49,7 @@ not specified). Counts are real (`type` distribution per component).
 | `ai-apps` | 16 | 7 | 1 | 7 | 0 |
 | `ai-python-stack` | 25 | 19 | 1 | 2 | 3 |
 | `build-tools` | 3 | 3 | 0 | 0 | 0 |
-| `cli-tools` | 40 | 35 | 5 | 0 | 0 |
+| `cli-tools` | 44 | 39 | 5 | 0 | 0 |
 | `docker` | 5 | 0 | 2 | 2 | 1 |
 | `linux-system` | 3 | 0 | 0 | 0 | 3 |
 | `network-services` | 5 | 1 | 0 | 2 | 2 |
@@ -133,12 +133,13 @@ not specified). Counts are real (`type` distribution per component).
 | `rustup` | `pkg` | `package` | rustup |  |  |
 | `xrdp` | `pkg` | `package` | xrdp | linux,wsl2 |  |
 
-### cli-tools  (40 targets)
+### cli-tools  (44 targets)
 
 | Target | Kind | Type | Display name | requires | depends_on |
 |---|---|---|---|---|---|
 | `ai-healthcheck` | `home-artifact` | `config` | ai-healthcheck |  | `home-bin-in-path` |
 | `cli-aria2` | `pkg` | `package` | aria2 |  |  |
+| `cli-b3sum` | `pkg` | `package` | BLAKE3 (b3sum) |  |  |
 | `cli-binaryen` | `pkg` | `package` | Binaryen (wasm-opt) |  |  |
 | `cli-btop` | `pkg` | `package` | btop |  |  |
 | `cli-cmake` | `pkg` | `package` | CMake |  |  |
@@ -148,6 +149,7 @@ not specified). Counts are real (`type` distribution per component).
 | `cli-fzf` | `pkg` | `package` | fzf |  |  |
 | `cli-gcc` | `pkg` | `package` | GCC |  |  |
 | `cli-gh` | `pkg` | `package` | GitHub CLI |  |  |
+| `cli-graphviz` | `pkg` | `package` | Graphviz |  |  |
 | `cli-htop` | `pkg` | `package` | htop |  |  |
 | `cli-hyperfine` | `pkg` | `package` | hyperfine |  |  |
 | `cli-jq` | `pkg` | `package` | jq |  |  |
@@ -156,9 +158,11 @@ not specified). Counts are real (`type` distribution per component).
 | `cli-mold` | `pkg` | `package` | mold linker |  |  |
 | `cli-nasm` | `pkg` | `package` | NASM assembler |  |  |
 | `cli-opencode` | `pkg` | `package` | OpenCode |  |  |
+| `cli-pandoc` | `pkg` | `package` | Pandoc |  |  |
 | `cli-pi` | `pkg` | `package` | Pi Coding Agent |  |  |
 | `cli-pnpm` | `pkg` | `package` | pnpm |  |  |
 | `cli-ripgrep` | `pkg` | `package` | ripgrep |  |  |
+| `cli-skopeo` | `pkg` | `package` | skopeo |  |  |
 | `cli-tmux` | `pkg` | `package` | tmux |  |  |
 | `cli-tree` | `pkg` | `package` | tree |  |  |
 | `cli-uv` | `pkg` | `package` | uv |  |  |
@@ -345,7 +349,7 @@ See [`docs/driver-feature-matrix.md`](driver-feature-matrix.md) — auto-generat
 ## 11. Counts (live)
 
 - Components: **11**
-- Targets: **133**
+- Targets: **137**
 - Distinct driver kinds: **26**
 - Preferences: **7**
 - Gates: **1**
@@ -356,7 +360,7 @@ Top 10 driver kinds by target count:
 
 | Kind | Targets |
 |---|---:|
-| `pkg` | 57 |
+| `pkg` | 61 |
 | `pip` | 16 |
 | `setting` | 12 |
 | `capability` | 11 |

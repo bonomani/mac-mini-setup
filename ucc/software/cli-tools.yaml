@@ -342,6 +342,50 @@ targets:
       - brew: binaryen
       - native-pm: binaryen
       bin: wasm-opt
+  cli-b3sum:
+    component: cli-tools
+    profile: configured
+    type: package
+    display_name: BLAKE3 (b3sum)
+    driver:
+      kind: pkg
+      backends:
+      - brew: b3sum
+      - native-pm: b3sum
+      bin: b3sum
+  cli-skopeo:
+    component: cli-tools
+    profile: configured
+    type: package
+    display_name: skopeo
+    driver:
+      kind: pkg
+      backends:
+      - brew: skopeo
+      - native-pm: skopeo
+      bin: skopeo
+  cli-pandoc:
+    component: cli-tools
+    profile: configured
+    type: package
+    display_name: Pandoc
+    driver:
+      kind: pkg
+      backends:
+      - brew: pandoc
+      - native-pm: pandoc
+      bin: pandoc
+  cli-graphviz:
+    component: cli-tools
+    profile: configured
+    type: package
+    display_name: Graphviz
+    driver:
+      kind: pkg
+      backends:
+      - brew: graphviz
+      - native-pm: graphviz
+      bin: dot
   nftables:
     component: cli-tools
     profile: configured
@@ -484,6 +528,10 @@ cli_tools:
 - cli-nasm
 - cli-wabt
 - cli-binaryen
+- cli-b3sum
+- cli-skopeo
+- cli-pandoc
+- cli-graphviz
 casks:
 - iterm2
 - lm-studio
