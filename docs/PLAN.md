@@ -163,7 +163,7 @@ backend split. The current refactor priority list is:
    `tests/test_cli_help_wording.py` pins the help text against future
    regressions (plain-vocab present, jargon absent, "target" only in
    example commands).
-2. 🟡 **Split `ucc_targets.sh`** — IN PROGRESS 2026-04-28 (slices 1-2).
+2. 🟡 **Split `ucc_targets.sh`** — IN PROGRESS 2026-04-29 (slices 1-3).
    Largest remaining shell hotspot (1838 LOC). Slice 1 extracted the
    YAML target-field reader + user-override layer into
    `lib/ucc_targets_yaml.sh` (12 funcs, 223 LOC). `ucc_targets.sh`
@@ -173,15 +173,19 @@ backend split. The current refactor priority list is:
    exit 0, 58 ok / 5 skip / 0 fail. Remaining slices (future commits):
    per-profile observe/apply (capability/parametric/runtime), brew
    runtime formula subsystem, registration + execution + flush.
-3. 🟡 **Split `validate_targets_manifest.py`** — IN PROGRESS 2026-04-28
-   (slice 1). Largest Python hotspot (1532 LOC). Slice 1 extracted the
-   condition-parsing block (`_host_match_values`, `_host_named_values`,
-   `_version_compare`, `_eval_single_condition`,
-   `_resolve_conditional_dep`) into `tools/_targets_validator_conditions.py`
-   and re-imports them at the same top-level names in the main module so
-   tests that do `from validate_targets_manifest import _resolve_conditional_dep`
-   keep working unchanged. 1532 → 1429 LOC. Remaining slices: schema
-   rules + driver metadata, dependency graph, canonical ordering, CLI.
+3. 🟡 **Split `validate_targets_manifest.py`** — IN PROGRESS 2026-04-29
+   (slices 1-2). Largest Python hotspot (1532 LOC). Slice 1 extracted
+   condition parsing into `tools/_targets_validator_conditions.py`.
+   Slice 2 extracted schema constants (`KNOWN_PROFILES`,
+   `KNOWN_TARGET_TYPES`, `KNOWN_STATE_MODELS`, `KNOWN_UPDATE_CLASSES`,
+   `KNOWN_PLATFORMS`, `DRIVER_META`, `DRIVER_SCHEMA`,
+   `KNOWN_*_DRIVERS`, `CANONICAL_TARGET_KEY_ORDER`,
+   `CANONICAL_TARGET_KEY_RANK`) into `tools/_targets_validator_schema.py`.
+   Both modules re-import their symbols into the main file at the same
+   top-level names so existing test imports
+   (`from validate_targets_manifest import DRIVER_SCHEMA`,
+   `KNOWN_UPDATE_CLASSES`, `_resolve_conditional_dep`) keep working
+   unchanged. 1532 → 1271 LOC.
 4. 🟡 **Split `utils.sh`** — IN PROGRESS 2026-04-28 (slice 1). 937 LOC.
    Slice 1 extracted disk-cache helpers (`_ucc_cache_dir`, `_ucc_cache_path`,
    `_ucc_cache_fresh`, `_ucc_cache_read`, `_ucc_cache_write`,
@@ -190,9 +194,13 @@ backend split. The current refactor priority list is:
    (brew livecheck, pip outdated, etc.) keep working unchanged.
    937 → 858 LOC. Remaining slices: capability probes, migration safety,
    endpoint helpers, framework-Python setup.
-5. **Reduce `install.sh`** — move dispatch construction, YAML batch
-   preload, and component execution plumbing into libraries so
-   `install.sh` is mostly CLI entrypoint and top-level orchestration.
+5. 🟡 **Reduce `install.sh`** — IN PROGRESS 2026-04-29 (slice 1).
+   Slice 1 extracted `_run_comp` + `_run_layer` (component / layer
+   dispatch, 64 LOC) into `lib/run_components.sh`, sourced from
+   `install.sh` just before the top-level `_run_layer` calls. Bash
+   dynamic scoping means the lib still reads install.sh-scoped
+   variables (`DIR`, `_QUERY_SCRIPT`, `FAILED_COMPONENTS[]`,
+   `_DISP_*`, `_comp_prelude`) at call time. install.sh 793 → 730 LOC.
 6. 🟡 **Refactor `uic.sh`** — IN PROGRESS 2026-04-28 (slice 1).
    Slice 1 extracted YAML loaders (`load_uic_gates`,
    `load_uic_preferences`, `_uic_unquote_scalar`,
