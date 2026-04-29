@@ -163,7 +163,7 @@ backend split. The current refactor priority list is:
    `tests/test_cli_help_wording.py` pins the help text against future
    regressions (plain-vocab present, jargon absent, "target" only in
    example commands).
-2. 🟡 **Split `ucc_targets.sh`** — IN PROGRESS 2026-04-29 (slices 1-4).
+2. 🟡 **Split `ucc_targets.sh`** — IN PROGRESS 2026-04-29 (slices 1-5).
    Largest remaining shell hotspot (1838 LOC). Slice 1 extracted the
    YAML target-field reader + user-override layer into
    `lib/ucc_targets_yaml.sh` (12 funcs, 223 LOC). `ucc_targets.sh`
