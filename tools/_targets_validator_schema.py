@@ -37,7 +37,7 @@ _DRIVER_META_STATIC = {
     "nvm-version":           ("nvm",            "nvm"),
     "service":               (None,             None),  # backend-aware, see lib/drivers/service.sh
     "pkg":                   (None,             None),  # backend-aware, see lib/drivers/pkg.sh
-    "docker-compose-service":("docker-desktop", "docker-compose"),
+    "docker-compose-service":("docker-available", "docker-compose"),
     "git-repo":              (None,             "git"),
 }
 

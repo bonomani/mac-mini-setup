@@ -197,7 +197,7 @@ _ucc_driver_service_provided_by() {
   case "${_SVC_BACKEND:-}" in brew) printf 'brew' ;; launchd) printf 'launchd' ;; esac
 }
 
-_ucc_driver_docker_compose_service_depends_on()  { printf 'docker-desktop'; }
+_ucc_driver_docker_compose_service_depends_on()  { printf 'docker-available'; }
 _ucc_driver_docker_compose_service_provided_by() { printf 'docker-compose'; }
 
 # git-repo
