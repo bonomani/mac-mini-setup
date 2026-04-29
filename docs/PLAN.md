@@ -163,7 +163,7 @@ backend split. The current refactor priority list is:
    `tests/test_cli_help_wording.py` pins the help text against future
    regressions (plain-vocab present, jargon absent, "target" only in
    example commands).
-2. 🟡 **Split `ucc_targets.sh`** — IN PROGRESS 2026-04-29 (slices 1-3).
+2. 🟡 **Split `ucc_targets.sh`** — IN PROGRESS 2026-04-29 (slices 1-4).
    Largest remaining shell hotspot (1838 LOC). Slice 1 extracted the
    YAML target-field reader + user-override layer into
    `lib/ucc_targets_yaml.sh` (12 funcs, 223 LOC). `ucc_targets.sh`
@@ -186,14 +186,15 @@ backend split. The current refactor priority list is:
    (`from validate_targets_manifest import DRIVER_SCHEMA`,
    `KNOWN_UPDATE_CLASSES`, `_resolve_conditional_dep`) keep working
    unchanged. 1532 → 1271 LOC.
-4. 🟡 **Split `utils.sh`** — IN PROGRESS 2026-04-28 (slice 1). 937 LOC.
-   Slice 1 extracted disk-cache helpers (`_ucc_cache_dir`, `_ucc_cache_path`,
-   `_ucc_cache_fresh`, `_ucc_cache_read`, `_ucc_cache_write`,
-   `_ucc_cache_invalidate`, `_ucc_cache_invalidate_glob`) into
-   `lib/utils_cache.sh`, sourced from utils.sh top so consumers
-   (brew livecheck, pip outdated, etc.) keep working unchanged.
-   937 → 858 LOC. Remaining slices: capability probes, migration safety,
-   endpoint helpers, framework-Python setup.
+4. 🟡 **Split `utils.sh`** — IN PROGRESS 2026-04-29 (slices 1-2).
+   Slice 1: disk-cache helpers → `lib/utils_cache.sh`.
+   Slice 2: preferred-driver migration safety policy
+   (`_assess_migration_safety`, `_migration_safety_*`,
+   `brew_cask_migrate_install`, `cli_install_source`,
+   `_preferred_driver_ignore_add`, `handle_unmanaged_brew_package`)
+   into `lib/utils_migration.sh`, sourced from utils.sh after the
+   config-backup helpers so consumers keep working unchanged.
+   937 → 657 LOC.
 5. 🟡 **Reduce `install.sh`** — IN PROGRESS 2026-04-29 (slice 1).
    Slice 1 extracted `_run_comp` + `_run_layer` (component / layer
    dispatch, 64 LOC) into `lib/run_components.sh`, sourced from
