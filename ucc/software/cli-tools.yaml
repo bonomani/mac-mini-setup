@@ -297,7 +297,7 @@ targets:
     driver:
       kind: pkg
       backends:
-      - brew: cvc5
+      - brew-cask: cvc5/cvc5/cvc5
       - github:
           repo: cvc5/cvc5
           asset: cvc5-Linux-{arch}-static.zip
@@ -313,7 +313,7 @@ targets:
     driver:
       kind: pkg
       backends:
-      - brew: coq
+      - brew: rocq
       - native-pm: coq
       bin: coqc
   cli-clang:
