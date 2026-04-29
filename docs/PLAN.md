@@ -203,12 +203,11 @@ backend split. The current refactor priority list is:
    dynamic scoping means the lib still reads install.sh-scoped
    variables (`DIR`, `_QUERY_SCRIPT`, `FAILED_COMPONENTS[]`,
    `_DISP_*`, `_comp_prelude`) at call time. install.sh 793 → 730 LOC.
-6. 🟡 **Refactor `uic.sh`** — IN PROGRESS 2026-04-28 (slice 1).
-   Slice 1 extracted YAML loaders (`load_uic_gates`,
-   `load_uic_preferences`, `_uic_unquote_scalar`,
-   `_uic_parse_prefs_from_yaml`) into `lib/uic_yaml.sh` (176 LOC),
-   sourced from `uic.sh` after the gate/preference engine so loaders
-   keep calling `uic_gate` / `uic_preference` unchanged. 648 → 477 LOC.
+6. 🟡 **Refactor `uic.sh`** — IN PROGRESS 2026-04-29 (slices 1-2).
+   Slice 1: YAML loaders → `lib/uic_yaml.sh` (176 LOC).
+   Slice 2: global-state display + hard-gate abort
+   (`uic_global_state_label`, `uic_global_state_detail`,
+   `abort_on_global_hard_gate`) → `lib/uic_state.sh`. 648 → 444 LOC.
 7. **Archive / slim `docs/PLAN.md`** — keep active plan current and
    move old investigations/stale sketches into `docs/archive/`.
 8. 🟡 **Test helper consolidation** — IN PROGRESS 2026-04-28.
