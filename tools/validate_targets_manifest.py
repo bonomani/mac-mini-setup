@@ -284,6 +284,7 @@ from _targets_validator_depgraph import (  # noqa: E402
     _target_soft_dep_targets,
     _target_order_union,
     _effective_target_deps,
+    component_order,
 )
 
 
@@ -768,49 +769,6 @@ def validate(manifest, known_gates):
         errors.append(f"dependency cycle detected among: {', '.join(remaining)}")
 
     return errors, ordered
-
-
-def component_order(manifest, topo_ordered=None):
-    """Return components in an order consistent with target dependencies.
-
-    Builds a component-level dependency graph by inspecting which component
-    owns each target's depends_on entries, then runs Kahn's topo sort on
-    components.  Ties are broken alphabetically for determinism.
-    """
-    targets = manifest["targets"]
-    components = list(manifest["components"].keys())
-
-    # Build component → set-of-component-deps from target depends_on edges
-    comp_deps = {c: set() for c in components}
-    comp_graph = defaultdict(list)
-    comp_indegree = {c: 0 for c in components}
-
-    for tname, tdata in targets.items():
-        comp = tdata.get("component")
-        if not comp or comp not in comp_deps:
-            continue
-        for dep_target in _target_order_union(tdata):
-            dep_comp = targets.get(dep_target, {}).get("component")
-            if dep_comp and dep_comp != comp and dep_comp not in comp_deps[comp]:
-                comp_deps[comp].add(dep_comp)
-                comp_graph[dep_comp].append(comp)
-                comp_indegree[comp] += 1
-
-    queue = sorted(c for c, deg in comp_indegree.items() if deg == 0)
-    ordered = []
-    while queue:
-        node = queue.pop(0)
-        ordered.append(node)
-        children = sorted(comp_graph[node])
-        for child in children:
-            comp_indegree[child] -= 1
-            if comp_indegree[child] == 0:
-                queue.append(child)
-                queue.sort()
-    for c in components:
-        if c not in ordered:
-            ordered.append(c)
-    return ordered
 
 
 def main():

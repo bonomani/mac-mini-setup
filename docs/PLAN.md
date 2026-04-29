@@ -174,7 +174,7 @@ backend split. The current refactor priority list is:
    per-profile observe/apply (capability/parametric/runtime), brew
    runtime formula subsystem, registration + execution + flush.
 3. 🟡 **Split `validate_targets_manifest.py`** — IN PROGRESS 2026-04-29
-   (slices 1-3). Largest Python hotspot (1532 LOC).
+   (slices 1-4). Largest Python hotspot (1532 LOC).
    - Slice 1: condition parsing → `tools/_targets_validator_conditions.py`.
    - Slice 2: schema constants (`KNOWN_*`, `DRIVER_META`,
      `DRIVER_SCHEMA`, `CANONICAL_TARGET_KEY_ORDER`, etc.) →
@@ -184,9 +184,11 @@ backend split. The current refactor priority list is:
      `_driver_provided_by`, `_target_dep_union`,
      `_target_soft_dep_targets`, `_target_order_union`,
      `_effective_target_deps`) → `tools/_targets_validator_depgraph.py`.
-   All three sub-modules re-import their symbols into the main file at
-   the same top-level names so existing test imports keep working
-   unchanged. 1532 → 1145 LOC.
+   - Slice 4: `component_order` (Kahn topo-sort over component DAG)
+     joined the depgraph module since it consumes `_target_order_union`.
+   All sub-modules re-import their symbols into the main file at the
+   same top-level names so existing test imports keep working unchanged.
+   1532 → 1103 LOC.
 4. 🟡 **Split `utils.sh`** — IN PROGRESS 2026-04-29 (slices 1-2).
    Slice 1: disk-cache helpers → `lib/utils_cache.sh`.
    Slice 2: preferred-driver migration safety policy
