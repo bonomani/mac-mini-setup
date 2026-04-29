@@ -174,18 +174,19 @@ backend split. The current refactor priority list is:
    per-profile observe/apply (capability/parametric/runtime), brew
    runtime formula subsystem, registration + execution + flush.
 3. 🟡 **Split `validate_targets_manifest.py`** — IN PROGRESS 2026-04-29
-   (slices 1-2). Largest Python hotspot (1532 LOC). Slice 1 extracted
-   condition parsing into `tools/_targets_validator_conditions.py`.
-   Slice 2 extracted schema constants (`KNOWN_PROFILES`,
-   `KNOWN_TARGET_TYPES`, `KNOWN_STATE_MODELS`, `KNOWN_UPDATE_CLASSES`,
-   `KNOWN_PLATFORMS`, `DRIVER_META`, `DRIVER_SCHEMA`,
-   `KNOWN_*_DRIVERS`, `CANONICAL_TARGET_KEY_ORDER`,
-   `CANONICAL_TARGET_KEY_RANK`) into `tools/_targets_validator_schema.py`.
-   Both modules re-import their symbols into the main file at the same
-   top-level names so existing test imports
-   (`from validate_targets_manifest import DRIVER_SCHEMA`,
-   `KNOWN_UPDATE_CLASSES`, `_resolve_conditional_dep`) keep working
-   unchanged. 1532 → 1271 LOC.
+   (slices 1-3). Largest Python hotspot (1532 LOC).
+   - Slice 1: condition parsing → `tools/_targets_validator_conditions.py`.
+   - Slice 2: schema constants (`KNOWN_*`, `DRIVER_META`,
+     `DRIVER_SCHEMA`, `CANONICAL_TARGET_KEY_ORDER`, etc.) →
+     `tools/_targets_validator_schema.py`.
+   - Slice 3: dep-graph helpers (`PKG_BACKEND_META`,
+     `_pkg_backend_names`, `_driver_implicit_dep[s_all]`,
+     `_driver_provided_by`, `_target_dep_union`,
+     `_target_soft_dep_targets`, `_target_order_union`,
+     `_effective_target_deps`) → `tools/_targets_validator_depgraph.py`.
+   All three sub-modules re-import their symbols into the main file at
+   the same top-level names so existing test imports keep working
+   unchanged. 1532 → 1145 LOC.
 4. 🟡 **Split `utils.sh`** — IN PROGRESS 2026-04-29 (slices 1-2).
    Slice 1: disk-cache helpers → `lib/utils_cache.sh`.
    Slice 2: preferred-driver migration safety policy
