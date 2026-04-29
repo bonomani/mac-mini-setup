@@ -7,7 +7,7 @@ source "${BASH_SOURCE[0]%/*}/utils_cache.sh"
 # Ensure brew is in PATH for every component subshell (Apple Silicon / Intel)
 for _bp in /opt/homebrew/bin/brew /usr/local/bin/brew /home/linuxbrew/.linuxbrew/bin/brew; do
   if [[ -x "$_bp" ]] && ! command -v brew &>/dev/null; then
-    eval "$("$_bp" shellenv)"
+    eval "$("$_bp" shellenv 2>/dev/null)" 2>/dev/null
     break
   fi
 done
