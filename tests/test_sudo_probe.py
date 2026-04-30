@@ -4,7 +4,9 @@ Mirrors the operator's empirical check:
 
     sudo -k; sudo -v && sudo -n true; echo "rc=$?"   # rc=0 on a healthy host
 
-Stubs `sudo` so we can assert each branch without touching real sudo.
+Stubs `sudo` so we can assert each branch without touching real sudo,
+and records `sudo -v` invocations in a marker file so we can prove the
+non-interactive gate prevents prompts.
 """
 from __future__ import annotations
 
@@ -28,18 +30,31 @@ def _extract_probe() -> str:
 PROBE = _extract_probe()
 
 
-def _run(stub_body: str) -> tuple[int, str]:
+# Stub that fails `sudo -n true` and records every other invocation
+# (e.g. `sudo -v`) into $MARKER. Must be a single-line bash body.
+RECORDING_STUB = (
+    '[[ "$1" == "-n" && "$2" == "true" ]] && exit 1; '
+    'printf "%s\\n" "$*" >>"$MARKER"; exit 0'
+)
+
+
+def _run(stub_body: str, env_extra: dict[str, str] | None = None) -> tuple[int, str]:
     script = (
         "set -u\n"
         'd=$(mktemp -d)\n'
+        'export MARKER="$d/sudo.calls"\n'
+        ': >"$MARKER"\n'
         'printf "%s\\n" "#!/bin/bash" ' + repr(stub_body) + ' >"$d/sudo"\n'
         'chmod +x "$d/sudo"\n'
         'export PATH="$d:$PATH"\n'
         + PROBE +
         '_ucc_sudo_probe\n'
         'echo "FLAG=${_UCC_SUDO_AVAILABLE:-unset}"\n'
+        'echo "CALLS=$(wc -l <"$MARKER" | tr -d " ")"\n'
+        'cat "$MARKER"\n'
     )
-    return bash_in_repo(script)
+    env = env_extra or {}
+    return bash_in_repo(script, env=env)
 
 
 class SudoProbeTests(unittest.TestCase):
@@ -49,10 +64,11 @@ class SudoProbeTests(unittest.TestCase):
         self.assertEqual(rc, 0, out)
         self.assertIn("FLAG=1", out)
 
-    def test_silent_fail_no_tty_sets_flag_zero(self):
-        # `sudo -n true` fails and no /dev/tty in the test env → flag=0.
-        # bash_in_repo runs under subprocess.run without a tty, so the
-        # `[[ -c /dev/tty ]]` branch is also false.
-        rc, out = _run("exit 1")
+    def test_no_interactive_skips_tty_prompt(self):
+        # Silent probe fails. Without UCC_INTERACTIVE=1 the probe MUST NOT
+        # invoke `sudo -v` (would prompt the operator). Flag stays 0.
+        rc, out = _run(RECORDING_STUB)
         self.assertEqual(rc, 0, out)
         self.assertIn("FLAG=0", out)
+        self.assertIn("CALLS=0", out)
+
