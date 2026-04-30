@@ -530,12 +530,14 @@ _ucc_sudo_probe() {
 _ucc_sudo_probe
 
 _ucc_sudo_refresh() {
-  [[ "${_UCC_SUDO_AVAILABLE:-0}" == "1" ]] || return 0
-  # Silent-only validation. Never prompt mid-run: a password prompt
-  # surprises the operator and can hang non-interactive automation.
-  # If the ticket has expired, clear the flag and let admin_required
-  # targets surface as [policy] — the operator can re-run with sudo.
-  sudo -n true 2>/dev/null || export _UCC_SUDO_AVAILABLE=0
+  # No-op: trust the flag set by _ucc_sudo_probe at startup.
+  # `sudo -n true` was observed to fail in this main shell on some macOS
+  # configurations even when the ticket is still valid in the parent
+  # interactive shell, which used to wrongly clear the flag here and
+  # surprise-skip admin targets as [policy]. If the ticket genuinely
+  # expires mid-run, run_elevated's own `sudo -n` will surface the
+  # failure at the action site instead of silently downgrading earlier.
+  return 0
 }
 
 # Warm Brew caches before any component runs. Version caches are needed in all
