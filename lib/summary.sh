@@ -205,6 +205,10 @@ print_final_summary() {
   echo "  ──────────────────────────────────────────────────────"
   echo "  Declarations: $UCC_DECLARATION_FILE"
   echo "  Results:      $UCC_RESULT_FILE"
+  if [[ -n "${UCC_RUN_START_EPOCH:-}" ]]; then
+    local _dur=$(( $(date +%s) - UCC_RUN_START_EPOCH ))
+    printf '  Finished:     %s  (%dm %ds)\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$((_dur/60))" "$((_dur%60))"
+  fi
   echo "========================================================"
   echo ""
 }

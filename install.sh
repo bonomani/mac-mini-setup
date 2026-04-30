@@ -557,7 +557,8 @@ _ram_label="${TOTAL_GB} GB"; [[ $TOTAL_GB -ge 32 ]] && _ram_label="${TOTAL_GB} G
 
 echo "========================================================"
 _hdr_flags="mode=$UCC_MODE"; [[ "$UCC_DRY_RUN" == "1" ]] && _hdr_flags="$_hdr_flags dry_run=1"
-echo "  AI Workstation Setup | platform=${HOST_PLATFORM} | $_hdr_flags | $(date '+%Y-%m-%d %H:%M')"
+export UCC_RUN_START_EPOCH=$(date +%s)
+echo "  AI Workstation Setup | platform=${HOST_PLATFORM} | $_hdr_flags | started $(date '+%Y-%m-%d %H:%M:%S')"
 echo "  $_arch_label  ·  $_ram_label"
 echo "  Global State     | $(uic_global_state_label) ($(uic_global_state_detail))"
 print_layer_contracts
