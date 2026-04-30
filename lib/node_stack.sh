@@ -21,6 +21,9 @@ run_node_stack_from_yaml() {
   ucc_yaml_simple_target "$cfg_dir" "$yaml" "node-lts"
   [[ -s "$NVM_DIR/nvm.sh" ]] && nvm use "$_NODE_VER" >/dev/null 2>&1 || true
 
+  # ---- Enable corepack shims (pnpm/yarn) bundled with Node ----
+  ucc_yaml_simple_target "$cfg_dir" "$yaml" "corepack-enabled"
+
   # ---- Ensure brew's node is never on PATH ----
   ucc_yaml_simple_target "$cfg_dir" "$yaml" "brew-node-unlinked"
 
