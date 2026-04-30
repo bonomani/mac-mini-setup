@@ -531,19 +531,16 @@ _ucc_sudo_probe
 
 _ucc_sudo_refresh() {
   [[ "${_UCC_SUDO_AVAILABLE:-0}" == "1" ]] || return 0
-  # sudo -v in the main shell (foreground, with tty) refreshes the ticket.
-  # If the ticket expired and can't be renewed, clear the flag so
-  # admin_required targets get [policy] instead of [fail].
-  # Try silent renewal first (works when ticket is still valid). Fall back
-  # to an interactive renewal if a tty is available — needed on macOS with
-  # TouchID-for-sudo, where `sudo -v -n` always fails.
-  if ! sudo -v -n 2>/dev/null; then
-    if [[ -c /dev/tty ]] && sudo -v </dev/tty; then
-      :
-    else
-      export _UCC_SUDO_AVAILABLE=0
-    fi
+  # Validate the ticket without trying to extend it. `sudo -v -n` on macOS
+  # often re-prompts even when the ticket is still valid (it extends the
+  # timestamp), which would interrupt every component. `sudo -n true` only
+  # checks that the ticket is usable.
+  sudo -n true 2>/dev/null && return 0
+  # Ticket is gone. Try one interactive seeding if a tty is available.
+  if [[ -c /dev/tty ]] && sudo -v </dev/tty; then
+    return 0
   fi
+  export _UCC_SUDO_AVAILABLE=0
 }
 
 # Warm Brew caches before any component runs. Version caches are needed in all
