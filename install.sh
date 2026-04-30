@@ -531,16 +531,11 @@ _ucc_sudo_probe
 
 _ucc_sudo_refresh() {
   [[ "${_UCC_SUDO_AVAILABLE:-0}" == "1" ]] || return 0
-  # Validate the ticket without trying to extend it. `sudo -v -n` on macOS
-  # often re-prompts even when the ticket is still valid (it extends the
-  # timestamp), which would interrupt every component. `sudo -n true` only
-  # checks that the ticket is usable.
-  sudo -n true 2>/dev/null && return 0
-  # Ticket is gone. Try one interactive seeding if a tty is available.
-  if [[ -c /dev/tty ]] && sudo -v </dev/tty; then
-    return 0
-  fi
-  export _UCC_SUDO_AVAILABLE=0
+  # Silent-only validation. Never prompt mid-run: a password prompt
+  # surprises the operator and can hang non-interactive automation.
+  # If the ticket has expired, clear the flag and let admin_required
+  # targets surface as [policy] — the operator can re-run with sudo.
+  sudo -n true 2>/dev/null || export _UCC_SUDO_AVAILABLE=0
 }
 
 # Warm Brew caches before any component runs. Version caches are needed in all
