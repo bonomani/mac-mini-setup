@@ -28,6 +28,15 @@ targets:
       kind: nvm-version
       version: ${node_version}
       nvm_dir: ${nvm_dir}
+  corepack-enabled:
+    component: node-stack
+    profile: configured
+    type: config
+    display_name: Corepack shims
+    depends_on:
+    - node-lts
+    driver:
+      kind: corepack
   brew-node-unlinked:
     component: node-stack
     profile: configured

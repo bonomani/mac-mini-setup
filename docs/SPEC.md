@@ -53,7 +53,7 @@ not specified). Counts are real (`type` distribution per component).
 | `docker` | 5 | 0 | 2 | 2 | 1 |
 | `linux-system` | 3 | 0 | 0 | 0 | 3 |
 | `network-services` | 5 | 1 | 0 | 2 | 2 |
-| `node-stack` | 6 | 5 | 1 | 0 | 0 |
+| `node-stack` | 7 | 5 | 2 | 0 | 0 |
 | `software-bootstrap` | 5 | 3 | 1 | 0 | 1 |
 | `system` | 15 | 0 | 14 | 0 | 1 |
 | `vscode-stack` | 10 | 8 | 2 | 0 | 0 |
@@ -220,11 +220,12 @@ not specified). Counts are real (`type` distribution per component).
 | `mdns-available` | `capability` | `capability` | mDNS/Bonjour |  |  |
 | `networkquality-available` | `capability` | `capability` | networkQuality | macos |  |
 
-### node-stack  (6 targets)
+### node-stack  (7 targets)
 
 | Target | Kind | Type | Display name | requires | depends_on |
 |---|---|---|---|---|---|
 | `brew-node-unlinked` | `brew-unlink` | `config` | Brew node unlinked | macos | `node-lts` |
+| `corepack-enabled` | `corepack` | `config` | Corepack shims |  | `node-lts` |
 | `node-lts` | `nvm-version` | `package` | Node.js LTS |  |  |
 | `npm-global-@anthropic-ai/claude-code` | `pkg` | `package` | Claude Code CLI |  | `node-lts` |
 | `npm-global-@openai/codex` | `pkg` | `package` | Codex CLI |  | `node-lts` |
@@ -359,8 +360,8 @@ See [`docs/driver-feature-matrix.md`](driver-feature-matrix.md) — auto-generat
 ## 11. Counts (live)
 
 - Components: **11**
-- Targets: **147**
-- Distinct driver kinds: **26**
+- Targets: **148**
+- Distinct driver kinds: **27**
 - Preferences: **7**
 - Gates: **1**
 - TIC tests: **23**

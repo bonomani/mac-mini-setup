@@ -22,6 +22,7 @@ re-run the generator after any driver change.
 | `build-deps` | 1 |
 | `compose-apply` | 1 |
 | `compose-file` | 1 |
+| `corepack` | 1 |
 | `custom-daemon` | 1 |
 | `git-global` | 1 |
 | `git-repo` | 1 |
@@ -35,7 +36,7 @@ re-run the generator after any driver change.
 | `softwareupdate-schedule` | 1 |
 | `zsh-config` | 1 |
 
-**147 targets** across **26 distinct kinds**.
+**148 targets** across **27 distinct kinds**.
 
 ## Drivers by file
 
@@ -47,6 +48,7 @@ re-run the generator after any driver change.
 | `build_deps.sh` | `build-deps` | ✅ | ✅ | — | ✅ | — | — | — |
 | `compose_apply.sh` | `compose-apply` | ✅ | ✅ | — | ✅ | — | — | — |
 | `compose_file.sh` | `compose-file` | ✅ | ✅ | — | ✅ | — | — | — |
+| `corepack.sh` | `corepack` | ✅ | ✅ | — | ✅ | — | — | — |
 | `custom_daemon.sh` | `custom-daemon` | ✅ | ✅ | — | ✅ | ✅ | — | — |
 | `docker_compose_service.sh` | `docker-compose-service` | ✅ | — | — | ✅ | — | — | — |
 | `git_global.sh` | `git-global` | ✅ | ✅ | — | ✅ | — | — | — |
@@ -76,7 +78,7 @@ re-run the generator after any driver change.
 | `vscode.sh` | `json-merge` | ✅ | ✅ | ✅ | ✅ | — | — | — |
 | `zsh_config.sh` | `zsh-config` | ✅ | ✅ | — | ✅ | — | — | — |
 
-**34 driver files**, of which 23 export at least one driver kind. The other 11 host helper functions only.
+**35 driver files**, of which 24 export at least one driver kind. The other 11 host helper functions only.
 
 ## `pkg` backends in detail
 

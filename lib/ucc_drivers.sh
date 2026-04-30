@@ -37,6 +37,7 @@ for _ucc_drv_file in \
   "$_UCC_DRIVERS_DIR/zsh_config.sh" \
   "$_UCC_DRIVERS_DIR/path_export.sh" \
   "$_UCC_DRIVERS_DIR/brew_unlink.sh" \
+  "$_UCC_DRIVERS_DIR/corepack.sh" \
   "$_UCC_DRIVERS_DIR/git_global.sh" \
   ; do
   [[ -f "$_ucc_drv_file" ]] && source "$_ucc_drv_file"

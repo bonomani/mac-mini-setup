@@ -49,6 +49,7 @@ FAKE_DRIVER_FIELDS = {
     "brew":                    {"ref": "xyz-smoke-nonexistent-formula"},
     "brew-analytics":          {},
     "brew-unlink":             {"formula": "xyz-smoke-nonexistent"},
+    "corepack":                {},
     "build-deps":              {},
     "compose-apply":           {"path_env": "XYZ_SMOKE_NONEXISTENT"},
     "compose-file":            {"path_env": "XYZ_SMOKE_NONEXISTENT"},
