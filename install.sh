@@ -513,11 +513,10 @@ fi
 _ucc_sudo_probe() {
   if sudo -n true 2>/dev/null; then
     export _UCC_SUDO_AVAILABLE=1
-  elif [[ -c /dev/tty ]]; then
-    # macOS with TouchID-for-sudo (pam_tid in /etc/pam.d/sudo) makes `sudo -n`
-    # fail even right after `sudo -v`, since non-interactive can't auth via
-    # TouchID. Prompt once on the controlling tty to seed/extend the ticket
-    # so admin_required targets can converge.
+  elif [[ -c /dev/tty && "${UCC_INTERACTIVE:-0}" == "1" ]]; then
+    # Interactive mode + tty: prompt once to seed the ticket so
+    # admin_required targets can converge. --no-interactive skips this
+    # branch on purpose so CI runs never block on a password.
     if sudo -v </dev/tty; then
       export _UCC_SUDO_AVAILABLE=1
     else
