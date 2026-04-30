@@ -508,19 +508,41 @@ fi
 # Keepalive: sudo -v in a background subshell can't refresh the
 # ticket (subshells lose tty context on macOS). Instead, we refresh
 # the ticket inline before each component via _ucc_sudo_refresh.
-if sudo -n true 2>/dev/null; then
-  export _UCC_SUDO_AVAILABLE=1
-else
-  export _UCC_SUDO_AVAILABLE=0
-fi
+# Probe sudo and export _UCC_SUDO_AVAILABLE. Extracted so tests can stub
+# sudo and exercise each branch (silent ok / tty fallback / no tty).
+_ucc_sudo_probe() {
+  if sudo -n true 2>/dev/null; then
+    export _UCC_SUDO_AVAILABLE=1
+  elif [[ -c /dev/tty ]]; then
+    # macOS with TouchID-for-sudo (pam_tid in /etc/pam.d/sudo) makes `sudo -n`
+    # fail even right after `sudo -v`, since non-interactive can't auth via
+    # TouchID. Prompt once on the controlling tty to seed/extend the ticket
+    # so admin_required targets can converge.
+    if sudo -v </dev/tty; then
+      export _UCC_SUDO_AVAILABLE=1
+    else
+      export _UCC_SUDO_AVAILABLE=0
+    fi
+  else
+    export _UCC_SUDO_AVAILABLE=0
+  fi
+}
+_ucc_sudo_probe
 
 _ucc_sudo_refresh() {
   [[ "${_UCC_SUDO_AVAILABLE:-0}" == "1" ]] || return 0
   # sudo -v in the main shell (foreground, with tty) refreshes the ticket.
   # If the ticket expired and can't be renewed, clear the flag so
   # admin_required targets get [policy] instead of [fail].
+  # Try silent renewal first (works when ticket is still valid). Fall back
+  # to an interactive renewal if a tty is available — needed on macOS with
+  # TouchID-for-sudo, where `sudo -v -n` always fails.
   if ! sudo -v -n 2>/dev/null; then
-    export _UCC_SUDO_AVAILABLE=0
+    if [[ -c /dev/tty ]] && sudo -v </dev/tty; then
+      :
+    else
+      export _UCC_SUDO_AVAILABLE=0
+    fi
   fi
 }
 
