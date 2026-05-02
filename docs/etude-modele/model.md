@@ -298,7 +298,8 @@ doesn't match its capability family is a modeling error.
 | `binary/*`, `app-bundle/*`, `package-manager/*`, `python-package/*`, `node-package/*`, `app-extension/*`, `ai-model/*` | `after_install` (persistent) |
 | `config-file/*`, `os-setting/*` | `after_config` (persistent) |
 | `daemon/*`, `socket/*`, `http-endpoint/*`, `compose-stack/*`, `docker-service/*` | `running` (ephemeral — withdrawn when stopped) |
-| `capability/*`, `preflight/*`, `verification/*`, `managed-resource-status/*` | `always` (observation-only) |
+| `capability/*`, `preflight/*`, `verification/*` | `always` (observation-only — declared by the user) |
+| `managed-resource-status/*` | `always` — **auto-emitted by the engine for every managed resource; do not declare manually**. Verification tests `require` these to read a resource's most recent Operation outcome. |
 | `platform/*`, `arch/*`, `os_id/*`, `os_version/*`, `init-system/*`, `hardware-accel/*` | `always` + `external: true` (immutable host facts — engine cannot ever influence) |
 | `package-manager-available/*`, `shell/*`, `network-connectivity/*` | `always` (host-observed state — may flip as a side-effect of other resources converging; do **not** set `external`) |
 
