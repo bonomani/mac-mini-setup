@@ -583,5 +583,8 @@ follow-up:
    `consumes.args` and the operations its providers must implement)?
    Yes is cleaner; no is simpler. See "driver-as-capability-op"
    discussion in design notes.
-2. **Migration / compatibility view** of v3 element_types and relation_types
-   over this model — needed to keep existing tooling working.
+
+The v3 → canonical-model migration mapping (formerly open question #2)
+is now in [compat.md](compat.md), which lists every v3 element_type,
+relation_type, and resource field with its disposition (`kept` /
+`collapsed` / `removed`) and migration recipe.
