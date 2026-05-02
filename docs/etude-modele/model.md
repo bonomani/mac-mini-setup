@@ -711,115 +711,139 @@ allowed; for those, expose the value as a capability instead.
 input known before validation. Once a `RunSession` starts, every
 resource has a frozen, fully-substituted shape.
 
-## The substrate stack: hardware + host
+## The substrate stack: hosts and the substrate they stand on
 
-The "host" is part of a **substrate stack** of resources, each with a
-specific role:
+Every place that runs userland code — a Mac install, a Linux VM, an
+Ubuntu container — is modeled as a **host** (`kind: aggregator`). The
+only thing that distinguishes them is **what kind of substrate they
+stand on**.
 
-```
-[hardware]                ← provides "a place to run"; bare-metal has no requires; virtual requires a virtualization platform
-   ↑ requires "machine substrate"
-[host]                    ← OS-level aggregator; consumes hardware facts; contains members
-   ├── provides: OS facts (platform, init-system, shells, ...)
-   └── members: every other managed resource
-         └── one of those may be a virtualization platform → starts a NESTED stack
-```
+There are exactly **three substrate flavors**:
 
-### Hardware
+| Substrate | Capability the host requires | Provided by | Own kernel? | Own hardware? |
+|---|---|---|---|---|
+| Bare-metal | `machine-substrate` | a `hardware/<id>` resource (`kind: observe`) | yes | yes (real) |
+| Virtualized | `machine-substrate` | a `hardware/<vm-id>` resource (`kind: custom`, configurable) which itself requires a `virtualization-platform/<name>` | yes | yes (virtual, configurable) |
+| Containerized | `container-runtime/<name>` | a host member that runs the runtime daemon (e.g. docker-desktop) | **no** (shared with parent) | no |
 
-Hardware is a **substrate resource** that PROVIDES "a place to run" and
-the facts about that place (cpu cores, ram, accel, virtualization
-markers). It does not aggregate other resources.
+That's the whole taxonomy. A container is a host with a different
+substrate edge — not a separate concept.
+
+### Hardware (only present when the host owns its kernel)
+
+Hardware is a separate resource ONLY for hosts with their own kernel.
+Containers skip the hardware layer entirely.
 
 | Variant | Requires | Provides | Has config axis? |
 |---|---|---|---|
-| Bare-metal | (nothing — bottom of the stack) | machine substrate + hw facts (cpu-cores, ram-bytes, hardware-accel, …) | no — physical hardware can't be configured by the engine |
-| Virtual | a `virtualization-platform/<name>` capability (provided by Docker, VMware, Parallels, …) | machine substrate + hw facts (typically smaller cpu/ram, plus `virtualization: <hypervisor>`) | yes — operator can set allocated cores, RAM, disk |
+| Bare-metal | nothing (bottom of the world) | `machine-substrate` + facts (cpu-cores, ram-bytes, hardware-accel, …) | no |
+| Virtual | a `virtualization-platform/<name>` capability (when running) | `machine-substrate` + facts (configurable cpu/ram/disk, `virtualization: <hypervisor>`) | yes |
 
-Bare-metal example:
 ```yaml
+# Bare-metal hardware
 id: hardware/mac-mini-m2
 driver: { kind: observe, fn: { name: probe_hardware } }
-# requires: (none — bottom of the stack)
 provides:
   - { capability: { type: machine-substrate, scope: host, external: true } }
-  - { capability: { type: cpu-cores, name: count, scope: host, qualifiers: { value: 10 }, external: true } }
-  - { capability: { type: ram-bytes, name: total, scope: host, qualifiers: { value: 68719476736 }, external: true } }
-  - { capability: { type: hardware-accel, name: mps, scope: host, external: true } }
-  - { capability: { type: virtualization, name: none, scope: host, external: true } }
-```
+  - { capability: { type: cpu-cores,     name: count, scope: host, qualifiers: { value: 10 },          external: true } }
+  - { capability: { type: ram-bytes,     name: total, scope: host, qualifiers: { value: 68719476736 }, external: true } }
+  - { capability: { type: hardware-accel, name: mps,  scope: host, external: true } }
 
-Virtual example:
-```yaml
-id: hardware/docker-vm                                # the Linux VM Docker Desktop runs
+# Virtual hardware (the Linux VM Docker Desktop conjures)
+id: hardware/docker-vm
+component: docker-desktop                              # member of the platform that creates it
 driver:
-  kind: custom                                         # has a config axis
+  kind: custom
   axes:
     config:
       desired: { cpu_cores: 4, ram_bytes: 17179869184, disk_bytes: 214748364800 }
       observe: docker_vm_resources_observe
       apply:   { drifted: docker_vm_resources_apply }
 requires:
-  - { capability: virtualization-platform/docker, strength: hard }   # needs Docker as the hypervisor
+  - { capability: virtualization-platform/docker, strength: hard, when: running }   # the VM only exists when the platform is live
 provides:
   - { capability: { type: machine-substrate, scope: vm } }
-  - { capability: { type: cpu-cores, name: count, qualifiers: { value: 4 } } }
-  - { capability: { type: ram-bytes, name: total, qualifiers: { value: 17179869184 } } }
-  - { capability: { type: virtualization, name: docker } }
+  - { capability: { type: cpu-cores, name: count, scope: vm, qualifiers: { value: 4 } } }
 ```
 
-The legacy `docker-resources` resource is exactly this pattern: it
-configures the virtual hardware that Docker Desktop runs.
+The legacy `docker-resources` resource IS exactly the virtual-hardware
+pattern.
 
-### Host
-
-Host is a **`kind: aggregator` resource** that requires a hardware
-substrate and contains the OS-level managed resources. It's the
-convention name for the OS layer.
+### Host (always an aggregator)
 
 ```yaml
-id: host                                               # convention: top-level OS layer
+id: host                                               # convention: top-level OS
 driver: { kind: aggregator }
 requires:
-  - { capability: machine-substrate, strength: hard }  # I run on hardware
+  - { capability: machine-substrate, strength: hard }  # picks bare-metal OR virtual hardware
 provides:
-  # Own observations — OS-level facts
   - { capability: { type: platform,    name: macos | linux | wsl2,    scope: host, external: true } }
   - { capability: { type: os_id,       name: <id>,                     scope: host, external: true } }
   - { capability: { type: os_version,  name: <semver>,                 scope: host, external: true } }
   - { capability: { type: init-system, name: launchd | systemd | none, scope: host, external: true } }
   - { capability: { type: shell,       name: zsh | bash,               scope: user } }
-  # Observed state — may flip as members converge
   - { capability: { type: package-manager-available, name: brew | apt | dnf | pacman | winget, scope: host } }
-  # Plus (implicitly): every capability that any contained resource provides.
-# members: every other managed resource references this host via its `component:` field.
+  # Plus (implicitly via aggregation): every capability that any member provides.
 ```
 
-### Recursion (nested stacks)
+A **container host** swaps the substrate requirement:
 
-A managed resource that's a virtualization platform (Docker Desktop,
-Parallels, VMware) PROVIDES a `virtualization-platform/<name>`
-capability. That capability is REQUIRED by virtual hardware → which
-provides a substrate → which is required by a guest host → which
-contains its own members. **A nested substrate stack.**
+```yaml
+id: host/ollama-container
+component: ai-stack-compose
+driver:
+  kind: aggregator
+  parameters:
+    image:   { type: string, default: "ollama/ollama:latest" }
+    command: { type: string, default: "ollama serve" }
+requires:
+  - { capability: container-runtime/docker, strength: hard, when: running }   # the substrate (no machine-substrate — kernel is shared)
+provides:
+  - { capability: { type: platform, name: linux, scope: container } }
+  - { capability: { type: ollama-running, scope: container }, when: running }
+```
+
+Same `kind: aggregator`. Same member shape. Just a different substrate
+edge.
+
+### Recursion: VM nesting and container nesting
+
+A managed resource that runs containers or VMs (Docker Desktop, VMware,
+Parallels, podman, …) provides one or both of:
+
+- `virtualization-platform/<name>` — lets a `hardware/<vm-id>` resource
+  exist, kicking off a nested (hardware → host) stack
+- `container-runtime/<name>` — lets a `host/<container-id>` resource
+  exist directly (no nested hardware, kernel is shared)
 
 ```
-hardware/mac-mini-m2                            ← bare-metal, no requires
+hardware/mac-mini-m2                              ← bare-metal — provides machine-substrate
    ↑
-host (kind: aggregator)                         ← bare-metal OS
-   ├── homebrew, cli-tools, ...                 ← members
-   └── docker-desktop                           ← provides: virtualization-platform/docker
-        ↑
-        hardware/docker-vm                      ← virtual; configurable
-            ↑
-            host/docker-linux (kind: aggregator) ← Linux guest OS
-                ├── ai-stack-compose-running    ← provides: container-runtime/<...>
-                └── ...
+host  (kind: aggregator, macOS, kernel owner)
+   ├── homebrew, cli-tools, …
+   ├── docker-desktop                              ← when running, provides BOTH
+   │     ├─ virtualization-platform/docker
+   │     └─ container-runtime/docker
+   │
+   ├── hardware/docker-vm                          ← VM nesting: requires virt-platform
+   │     ↑                                            (own kernel — needs hardware)
+   │     └── host/docker-linux                     ← Linux guest, kind: aggregator
+   │
+   └── ai-stack-compose                            ← (just an aggregator on macOS)
+         ├── host/ollama-container                 ← container nesting: requires runtime
+         │     └── ollama-model-llama3                (no hardware — shared kernel)
+         └── host/open-webui-container
 ```
 
-Each stack is just (hardware → host) where:
-- Hardware is observe-only (bare-metal) or has a config axis (virtual)
-- Host is the aggregator that contains everything else
+Two nesting shapes from the same building block:
+
+| Nesting | Substrate edge | Adds a `hardware/...`? | Member of |
+|---|---|---|---|
+| **Virtualization** | `virtualization-platform/<name>` | yes (`hardware/<vm-id>`) | the platform resource |
+| **Containerization** | `container-runtime/<name>` | no | usually an aggregator on the parent host |
+
+Containers ARE hosts (full userland installs) — they just don't own
+their kernel, so they skip the hardware layer.
 
 ### Probing — recursive AND partial
 
@@ -833,15 +857,17 @@ probe(resource):
   return facts as the resource's provides
 ```
 
-But probes are **partially blind**:
+But probes are **partially blind** — substrate boundaries (kernel
+boundary for VMs, namespace boundary for containers) restrict
+visibility:
 
 | Direction | Visibility |
 |---|---|
-| Host → its members (containers, services) | usually yes (list, status) |
-| Container → host above it | partial (cgroup detection; can't see siblings) |
-| Hypervisor → VM internals | typically no (opaque from outside) |
-| Guest OS in a VM → hypervisor that runs it | partial (DMI tables hint, but not full picture) |
-| Sibling containers / VMs | usually no (isolation is the point) |
+| Parent host → its direct members (services, daemons, containers it lists) | usually yes (list, status) |
+| Parent host → guest host across a `virtualization-platform` edge (VM internals) | typically no (opaque; need a probe inside the guest) |
+| Parent host → guest host across a `container-runtime` edge (container internals) | partial (the runtime API exposes some state; the guest's filesystem/processes need an exec) |
+| Guest host → parent host above it | partial (DMI hints for VMs; cgroup/`/.dockerenv` hints for containers; can't see siblings) |
+| Sibling guests (VM↔VM, container↔container) | none (isolation is the point) |
 
 Probes that can't determine a value report it absent rather than
 guessing. The engine treats absence as "not provided." A capability
