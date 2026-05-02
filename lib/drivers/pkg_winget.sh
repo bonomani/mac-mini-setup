@@ -39,14 +39,19 @@ _pkg_winget_install() {
   out="$(ucc_run $wcmd install --id "$1" --exact --accept-source-agreements --accept-package-agreements --silent 2>&1)"
   rc=$?
   if [[ $rc -ne 0 ]]; then
-    printf '%s\n' "$out" >&2
     # winget rc=20 (and locale-translated "no package matches" output) ⇒ not
     # available on this host's configured sources. Treat as policy/availability
     # rather than fail so the run summary reflects "skip" not FAILED.
+    # Skip the raw-output dump in this case — emitting localized strings
+    # like "Aucun package ne correspond..." plus winget's TTY progress
+    # indicator (which doesn't render in captured form) is just noise.
+    # The clean log_warn below carries all the useful info.
     if [[ $rc -eq 20 ]] || printf '%s' "$out" | grep -qiE 'no package|aucun package|kein paket|nessun pacchetto|ningún paquete|没有'; then
       log_warn "winget: package '$1' not found in configured sources — treating as unavailable (admin required to add source)"
       return 125
     fi
+    # Genuine failure — dump captured output for diagnostics
+    printf '%s\n' "$out" >&2
     return 1
   fi
   printf '%s\n' "$out"
@@ -57,11 +62,11 @@ _pkg_winget_update() {
   out="$(ucc_run $wcmd upgrade --id "$1" --exact --accept-source-agreements --accept-package-agreements --silent 2>&1)"
   rc=$?
   if [[ $rc -ne 0 ]]; then
-    printf '%s\n' "$out" >&2
     if [[ $rc -eq 20 ]] || printf '%s' "$out" | grep -qiE 'no package|aucun package|kein paket|nessun pacchetto|ningún paquete|没有'; then
       log_warn "winget: package '$1' not found in configured sources — treating as unavailable"
       return 125
     fi
+    printf '%s\n' "$out" >&2
     return 1
   fi
   printf '%s\n' "$out"
