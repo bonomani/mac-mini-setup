@@ -1042,17 +1042,26 @@ ucc_target_service()    { _ucc_target_with_default_profile runtime    "$@"; }
 
 ucc_skip_target() {
   _ucc_target_filtered_out "$1" && return 0
-  local name="$1" reason="$2"
+  # Optional 3rd arg distinguishes two semantically different skips:
+  #   --satisfied  → dep IS present, runner just isn't going to manage it
+  #                  (e.g. "code already in PATH", "externally installed").
+  #                  Dependents should proceed normally — record status
+  #                  "satisfied-external" which is hidden from the deps
+  #                  line AND does NOT trigger cascade-skip.
+  #   (default)    → dep is missing/unavailable for runner-specific reasons
+  #                  (e.g. "code not available", "install manually"). Record
+  #                  status "skipped" — cascade propagates to dependents.
+  local name="$1" reason="$2" mode="${3:-missing}"
   local display_name
   display_name="$(_ucc_display_name "$name")"
   printf '      [%-8s] %-40s %s\n' "skip" "$display_name" "$reason"
   _UCC_SKIPPED=$(( ${_UCC_SKIPPED:-0} + 1 ))
   _UCC_EMITTED_TARGETS="${_UCC_EMITTED_TARGETS}|${name}|"
-  # Record a status so dependents reading deps don't see this as "=unknown"
-  # in their evidence line. The runner skipped this for a host/runner-
-  # specific reason (e.g. "externally installed", "not available on Linux") —
-  # filtered out of the deps line by _ucc_dependency_evidence.
-  _ucc_record_target_status "$name" "skipped"
+  if [[ "$mode" == "--satisfied" ]]; then
+    _ucc_record_target_status "$name" "satisfied-external"
+  else
+    _ucc_record_target_status "$name" "skipped"
+  fi
 }
 
 # ── ucc_summary — write per-component counts to summary file ──────────────────

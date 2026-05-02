@@ -205,7 +205,7 @@ _ucc_deps_for_target() {
 # Returns 0 if the status should be hidden.
 _ucc_dep_status_hidden() {
   case "$1" in
-    requires-skipped|platform-skipped|disabled|skipped|warn|policy) return 0 ;;
+    requires-skipped|platform-skipped|disabled|skipped|satisfied-external|warn|policy) return 0 ;;
     *) return 1 ;;
   esac
 }

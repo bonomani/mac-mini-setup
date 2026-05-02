@@ -22,9 +22,13 @@ run_vscode_from_yaml() {
     ucc_yaml_simple_target "$cfg_dir" "$yaml" "vscode-code-cmd"
   else
     if is_installed code; then
-      ucc_skip_target "vscode" "externally installed"
-      ucc_skip_target "vscode-code-cmd" "code already in PATH"
+      # Dep IS present — pass --satisfied so dependents (vscode-settings,
+      # all extensions) proceed normally instead of cascade-skipping.
+      ucc_skip_target "vscode" "externally installed" --satisfied
+      ucc_skip_target "vscode-code-cmd" "code already in PATH" --satisfied
     else
+      # Dep is missing — leave default "skipped" status so dependents
+      # cascade-skip cleanly.
       ucc_skip_target "vscode" "install VS Code manually on Linux"
       ucc_skip_target "vscode-code-cmd" "code not available"
     fi
