@@ -36,6 +36,41 @@ Every resource has exactly this shape. There is no `element_type`
 discrimination — what a resource does is determined by its `driver.kind`
 and the capabilities it provides.
 
+### Promotion / demotion lifecycle
+
+"Managed" and "unmanaged" are not static categories. Every resource
+sits on a continuum of engine responsibility, and its position can
+change over time:
+
+```
+fact (host-published)            ←  capability comes from `Host` resource
+   ↑↓
+external-provider                 ←  capability `external: true`,
+                                     observed via `kind: observe`
+   ↑↓
+unmanaged resource                ←  has provides + observe; no axes
+   ↑↓
+managed resource                  ←  has axes + driver; engine drives convergence
+```
+
+A resource is **promoted** by adding an `axes` block (the engine starts
+managing what was only observed). It is **demoted** by removing axes
+(the engine stops managing; the capability still publishes if the
+observation passes).
+
+Examples:
+- `python-venv-available` is currently unmanaged (observe-only). It
+  could be promoted to managed if we wanted the engine to install
+  Python venv.
+- A future host where Homebrew is operator-installed could see
+  `homebrew` demoted to a capability check.
+- Platform facts (`platform/macos`) are never managed — they live at
+  the top of the ladder as host-published.
+
+The model accepts movement along this ladder without breaking
+consumers, because `consumes(X)` only cares that `X` is published, not
+which level of the ladder published it.
+
 ```yaml
 resource:
   id:           <string>                                # required, globally unique
@@ -117,7 +152,28 @@ capability:
   name?:            <string>                            # specific identifier within the type
   capability_scope: host | user | component | container | service | external
   qualifiers?:      { version?, port?, scheme?, host?, path?, ... }
+  external?:        bool                                # true = host-published / OS-shipped (not engine-managed)
 ```
+
+`external: true` marks a capability the engine observes but cannot
+control — typically host facts (`platform/macos`) or OS-shipped
+binaries the engine doesn't own. The resolver prefers
+non-`external` providers when both can satisfy a `consumes`, since
+external capabilities can disappear without engine-visible cause.
+
+### Capability families and their typical axis subscription
+
+Each `capability_type` namespace implies which axes a provider must
+have. A `provides` whose `when_axes` doesn't match its capability
+family is a modeling error.
+
+| Capability namespace | Required `when_axes` |
+|---|---|
+| `binary/*`, `app-bundle/*`, `package-manager/*`, `python-package/*`, `node-package/*`, `app-extension/*`, `ai-model/*` | `[install]` |
+| `config-file/*`, `os-setting/*` | `[config]` |
+| `daemon/*`, `socket/*`, `http-endpoint/*`, `compose-stack/*` | `[install, run]` (or `[run]` if install is delegated to a sibling resource) |
+| `capability/*`, `preflight/*`, `verification/*`, `managed-resource-status/*` | `[]` (omit `when_axes`; observation-only) |
+| `platform/*`, `arch/*`, `os_id/*`, `os_version/*`, `init-system/*`, `package-manager-available/*`, `hardware-accel/*`, `shell/*` | `[]` + `external: true` (host-published) |
 
 ### Matching rule (consumes ↔ provides)
 
@@ -261,11 +317,12 @@ driver:
       recover?:  <fn>
       evidence?: { type: <evidence_type>, fields: { ... } }
     config?:
-      desired:   <value> | { command: <fn> }
-      observe:   <fn>
-      apply:     { drifted?: <fn> }
-      recover?:  <fn>
-      evidence?: { type, fields }
+      desired:          <value> | { command: <fn> }
+      observe:          <fn>
+      apply:            { drifted?: <fn> }
+      merge_semantics?: replace | shallow-merge | deep-merge | append    # default: replace
+      recover?:         <fn>
+      evidence?:        { type, fields }
     run?:
       desired:   running | stopped
       observe:   <fn>
@@ -273,6 +330,17 @@ driver:
       recover?:  <fn>
       evidence?: { type, fields }
 ```
+
+`merge_semantics` (config axis only) tells the engine how a write
+combines with the live value. Without it, two resources writing the
+same file silently overwrite each other.
+
+| Value | Behavior | Used by |
+|---|---|---|
+| `replace` | overwrite entirely (default) | `setting`, `defaults`, `pmset` |
+| `shallow-merge` | top-level key-by-key | shell rc files |
+| `deep-merge` | recursive | `json-merge` (VS Code settings) |
+| `append` | add to existing list | `path-export` |
 
 ### Hooks (any kind)
 
@@ -409,7 +477,7 @@ operation:                                      # one per (resource × axis × s
   observed:       <evidence>
   desired:        <value>
   branch_taken:   absent | outdated | drifted | to_running | to_stopped | topology_diff | none
-  outcome:        ok | changed | failed | skip | dry-run
+  outcome:        ok | changed | failed | warn | policy | skip | disabled | dry-run
   inhibitor?:     dry-run | policy | admin | user | no-install-fn | preflight-gate | drift | already-converged
   evidence:       { ... }
 ```
@@ -417,6 +485,40 @@ operation:                                      # one per (resource × axis × s
 Every managed resource implicitly publishes a `managed-resource-status/<id>`
 capability whose latest value is the most recent operation outcome.
 Verification tests consume these.
+
+### Outcome ↔ driver exit-code contract
+
+Drivers communicate their outcome to the engine via process exit code:
+
+| Exit code | Outcome | Meaning |
+|---|---|---|
+| 0 | `ok` or `changed` | converged successfully (changed flag separately reported) |
+| 1 | `failed` | driver crashed or aborted before convergence |
+| 2 | `warn` | converged but a diagnostic was emitted |
+| 124 | `warn` | converged with policy warning (operator-suppressible) |
+| 125 | `policy` | inhibited by operator policy (admin denied, gated, …) |
+
+`skip`, `disabled`, and `dry-run` outcomes are set by the engine
+*before* the driver runs (no exit code involved).
+
+### Operation phases (per-operation lifecycle)
+
+Each `operation` proceeds through these phases internally — distinct
+from the session phases above. The session's `apply` phase (#6) fans
+out into many operations, each going through their own micro-phases:
+
+| Phase | What runs | Produces |
+|---|---|---|
+| `declare` | the resource shape is loaded and validated | `Operation` record with `desired` populated |
+| `observe` | `driver.axes.<axis>.observe` (or `driver.observe`) | `observed` evidence |
+| `diff` | engine compares `observed` vs `desired` | `branch_taken` |
+| `apply` | `driver.axes.<axis>.apply.<branch>` | exit code → `outcome` |
+| `verify` | re-run observe; confirm desired now matches observed | confirmation |
+| `recover` | only if apply failed: `driver.axes.<axis>.recover` | recovery outcome |
+| `record` | engine writes evidence to `RunArtifact` | persisted `Operation` |
+
+`recover` and `record` always run for an operation that entered
+`apply`, whether it succeeded or not.
 
 ### Phase ordering
 
