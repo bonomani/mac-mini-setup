@@ -137,6 +137,42 @@ capability:
 A consumer that wants to accept multiple scopes must declare multiple
 `consumes` entries (one per scope). Determinism over expressiveness.
 
+### Provider selection (when multiple providers match)
+
+When a `consumes(X)` matches multiple `provides(X)`, the planner picks
+exactly one provider per resolution rule, in order:
+
+1. **Filter by condition.** Drop any `consumes` entry whose
+   `condition` evaluates false against the live `HostContext`. Drop
+   any `provides` whose `condition` evaluates false.
+2. **Filter by qualifier match** (the matching rule above).
+3. **Pick highest `priority`** among surviving candidates. Default
+   priority is 0.
+4. **Tie-break** by `consumes` declaration order (first wins).
+
+**Operator-level preference** ("always prefer brew over native-pm on
+this host") is expressed using the existing primitives — no new element
+class:
+
+- The component declares a typed `parameter` (e.g. `pm: { type: enum,
+  options: [brew, native-pm], default: brew, source: operator-cli }`).
+- Each consumer's `consumes` carries a `condition: { fact: pm, eq: brew }`.
+- Operator overrides via `--set pm=native-pm` (resolved at substitution
+  time, see § Parameter substitution).
+
+For preferences that **must** apply uniformly without each consumer
+declaring the condition, expose the chosen provider as a
+`Host`-published capability (e.g. `package-manager-selected/brew`) and
+have all consumers consume that abstract capability. The mapping from
+operator input to the published capability lives in one place (the host
+preference resolver), not in every consumer.
+
+Two mechanisms — per-consumer condition + abstract host-published
+capability — are deliberately the only ones. A separate `Preference`
+element class was considered and rejected: it would duplicate either
+component parameters (for input) or capabilities (for the resolved
+choice).
+
 ## Axes
 
 Every action the engine performs is on one of three state axes:
@@ -532,7 +568,5 @@ follow-up:
    `consumes.args` and the operations its providers must implement)?
    Yes is cleaner; no is simpler. See "driver-as-capability-op"
    discussion in design notes.
-2. **Operator-level provider preference** beyond per-consumer `priority`.
-   May warrant a top-level `Preference` resource.
-3. **Migration / compatibility view** of v3 element_types and relation_types
+2. **Migration / compatibility view** of v3 element_types and relation_types
    over this model — needed to keep existing tooling working.
