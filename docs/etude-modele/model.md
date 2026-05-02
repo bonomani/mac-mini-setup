@@ -649,12 +649,21 @@ out into many operations, each going through their own micro-phases:
 | `observe` | `driver.axes.<axis>.observe` (or `driver.observe`) | `observed` evidence |
 | `diff` | engine compares `observed` vs `desired` | `branch_taken` |
 | `apply` | `driver.axes.<axis>.apply.<branch>` | exit code → `outcome` |
-| `verify` | re-run observe; confirm desired now matches observed | confirmation |
+| `confirm` | re-run observe; check desired now matches observed | confirmation |
 | `recover` | only if apply failed: `driver.axes.<axis>.recover` | recovery outcome |
 | `record` | engine writes evidence to `RunArtifact` | persisted `Operation` |
 
 `recover` and `record` always run for an operation that entered
 `apply`, whether it succeeded or not.
+
+> **`confirm` vs `verify` — disambiguation**: the operation's per-Operation
+> `confirm` phase is the engine's **self-check** after apply (re-runs
+> observe to make sure the action committed). The session-level
+> **`verify` phase** (#7 below) is different: it runs `verification-test`
+> resources — independent post-convergence proof tests that consume
+> `managed-resource-status/*` capabilities and provide `verification/*`
+> capabilities. They were both called "verify" in earlier drafts; the
+> per-operation phase is now `confirm` to keep them distinct.
 
 ### Phase ordering
 
