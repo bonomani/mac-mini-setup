@@ -458,21 +458,18 @@ ucc_yaml_simple_target() {
 # ── _ucc_record_outcome — shared emit+count+record for all outcome paths ───────
 # Usage: _ucc_record_outcome <profile> <name> <COUNTER|""> <target_status> \
 #                             <summary_status> <msg_id> <started_at> <diff_json> <result_json>
-# COUNTER: CONVERGED | CHANGED | FAILED | "" (unchanged / dry-run paths)
+# COUNTER: CONVERGED | CHANGED | FAILED | "" (let registry decide from target_status)
 #
-# When COUNTER is "" we still bump a category counter based on
-# target_status so the summary's totals match the visible status lines:
-#   policy / warn → _UCC_POLICY (operator-actionable: admin required, blocked-by-policy)
-#   anything else with empty COUNTER → no bump (e.g. unchanged, dry-run paths)
+# When the caller passes an explicit COUNTER it wins (e.g. an update path that
+# transitions a target from absent→installed wants CHANGED even though
+# target_status="ok"). When COUNTER is empty the central status registry
+# (lib/ucc_status.sh:_UCC_STATUS_COUNTER) maps target_status → counter, so
+# the policy/warn/skip statuses bump SKIPPED or POLICY without each branch
+# of the giant outcome switch having to remember to do it.
 _ucc_record_outcome() {
   local _p="$1" _n="$2" _ctr="$3" _tst="$4" _sst="$5" _mid="$6" _sat="$7" _dif="$8" _res="$9"
-  if [[ -n "$_ctr" ]]; then
-    eval "_UCC_${_ctr}=\$(( _UCC_${_ctr} + 1 ))"
-  else
-    case "$_tst" in
-      policy|warn) _UCC_POLICY=$(( ${_UCC_POLICY:-0} + 1 )) ;;
-    esac
-  fi
+  [[ -z "$_ctr" ]] && _ctr="$(_ucc_status_counter "$_tst")"
+  [[ -n "$_ctr" ]] && eval "_UCC_${_ctr}=\$(( _UCC_${_ctr} + 1 ))"
   _ucc_record_profile_summary "$_p" "$_sst"
   _ucc_record_target_status "$_n" "$_tst"
   local _dur; _dur=$(_ucc_duration_ms "$_sat")
@@ -586,8 +583,13 @@ _ucc_target_oracle_configured() {
 #   2 — cascade-skip (status already recorded as "skipped"; caller should
 #       NOT overwrite to "failed" — this is a clean propagation of an
 #       upstream policy/platform/cascade skip, not a failure of THIS target)
+#
+# Cascade decision per dep status comes from the central registry in
+# lib/ucc_status.sh (_UCC_STATUS_CASCADE / _UCC_STATUS_DEP_REASON). Adding
+# a new status that should cascade requires only a row in those arrays —
+# this function doesn't hardcode status names.
 _ucc_check_deps_recursive() {
-  local root_target="$1" origin="${2:-$1}" visited="${3:-}" dep deps status oracle_cmd
+  local root_target="$1" origin="${2:-$1}" visited="${3:-}" dep deps status oracle_cmd action reason
   deps="$(_ucc_target_direct_deps "$root_target")"
   [[ -n "$deps" ]] || return 0
   while IFS= read -r dep; do
@@ -595,48 +597,37 @@ _ucc_check_deps_recursive() {
     # Cycle guard — colons added at check time, not storage time
     [[ ":${visited}:" == *":${dep}:"* ]] && continue
     status="$(_ucc_target_status_value "$dep")"
-    if [[ "$status" == "failed" ]]; then
-      printf '      [%-8s] %-40s dependency failed this run: %s\n' \
-        "dep-fail" "$(_ucc_display_name "$origin")" "$dep"
-      return 1
-    fi
-    if [[ "$status" == "platform-skipped" ]]; then
-      # Dep's component was group-skipped for platform reasons — cascade to
-      # a clean [skip] on the dependent instead of [dep-fail]. The dep was
-      # never a real failure; it simply doesn't apply on this host.
-      printf '      [%-8s] %-40s dependency not applicable on %s: %s\n' \
-        "skip" "$(_ucc_display_name "$origin")" "${HOST_PLATFORM:-host}" "$dep"
-      _UCC_SKIPPED=$(( ${_UCC_SKIPPED:-0} + 1 ))
-      _ucc_record_target_status "$origin" "skipped"
-      return 2
-    fi
-    if [[ "$status" == "policy" ]]; then
-      # Dep skipped this run because admin privileges weren't available
-      # (rc=125). Don't run the dependent — its install would fail anyway
-      # without the dep present. Cascade as a clean [skip], not [fail].
-      printf '      [%-8s] %-40s dependency requires admin: %s\n' \
-        "skip" "$(_ucc_display_name "$origin")" "$dep"
-      _UCC_SKIPPED=$(( ${_UCC_SKIPPED:-0} + 1 ))
-      _ucc_record_target_status "$origin" "skipped"
-      return 2
-    fi
-    if [[ "$status" == "skipped" ]]; then
-      # Dep was itself cascade-skipped earlier this run (its own dep was
-      # admin/platform blocked). Same root cause propagates here — the
-      # dependent should also skip cleanly, not [dep-fail]. Operator can
-      # scroll up to find the original reason on the root dep's own line.
-      printf '      [%-8s] %-40s dependency was skipped: %s\n' \
-        "skip" "$(_ucc_display_name "$origin")" "$dep"
-      _UCC_SKIPPED=$(( ${_UCC_SKIPPED:-0} + 1 ))
-      _ucc_record_target_status "$origin" "skipped"
-      return 2
-    fi
+
+    # Status-driven cascade: one place to look up "what to do for this status",
+    # one place to look up "what reason to display".
     if [[ -n "$status" ]]; then
-      # Dep ran this session and did not fail; its transitive deps were already
-      # validated before it executed — no need to recurse further.
-      continue
+      action="$(_ucc_status_cascade_action "$status")"
+      case "$action" in
+        dep-fail)
+          reason="$(_ucc_status_dep_reason "$status")"
+          printf '      [%-8s] %-40s %s: %s\n' \
+            "dep-fail" "$(_ucc_display_name "$origin")" "$reason" "$dep"
+          return 1
+          ;;
+        skip)
+          reason="$(_ucc_status_dep_reason "$status")"
+          printf '      [%-8s] %-40s %s: %s\n' \
+            "skip" "$(_ucc_display_name "$origin")" "$reason" "$dep"
+          _UCC_SKIPPED=$(( ${_UCC_SKIPPED:-0} + 1 ))
+          _ucc_record_target_status "$origin" "skipped"
+          return 2
+          ;;
+        continue)
+          # Dep ran this session and did not fail; its transitive deps were
+          # already validated before it executed — no need to recurse further.
+          continue
+          ;;
+      esac
     fi
-    # Dep not run this session — probe its oracle.configured to verify it's installed
+
+    # No recorded status — dep wasn't run this session. Probe its
+    # oracle.configured to verify the prerequisite is genuinely satisfied
+    # outside of this run (e.g. installed previously, by another process).
     oracle_cmd="$(_ucc_target_oracle_configured "$dep")"
     if [[ -n "$oracle_cmd" ]]; then
       if ! eval "$oracle_cmd" 2>/dev/null; then

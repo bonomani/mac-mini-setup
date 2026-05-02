@@ -191,30 +191,15 @@ _ucc_deps_for_target() {
   fi
 }
 
-# Statuses that should be hidden from the dependent's `deps:` evidence line.
-# Two reasons a parent's status is uninteresting for the dependent's view:
-#   - structural: dep was filtered out of this run (requires-skipped /
-#     platform-skipped / disabled / skipped). Not a missing prerequisite —
-#     just doesn't apply on this host or was opted out.
-#   - soft-policy: dep ran but had a non-blocking issue (warn / policy:
-#     preferred driver mismatch, transition blocked by policy, admin
-#     not available). The dependent demonstrably ran (otherwise it'd be
-#     [skip]/[fail] itself), so the dep was functionally satisfied —
-#     propagating the warn to every dependent just suggests the dep is
-#     degraded when it isn't. The parent's status is already on its own line.
-# Returns 0 if the status should be hidden.
-_ucc_dep_status_hidden() {
-  case "$1" in
-    requires-skipped|platform-skipped|disabled|skipped|satisfied-external|warn|policy) return 0 ;;
-    *) return 1 ;;
-  esac
-}
-
 # Look up a dep's status from the target status file. Echoes the value (or "").
 _ucc_dep_status_lookup() {
   local dep="$1"
   awk -F'|' -v dep="$dep" '$1==dep {val=$2} END {print val}' "$UCC_TARGET_STATUS_FILE" 2>/dev/null || true
 }
+
+# Should this status be hidden from a dependent's `deps:` evidence line?
+# Single source of truth lives in lib/ucc_status.sh.
+_ucc_dep_status_hidden() { _ucc_status_hide_from_deps "$1"; }
 
 _ucc_dependency_evidence() {
   local target="$1" deps="" dep status pairs=()

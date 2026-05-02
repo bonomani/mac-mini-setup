@@ -113,26 +113,13 @@ print_summary_section() {
 
 # Return 0 if the target reached a successful (or planned-dry-run) state
 # during this run — i.e. its service endpoint will be (or already is)
-# reachable. Status keys come from _ucc_record_target_status calls.
-# Filter list mirrors the unreachable cases:
-#   failed              — target ran and failed
-#   platform-skipped    — component group-skipped (e.g. macOS-only on WSL)
-#   requires-skipped    — target's `requires:` doesn't match this host
-#   disabled            — operator disabled it
-#   skipped             — runner skipped it (e.g. "code not available")
-#   policy              — admin required but not available
-#   ""                  — never registered / no status
-# `warn` and `satisfied-external` ARE reachable (parent ran fine, dep is
-# present externally) so we let those through.
+# reachable. The reachable/unreachable status set lives in
+# lib/ucc_status.sh (single source of truth).
 _target_endpoint_reachable() {
   local target="$1" status
   [[ -n "${UCC_TARGET_STATUS_FILE:-}" && -f "${UCC_TARGET_STATUS_FILE:-}" ]] || return 0
   status="$(awk -F'|' -v t="$target" '$1==t{val=$2} END{print val}' "$UCC_TARGET_STATUS_FILE")"
-  case "$status" in
-    failed|platform-skipped|requires-skipped|disabled|skipped|policy) return 1 ;;
-    "")                                                                return 1 ;;
-    *)                                                                 return 0 ;;
-  esac
+  [[ -n "$status" ]] && _ucc_status_is_reachable "$status"
 }
 
 print_services_summary() {

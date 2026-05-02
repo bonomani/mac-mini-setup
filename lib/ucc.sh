@@ -23,6 +23,8 @@ _UCC_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # shellcheck source=lib/ucc_log.sh
 source "${_UCC_LIB_DIR}/ucc_log.sh"
+# shellcheck source=lib/ucc_status.sh
+source "${_UCC_LIB_DIR}/ucc_status.sh"
 # shellcheck source=lib/ucc_brew.sh
 source "${_UCC_LIB_DIR}/ucc_brew.sh"
 # shellcheck source=lib/ucc_asm.sh
