@@ -150,7 +150,7 @@ The only currency between resources.
 capability:
   capability_type:  <namespace>                         # binary, package-manager, daemon, http-endpoint, ...
   name?:            <string>                            # specific identifier within the type
-  capability_scope: host | user | component | container | service | external
+  capability_scope: host | user | component | container | service
   qualifiers?:      { version?, port?, scheme?, host?, path?, ... }
   external?:        bool                                # true = host-published / OS-shipped (not engine-managed)
 ```
@@ -160,6 +160,11 @@ control — typically host facts (`platform/macos`) or OS-shipped
 binaries the engine doesn't own. The resolver prefers
 non-`external` providers when both can satisfy a `consumes`, since
 external capabilities can disappear without engine-visible cause.
+
+> **Note**: v3 had `capability_scope: external` as a 6th scope value.
+> It was removed because controllability is a separate concern from
+> scope. Use `capability_scope: host` (or whichever scope applies)
+> plus `external: true`.
 
 ### Capability families and their typical axis subscription
 
