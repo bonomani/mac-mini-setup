@@ -338,6 +338,28 @@ Every managed resource implicitly publishes a `managed-resource-status/<id>`
 capability whose latest value is the most recent operation outcome.
 Verification tests consume these.
 
+### Phase ordering
+
+A `run-session` proceeds through these phases in order. Each phase has
+defined inputs and outputs; the next phase consumes the previous phase's
+outputs.
+
+| # | Phase | Input | Output | Stops the run if |
+|---|---|---|---|---|
+| 1 | **preflight** | declared `Resource`s providing `preflight/*` | for each, evaluate the resource's `driver.observe` | any blocking gate fails |
+| 2 | **selection** | full resource set + `policy.selection_default` + operator overrides | the in-scope subset | — |
+| 3 | **plan** | in-scope set | resolved capability graph (consumes ↔ provides matched, conditions evaluated, providers chosen by `priority`, `applicable`-skipped resources dropped, topological order computed) | a hard `consumes` cannot be satisfied |
+| 4 | **observe** | planned resources × subscribed axes | one observation per (resource, axis) | — |
+| 5 | **diff** | observed × `desired` per axis | `branch_taken` per (resource, axis) | — |
+| 6 | **apply** | per (resource, axis) `branch_taken` | one `Operation` per (resource, axis), with `outcome` and optional `inhibitor`; runs `driver.hooks.pre` before and `driver.hooks.post` after each apply | a hard-failed apply blocks all dependents |
+| 7 | **verify** | resources providing `verification/*` | verification results (consumed managed-resource-status capabilities are now populated) | — |
+| 8 | **report** | all `Operation` outcomes + verification results | a `RunArtifact` (per `ArtifactContract`) | — |
+
+In `mode: observe` the run stops after phase 5 (diff). In `mode: verify`
+it skips phases 6 (apply) and runs only phase 7. In `mode: snapshot` it
+calls `driver.snapshot.capture` (or `restore`) for resources that have
+it, in lieu of the apply branches.
+
 ## Worked examples
 
 ### A bare package
@@ -485,7 +507,5 @@ follow-up:
    Pre-validation pass; details unspecified here.
 3. **Operator-level provider preference** beyond per-consumer `priority`.
    May warrant a top-level `Preference` resource.
-4. **Phase ordering inside a run-session** (preflight → plan → observe →
-   apply → verify → report). Implicit in `mode` but not modeled.
-5. **Migration / compatibility view** of v3 element_types and relation_types
+4. **Migration / compatibility view** of v3 element_types and relation_types
    over this model — needed to keep existing tooling working.
