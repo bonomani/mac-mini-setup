@@ -10,7 +10,9 @@ vscode_cli_path: /Applications/Visual Studio Code.app/Contents/Resources/app/bin
 vscode_cli_link_relpath: bin/code
 vscode_code_cmd_hint: 'Symlink created. If ''code'' is still missing in new shells,
   run: Cmd+Shift+P > Shell Command: Install code command in PATH'
-vscode_settings_relpath: Library/Application Support/Code/User/settings.json
+vscode_settings_relpath_macos: Library/Application Support/Code/User/settings.json
+vscode_settings_relpath_linux: .config/Code/User/settings.json
+vscode_settings_relpath_wsl: .vscode-server/data/User/settings.json
 vscode_settings_patch: ucc/software/vscode-settings.json
 targets:
   vscode:
@@ -50,10 +52,13 @@ targets:
     - vscode
     driver:
       kind: json-merge
-      settings_relpath: ${vscode_settings_relpath}
+      settings_relpath:
+        macos: ${vscode_settings_relpath_macos}
+        linux: ${vscode_settings_relpath_linux}
+        wsl: ${vscode_settings_relpath_wsl}
       patch_relpath: ${vscode_settings_patch}
     evidence:
-      path: home_path "${vscode_settings_relpath}"
+      path: vscode_settings_path
   vscode-ext-ms-python.python:
     component: vscode-stack
     profile: configured

@@ -1,6 +1,17 @@
 #!/usr/bin/env bash
 # lib/vscode_runner.sh — VS Code install + extensions + settings runner
 
+# Echo the absolute path to the VS Code user settings.json for the
+# current host platform. Called from YAML evidence fields.
+vscode_settings_path() {
+  case "${HOST_PLATFORM:-}" in
+    macos) printf '%s' "$HOME/Library/Application Support/Code/User/settings.json" ;;
+    wsl)   printf '%s' "$HOME/.vscode-server/data/User/settings.json" ;;
+    linux) printf '%s' "$HOME/.config/Code/User/settings.json" ;;
+    *)     printf '%s' "$HOME/.config/Code/User/settings.json" ;;
+  esac
+}
+
 # Usage: run_vscode_from_yaml <cfg_dir> <yaml_path>
 run_vscode_from_yaml() {
   local cfg_dir="$1" yaml="$2"

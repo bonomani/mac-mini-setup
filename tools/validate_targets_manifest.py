@@ -404,6 +404,18 @@ def validate(manifest, known_gates):
                         # isolation can be a scalar ("pipx") or a dict ({kind: venv, name: X})
                         if not isinstance(value, (str, dict)):
                             errors.append(f"target '{name}' driver.isolation must be a string or mapping")
+                    elif key == "settings_relpath":
+                        # settings_relpath can be a scalar (single path) or a per-platform map
+                        # ({macos: ..., linux: ..., wsl2: ..., default: ...}) — see lib/drivers/vscode.sh
+                        if isinstance(value, dict):
+                            for pk, pv in value.items():
+                                if not isinstance(pk, str) or not isinstance(pv, (str, int, float, bool)):
+                                    errors.append(
+                                        f"target '{name}' driver.settings_relpath map entries "
+                                        f"must be string→scalar (got {pk!r}: {type(pv).__name__})"
+                                    )
+                        elif not isinstance(value, (str, int, float, bool)):
+                            errors.append(f"target '{name}' driver.settings_relpath must be a scalar or per-platform mapping")
                     elif not isinstance(value, (str, int, float, bool)):
                         errors.append(f"target '{name}' driver '{key}' must be a scalar")
                 # Driver schema validation
