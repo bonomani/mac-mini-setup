@@ -711,64 +711,117 @@ allowed; for those, expose the value as a capability instead.
 input known before validation. Once a `RunSession` starts, every
 resource has a frozen, fully-substituted shape.
 
-## Host (root aggregator — not a built-in special case)
+## The substrate stack: hardware + host
 
-"Host" is **a convention, not a primitive**: it's the resource that sits
-at the **root of the resource containment tree**, with `kind: aggregator`.
-The engine treats it like any other aggregator. Every other resource is
-either a member of the host (directly) or a member of a member (a
-container, a VM, a sub-component).
+The "host" is part of a **substrate stack** of resources, each with a
+specific role:
 
-The recursive shape: every aggregator's `provides` is the union of:
-1. Its own observations (probes the engine runs against the resource itself)
-2. Its members' `provides` (recursively — same rule applies to each member)
+```
+[hardware]                ← provides "a place to run"; bare-metal has no requires; virtual requires a virtualization platform
+   ↑ requires "machine substrate"
+[host]                    ← OS-level aggregator; consumes hardware facts; contains members
+   ├── provides: OS facts (platform, init-system, shells, ...)
+   └── members: every other managed resource
+         └── one of those may be a virtualization platform → starts a NESTED stack
+```
 
-So the host's `provides` includes platform/arch/os facts (its own
-probes) AND every capability provided by any resource it contains.
+### Hardware
+
+Hardware is a **substrate resource** that PROVIDES "a place to run" and
+the facts about that place (cpu cores, ram, accel, virtualization
+markers). It does not aggregate other resources.
+
+| Variant | Requires | Provides | Has config axis? |
+|---|---|---|---|
+| Bare-metal | (nothing — bottom of the stack) | machine substrate + hw facts (cpu-cores, ram-bytes, hardware-accel, …) | no — physical hardware can't be configured by the engine |
+| Virtual | a `virtualization-platform/<name>` capability (provided by Docker, VMware, Parallels, …) | machine substrate + hw facts (typically smaller cpu/ram, plus `virtualization: <hypervisor>`) | yes — operator can set allocated cores, RAM, disk |
+
+Bare-metal example:
+```yaml
+id: hardware/mac-mini-m2
+driver: { kind: observe, fn: { name: probe_hardware } }
+# requires: (none — bottom of the stack)
+provides:
+  - { capability: { type: machine-substrate, scope: host, external: true } }
+  - { capability: { type: cpu-cores, name: count, scope: host, qualifiers: { value: 10 }, external: true } }
+  - { capability: { type: ram-bytes, name: total, scope: host, qualifiers: { value: 68719476736 }, external: true } }
+  - { capability: { type: hardware-accel, name: mps, scope: host, external: true } }
+  - { capability: { type: virtualization, name: none, scope: host, external: true } }
+```
+
+Virtual example:
+```yaml
+id: hardware/docker-vm                                # the Linux VM Docker Desktop runs
+driver:
+  kind: custom                                         # has a config axis
+  axes:
+    config:
+      desired: { cpu_cores: 4, ram_bytes: 17179869184, disk_bytes: 214748364800 }
+      observe: docker_vm_resources_observe
+      apply:   { drifted: docker_vm_resources_apply }
+requires:
+  - { capability: virtualization-platform/docker, strength: hard }   # needs Docker as the hypervisor
+provides:
+  - { capability: { type: machine-substrate, scope: vm } }
+  - { capability: { type: cpu-cores, name: count, qualifiers: { value: 4 } } }
+  - { capability: { type: ram-bytes, name: total, qualifiers: { value: 17179869184 } } }
+  - { capability: { type: virtualization, name: docker } }
+```
+
+The legacy `docker-resources` resource is exactly this pattern: it
+configures the virtual hardware that Docker Desktop runs.
+
+### Host
+
+Host is a **`kind: aggregator` resource** that requires a hardware
+substrate and contains the OS-level managed resources. It's the
+convention name for the OS layer.
 
 ```yaml
-# The convention: id "host" identifies the root aggregator.
-# Nothing about the SHAPE is special — it's just a Resource of kind:
-# aggregator, the way a docker-compose stack or a VM also is.
-id: host
+id: host                                               # convention: top-level OS layer
 driver: { kind: aggregator }
+requires:
+  - { capability: machine-substrate, strength: hard }  # I run on hardware
 provides:
-  # Own observations — facts the engine reads directly about the host machine
-  - { capability: { type: platform,       name: macos | linux | wsl2,    scope: host, external: true } }
-  - { capability: { type: arch,           name: arm64 | x86_64,           scope: host, external: true } }
-  - { capability: { type: os_id,          name: <id>,                     scope: host, external: true } }
-  - { capability: { type: os_version,     name: <semver>,                 scope: host, external: true } }
-  - { capability: { type: hardware-accel, name: mps | cuda,               scope: host, external: true } }
-  - { capability: { type: init-system,    name: launchd | systemd | none, scope: host, external: true } }
-  # Observed state — may flip as a side-effect of member resources converging.
+  # Own observations — OS-level facts
+  - { capability: { type: platform,    name: macos | linux | wsl2,    scope: host, external: true } }
+  - { capability: { type: os_id,       name: <id>,                     scope: host, external: true } }
+  - { capability: { type: os_version,  name: <semver>,                 scope: host, external: true } }
+  - { capability: { type: init-system, name: launchd | systemd | none, scope: host, external: true } }
+  - { capability: { type: shell,       name: zsh | bash,               scope: user } }
+  # Observed state — may flip as members converge
   - { capability: { type: package-manager-available, name: brew | apt | dnf | pacman | winget, scope: host } }
-  - { capability: { type: shell,          name: zsh | bash,               scope: user } }
   # Plus (implicitly): every capability that any contained resource provides.
+# members: every other managed resource references this host via its `component:` field.
 ```
 
-### Recursion
+### Recursion (nested stacks)
 
-The same shape applies to any aggregator — a docker-compose stack, a
-VM, a Component:
+A managed resource that's a virtualization platform (Docker Desktop,
+Parallels, VMware) PROVIDES a `virtualization-platform/<name>`
+capability. That capability is REQUIRED by virtual hardware → which
+provides a substrate → which is required by a guest host → which
+contains its own members. **A nested substrate stack.**
 
 ```
-Host  (kind: aggregator)
-├── platform/macos, arch/arm64, ...                   ← own observations
-└── homebrew  (kind: custom)
-    └── provides: package-manager/brew                ← inherited up
-└── docker-desktop  (kind: custom)
-    ├── provides: app-bundle/docker-desktop, daemon/docker
-    └── ai-stack (kind: aggregator)                   ← container-level aggregator
-        └── open-webui-runtime (kind: docker-compose-service)
-            └── provides: http-endpoint/open-webui    ← inherited up to ai-stack, then to docker-desktop, then to host
+hardware/mac-mini-m2                            ← bare-metal, no requires
+   ↑
+host (kind: aggregator)                         ← bare-metal OS
+   ├── homebrew, cli-tools, ...                 ← members
+   └── docker-desktop                           ← provides: virtualization-platform/docker
+        ↑
+        hardware/docker-vm                      ← virtual; configurable
+            ↑
+            host/docker-linux (kind: aggregator) ← Linux guest OS
+                ├── ai-stack-compose-running    ← provides: container-runtime/<...>
+                └── ...
 ```
 
-A consumer asking for `binary/git` doesn't care whether git is a
-member of host or a member of a container — it just consumes the
-capability. The aggregator hierarchy determines WHERE it lives,
-which the resolver uses for cross-aggregator filtering when needed.
+Each stack is just (hardware → host) where:
+- Hardware is observe-only (bare-metal) or has a config axis (virtual)
+- Host is the aggregator that contains everything else
 
-### Probing
+### Probing — recursive AND partial
 
 To populate the runtime fact set, the engine **probes recursively**:
 
@@ -780,18 +833,31 @@ probe(resource):
   return facts as the resource's provides
 ```
 
-For the root host, this walks the entire tree.
+But probes are **partially blind**:
+
+| Direction | Visibility |
+|---|---|
+| Host → its members (containers, services) | usually yes (list, status) |
+| Container → host above it | partial (cgroup detection; can't see siblings) |
+| Hypervisor → VM internals | typically no (opaque from outside) |
+| Guest OS in a VM → hypervisor that runs it | partial (DMI tables hint, but not full picture) |
+| Sibling containers / VMs | usually no (isolation is the point) |
+
+Probes that can't determine a value report it absent rather than
+guessing. The engine treats absence as "not provided." A capability
+declared in the manifest but not observable is simply not delivered —
+consumers of it won't be satisfied.
 
 ### `external: true` and the resolver
 
-The two categories of host's own provides matter for the **resolver
-preference** (see § Provider selection): `external: true` capabilities
-trigger "prefer non-external when one exists." Observed state without
-`external` doesn't trigger the preference, because the engine can in
-principle influence it via another resource.
+The two categories of hardware's and host's own provides matter for the
+**resolver preference** (see § Provider selection): `external: true`
+capabilities trigger "prefer non-external when one exists." Observed
+state without `external` doesn't trigger the preference, because the
+engine can in principle influence it via another resource.
 
 Members' provides inherit through aggregation but keep their own
-`external` flag — host's recursive provides are not all external.
+`external` flag — recursive provides are not all external.
 
 This collapses the legacy `requires:` field: `requires: macos` becomes
 `requires: [{ capability: platform/macos, strength: applicable }]`.
