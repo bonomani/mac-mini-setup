@@ -99,7 +99,6 @@ resource:
     kind:        <kind>                                 # one of the registered kinds (see catalog)
     # kind-specific parameters
     # plus the following common slots:
-    target?:    { ... }                                 # config-axis only; see § Configuration target
     hooks?:
       pre?:  [{ fn: <fn-name> }]
       post?: [{ fn: <fn-name> } | { notify_resource: <id>, signal: <signal> }]
@@ -203,9 +202,8 @@ vscode-settings:
   configures: vscode                       # ← explicit
   driver:
     kind: json-merge
-    target:
-      path: ~/Library/Application Support/Code/User/settings.json
-      format: json
+    path: ~/Library/Application Support/Code/User/settings.json
+    format: json
     hooks:
       - { when: after_config, notify_resource: vscode, signal: reload-config }
 ```
@@ -221,29 +219,36 @@ The validator uses `configures` to detect:
 `configures` accepts a single `<resource-id>` or a list, and may carry
 a `condition?: Predicate` for platform-conditional configuration.
 
-### Configuration target
+### Configuration target — kind-specific params
 
-The `driver.target` block (config-axis only) gives every config kind a
-**common target descriptor** so the validator can compare across
-resources:
+Each catalogued config kind takes its own write-location params
+directly on the `driver` block (no shared `target:` wrapper). The
+fields differ per kind because the underlying tools differ:
 
 ```yaml
-driver:
-  kind: <config-kind>
-  target:
-    path?:    <string>                     # file location (or implicit per kind)
-    format?:  json | plist | ini | env | yaml | key-value | free-text
-    backend?: <string>                     # e.g. defaults | pmset | softwareupdate
-    domain?:  <string>                     # e.g. com.apple.finder for `defaults`
-    key?:     <string>                     # specific field within the target
+# kind: setting (macOS defaults / pmset)
+driver: { kind: setting, backend: defaults, domain: com.apple.finder, key: AppleShowAllFiles, type: bool, desired: 'true' }
+
+# kind: json-merge
+driver: { kind: json-merge, path: ~/Library/.../settings.json, format: json, desired: { ... } }
+
+# kind: git-global
+driver: { kind: git-global, key: user.email, desired: 'a@b' }
+
+# kind: path-export
+driver: { kind: path-export, rc_file: .zprofile, desired: [~/bin] }
 ```
 
-Different kinds populate different sub-fields (a `setting` resource
-uses `backend + domain + key`; a `json-merge` resource uses `path +
-format`). The shared name lets the validator detect:
-- Two resources writing the same `(path, key)` pair with incompatible
-  kinds → conflict
-- A `kind: json-merge` claiming `format: ini` → kind/format mismatch
+See the §Driver kinds catalog for the exact param shape per config
+kind. Cross-resource conflict detection (e.g. two resources writing
+the same `~/.gitconfig`) is left to validators that understand each
+kind's params — there's no shared `target:` block to compare across.
+
+> Earlier drafts of this model had a uniform `driver.target: { ... }`
+> wrapper. It was removed because no real YAML used a target block;
+> each kind already had its own write-location params, and the
+> validator's "target conflict" rule turned out to be speculative.
+> Per-kind params are simpler and match observed usage.
 
 ### Merge semantics (per kind, not per resource)
 
@@ -255,13 +260,12 @@ See § Driver kinds for the per-kind merge column.
 
 ### Validator rules summary
 
-The five properties above enable five cross-cutting checks:
+The properties above enable cross-cutting checks:
 
 1. **Orphaned `configures`** — points at a missing resource
-2. **Configurer/notify mismatch** — `configures: X` requires `notify_resource: X` in `hooks.post` (and vice versa)
-3. **Target conflict** — two resources writing the same target with incompatible kinds
-4. **Format mismatch** — kind says `format: json`, target file is actually `.ini`
-5. **Source provenance** — every applied config value records its `config_source` for auditability
+2. **Configurer/notify mismatch** — `configures: X` requires the resource to have a `hooks` entry with `notify_resource: X` (and vice versa)
+3. **Source provenance** — every applied config value records its `config_source` for auditability
+4. **Per-kind path conflict** (kind-aware) — when two resources of the same kind write the same location-params (e.g. two `kind: setting` writes to the same `(backend, domain, key)`), reject. Per-kind because there's no longer a shared `target:` shape to compare across kinds.
 
 These rules belong in `lib-quality`; this section names them so the
 spec and validator agree on what's enforced.
@@ -403,6 +407,23 @@ Each registered kind tells the engine which axes a resource subscribes
 to and how to dispatch the per-axis operations. `custom` is the escape
 hatch.
 
+> **`kind` vs `type` — naming convention**: the model uses two
+> discriminator words that mean different things:
+>
+> - **`kind`** = behavioral discriminator. What does this thing DO?
+>   Used for `driver.kind` (= which driver implementation acts on
+>   the resource: `pkg` installs packages, `observe` checks state,
+>   `aggregator` composes members). Familiar from Kubernetes
+>   (`apiVersion` + `kind`).
+> - **`type`** = data-shape discriminator. What NAMESPACE does this
+>   value belong to? Used for `capability.type` (= which capability
+>   namespace: `binary`, `daemon`, `http-endpoint`), `evidence.type`,
+>   `parameter.type`.
+>
+> Both are deliberate. They answer different questions and avoid
+> collision with JSON-Schema's `type:` keyword (which means data
+> type, not concept type).
+
 | Kind | Implied axis | Implied merge (config kinds only) | Parameters |
 |---|---|---|---|
 | `observe` | none | — | `predicate?: <Predicate>` OR `fn?: { name, args? }` |
@@ -423,12 +444,12 @@ hatch.
 | `brew-unlink` | install | — | `formula` (unlinks a brew formula to free a name) |
 | `build-deps` | install | — | `set: brew\|apt\|dnf` (installs platform-specific build essentials) |
 | `corepack` | install | — | `enabled` (enables Node corepack) |
-| `setting` | config | **replace** | `target: { backend, domain?, key, type? }` + `desired` (macOS defaults / pmset) |
-| `git-global` | config | **shallow-merge** | `target: { key }` + `desired` (single git config key) |
-| `path-export` | config | **append** | `target: { rc_file }` + `desired: [<dir>, ...]` (PATH additions in shell rc) |
-| `zsh-config` | config | **shallow-merge** | `target: { key, config_file }` + `desired` (single .zshrc variable) |
-| `json-merge` | config | **deep-merge** | `target: { path, format: json }` + `desired: { ...keys-object }` (e.g. VSCode settings) |
-| `compose-file` | config | **replace** | `target: { path }` + `desired` (whole-file content) |
+| `setting` | config | **replace** | `backend`, `domain?`, `key`, `type?`, `desired` (macOS defaults / pmset) |
+| `git-global` | config | **shallow-merge** | `key`, `desired` (single git config key) |
+| `path-export` | config | **append** | `rc_file`, `desired: [<dir>, ...]` (PATH additions in shell rc) |
+| `zsh-config` | config | **shallow-merge** | `key`, `config_file`, `desired` (single .zshrc variable) |
+| `json-merge` | config | **deep-merge** | `path`, `format: json`, `desired: { ...keys-object }` (e.g. VSCode settings) |
+| `compose-file` | config | **replace** | `path`, `desired` (whole-file content) |
 | `brew-analytics` | config | **replace** | `desired` (single on/off value) |
 | `swupdate-schedule` | config | **replace** | `desired: { enabled, frequency }` |
 | `softwareupdate-schedule` | config | **replace** | `desired: { enabled, frequency }` (macOS-specific alias of `swupdate-schedule`) |
@@ -454,7 +475,7 @@ Examples:
 ```yaml
 # Literal
 finder-show-hidden=1:
-  driver: { kind: setting, target: { backend: defaults, domain: com.apple.finder, key: AppleShowAllFiles, type: bool }, desired: 'true' }
+  driver: { kind: setting, backend: defaults, domain: com.apple.finder, key: AppleShowAllFiles, type: bool, desired: 'true' }
 
 # Computed (the docker-resources case)
 docker-resources:
@@ -587,7 +608,7 @@ Facts come from the `Host` resource's `provides` (platform, arch, os_id,
 Predicates are evaluated at **plan time** against the live `HostContext`.
 Re-evaluation during a single run is not guaranteed.
 
-## Component (a Resource of `kind: aggregator`)
+## Aggregator (formerly Component element class)
 
 Components are not a separate element class — a Component **is a
 Resource** with `driver.kind: aggregator`. The aggregator kind has no

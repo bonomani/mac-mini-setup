@@ -42,13 +42,21 @@ distinct drivers     : 26
 live soft deps       : 0
 ```
 
-Authoritative sources:
+Authoritative sources for the **canonical model** (this folder):
 
-- `ucc/software/*.yaml` and `ucc/system/*.yaml` for managed resources.
-- `defaults/*.yaml` for gates, preferences, selection, and profiles.
-- `tic/**/*.yaml` for verification tests.
-- `tools/validate_targets_manifest.py` for graph invariants.
-- `docs/SPEC.md` for the specification regenerated from source.
+- [model.md](model.md) — the resource shape, driver kinds, capabilities, run plane.
+- [compat.md](compat.md) — v3 → canonical migration mapping.
+
+Authoritative sources for the **legacy v3 implementation** (lives in
+the `mac-mini-setup` repo, used as the empirical reference dataset):
+
+- `mac-mini-setup/ucc/software/*.yaml`, `mac-mini-setup/ucc/system/*.yaml` — legacy resource declarations
+- `mac-mini-setup/defaults/*.yaml` — gates, preferences, selection, profiles
+- `mac-mini-setup/tic/**/*.yaml` — verification tests
+- `mac-mini-setup/tools/validate_targets_manifest.py` — legacy graph invariants
+- `mac-mini-setup/docs/SPEC.md` — legacy spec regenerated from source
+
+Once code adopts the canonical model, the v3 paths become read-only references.
 
 ## Goal Model
 
