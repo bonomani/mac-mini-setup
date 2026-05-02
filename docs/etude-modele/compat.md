@@ -28,7 +28,7 @@ form to the new form, and what code (if any) needs to change.
 | `resource-template` | **kept** | lives on `Component.resource_templates` |
 | `managed-resource` | **collapsed** | `Resource` (single shape for all managed/unmanaged) |
 | `capability` | **kept** | `Capability` value object (typed surface) |
-| `provider-selection` | **collapsed** | conditional `consumes` entries + `priority` per consumer |
+| `provider-selection` | **collapsed** | conditional `requires` entries + `priority` per consumer |
 | `condition` | **collapsed** | `Predicate` AST, used inline wherever conditions appear |
 | `policy` | **kept** | `Resource.policy` block |
 | `driver-contract` | **collapsed** | `driver.kind` catalog (typed contract per kind) |
@@ -67,7 +67,7 @@ form to the new form, and what code (if any) needs to change.
 `Operation`, `RunArtifact`. (`Capability` is a value object, not an
 element; the others are first-class.)
 
-## 2. Relation types (`relation_type`, 14 → 2)
+## 2. Relation types (`relation_type`, 14 → 3 declarable + 1 structural)
 
 | v3 relation_type | Disposition | New model |
 |---|---|---|
@@ -76,19 +76,19 @@ element; the others are first-class.)
 | `generates` | **collapsed** | `resource_template` instantiation |
 | `derives` | **removed** | derivation is computed, not modeled |
 | `selects` | **collapsed** | `RunSession.selection.{include, exclude}` |
-| `overrides` | **collapsed** | `consumes.priority` (per consumer); parameter override hierarchy (component) |
-| `consumes` | **kept** | typed edge to a Capability |
+| `overrides` | **collapsed** | `requires.priority` (per consumer); parameter override hierarchy (component) |
+| `consumes` | **renamed** | renamed to `requires` — capabilities are not depleted; the verb fits ("X requires Y") |
 | `provides` | **kept** | typed edge from Resource to Capability |
-| `configures` | **kept** (refined) | explicit `Resource.configures: <id>` field (see model.md §Configuration). A `configures` edge implies a hard `consumes` of the target's primary capability — no double-declaration. |
-| `requires` | **collapsed** | `consumes(strength: applicable)` for platform/host gates; `consumes(strength: hard, condition: P)` for conditional deps |
-| `verifies` | **collapsed** | `Resource.consumes` of the capability being verified + `provides: verification/*` |
+| `configures` | **kept** (refined) | explicit `Resource.configures: <id>` field (see model.md §Configuration). A `configures` edge implies a hard `requires` of the target's primary capability — no double-declaration. |
+| `requires` | **collapsed** | `requires(strength: applicable)` for platform/host gates; `requires(strength: hard, condition: P)` for conditional deps |
+| `verifies` | **collapsed** | `Resource.requires` of the capability being verified + `provides: verification/*` |
 | `schedules` | **collapsed** | implicit topological order computed during `plan` phase |
 | `records` | **collapsed** | implicit; every `Operation` produces evidence captured in the run-plane |
 | `invalidates` | **removed** | cache invalidation is implementation |
 
 ### Net: 14 → 3 declarable + 1 structural
 
-Declarable: `consumes`, `provides`, `configures`. Structural (only on
+Declarable: `requires`, `provides`, `configures`. Structural (only on
 Component): `contains`. Everything else is computed at plan time.
 
 ## 3. Top-level resource fields (15+ → 4)
@@ -104,15 +104,15 @@ Component): `contains`. Everything else is computed at plan time.
 | `policy` | **kept** | uniform `Predicate \| bool` value space |
 | `desired_state.{installation, runtime, health, admin, dependencies, value}` | **collapsed** | `driver.axes.<axis>.desired` (only when `kind: custom`); admin & dependencies recharacterized as policy / graph concerns |
 | `operation_contract.{observe, converge, snapshot, recover, pre/post_converge}` | **collapsed** | folded entirely into `driver` (kind-specific or `custom.axes`) |
-| `provides` | **kept** | typed (`when_axes`, `condition`, `qualifiers`) |
-| `consumes` | **kept** | typed (`strength`, `condition`, `priority`, `args`) |
+| `provides` | **kept** | typed (`when` lifecycle phase, `condition`, `qualifiers`) |
+| `consumes` | **renamed** | now `requires` with same fields plus `when:` (lifecycle phase) |
 | `verifies` | **collapsed** | this resource provides a `verification/*` capability that consumers consume |
-| `requires` | **collapsed** | `consumes(platform/X, strength: applicable)` via `Host` |
-| `configures` | **kept** (refined) | promoted to a top-level `Resource.configures` field (single id or list); implies a hard `consumes` of the target. Validator uses it for orphan detection and notify-chain consistency. |
-| `relations` (typed array) | **collapsed** | replaced by typed `consumes`/`provides` |
-| `provider_selection` | **collapsed** | conditional `consumes` + `priority` |
+| `requires` | **collapsed** | `requires(platform/X, strength: applicable)` via `Host` |
+| `configures` | **kept** (refined) | promoted to a top-level `Resource.configures` field (single id or list); implies a hard `requires` of the target. Validator uses it for orphan detection and notify-chain consistency. |
+| `relations` (typed array) | **collapsed** | replaced by typed `requires`/`provides` |
+| `provider_selection` | **collapsed** | conditional `requires` + `priority` |
 | `endpoints[]` | **collapsed** | `provides: http-endpoint/* @ host` with `qualifiers` (this is EXT-A, kept) |
-| `depends_on` (legacy) | **removed as source** | derivable view of hard `consumes` |
+| `depends_on` (legacy) | **removed as source** | derivable view of hard `requires` |
 | `requires_string` (legacy) | **removed as source** | derivable view of `requires` predicates |
 | `*_derived` fields | **removed** | computed by the validator; not stored |
 
@@ -151,9 +151,9 @@ Mapping:
 | `action_type` | implied by which axis the kind subscribes to |
 | `tool_type` | implied by `driver.kind` |
 | `provider_type` | implied by `driver.kind`'s capability dispatch |
-| `provider_name` | implied by which `package-manager-available/*` capability the host provides + which conditional `consumes` matches |
+| `provider_name` | implied by which `package-manager-available/*` capability the host provides + which conditional `requires` matches |
 | `backend_type` | alias of `provider_name`, removed |
-| `driver.backends` | conditional `consumes` entries, one per backend |
+| `driver.backends` | conditional `requires` entries, one per backend |
 
 ## 5. State axes (6 → 3)
 
@@ -164,7 +164,7 @@ Mapping:
 | `config_value` | **config** axis |
 | `health` | **derived** from live `provides` (no separate axis) |
 | `admin` | **policy concern**: `policy.admin: <Predicate> \| bool` |
-| `dependencies` | **graph concern**: handled by `consumes` resolution |
+| `dependencies` | **graph concern**: handled by `requires` resolution |
 
 ## 6. Driver kind catalog migration (~26 legacy → 32 new)
 
@@ -257,7 +257,7 @@ Recommended order to avoid breakage:
 | State axes | 6 (mixed with predicates) | 3 (state) + 2 (predicates) + 1 (derived) | clearer split |
 | Driver fields per resource | 7 | 1 (`kind`) + per-kind params | −6 |
 | Driver kinds | ~26 | 32 (incl. `custom`) | catalogued |
-| `consumes.strength` values | 2 | 3 | +1 (`applicable`) |
+| `requires.strength` values | 2 | 3 | +1 (`applicable`) |
 | Policy value-type | mixed enum + object | uniform `Predicate \| bool` | normalized |
 | No-axis observation kinds | 3 (`capability`, `predicate`, `oracle`) | 1 (`observe`) | −2 |
 
