@@ -218,7 +218,22 @@ hatch.
 | `service` | run | `unit`, `manager: launchd|systemd|brew-services` |
 | `compose-apply` | run | `compose_file`, `services?` |
 | `docker-compose-service` | run | `service_name` |
+| `custom-daemon` | run | `pid_fn`, `start_fn`, `stop_fn` (ad-hoc daemons not under a service manager) |
 | `brew-analytics` | config | `desired` |
+| `json-merge` | config | `target_file`, `keys` (deep-merge JSON config files, e.g. VSCode settings) |
+| `softwareupdate-schedule` | config | `enabled`, `frequency` (macOS softwareupdate config; alias of `swupdate-schedule`) |
+| `zsh-config` | config | `theme`, `installer_url`, `omz_dir` (oh-my-zsh setup) |
+| `path-export` | config | `dirs`, `rc_file` |
+| `compose-file` | config | `path`, `content` |
+| `swupdate-schedule` | config | `enabled`, `frequency` |
+| `setting` | config | `path`, `key`, `value` |
+| `git-global` | config | `key`, `value` |
+| `brew-unlink` | install | `formula` (unlinks a brew formula to free a name) |
+| `build-deps` | install | `set: brew|apt|dnf` (installs platform-specific build essentials) |
+| `corepack` | install | `enabled` (enables Node corepack) |
+| `nvm-version` | install | `version` (sets active Node version via nvm; depends on `nvm`) |
+| `pip-bootstrap` | install | (bootstraps pip itself; no params) |
+| `pyenv-brew` | install | (installs pyenv via brew; specialty wrapper around `pkg`) |
 | `custom` | declared | `axes: { install?, config?, run? }` |
 
 ### `kind: observe` — the universal observation driver
