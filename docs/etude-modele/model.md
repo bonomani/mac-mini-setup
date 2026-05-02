@@ -278,9 +278,9 @@ capability:
 
 `external: true` marks a capability the engine observes but cannot
 control — typically host facts (`platform/macos`) or OS-shipped
-binaries the engine doesn't own. The resolver prefers
-non-`external` providers when both can satisfy a `requires`, since
-external capabilities can disappear without engine-visible cause.
+binaries the engine doesn't own. See § Provider selection (rule 4)
+for how the resolver deprioritizes external candidates when an
+engine-managed alternative exists.
 
 > **Note**: v3 had `capability_scope: external` as a 6th scope value.
 > It was removed because controllability is a separate concern from
@@ -337,9 +337,17 @@ exactly one provider per resolution rule, in order:
    any `provides` whose `condition` evaluates false.
 2. **Filter by qualifier match** (the matching rule above).
 3. **Filter by phase ordering** (rule 6 in matching).
-4. **Pick highest `priority`** among surviving candidates. Default
+4. **Prefer non-external candidates** when at least one non-external
+   candidate is viable after the previous filters. External providers
+   (`capability.external: true`) are deprioritized because they can
+   disappear without engine-visible cause and the engine can't
+   repair them. **If all viable candidates are external**, this step
+   is a no-op and the next rule applies — so `requires(platform/macos)`
+   matched only by the Host (`external: true`) still resolves
+   correctly.
+5. **Pick highest `priority`** among surviving candidates. Default
    priority is 0.
-5. **Tie-break** by `requires` declaration order (first wins).
+6. **Tie-break** by `requires` declaration order (first wins).
 
 **Operator-level preference** ("always prefer brew over native-pm on
 this host") is expressed using the existing primitives — no new element
