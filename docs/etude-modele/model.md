@@ -1005,6 +1005,96 @@ provides:
 driver: { kind: observe, fn: { name: _tic_target_status_is, args: [system-composition, ok] } }
 ```
 
+## Declaration modes
+
+For every field in the schema, three states are possible:
+
+- **Implicit only** — the engine sets the value; user cannot declare it
+- **Explicit only** — user must declare it; nothing to derive
+- **Both** — engine derives a default; user can override or supplement
+
+**Principle**: explicit declaration is always allowed except for things only the engine can know (run-plane data, generated IDs). Even when a value is derivable, declaring it explicitly serves as documentation, override capability, and forward compatibility (if a kind's default changes later, existing explicit declarations stay stable).
+
+### Resource fields
+
+| Field | Mode | Derivation source | Explicit recommended? |
+|---|---|---|---|
+| `id`, `name` | explicit only | — | required |
+| `display_name` | explicit only | — | optional |
+| `component` | explicit only | — | yes (organizational) |
+| `requires[*].capability` | both | implicit per `driver.kind` contract (see catalog) | **yes** — declares semantic intent |
+| `requires[*].strength` | both | defaults to `hard` | yes (`applicable`/`soft` carry distinct meaning) |
+| `requires[*].when` | both | per-kind default (`before_install` / `before_config` / `before_run`) | only when non-default |
+| `requires[*].condition` | explicit only | — | when needed |
+| `requires[*].priority` | both | defaults to 0 | only when tie-breaking |
+| `requires[*].args` | explicit only | — | when consumer-specific |
+| `provides[*].capability` | both | implicit per `driver.kind` contract | **yes** — documents the resource's exported contract |
+| `provides[*].when` | both | per-kind default (`after_install` / `after_config` / `running`) | only when non-default |
+| `provides[*].condition` | explicit only | — | when needed |
+| `configures` | explicit only | — | yes — explicit is the field's purpose |
+| `driver.kind` | explicit only | — | required |
+| `driver.<kind-specific-params>` | explicit only | — | required (kind-specific) |
+| `driver.axes` (custom only) | explicit only | — | required for `kind: custom` |
+| `driver.hooks` | explicit only | — | when used |
+| `driver.snapshot` | explicit only | — | rare (VM-style only) |
+| `policy.admin` | both | implicit per kind (e.g. `setting+pmset` → `admin: true`) | yes — security-relevant |
+| `policy.update` | both | implicit per kind | only when overriding |
+| `policy.version_pin` | explicit only | — | when pinning |
+| `policy.selection_default` | both | defaults to `true` | only when restricting |
+| `policy.destructive` | both | implicit per kind | yes — safety-relevant |
+
+### Capability fields
+
+| Field | Mode | Derivation source | Explicit recommended? |
+|---|---|---|---|
+| `type` | explicit only | — | required |
+| `name` | explicit (often required by family rule) | — | required when family expects |
+| `scope` | both | implicit per kind for derived provides | yes for declared provides |
+| `qualifiers` | explicit only | — | when needed (e.g., http-endpoint port) |
+| `external` | both | defaults to `false`; Host's facts default to `true` | yes — resolver-relevant |
+
+### Run-plane fields (always implicit unless noted)
+
+| Field | Mode | Source | User can declare? |
+|---|---|---|---|
+| `RunSession.id` | implicit only | engine-generated | no |
+| `RunSession.mode` | explicit only | — | yes (operator picks) |
+| `RunSession.dry_run` | explicit only | — | yes |
+| `RunSession.host_context` | implicit only | engine reads from Host | no |
+| `RunSession.selection.{include, exclude, default}` | explicit only | — | yes |
+| `Operation.{session, resource, axis}` | implicit only | engine sets | no |
+| `Operation.observed` | implicit only | from observe phase | no |
+| `Operation.desired` | implicit only | from resource declaration | no |
+| `Operation.branch_taken` | implicit only | from diff phase | no |
+| `Operation.outcome` | implicit only | from apply phase | no |
+| `Operation.inhibitor` | implicit only | engine reason | no |
+| `Operation.evidence` | implicit only | from observe | no |
+
+### Auto-emitted capabilities (always implicit)
+
+| Capability namespace | Emitted by | User declares? |
+|---|---|---|
+| `managed-resource-status/<id>` | every managed resource | no |
+| `component-status/<id>` | every aggregator-kind resource | no |
+| `platform/*`, `arch/*`, `os_id/*`, `os_version/*`, `init-system/*`, `hardware-accel/*`, `package-manager-available/*`, `shell/*` | the Host built-in resource | no |
+
+### Counts
+
+| Category | Count |
+|---|---:|
+| Implicit only (engine generates; user can't declare) | 14 |
+| Explicit only (user must declare; no derivation) | 21 |
+| Both (engine derives; user can override or supplement) | 13 |
+| Auto-emitted capability namespaces | ~10 |
+
+### Insight
+
+- **"Both" dominates user-declarable fields** — most are derivable from `driver.kind` + params, but explicit declaration is allowed and often preferred for documentation.
+- **Implicit-only fields are mostly run-plane data** — values the engine PRODUCES.
+- **Explicit-only fields are mostly identity and intent** — choices only the author can make.
+
+The model intentionally keeps explicit always allowed (except for engine-produced values) so that resources can document their contract beyond what the kind catalog implies.
+
 ## What this model eliminates from the v3 spec
 
 | v3 concept | Replaced by |
