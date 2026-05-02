@@ -665,6 +665,34 @@ out into many operations, each going through their own micro-phases:
 > capabilities. They were both called "verify" in earlier drafts; the
 > per-operation phase is now `confirm` to keep them distinct.
 
+#### Binding to session phases
+
+The operation phases `observe`, `diff`, `apply`, and `verify` share names
+with session phases (#4, #5, #6, #7 below) — **deliberately**. Each
+session phase **is** the column-major synchronization barrier where every
+in-scope operation executes its corresponding phase:
+
+| Session phase | What it does at the operation level |
+|---|---|
+| session `observe` (#4) | every operation runs its `observe` |
+| session `diff` (#5) | every operation runs its `diff` |
+| session `apply` (#6) | every operation runs `apply` (then `confirm`, `recover` if needed, `record`) — in topological order respecting `requires`/`provides` |
+| session `verify` (#7) | every verification-test resource runs (a separate concept; see disambiguation note above) |
+
+The session waits for all operations to complete phase X before any
+begins phase X+1. Operation phases that have **no session-phase peer**
+execute INSIDE their owning session phase:
+
+- `declare` runs during session `plan` (#3) — the planner instantiates an `Operation` record per (resource, axis) pair from the resource shape.
+- `confirm` runs at the end of each operation's apply, inside session `apply` (#6).
+- `recover` runs only on apply failure, inside session `apply` (#6).
+- `record` runs at the end of session `apply` (#6); finalises the `Operation` for the report phase.
+
+The shared names (observe / diff / apply) reflect that each session
+phase **is** the column-major barrier for the corresponding operation
+phase across all in-scope (resource, axis) pairs. Same concept at two
+scopes; not a name collision.
+
 ### Phase ordering
 
 A `run-session` proceeds through these phases in order. Each phase has
