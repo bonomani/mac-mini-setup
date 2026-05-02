@@ -635,7 +635,17 @@ Drivers communicate their outcome to the engine via process exit code:
 | 125 | `policy` | inhibited by operator policy (admin denied, gated, …) |
 
 `skip`, `disabled`, and `dry-run` outcomes are set by the engine
-*before* the driver runs (no exit code involved).
+*before* the driver runs (no exit code involved):
+
+| Outcome | Set during phase | When |
+|---|---|---|
+| `disabled` | #2 (selection) | `policy.selection_default` evaluates to `false`, OR the operator explicitly excluded the resource (e.g. `--exclude X`). The Operation record is created with this outcome and the apply phase is skipped. |
+| `skip` | #6 (apply) | The Operation entered apply but: (a) a hard `requires` is unsatisfied, OR (b) `branch_taken` is `none` (no diff between observed and desired). Distinguished from `disabled` because the resource WAS in scope but conditions prevented action. |
+| `dry-run` | #6 (apply) | `run-session.dry_run: true` and the operation would otherwise have entered apply. The driver isn't invoked; outcome is recorded as if the apply had been a no-op. |
+
+The distinction matters for run reports: a user can act on `disabled`
+(re-enable in policy), on `skip` (fix the missing dependency), and on
+`dry-run` (re-run without the dry-run flag).
 
 ### Operation phases (per-operation lifecycle)
 
