@@ -22,14 +22,11 @@ Project
   └── Resource (n)                              ← single element class for everything
         ├── requires  → Capability ←──┐
         ├── provides  → Capability ──┘
-        ├── driver { kind, params }
-        └── policy { ... }
-        ├── kind: pkg | pip | service | ...    │
-        └── kind: aggregator                    └─ "components" are aggregator-kind resources
-                                                   that group members and emit
-                                                   component-status/<id>
-  Host       (built-in Resource; provides platform/*, arch/*, os_id/*, ...)
-  RunSession (n)
+        ├── driver  { kind, params }              ← kind also encodes the engine's invocation policy (sudo or not, where state lives)
+        ├── tags?   [<string>, ...]              ← purely organizational labels (cli-tools, frontend)
+        └── policy  { ... }
+  Host        (a Resource like any other; provides platform/*, arch/*, os_id/*, ...)
+  RunSession  (n)
         └── Operation (n)                       per (resource × axis × session)
 ```
 
@@ -78,7 +75,7 @@ resource:
   id:           <string>                                # required, globally unique
   name:         <string>                                # required, human-readable
   display_name: <string>                                # optional
-  component:    <component-id>                          # required
+  tags?:        [<string>, ...]                         # purely organizational; see § Tags
 
   requires:
     - capability: <Capability>
@@ -187,8 +184,8 @@ properties beyond what install/run resources have:
 | # | Property | Where in the model |
 |---|---|---|
 | 1 | **Configures relation** — explicit edge: "I am the configuration of `<X>`" | `Resource.configures` |
-| 2 | **Source cascade** — defaults → component-pref → resource-override → operator-cli | `component.parameters[<name>].source` |
-| 3 | **Capability scope** — `host` or `user` reach | `capability.scope` |
+| 2 | **Source cascade** — defaults → project-default → resource-override → operator-cli | `parameters[<name>].source` (project-level) |
+| 3 | **Per-user vs system reach** | encoded by the providing resource's `driver.kind` + params (e.g. `pip` with `--user` writes to `~/.local`); when matching needs to distinguish, use a `qualifiers:` entry or a `condition:` |
 | 4 | **Merge semantics** — replace / shallow-merge / deep-merge / append | implied by `driver.kind` (see catalog) |
 | 5 | **Typed reload** — explicit signal to the configured target | `driver.hooks.post.notify_resource` |
 
@@ -278,7 +275,6 @@ The only currency between resources.
 capability:
   type:  <namespace>                         # binary, package-manager, daemon, http-endpoint, ...
   name?:            <string>                            # specific identifier within the type
-  scope: host | user
   qualifiers?:      { version?, port?, scheme?, hostname?, path?, ... }
   external?:        bool                                # true = host-published / OS-shipped (not engine-managed)
 ```
@@ -289,14 +285,23 @@ binaries the engine doesn't own. See § Provider selection (rule 4)
 for how the resolver deprioritizes external candidates when an
 engine-managed alternative exists.
 
-> **Note**: v3 had a 6-value `scope` (within `capability` block) enum (`host | user |
-> component | container | service | external`). Three values
-> (`component`, `container`, `service`) were dropped because zero of
-> the 148 live resources used them — speculative scope distinctions
-> for cloud / microservice scenarios that mac-mini-setup doesn't
-> have. The `external` value was also dropped (controllability is a
-> separate concern from scope; use the `external: true` flag instead).
-> If real demand emerges, individual values can be added back.
+> **Removed in v4**: the legacy `scope` field on capabilities. It was
+> trying to do three different jobs (aggregator boundary, host vs
+> guest, per-user vs system) all welded into one enum, and it was
+> redundant with mechanisms that already exist:
+>
+> - Aggregator/host/guest boundaries → providers across substrate
+>   boundaries declare `external: true`; consumers don't filter on
+>   scope at all.
+> - Per-user vs system → encoded by the providing resource's driver
+>   kind (e.g. `pip` with `--user` writes to `~/.local`; `pip` system
+>   writes to `/usr/local`). When matching genuinely needs to
+>   distinguish, use a qualifier (`qualifiers: { install_path: ... }`)
+>   or a `condition:` on the require.
+>
+> If a real case appears where neither `external` nor qualifiers are
+> sufficient, we'll add a narrower mechanism rather than re-introducing
+> a multi-purpose enum.
 
 ### Capability families and their typical lifecycle phase
 
@@ -320,23 +325,19 @@ doesn't match its capability family is a modeling error.
 
 1. `type` (within `capability` block) matches exactly.
 2. `name` matches exactly (or both omit it).
-3. `scope` (within `capability` block) matches exactly. **No wildcards.**
-4. For each qualifier `(k, v_req)` in `C_req.qualifiers`:
+3. For each qualifier `(k, v_req)` in `C_req.qualifiers`:
    - if `v_req` is scalar: `C_off.qualifiers[k] == v_req`
    - if `v_req` is `{ op, value }`: `C_off.qualifiers[k]` satisfies the
      comparison (semver or numeric)
    - if `v_req` is `{ in: [...] }`: `C_off.qualifiers[k]` is in the list
    - if `k` is absent from `C_off.qualifiers`: **no match**
-5. Qualifiers present in `C_off` but not mentioned in `C_req` are ignored.
-6. **Phase ordering**: `Wp ≤ Wr` in the lifecycle order (provider's
+4. Qualifiers present in `C_off` but not mentioned in `C_req` are ignored.
+5. **Phase ordering**: `Wp ≤ Wr` in the lifecycle order (provider's
    `when:` is at or before requirer's `when:`). A `requires(X, when: before_run)`
    matches `provides(X, when: after_install)` (provider materialized first).
    A `requires(X, when: before_install)` of a `provides(X, when: running)`
    would mean "I need X before I install, but X only exists while X's owner
    is running" — flagged as a planning impossibility.
-
-A requirer that wants to accept multiple scopes must declare multiple
-`requires` entries (one per scope). Determinism over expressiveness.
 
 ### Provider selection (when multiple providers match)
 
@@ -364,7 +365,7 @@ exactly one provider per resolution rule, in order:
 this host") is expressed using the existing primitives — no new element
 class:
 
-- The component declares a typed `parameter` (e.g. `pm: { type: enum,
+- A typed `parameter` is declared at the project level (e.g. `pm: { type: enum,
   options: [brew, native-pm], default: brew, source: operator-cli }`).
 - Each requirer carries a `condition: { fact: pm, eq: brew }` on its
   `requires` entry.
@@ -381,7 +382,7 @@ preference resolver), not in every consumer.
 Two mechanisms — per-consumer condition + abstract host-published
 capability — are deliberately the only ones. A separate `Preference`
 element class was considered and rejected: it would duplicate either
-component parameters (for input) or capabilities (for the resolved
+project parameters (for input) or capabilities (for the resolved
 choice).
 
 ## Axes
@@ -413,7 +414,7 @@ hatch.
 > - **`kind`** = behavioral discriminator. What does this thing DO?
 >   Used for `driver.kind` (= which driver implementation acts on
 >   the resource: `pkg` installs packages, `observe` checks state,
->   `aggregator` composes members). Familiar from Kubernetes
+>   `service` manages a daemon). Familiar from Kubernetes
 >   (`apiVersion` + `kind`).
 > - **`type`** = data-shape discriminator. What NAMESPACE does this
 >   value belong to? Used for `capability.type` (= which capability
@@ -457,8 +458,13 @@ hatch.
 | `compose-apply` | run | — | `compose_file`, `services?` |
 | `docker-compose-service` | run | — | `service_name` |
 | `custom-daemon` | run | — | `pid_fn`, `start_fn`, `stop_fn` (ad-hoc daemons) |
-| `aggregator` | none (derived from members) | n/a | `parameters?`, `resource_templates?` (formerly Component fields). Auto-emits `provides: component-status/<id>`. Hooks fire once per session, after all members reach a phase. |
 | `custom` | declared | declared per-resource | `axes: { install?, config?, run? }` |
+
+> **Removed in v4**: `kind: aggregator`. Pure organizational grouping
+> (cli-tools, frontend, ai-stack) is handled by the `tags:` field on
+> regular resources — no Resource entity needed for the group itself.
+> Things that look like containers and have real state (host, container,
+> VM) stay as regular Resources with their own driver kinds. See § Tags.
 
 #### Uniform `desired:` slot for all config kinds
 
@@ -604,7 +610,6 @@ The kind owns when its hooks fire:
 | `setting`, `git-global`, `path-export`, `compose-file`, `swupdate-schedule`, `softwareupdate-schedule`, `zsh-config`, `json-merge`, `brew-analytics` | per config-axis apply |
 | `service`, `compose-apply`, `docker-compose-service`, `custom-daemon` | per run-axis apply (or `running` for entry into desired state) |
 | `custom` | per declared axis-apply (entries scoped by `when:`) |
-| `aggregator` (component) | once per session, after all members reach the named phase, IFF at least one member changed |
 | `observe` | hooks not meaningful (no apply phase to wrap); declaring them is invalid |
 
 ### Snapshot (rare — VM-style resources)
@@ -637,50 +642,55 @@ Facts come from the `Host` resource's `provides` (platform, arch, os_id,
 Predicates are evaluated at **plan time** against the live `HostContext`.
 Re-evaluation during a single run is not guaranteed.
 
-## Aggregator (formerly Component element class)
+## Tags
 
-Components are not a separate element class — a Component **is a
-Resource** with `driver.kind: aggregator`. The aggregator kind has no
-driver functions of its own; its convergence state is derived from
-its members (resources whose `component:` field references it). It
-auto-emits a `component-status/<id>` capability when all members
-reach the corresponding lifecycle phase.
+Tags are **purely organizational labels** on resources. They have no
+semantics for the engine: they don't participate in capability matching,
+they don't imply ordering, they don't propagate state. Their only jobs
+are CLI selection (`--tag cli-tools`) and status display
+(`is everything tagged "frontend" converged?`).
 
 ```yaml
-# A component, expressed as a resource
-resource:
-  id: cli-tools
-  display_name: CLI tools
-  driver:
-    kind: aggregator
-    parameters:                                # formerly Component.parameters
-      <param-name>:
-        type:        string | int | semver | port | path | url | bool | enum | list | cask-id | process-pattern
-        default:     <value>
-        source:      defaults | component-preference | resource-override | operator-cli
-        options?:    [<value>, ...]
-        rationale?:  <string>
-    resource_templates:                        # formerly Component.resource_templates
-      - id:              <template-id>
-        parametric_in:   [<param-name>, ...]
-        output_template: { ... resource shape with ${param} substitutions ... }
-        instances:       [{ <param>: <value>, ... }, ...]
-    hooks?:                                    # captures legacy `restart_processes`
-      - { when: after_config, killall: [Finder, Dock, SystemUIServer] }
-  policy?: { ... }                             # selection / admin can apply at the component level too
-
-# Members reference the aggregator via `component:` (which becomes a
-# requires of the aggregator's component-status capability at the
-# `before_<axis>` phase, derived implicitly).
 resource:
   id: cli-jq
-  component: cli-tools                          # auto-derived requires of cli-tools
-  driver: { kind: pkg, refs: { ... }, bin: jq }
+  tags: [cli-tools]
+  driver: { kind: pkg, refs: { brew: jq } }
+
+resource:
+  id: cli-yq
+  tags: [cli-tools, ai-stack]                  # a resource can carry multiple tags
+  driver: { kind: pkg, refs: { brew: yq } }
 ```
 
-A nested component (formerly `parent: <component-id>`) is just an
-aggregator that references another aggregator via its `component:`
-field — same mechanism as any other resource.
+`cli-tools` is a **string** — there is no Resource named `cli-tools`,
+no manifest entry, no driver. The query "is `cli-tools` converged?" is
+computed by the engine from the resources tagged `cli-tools`.
+
+### What replaced the v3 Component concept
+
+| v3 mechanism | v4 replacement |
+|---|---|
+| `component: cli-tools` field on members | `tags: [cli-tools]` field on members |
+| `Component` element class | (removed — not a Resource at all) |
+| `kind: aggregator` Resource | (removed — see § Driver kinds) |
+| Component `parameters` block (defaults inherited by members) | Project-level parameters file (see § Parameter substitution) |
+| Component `resource_templates` (parametric resource generation) | Top-level resource generators in the project file; reference parameters by name |
+| Component `restart_processes` hook | Per-resource `hooks:` on the resource that owns the side-effect, OR a regular Resource (`kind: custom`) that performs the killall |
+| Component `parent: <component-id>` | Tags compose freely; "nested" is just multiple tags |
+
+### Aggregator-style queries (status of a tag)
+
+The engine answers tag-status queries directly from the resource set
+without needing a stand-in Resource:
+
+```
+is_converged(tag T, phase P) :=
+   ∀ resource R where T ∈ R.tags : R has reached phase P
+```
+
+CLI consumers see this as `--show-tag-status cli-tools` or
+`--target-tag cli-tools` (selection). No additional declaration is
+needed in any manifest.
 
 ### Parameter substitution
 
@@ -688,24 +698,30 @@ field — same mechanism as any other resource.
 time**, in a single pre-validation pass. By the time a resource reaches
 the planner, no `${...}` tokens remain. There is no late binding.
 
+Parameters are declared at the **project level** (a top-level
+`parameters:` file or block), not on individual resources or tags:
+
+```yaml
+parameters:
+  brew_tap:    { type: string, default: homebrew/core }
+  python_ver:  { type: semver, default: 3.12 }
+  ai_models:   { type: list,   default: [llama3, mistral] }
+```
+
 **Resolution order** (highest precedence wins):
 
 | Source | Where it comes from |
 |---|---|
 | `operator-cli` | `--set <name>=<value>` flag or `UCC_OVERRIDE__<NAME>` env var |
 | `resource-override` | `defaults/resource-overrides.yaml` |
-| `component-preference` | the component's `parameters[<name>].default`, possibly platform-filtered |
-| `defaults` | `defaults/preferences.yaml` |
+| `project-default` | the project's `parameters[<name>].default`, possibly platform-filtered |
+| `built-in default` | `defaults/preferences.yaml` |
 
 **Errors at validation time** (the resource is rejected):
 
-- `${var}` references a name not declared in `component.parameters`
+- `${var}` references a name not declared in the project parameters
 - the resolved value's type does not match `parameters[<name>].type`
 - the resolved value is not in `parameters[<name>].options` (if `options` is set)
-
-**Scope**: substitution sees only the parameters of the resource's own
-component (and its ancestors via `parent`). Cross-component refs are not
-allowed; for those, expose the value as a capability instead.
 
 **Determinism**: substitution depends only on host facts and operator
 input known before validation. Once a `RunSession` starts, every
@@ -714,24 +730,26 @@ resource has a frozen, fully-substituted shape.
 ## The substrate stack: hosts and the substrate they stand on
 
 Every place that runs userland code — a Mac install, a Linux VM, an
-Ubuntu container — is modeled as a **host** (`kind: aggregator`). The
-only thing that distinguishes them is **what kind of substrate they
-stand on**.
+Ubuntu container — is modeled as a **host Resource**. There is no
+special "host kind"; a host is just a regular Resource whose `provides:`
+includes platform/os facts and whose `requires:` carries one
+substrate-edge capability. The only thing that distinguishes them is
+**what kind of substrate they stand on**.
 
 There are exactly **three substrate flavors**:
 
 | Substrate | Capability the host requires | Provided by | Own kernel? | Own hardware? |
 |---|---|---|---|---|
-| Bare-metal | `machine-substrate` | a `hardware/<id>` resource (`kind: observe`) | yes | yes (real) |
-| Virtualized | `machine-substrate` | a `hardware/<vm-id>` resource (`kind: custom`, configurable) which itself requires a `virtualization-platform/<name>` | yes | yes (virtual, configurable) |
-| Containerized | `container-runtime/<name>` | a host member that runs the runtime daemon (e.g. docker-desktop) | **no** (shared with parent) | no |
+| Bare-metal | `machine-substrate` | a `hardware/<id>` Resource (`kind: observe`) | yes | yes (real) |
+| Virtualized | `machine-substrate` | a `hardware/<vm-id>` Resource (`kind: custom`, configurable) which itself requires a `virtualization-platform/<name>` | yes | yes (virtual, configurable) |
+| Containerized | `container-runtime/<name>` | a Resource that runs the runtime daemon (e.g. docker-desktop) | **no** (shared with parent) | no |
 
 That's the whole taxonomy. A container is a host with a different
 substrate edge — not a separate concept.
 
 ### Hardware (only present when the host owns its kernel)
 
-Hardware is a separate resource ONLY for hosts with their own kernel.
+Hardware is a separate Resource ONLY for hosts with their own kernel.
 Containers skip the hardware layer entirely.
 
 | Variant | Requires | Provides | Has config axis? |
@@ -744,14 +762,14 @@ Containers skip the hardware layer entirely.
 id: hardware/mac-mini-m2
 driver: { kind: observe, fn: { name: probe_hardware } }
 provides:
-  - { capability: { type: machine-substrate, scope: host, external: true } }
-  - { capability: { type: cpu-cores,     name: count, scope: host, qualifiers: { value: 10 },          external: true } }
-  - { capability: { type: ram-bytes,     name: total, scope: host, qualifiers: { value: 68719476736 }, external: true } }
-  - { capability: { type: hardware-accel, name: mps,  scope: host, external: true } }
+  - { capability: { type: machine-substrate, external: true } }
+  - { capability: { type: cpu-cores,      name: count, qualifiers: { value: 10 },          external: true } }
+  - { capability: { type: ram-bytes,      name: total, qualifiers: { value: 68719476736 }, external: true } }
+  - { capability: { type: hardware-accel, name: mps,                                       external: true } }
 
 # Virtual hardware (the Linux VM Docker Desktop conjures)
 id: hardware/docker-vm
-component: docker-desktop                              # member of the platform that creates it
+tags: [docker-desktop]                                 # organizational only — see § Tags
 driver:
   kind: custom
   axes:
@@ -762,104 +780,104 @@ driver:
 requires:
   - { capability: virtualization-platform/docker, strength: hard, when: running }   # the VM only exists when the platform is live
 provides:
-  - { capability: { type: machine-substrate, scope: vm } }
-  - { capability: { type: cpu-cores, name: count, scope: vm, qualifiers: { value: 4 } } }
+  - { capability: { type: machine-substrate } }
+  - { capability: { type: cpu-cores, name: count, qualifiers: { value: 4 } } }
 ```
 
 The legacy `docker-resources` resource IS exactly the virtual-hardware
 pattern.
 
-### Host (always an aggregator)
+### Host (a regular Resource with the substrate-edge requires)
 
 ```yaml
 id: host                                               # convention: top-level OS
-driver: { kind: aggregator }
+driver: { kind: observe, fn: { name: probe_host_facts } }
 requires:
   - { capability: machine-substrate, strength: hard }  # picks bare-metal OR virtual hardware
 provides:
-  - { capability: { type: platform,    name: macos | linux | wsl2,    scope: host, external: true } }
-  - { capability: { type: os_id,       name: <id>,                     scope: host, external: true } }
-  - { capability: { type: os_version,  name: <semver>,                 scope: host, external: true } }
-  - { capability: { type: init-system, name: launchd | systemd | none, scope: host, external: true } }
-  - { capability: { type: shell,       name: zsh | bash,               scope: user } }
-  - { capability: { type: package-manager-available, name: brew | apt | dnf | pacman | winget, scope: host } }
-  # Plus (implicitly via aggregation): every capability that any member provides.
+  - { capability: { type: platform,    name: macos | linux | wsl2,    external: true } }
+  - { capability: { type: os_id,       name: <id>,                     external: true } }
+  - { capability: { type: os_version,  name: <semver>,                 external: true } }
+  - { capability: { type: init-system, name: launchd | systemd | none, external: true } }
+  - { capability: { type: shell,       name: zsh | bash } }
+  - { capability: { type: package-manager-available, name: brew | apt | dnf | pacman | winget } }
 ```
 
 A **container host** swaps the substrate requirement:
 
 ```yaml
 id: host/ollama-container
-component: ai-stack-compose
+tags: [ai-stack]
 driver:
-  kind: aggregator
-  parameters:
-    image:   { type: string, default: "ollama/ollama:latest" }
-    command: { type: string, default: "ollama serve" }
+  kind: docker-compose-service       # the actual driver that creates and runs the container
+  service_name: ollama
 requires:
   - { capability: container-runtime/docker, strength: hard, when: running }   # the substrate (no machine-substrate — kernel is shared)
 provides:
-  - { capability: { type: platform, name: linux, scope: container } }
-  - { capability: { type: ollama-running, scope: container }, when: running }
+  - { capability: { type: platform, name: linux } }
+  - { capability: { type: ollama-running }, when: running }
 ```
 
-Same `kind: aggregator`. Same member shape. Just a different substrate
-edge.
+Same Resource shape. Just a different substrate edge and a different
+driver kind.
 
 ### Recursion: VM nesting and container nesting
 
-A managed resource that runs containers or VMs (Docker Desktop, VMware,
+A managed Resource that runs containers or VMs (Docker Desktop, VMware,
 Parallels, podman, …) provides one or both of:
 
-- `virtualization-platform/<name>` — lets a `hardware/<vm-id>` resource
+- `virtualization-platform/<name>` — lets a `hardware/<vm-id>` Resource
   exist, kicking off a nested (hardware → host) stack
-- `container-runtime/<name>` — lets a `host/<container-id>` resource
+- `container-runtime/<name>` — lets a `host/<container-id>` Resource
   exist directly (no nested hardware, kernel is shared)
 
 ```
 hardware/mac-mini-m2                              ← bare-metal — provides machine-substrate
-   ↑
-host  (kind: aggregator, macOS, kernel owner)
-   ├── homebrew, cli-tools, …
-   ├── docker-desktop                              ← when running, provides BOTH
-   │     ├─ virtualization-platform/docker
-   │     └─ container-runtime/docker
-   │
-   ├── hardware/docker-vm                          ← VM nesting: requires virt-platform
-   │     ↑                                            (own kernel — needs hardware)
-   │     └── host/docker-linux                     ← Linux guest, kind: aggregator
-   │
-   └── ai-stack-compose                            ← (just an aggregator on macOS)
-         ├── host/ollama-container                 ← container nesting: requires runtime
-         │     └── ollama-model-llama3                (no hardware — shared kernel)
-         └── host/open-webui-container
+   ↑ machine-substrate
+host  (the macOS Resource, kernel owner)
+   docker-desktop                                 ← when running, provides BOTH
+        ├─ virtualization-platform/docker
+        └─ container-runtime/docker
+              ↑ virtualization-platform                           ↑ container-runtime
+   hardware/docker-vm   (VM nesting:                  host/ollama-container  (container nesting:
+       requires virt-platform; own kernel)               requires runtime; no hardware, shared kernel)
+       ↑ machine-substrate                               (and other container hosts...)
+   host/docker-linux  (Linux guest)
 ```
+
+Tags overlay this structure for organization. The macOS Resources
+might all carry `tags: [host]`; the AI containers might carry
+`tags: [ai-stack]`. Tags don't change the capability graph above —
+they're just labels.
 
 Two nesting shapes from the same building block:
 
-| Nesting | Substrate edge | Adds a `hardware/...`? | Member of |
-|---|---|---|---|
-| **Virtualization** | `virtualization-platform/<name>` | yes (`hardware/<vm-id>`) | the platform resource |
-| **Containerization** | `container-runtime/<name>` | no | usually an aggregator on the parent host |
+| Nesting | Substrate edge | Adds a `hardware/...`? |
+|---|---|---|
+| **Virtualization** | `virtualization-platform/<name>` | yes (`hardware/<vm-id>`) |
+| **Containerization** | `container-runtime/<name>` | no |
 
 Containers ARE hosts (full userland installs) — they just don't own
 their kernel, so they skip the hardware layer.
 
-### Probing — recursive AND partial
+### Probing — per-resource, with substrate-bound visibility
 
-To populate the runtime fact set, the engine **probes recursively**:
+To populate the runtime fact set, the engine **observes each Resource
+independently**:
 
 ```
-probe(resource):
-  facts = run own observations (driver kind's observe fn, if any)
-  for each member resource M:
-    facts ∪= probe(M)
+observe(resource):
+  facts = run driver's observe fn (if any)
   return facts as the resource's provides
 ```
 
+There is no recursive aggregation step. Each Resource produces its own
+facts; the capability graph composes them via `requires` / `provides`
+edges.
+
 But probes are **partially blind** — substrate boundaries (kernel
-boundary for VMs, namespace boundary for containers) restrict
-visibility:
+boundary for VMs, namespace boundary for containers) restrict what
+any single Resource can observe:
 
 | Direction | Visibility |
 |---|---|
@@ -882,8 +900,8 @@ capabilities trigger "prefer non-external when one exists." Observed
 state without `external` doesn't trigger the preference, because the
 engine can in principle influence it via another resource.
 
-Members' provides inherit through aggregation but keep their own
-`external` flag — recursive provides are not all external.
+Each Resource declares `external` on its own provides; there is no
+inherited aggregation.
 
 This collapses the legacy `requires:` field: `requires: macos` becomes
 `requires: [{ capability: platform/macos, strength: applicable }]`.
@@ -1050,19 +1068,19 @@ default scope?"
 
 ```yaml
 id: cli-jq
-component: cli-tools
+tags: [cli-tools]
 requires:
-  - capability: { type: package-manager, name: brew,      scope: host }
+  - capability: { type: package-manager, name: brew }
     strength: hard
     condition: { fact: pm, eq: brew }
     args: { ref: jq }
     # when: defaults to before_install (kind=pkg is install-only)
-  - capability: { type: package-manager, name: native-pm, scope: host }
+  - capability: { type: package-manager, name: native-pm }
     strength: hard
     condition: { fact: pm, eq: native-pm }
     args: { ref: jq }
 provides:
-  - capability: { type: binary, name: jq, scope: host }
+  - capability: { type: binary, name: jq }
     # when: defaults to after_install
 driver: { kind: pkg, refs: { brew: jq, native-pm: jq } }
 ```
@@ -1071,19 +1089,19 @@ driver: { kind: pkg, refs: { brew: jq, native-pm: jq } }
 
 ```yaml
 id: docker-desktop
-component: docker
+tags: [docker]
 requires:
-  - capability: { type: platform, name: macos, scope: host, external: true }
+  - capability: { type: platform, name: macos, external: true }
     strength: applicable
     when: always
-  - capability: { type: package-manager, name: brew-cask, scope: host }
+  - capability: { type: package-manager, name: brew-cask }
     strength: hard
     args: { ref: docker-desktop }
     when: before_install
 provides:
-  - capability: { type: app-bundle, name: docker-desktop, scope: host }
+  - capability: { type: app-bundle, name: docker-desktop }
     when: after_install                          # persistent
-  - capability: { type: daemon, name: docker, scope: host }
+  - capability: { type: daemon, name: docker }
     when: running                                # ephemeral — withdrawn when stopped
 driver:
   kind: custom
@@ -1109,13 +1127,13 @@ policy:
 
 ```yaml
 id: docker-available
-component: docker
+tags: [docker]
 requires:
-  - capability: { type: daemon, name: docker, scope: host }
+  - capability: { type: daemon, name: docker }
     strength: hard
     # when: defaults to always (kind=observe)
 provides:
-  - capability: { type: capability, name: docker-available, scope: host }
+  - capability: { type: capability, name: docker-available }
     # when: defaults to always
 driver: { kind: observe, fn: { name: docker_daemon_is_running } }
 ```
@@ -1124,9 +1142,8 @@ driver: { kind: observe, fn: { name: docker_daemon_is_running } }
 
 ```yaml
 id: gate-supported-platform
-component: <root>
 provides:
-  - capability: { type: preflight, name: supported-platform, scope: host }
+  - capability: { type: preflight, name: supported-platform }
     # when: defaults to always
 driver:
   kind: observe
@@ -1141,11 +1158,11 @@ driver:
 
 ```yaml
 id: tic-system-composition-converged
-component: system
+tags: [system]
 requires:
-  - capability: { type: managed-resource-status, name: system-composition, scope: host }
+  - capability: { type: managed-resource-status, name: system-composition }
 provides:
-  - capability: { type: verification, name: system-composition-converged, scope: host }
+  - capability: { type: verification, name: system-composition-converged }
 driver: { kind: observe, fn: { name: _tic_target_status_is, args: [system-composition, ok] } }
 ```
 
@@ -1165,7 +1182,7 @@ For every field in the schema, three states are possible:
 |---|---|---|---|
 | `id`, `name` | explicit only | — | required |
 | `display_name` | explicit only | — | optional |
-| `component` | explicit only | — | yes (organizational) |
+| `tags` | explicit only | — | optional (organizational) |
 | `requires[*].capability` | both | implicit per `driver.kind` contract (see catalog) | **yes** — declares semantic intent |
 | `requires[*].strength` | both | defaults to `hard` | yes (`applicable`/`soft` carry distinct meaning) |
 | `requires[*].when` | both | per-kind default (`before_install` / `before_config` / `before_run`) | only when non-default |
@@ -1193,7 +1210,6 @@ For every field in the schema, three states are possible:
 |---|---|---|---|
 | `type` | explicit only | — | required |
 | `name` | explicit (often required by family rule) | — | required when family expects |
-| `scope` | both | implicit per kind for derived provides | yes for declared provides |
 | `qualifiers` | explicit only | — | when needed (e.g., http-endpoint port) |
 | `external` | both | defaults to `false`; Host's facts default to `true` | yes — resolver-relevant |
 
@@ -1219,7 +1235,7 @@ For every field in the schema, three states are possible:
 | Capability namespace | Emitted by | User declares? |
 |---|---|---|
 | `managed-resource-status/<id>` | every managed resource | no |
-| `component-status/<id>` | every aggregator-kind resource | no |
+| `tag-status/<tag>/<phase>` | the engine, computed from the resource set tagged `<tag>` | no |
 | `platform/*`, `arch/*`, `os_id/*`, `os_version/*`, `init-system/*`, `hardware-accel/*`, `package-manager-available/*`, `shell/*` | the Host built-in resource | no |
 
 ### Counts
@@ -1243,7 +1259,7 @@ The model intentionally keeps explicit always allowed (except for engine-produce
 
 | v3 concept | Replaced by |
 |---|---|
-| 33 `element_type` values | 3 (Project, Resource, RunSession+Operation) — Component absorbed into Resource as `kind: aggregator` |
+| 33 `element_type` values | 3 (Project, Resource, RunSession+Operation) — Component dissolved entirely (not even a `kind`) |
 | 14 `relation_type` values | 3 declarable (`requires`, `provides`, `configures`) |
 | `resource_type`, `convergence_profile_derived`, `state_model_derived` | derived from `driver.kind` and axis subscription |
 | `desired_state.{installation, runtime, health, admin, dependencies, value}` | `driver.axes.<axis>.desired` (custom only) |
@@ -1255,10 +1271,11 @@ The model intentionally keeps explicit always allowed (except for engine-produce
 | `verification-test` element class | resource with `provides: verification/*` |
 | `preflight-gate` element class | resource with `provides: preflight/*` |
 | `governance-claim`, `output-contract`, `external-provider`, `compatibility-*` | dropped or reframed as `provides: <namespace>/*` |
-| `verification-suite`, `verification-context` | use a `kind: aggregator` resource for grouping |
-| `Component` element class | absorbed into `Resource` with `kind: aggregator`; `parameters` and `resource_templates` become aggregator kind-specific params |
+| `verification-suite`, `verification-context` | `tags: [<suite-name>]` on the verification resources |
+| `Component` element class | dissolved — no `component:` field, no `kind: aggregator`; pure grouping is `tags: [<group>]`; component parameters become project-level parameters |
+| `capability.scope` | dropped (was conflating aggregator boundary, host vs guest, and per-user/system); `external: true` covers cross-substrate visibility, qualifiers/conditions cover the rest |
 | `driver.hooks.{pre, post}` (separate arrays) | single `hooks: [...]` list with per-entry `when:` lifecycle phase |
-| component-level `restart_processes` (legacy, unmodeled) | `aggregator` resource's `hooks: [{ when: after_X, killall: [...] }]` |
+| component-level `restart_processes` (legacy, unmodeled) | per-resource `hooks: [{ when: after_X, killall: [...] }]` on the resource that owns the side-effect |
 | `layer` | not modeled (filesystem dirs only) |
 | `provider_selection` block | conditional `requires` + `priority` |
 | `driver_type`, `driver.kind` (legacy 26 values), `backend_type`, `provider_type`, `provider_name` | one `driver.kind` from a registered catalog |
@@ -1269,12 +1286,12 @@ The model intentionally keeps explicit always allowed (except for engine-produce
 
 | | v3 spec | This model |
 |---|---:|---:|
-| Element classes | 33 | **3** (Project, Resource, RunSession+Operation) — Component absorbed |
-| Relation types | 14 | 3 declarable (`requires`, `provides`, `configures`) + 1 derived (`contains`) |
-| Top-level resource fields | 15+ | 4 (`requires`, `provides`, `driver`, `policy`) |
+| Element classes | 33 | **3** (Project, Resource, RunSession+Operation) — Component dissolved |
+| Relation types | 14 | 3 declarable (`requires`, `provides`, `configures`) |
+| Top-level resource fields | 15+ | 5 (`requires`, `provides`, `driver`, `policy`, `tags`) |
 | State axes | 6 (mixed with predicates) | 3 |
 | Consume strengths | 2 | 3 |
-| Driver kinds | ~26 + 22 tool_types | ~33 + `custom` (incl. new `aggregator`) |
+| Driver kinds | ~26 + 22 tool_types | ~32 + `custom` (no `aggregator` — pure grouping uses `tags`) |
 | Hook arrays | 2 (pre + post) | 1 (`hooks: [...]` with per-entry `when:`) |
 | Policy enum/object types | mixed | uniform `Predicate | bool` |
 
