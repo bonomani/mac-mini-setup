@@ -90,10 +90,13 @@ resource:
       when_axes?: [<axis>, ...]                         # ALL listed axes must converge for delivery
       condition?: <Predicate>                           # only expose when predicate holds
 
+  configures?: <resource-id> | [<resource-id>, ...]     # see § Configuration relation
+
   driver:
     kind:        <kind>                                 # one of the registered kinds (see catalog)
     # kind-specific parameters
     # plus the following common slots:
+    target?:    { ... }                                 # config-axis only; see § Configuration target
     hooks?:
       pre?:  [{ fn: <fn-name> }]
       post?: [{ fn: <fn-name> } | { notify_resource: <id>, signal: <signal> }]
@@ -141,6 +144,93 @@ capability to be delivered to consumers. Examples:
 
 If `when_axes` is omitted, the capability is delivered whenever the
 resource's `driver.observe` (kind=observe) returns true.
+
+## Configuration
+
+Configuration is a first-class structural concept, not "just another
+axis with a desired value." A config-axis resource carries five
+properties beyond what install/run resources have:
+
+| # | Property | Where in the model |
+|---|---|---|
+| 1 | **Configures relation** — explicit edge: "I am the configuration of `<X>`" | `Resource.configures` |
+| 2 | **Source cascade** — defaults → component-pref → resource-override → operator-cli | `component.parameters[<name>].source` |
+| 3 | **Capability scope** — `host` / `user` / `app` / `component` / `container` reach | `capability.capability_scope` |
+| 4 | **Merge semantics** — replace / shallow-merge / deep-merge / append | implied by `driver.kind` (see catalog) |
+| 5 | **Typed reload** — explicit signal to the configured target | `driver.hooks.post.notify_resource` |
+
+### Configuration relation (`configures`)
+
+`configures: <resource-id>` makes "this is the configuration of `<X>`"
+an explicit edge, not an inference from `consumes` + `notify_resource`.
+
+```yaml
+vscode-settings:
+  configures: vscode                       # ← explicit
+  driver:
+    kind: json-merge
+    target:
+      path: ~/Library/Application Support/Code/User/settings.json
+      format: json
+    hooks:
+      post: [{ notify_resource: vscode, signal: reload-config }]
+```
+
+A `configures` relation **implies** a hard `consumes` of the target's
+primary identity capability — no need to declare it separately.
+
+The validator uses `configures` to detect:
+- **Orphaned configs** — `configures` points at a non-existent resource
+- **Misclassified configs** — a `kind: setting` resource with no `configures` is suspicious (probably should declare its target)
+- **Broken notify chains** — `configures: vscode` but no `notify_resource: vscode` (or vice versa)
+
+`configures` accepts a single `<resource-id>` or a list, and may carry
+a `condition?: Predicate` for platform-conditional configuration.
+
+### Configuration target
+
+The `driver.target` block (config-axis only) gives every config kind a
+**common target descriptor** so the validator can compare across
+resources:
+
+```yaml
+driver:
+  kind: <config-kind>
+  target:
+    path?:    <string>                     # file location (or implicit per kind)
+    format?:  json | plist | ini | env | yaml | key-value | free-text
+    backend?: <string>                     # e.g. defaults | pmset | softwareupdate
+    domain?:  <string>                     # e.g. com.apple.finder for `defaults`
+    key?:     <string>                     # specific field within the target
+```
+
+Different kinds populate different sub-fields (a `setting` resource
+uses `backend + domain + key`; a `json-merge` resource uses `path +
+format`). The shared name lets the validator detect:
+- Two resources writing the same `(path, key)` pair with incompatible
+  kinds → conflict
+- A `kind: json-merge` claiming `format: ini` → kind/format mismatch
+
+### Merge semantics (per kind, not per resource)
+
+Each catalogued config kind has a fixed merge semantic. Per-resource
+override is **not** supported — when the semantic differs, use a
+different kind (or `kind: custom`).
+
+See § Driver kinds for the per-kind merge column.
+
+### Validator rules summary
+
+The five properties above enable five cross-cutting checks:
+
+1. **Orphaned `configures`** — points at a missing resource
+2. **Configurer/notify mismatch** — `configures: X` requires `notify_resource: X` in `hooks.post` (and vice versa)
+3. **Target conflict** — two resources writing the same target with incompatible kinds
+4. **Format mismatch** — kind says `format: json`, target file is actually `.ini`
+5. **Source provenance** — every applied config value records its `config_source` for auditability
+
+These rules belong in `lib-quality`; this section names them so the
+spec and validator agree on what's enforced.
 
 ## Capability
 
@@ -258,45 +348,40 @@ Each registered kind tells the engine which axes a resource subscribes
 to and how to dispatch the per-axis operations. `custom` is the escape
 hatch.
 
-| Kind | Implied axis | Parameters |
-|---|---|---|
-| `observe` | none | `predicate?: <Predicate>` OR `fn?: { name, args? }` |
-| `pkg` | install | `refs: { brew?, native-pm?, brew-cask?, ... }`, `bin?` |
-| `pip` | install | `isolation`, `probe_pkg`, `install_packages` |
-| `npm` | install | `package`, `version?` |
-| `git-repo` | install | `url`, `dest`, `ref?` |
-| `pyenv` | install | `version` |
-| `nvm` | install | `version` |
-| `vscode` | install | `extension_id` |
-| `ollama` | install | `model` |
-| `script-installer` | install | `url`, `verify_cmd?` |
-| `app-bundle` | install | `bundle_path`, `source` |
-| `home-artifact` | install | `dest`, `source` |
-| `setting` | config | `path`, `key`, `value` |
-| `git-global` | config | `key`, `value` |
-| `path-export` | config | `dirs`, `rc_file` |
-| `compose-file` | config | `path`, `content` |
-| `swupdate-schedule` | config | `enabled`, `frequency` |
-| `service` | run | `unit`, `manager: launchd|systemd|brew-services` |
-| `compose-apply` | run | `compose_file`, `services?` |
-| `docker-compose-service` | run | `service_name` |
-| `custom-daemon` | run | `pid_fn`, `start_fn`, `stop_fn` (ad-hoc daemons not under a service manager) |
-| `brew-analytics` | config | `desired` |
-| `json-merge` | config | `target_file`, `keys` (deep-merge JSON config files, e.g. VSCode settings) |
-| `softwareupdate-schedule` | config | `enabled`, `frequency` (macOS softwareupdate config; alias of `swupdate-schedule`) |
-| `zsh-config` | config | `theme`, `installer_url`, `omz_dir` (oh-my-zsh setup) |
-| `path-export` | config | `dirs`, `rc_file` |
-| `compose-file` | config | `path`, `content` |
-| `swupdate-schedule` | config | `enabled`, `frequency` |
-| `setting` | config | `path`, `key`, `value` |
-| `git-global` | config | `key`, `value` |
-| `brew-unlink` | install | `formula` (unlinks a brew formula to free a name) |
-| `build-deps` | install | `set: brew|apt|dnf` (installs platform-specific build essentials) |
-| `corepack` | install | `enabled` (enables Node corepack) |
-| `nvm-version` | install | `version` (sets active Node version via nvm; depends on `nvm`) |
-| `pip-bootstrap` | install | (bootstraps pip itself; no params) |
-| `pyenv-brew` | install | (installs pyenv via brew; specialty wrapper around `pkg`) |
-| `custom` | declared | `axes: { install?, config?, run? }` |
+| Kind | Implied axis | Implied merge (config kinds only) | Parameters |
+|---|---|---|---|
+| `observe` | none | — | `predicate?: <Predicate>` OR `fn?: { name, args? }` |
+| `pkg` | install | — | `refs: { brew?, native-pm?, brew-cask?, ... }`, `bin?` |
+| `pip` | install | — | `isolation`, `probe_pkg`, `install_packages` |
+| `npm` | install | — | `package`, `version?` |
+| `git-repo` | install | — | `url`, `dest`, `ref?` |
+| `pyenv` | install | — | `version` |
+| `nvm` | install | — | `version` |
+| `nvm-version` | install | — | `version` (sets active Node version via nvm) |
+| `pyenv-brew` | install | — | (installs pyenv via brew; specialty wrapper around `pkg`) |
+| `pip-bootstrap` | install | — | (bootstraps pip itself; no params) |
+| `vscode` | install | — | `extension_id` |
+| `ollama` | install | — | `model` |
+| `script-installer` | install | — | `url`, `verify_cmd?` |
+| `app-bundle` | install | — | `bundle_path`, `source` |
+| `home-artifact` | install | — | `dest`, `source` |
+| `brew-unlink` | install | — | `formula` (unlinks a brew formula to free a name) |
+| `build-deps` | install | — | `set: brew\|apt\|dnf` (installs platform-specific build essentials) |
+| `corepack` | install | — | `enabled` (enables Node corepack) |
+| `setting` | config | **replace** | `target: { backend, domain?, key, value, type? }` (macOS defaults / pmset) |
+| `git-global` | config | **shallow-merge** | `target: { key, value }` (single git config key) |
+| `path-export` | config | **append** | `target: { dirs, rc_file }` (PATH manipulation in shell rc) |
+| `zsh-config` | config | **shallow-merge** | `target: { key, value, config_file }` (single .zshrc variable) |
+| `json-merge` | config | **deep-merge** | `target: { path, format: json, keys }` (e.g. VSCode settings) |
+| `compose-file` | config | **replace** | `target: { path, content }` (whole-file write) |
+| `brew-analytics` | config | **replace** | `desired` (single on/off value) |
+| `swupdate-schedule` | config | **replace** | `enabled`, `frequency` |
+| `softwareupdate-schedule` | config | **replace** | `enabled`, `frequency` (macOS-specific alias of `swupdate-schedule`) |
+| `service` | run | — | `unit`, `manager: launchd\|systemd\|brew-services` |
+| `compose-apply` | run | — | `compose_file`, `services?` |
+| `docker-compose-service` | run | — | `service_name` |
+| `custom-daemon` | run | — | `pid_fn`, `start_fn`, `stop_fn` (ad-hoc daemons) |
+| `custom` | declared | declared per-resource | `axes: { install?, config?, run? }` |
 
 ### `kind: observe` — the universal observation driver
 
@@ -323,12 +408,12 @@ driver:
       recover?:  <fn>
       evidence?: { type: <evidence_type>, fields: { ... } }
     config?:
-      desired:          <value> | { command: <fn> }
-      observe:          <fn>
-      apply:            { drifted?: <fn> }
-      merge_semantics?: replace | shallow-merge | deep-merge | append    # default: replace
-      recover?:         <fn>
-      evidence?:        { type, fields }
+      desired:   <value> | { command: <fn> }
+      observe:   <fn>
+      apply:     { drifted?: <fn> }
+      target?:   { ... }                                # see § Configuration target
+      recover?:  <fn>
+      evidence?: { type, fields }
     run?:
       desired:   running | stopped
       observe:   <fn>
@@ -337,16 +422,11 @@ driver:
       evidence?: { type, fields }
 ```
 
-`merge_semantics` (config axis only) tells the engine how a write
-combines with the live value. Without it, two resources writing the
-same file silently overwrite each other.
-
-| Value | Behavior | Used by |
-|---|---|---|
-| `replace` | overwrite entirely (default) | `setting`, `defaults`, `pmset` |
-| `shallow-merge` | top-level key-by-key | shell rc files |
-| `deep-merge` | recursive | `json-merge` (VS Code settings) |
-| `append` | add to existing list | `path-export` |
+For `kind: custom` config-axis blocks, the writer's merge semantic is
+implicit in the `apply.drifted` function — the engine doesn't enforce a
+specific behavior. Use a catalogued kind (e.g. `json-merge`,
+`path-export`) when you want the engine to know and enforce the
+semantic. See § Configuration for the full structural model.
 
 ### Hooks (any kind)
 

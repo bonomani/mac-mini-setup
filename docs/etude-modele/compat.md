@@ -79,17 +79,17 @@ element; the others are first-class.)
 | `overrides` | **collapsed** | `consumes.priority` (per consumer); parameter override hierarchy (component) |
 | `consumes` | **kept** | typed edge to a Capability |
 | `provides` | **kept** | typed edge from Resource to Capability |
-| `configures` | **collapsed** | `consumes` of the configured resource's capability + capability_type=`config-file` provides |
+| `configures` | **kept** (refined) | explicit `Resource.configures: <id>` field (see model.md §Configuration). A `configures` edge implies a hard `consumes` of the target's primary capability — no double-declaration. |
 | `requires` | **collapsed** | `consumes(strength: applicable)` for platform/host gates; `consumes(strength: hard, condition: P)` for conditional deps |
 | `verifies` | **collapsed** | `Resource.consumes` of the capability being verified + `provides: verification/*` |
 | `schedules` | **collapsed** | implicit topological order computed during `plan` phase |
 | `records` | **collapsed** | implicit; every `Operation` produces evidence captured in the run-plane |
 | `invalidates` | **removed** | cache invalidation is implementation |
 
-### Net: 14 → 2 declarable + 1 structural
+### Net: 14 → 3 declarable + 1 structural
 
-Declarable: `consumes`, `provides`. Structural (only on Component):
-`contains`. Everything else is computed at plan time.
+Declarable: `consumes`, `provides`, `configures`. Structural (only on
+Component): `contains`. Everything else is computed at plan time.
 
 ## 3. Top-level resource fields (15+ → 4)
 
@@ -108,7 +108,7 @@ Declarable: `consumes`, `provides`. Structural (only on Component):
 | `consumes` | **kept** | typed (`strength`, `condition`, `priority`, `args`) |
 | `verifies` | **collapsed** | this resource provides a `verification/*` capability that consumers consume |
 | `requires` | **collapsed** | `consumes(platform/X, strength: applicable)` via `Host` |
-| `configures` | **collapsed** | `consumes` + `provides: config-file/*` |
+| `configures` | **kept** (refined) | promoted to a top-level `Resource.configures` field (single id or list); implies a hard `consumes` of the target. Validator uses it for orphan detection and notify-chain consistency. |
 | `relations` (typed array) | **collapsed** | replaced by typed `consumes`/`provides` |
 | `provider_selection` | **collapsed** | conditional `consumes` + `priority` |
 | `endpoints[]` | **collapsed** | `provides: http-endpoint/* @ host` with `qualifiers` (this is EXT-A, kept) |
@@ -252,7 +252,7 @@ Recommended order to avoid breakage:
 | Concept | v3 | New model | Δ |
 |---|---:|---:|---:|
 | Element classes | 33 | 8 | −25 |
-| Relation types | 14 | 3 (2 declared + 1 structural) | −11 |
+| Relation types | 14 | 4 (3 declared + 1 structural) | −10 |
 | Top-level resource fields | 15+ | 4 | −11+ |
 | State axes | 6 (mixed with predicates) | 3 (state) + 2 (predicates) + 1 (derived) | clearer split |
 | Driver fields per resource | 7 | 1 (`kind`) + per-kind params | −6 |
