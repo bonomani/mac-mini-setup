@@ -43,14 +43,13 @@ sits on a continuum of engine responsibility, and its position can
 change over time:
 
 ```
-fact (host-published)            ←  capability comes from `Host` resource
+host-published fact          ←  Host resource's provides (typically external: true)
    ↑↓
-external-provider                 ←  capability `external: true`,
-                                     observed via `kind: observe`
+unmanaged resource           ←  has provides + observe; no axes
+                                (may mark its provides external: true if
+                                the engine truly can't influence them)
    ↑↓
-unmanaged resource                ←  has provides + observe; no axes
-   ↑↓
-managed resource                  ←  has axes + driver; engine drives convergence
+managed resource             ←  has axes + driver; engine drives convergence
 ```
 
 A resource is **promoted** by adding an `axes` block (the engine starts
@@ -64,12 +63,12 @@ Examples:
   Python venv.
 - A future host where Homebrew is operator-installed could see
   `homebrew` demoted to a capability check.
-- Platform facts (`platform/macos`) are never managed — they live at
-  the top of the ladder as host-published.
+- Platform facts (`platform/macos`) sit at the top of the ladder —
+  always host-published, never managed.
 
 The model accepts movement along this ladder without breaking
 consumers, because `requires(X)` only cares that `X` is published, not
-which level of the ladder published it.
+which level published it.
 
 ```yaml
 resource:
