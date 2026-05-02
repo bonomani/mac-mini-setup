@@ -711,38 +711,90 @@ allowed; for those, expose the value as a capability instead.
 input known before validation. Once a `RunSession` starts, every
 resource has a frozen, fully-substituted shape.
 
-## Host (built-in)
+## Host (root aggregator — not a built-in special case)
 
-The engine emits a virtual `host` resource that exposes machine facts as
-capabilities. Other resources consume them like any other capability.
+"Host" is **a convention, not a primitive**: it's the resource that sits
+at the **root of the resource containment tree**, with `kind: aggregator`.
+The engine treats it like any other aggregator. Every other resource is
+either a member of the host (directly) or a member of a member (a
+container, a VM, a sub-component).
+
+The recursive shape: every aggregator's `provides` is the union of:
+1. Its own observations (probes the engine runs against the resource itself)
+2. Its members' `provides` (recursively — same rule applies to each member)
+
+So the host's `provides` includes platform/arch/os facts (its own
+probes) AND every capability provided by any resource it contains.
 
 ```yaml
+# The convention: id "host" identifies the root aggregator.
+# Nothing about the SHAPE is special — it's just a Resource of kind:
+# aggregator, the way a docker-compose stack or a VM also is.
 id: host
-component: <root>
+driver: { kind: aggregator }
 provides:
-  # Immutable host facts — engine cannot ever influence these.
+  # Own observations — facts the engine reads directly about the host machine
   - { capability: { type: platform,       name: macos | linux | wsl2,    scope: host, external: true } }
   - { capability: { type: arch,           name: arm64 | x86_64,           scope: host, external: true } }
   - { capability: { type: os_id,          name: <id>,                     scope: host, external: true } }
   - { capability: { type: os_version,     name: <semver>,                 scope: host, external: true } }
   - { capability: { type: hardware-accel, name: mps | cuda,               scope: host, external: true } }
   - { capability: { type: init-system,    name: launchd | systemd | none, scope: host, external: true } }
-  # Host-observed state — may flip as a side-effect of other resources
-  # converging (e.g. installing brew makes package-manager-available/brew
-  # become true). The engine influences these indirectly, so no `external`.
+  # Observed state — may flip as a side-effect of member resources converging.
   - { capability: { type: package-manager-available, name: brew | apt | dnf | pacman | winget, scope: host } }
   - { capability: { type: shell,          name: zsh | bash,               scope: user } }
-driver: { kind: observe, fn: { name: collect_host_facts } }
+  # Plus (implicitly): every capability that any contained resource provides.
 ```
+
+### Recursion
+
+The same shape applies to any aggregator — a docker-compose stack, a
+VM, a Component:
+
+```
+Host  (kind: aggregator)
+├── platform/macos, arch/arm64, ...                   ← own observations
+└── homebrew  (kind: custom)
+    └── provides: package-manager/brew                ← inherited up
+└── docker-desktop  (kind: custom)
+    ├── provides: app-bundle/docker-desktop, daemon/docker
+    └── ai-stack (kind: aggregator)                   ← container-level aggregator
+        └── open-webui-runtime (kind: docker-compose-service)
+            └── provides: http-endpoint/open-webui    ← inherited up to ai-stack, then to docker-desktop, then to host
+```
+
+A consumer asking for `binary/git` doesn't care whether git is a
+member of host or a member of a container — it just consumes the
+capability. The aggregator hierarchy determines WHERE it lives,
+which the resolver uses for cross-aggregator filtering when needed.
+
+### Probing
+
+To populate the runtime fact set, the engine **probes recursively**:
+
+```
+probe(resource):
+  facts = run own observations (driver kind's observe fn, if any)
+  for each member resource M:
+    facts ∪= probe(M)
+  return facts as the resource's provides
+```
+
+For the root host, this walks the entire tree.
+
+### `external: true` and the resolver
+
+The two categories of host's own provides matter for the **resolver
+preference** (see § Provider selection): `external: true` capabilities
+trigger "prefer non-external when one exists." Observed state without
+`external` doesn't trigger the preference, because the engine can in
+principle influence it via another resource.
+
+Members' provides inherit through aggregation but keep their own
+`external` flag — host's recursive provides are not all external.
 
 This collapses the legacy `requires:` field: `requires: macos` becomes
 `requires: [{ capability: platform/macos, strength: applicable }]`.
-
-The two categories matter for the **resolver preference** (see § Provider
-selection): `external: true` capabilities trigger "prefer non-external
-when one exists." Host-observed state without `external` doesn't trigger
-the preference, because the engine can in principle influence it via
-another resource.
 
 ## Run plane
 
