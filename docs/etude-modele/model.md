@@ -178,7 +178,8 @@ family is a modeling error.
 | `config-file/*`, `os-setting/*` | `[config]` |
 | `daemon/*`, `socket/*`, `http-endpoint/*`, `compose-stack/*` | `[install, run]` (or `[run]` if install is delegated to a sibling resource) |
 | `capability/*`, `preflight/*`, `verification/*`, `managed-resource-status/*` | `[]` (omit `when_axes`; observation-only) |
-| `platform/*`, `arch/*`, `os_id/*`, `os_version/*`, `init-system/*`, `package-manager-available/*`, `hardware-accel/*`, `shell/*` | `[]` + `external: true` (host-published) |
+| `platform/*`, `arch/*`, `os_id/*`, `os_version/*`, `init-system/*`, `hardware-accel/*` | `[]` + `external: true` (immutable host facts — engine cannot ever influence) |
+| `package-manager-available/*`, `shell/*`, `network-connectivity/*` | `[]` (host-observed state — may flip as a side-effect of other resources converging; do **not** set `external`) |
 
 ### Matching rule (consumes ↔ provides)
 
@@ -449,19 +450,29 @@ capabilities. Other resources consume them like any other capability.
 id: host
 component: <root>
 provides:
-  - { capability: { capability_type: platform,     name: macos | linux | wsl2,         capability_scope: host } }
-  - { capability: { capability_type: arch,         name: arm64 | x86_64,               capability_scope: host } }
-  - { capability: { capability_type: os_id,        name: <id>,                         capability_scope: host } }
-  - { capability: { capability_type: os_version,   name: <semver>,                     capability_scope: host } }
+  # Immutable host facts — engine cannot ever influence these.
+  - { capability: { capability_type: platform,       name: macos | linux | wsl2,    capability_scope: host, external: true } }
+  - { capability: { capability_type: arch,           name: arm64 | x86_64,           capability_scope: host, external: true } }
+  - { capability: { capability_type: os_id,          name: <id>,                     capability_scope: host, external: true } }
+  - { capability: { capability_type: os_version,     name: <semver>,                 capability_scope: host, external: true } }
+  - { capability: { capability_type: hardware-accel, name: mps | cuda,               capability_scope: host, external: true } }
+  - { capability: { capability_type: init-system,    name: launchd | systemd | none, capability_scope: host, external: true } }
+  # Host-observed state — may flip as a side-effect of other resources
+  # converging (e.g. installing brew makes package-manager-available/brew
+  # become true). The engine influences these indirectly, so no `external`.
   - { capability: { capability_type: package-manager-available, name: brew | apt | dnf | pacman | winget, capability_scope: host } }
-  - { capability: { capability_type: init-system,  name: launchd | systemd | none,     capability_scope: host } }
-  - { capability: { capability_type: shell,        name: zsh | bash,                   capability_scope: user } }
-  - { capability: { capability_type: hardware-accel, name: mps | cuda,                 capability_scope: host } }
+  - { capability: { capability_type: shell,          name: zsh | bash,               capability_scope: user } }
 driver: { kind: observe, fn: { name: collect_host_facts } }
 ```
 
 This collapses the legacy `requires:` field: `requires: macos` becomes
 `consumes: [{ capability: platform/macos, strength: applicable }]`.
+
+The two categories matter for the **resolver preference** (see § Provider
+selection): `external: true` capabilities trigger "prefer non-external
+when one exists." Host-observed state without `external` doesn't trigger
+the preference, because the engine can in principle influence it via
+another resource.
 
 ## Run plane
 
