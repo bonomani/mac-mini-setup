@@ -275,7 +275,7 @@ capability:
   capability_type:  <namespace>                         # binary, package-manager, daemon, http-endpoint, ...
   name?:            <string>                            # specific identifier within the type
   capability_scope: host | user | component | container | service
-  qualifiers?:      { version?, port?, scheme?, host?, path?, ... }
+  qualifiers?:      { version?, port?, scheme?, hostname?, path?, ... }
   external?:        bool                                # true = host-published / OS-shipped (not engine-managed)
 ```
 
