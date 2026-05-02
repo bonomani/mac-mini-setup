@@ -16,7 +16,8 @@ _docker_engine_start() {
   fi
   if [[ "${HOST_FINGERPRINT:-}" == *"/systemd" ]] && command -v systemctl >/dev/null 2>&1; then
     if sudo_not_available; then
-      log_warn "Starting Docker daemon via systemd requires sudo — run: sudo -v (or pass --interactive)"
+      [[ "${UCC_INTERACTIVE:-1}" != "0" ]] && \
+        log_warn "Starting Docker daemon via systemd requires sudo — run: sudo -v (or pass --interactive)"
       return 125
     fi
     ucc_run run_elevated systemctl start docker || return 1

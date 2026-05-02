@@ -628,7 +628,8 @@ brew_cask_install() {
   if [[ $rc -ne 0 ]]; then
     # If no sudo ticket and brew failed, surface a clear policy message
     if sudo_not_available; then
-      log_warn "Installing cask '$1' may require admin privileges; run: sudo -v and retry"
+      [[ "${UCC_INTERACTIVE:-1}" != "0" ]] && \
+        log_warn "Installing cask '$1' may require admin privileges; run: sudo -v and retry"
       return 125
     fi
     return $rc
@@ -646,7 +647,8 @@ brew_cask_upgrade() {
   fi
   if [[ $rc -ne 0 ]]; then
     if sudo_not_available; then
-      log_warn "Upgrading cask '$pkg' may require admin privileges; run: sudo -v and retry"
+      [[ "${UCC_INTERACTIVE:-1}" != "0" ]] && \
+        log_warn "Upgrading cask '$pkg' may require admin privileges; run: sudo -v and retry"
       return 125
     fi
     return $rc

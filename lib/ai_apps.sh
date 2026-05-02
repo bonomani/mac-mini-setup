@@ -343,11 +343,12 @@ PY
     # Ollama installer pipes to sh which calls sudo internally to install
     # systemd units / clean /usr/local/lib/ollama. In non-interactive mode
     # without a cached sudo ticket the prompt would hang the framework.
-    # Return 0 (skip) only when we'd actually block.
+    # Return 0 (skip) only when we'd actually block. The framework will
+    # then emit a per-target [policy] line carrying the same info — no
+    # need to also log_warn here under non-interactive.
     [[ "${UCC_INTERACTIVE:-0}" == "1" ]] && return 1
     [[ -n "${UCC_SUDO_PASS:-}" ]] && return 1
     sudo -n true 2>/dev/null && return 1
-    log_warn "ollama installer requires sudo and we're non-interactive without a cached ticket — skipping (re-run with --interactive or pre-cache sudo)"
     return 0
   }
 

@@ -127,7 +127,13 @@ _pkg_native_version() {
 _pkg_native_install() {
   local backend="$1" pkg="$2"
   if sudo_not_available; then
-    log_warn "Installing '$pkg' via $backend requires sudo — run: sudo -v (or pass --interactive)"
+    # In non-interactive mode the operator deliberately opted out of sudo
+    # prompts; the [policy] line that follows already says "admin required",
+    # and re-emitting "run: sudo -v (or pass --interactive)" 17 times per
+    # run is just noise. Keep the WARN in interactive mode, where the
+    # operator might still react and refresh their ticket.
+    [[ "${UCC_INTERACTIVE:-1}" != "0" ]] && \
+      log_warn "Installing '$pkg' via $backend requires sudo — run: sudo -v (or pass --interactive)"
     return 125
   fi
   case "$backend" in
@@ -142,7 +148,8 @@ _pkg_native_install() {
 _pkg_native_upgrade() {
   local backend="$1" pkg="$2"
   if sudo_not_available; then
-    log_warn "Upgrading '$pkg' via $backend requires sudo — run: sudo -v (or pass --interactive)"
+    [[ "${UCC_INTERACTIVE:-1}" != "0" ]] && \
+      log_warn "Upgrading '$pkg' via $backend requires sudo — run: sudo -v (or pass --interactive)"
     return 125
   fi
   case "$backend" in
