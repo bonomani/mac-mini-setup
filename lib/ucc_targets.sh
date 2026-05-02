@@ -463,7 +463,7 @@ ucc_yaml_simple_target() {
 # When the caller passes an explicit COUNTER it wins (e.g. an update path that
 # transitions a target from absent→installed wants CHANGED even though
 # target_status="ok"). When COUNTER is empty the central status registry
-# (lib/ucc_status.sh:_UCC_STATUS_COUNTER) maps target_status → counter, so
+# (lib/ucc_status.sh:_ucc_status_counter) maps target_status → counter, so
 # the policy/warn/skip statuses bump SKIPPED or POLICY without each branch
 # of the giant outcome switch having to remember to do it.
 _ucc_record_outcome() {
@@ -585,7 +585,7 @@ _ucc_target_oracle_configured() {
 #       upstream policy/platform/cascade skip, not a failure of THIS target)
 #
 # Cascade decision per dep status comes from the central registry in
-# lib/ucc_status.sh (_UCC_STATUS_CASCADE / _UCC_STATUS_DEP_REASON). Adding
+# lib/ucc_status.sh (_ucc_status_cascade_action / _ucc_status_dep_reason). Adding
 # a new status that should cascade requires only a row in those arrays —
 # this function doesn't hardcode status names.
 _ucc_check_deps_recursive() {
