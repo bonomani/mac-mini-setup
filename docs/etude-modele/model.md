@@ -603,7 +603,7 @@ run-session:
   mode:         update | verify | observe | snapshot
   dry_run:      <bool>
   host_context: { platform, arch, os_id, package_manager, fingerprint }
-  selection:    { include?: [...], exclude?: [...], default?: enabled | disabled }
+  selection:    { include?: [...], exclude?: [...], default?: true | false }
 
 operation:                                      # one per (resource × axis × session)
   session:        <run-session-id>
@@ -723,6 +723,31 @@ In `mode: observe` the run stops after phase 5 (diff). In `mode: verify`
 it skips phases 6 (apply) and runs only phase 7. In `mode: snapshot` it
 calls `driver.snapshot.capture` (or `restore`) for resources that have
 it, in lieu of the apply branches.
+
+#### Selection cascade (phase #2)
+
+Two fields contribute, in order. They serve different roles:
+
+- `RunSession.selection.{include, exclude, default}` — operator-level filter
+  for this run. `default: true` means "include unless excluded;"
+  `default: false` means "exclude unless explicitly included." A bool, not
+  a Predicate, because it's a global mode switch — not a per-resource
+  decision.
+- `policy.selection_default` (per-resource) — the resource's intrinsic
+  default. `Predicate | true | false`. Predicate is evaluated against
+  HostContext to compute a per-resource boolean.
+
+For each resource R, compute scope as:
+
+1. If R is in `RunSession.selection.exclude` → out
+2. Else if R is in `RunSession.selection.include` → in
+3. Else if `RunSession.selection.default == false` → out
+4. Else evaluate R's `policy.selection_default` (defaults to `true` if absent)
+
+The two fields don't share a type because they answer different questions:
+the run-session field is "how should I interpret the include/exclude lists
+this run?"; the per-resource field is "what's this resource's intrinsic
+default scope?"
 
 ## Worked examples
 
