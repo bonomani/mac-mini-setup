@@ -423,21 +423,51 @@ hatch.
 | `brew-unlink` | install | — | `formula` (unlinks a brew formula to free a name) |
 | `build-deps` | install | — | `set: brew\|apt\|dnf` (installs platform-specific build essentials) |
 | `corepack` | install | — | `enabled` (enables Node corepack) |
-| `setting` | config | **replace** | `target: { backend, domain?, key, value, type? }` (macOS defaults / pmset) |
-| `git-global` | config | **shallow-merge** | `target: { key, value }` (single git config key) |
-| `path-export` | config | **append** | `target: { dirs, rc_file }` (PATH manipulation in shell rc) |
-| `zsh-config` | config | **shallow-merge** | `target: { key, value, config_file }` (single .zshrc variable) |
-| `json-merge` | config | **deep-merge** | `target: { path, format: json, keys }` (e.g. VSCode settings) |
-| `compose-file` | config | **replace** | `target: { path, content }` (whole-file write) |
+| `setting` | config | **replace** | `target: { backend, domain?, key, type? }` + `desired` (macOS defaults / pmset) |
+| `git-global` | config | **shallow-merge** | `target: { key }` + `desired` (single git config key) |
+| `path-export` | config | **append** | `target: { rc_file }` + `desired: [<dir>, ...]` (PATH additions in shell rc) |
+| `zsh-config` | config | **shallow-merge** | `target: { key, config_file }` + `desired` (single .zshrc variable) |
+| `json-merge` | config | **deep-merge** | `target: { path, format: json }` + `desired: { ...keys-object }` (e.g. VSCode settings) |
+| `compose-file` | config | **replace** | `target: { path }` + `desired` (whole-file content) |
 | `brew-analytics` | config | **replace** | `desired` (single on/off value) |
-| `swupdate-schedule` | config | **replace** | `enabled`, `frequency` |
-| `softwareupdate-schedule` | config | **replace** | `enabled`, `frequency` (macOS-specific alias of `swupdate-schedule`) |
+| `swupdate-schedule` | config | **replace** | `desired: { enabled, frequency }` |
+| `softwareupdate-schedule` | config | **replace** | `desired: { enabled, frequency }` (macOS-specific alias of `swupdate-schedule`) |
 | `service` | run | — | `unit`, `manager: launchd\|systemd\|brew-services` |
 | `compose-apply` | run | — | `compose_file`, `services?` |
 | `docker-compose-service` | run | — | `service_name` |
 | `custom-daemon` | run | — | `pid_fn`, `start_fn`, `stop_fn` (ad-hoc daemons) |
 | `aggregator` | none (derived from members) | n/a | `parameters?`, `resource_templates?` (formerly Component fields). Auto-emits `provides: component-status/<id>`. Hooks fire once per session, after all members reach a phase. |
 | `custom` | declared | declared per-resource | `axes: { install?, config?, run? }` |
+
+#### Uniform `desired:` slot for all config kinds
+
+Every catalogued config kind uses **`desired:`** for the value to write
+(EXT-B polymorphism applies). Accepts:
+
+```yaml
+desired: <literal>                                  # static value, the typical case
+# OR
+desired: { command: <fn-name>, args?: [<arg>, ...] }  # value computed at runtime by calling <fn>
+```
+
+Examples:
+```yaml
+# Literal
+finder-show-hidden=1:
+  driver: { kind: setting, target: { backend: defaults, domain: com.apple.finder, key: AppleShowAllFiles, type: bool }, desired: 'true' }
+
+# Computed (the docker-resources case)
+docker-resources:
+  driver: { kind: custom, axes: { config: { desired: { command: docker_resources_desired }, ... } } }
+
+# Parameter substitution (resolved before the engine sees the value)
+brew-analytics=off:
+  driver: { kind: brew-analytics, desired: ${analytics_desired} }
+```
+
+The kind-specific params (`target.path`, `target.key`, etc.) describe
+**where** to write; `desired` describes **what** to write. Same field
+name across all config kinds, polymorphic by definition.
 
 ### `kind: observe` — the universal observation driver
 
