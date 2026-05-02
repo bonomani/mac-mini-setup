@@ -302,6 +302,7 @@ _ucc_target_filtered_out() {
       printf '      [%-8s] %-40s %s\n' "disabled" "$display_name" "disabled by policy"
       _UCC_SKIPPED=$(( ${_UCC_SKIPPED:-0} + 1 ))
     fi
+    _ucc_record_target_status "$target" "disabled"
     return 0
   fi
   # Check requires: condition (platform/version/PM support)
@@ -317,6 +318,7 @@ _ucc_target_filtered_out() {
         # Stash the requires: condition so flush can render the same message.
         eval "_UCC_DEFERRED_REQUIRES_$(echo "${target//[^a-zA-Z0-9]/_}")=\"\$_requires\""
       fi
+      _ucc_record_target_status "$target" "requires-skipped"
       return 0
     fi
   fi
@@ -1014,6 +1016,11 @@ ucc_skip_target() {
   printf '      [%-8s] %-40s %s\n' "skip" "$display_name" "$reason"
   _UCC_SKIPPED=$(( ${_UCC_SKIPPED:-0} + 1 ))
   _UCC_EMITTED_TARGETS="${_UCC_EMITTED_TARGETS}|${name}|"
+  # Record a status so dependents reading deps don't see this as "=unknown"
+  # in their evidence line. The runner skipped this for a host/runner-
+  # specific reason (e.g. "externally installed", "not available on Linux") —
+  # filtered out of the deps line by _ucc_dependency_evidence.
+  _ucc_record_target_status "$name" "skipped"
 }
 
 # ── ucc_summary — write per-component counts to summary file ──────────────────

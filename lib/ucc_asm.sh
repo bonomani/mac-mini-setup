@@ -201,6 +201,12 @@ _ucc_dependency_evidence() {
   while IFS= read -r dep; do
     [[ -n "$dep" ]] || continue
     status=$(awk -F'|' -v dep="$dep" '$1==dep {val=$2} END {print val}' "$UCC_TARGET_STATUS_FILE" 2>/dev/null || true)
+    # Hide deps that are inapplicable on this host or operator-disabled.
+    # The dep was filtered out of THIS run for a structural reason; it's
+    # not a missing prerequisite the operator should worry about.
+    case "$status" in
+      requires-skipped|platform-skipped|disabled|skipped) continue ;;
+    esac
     [[ -z "$status" ]] && status="unknown"
     pairs+=("${dep}=${status}")
   done <<< "$deps"
@@ -226,6 +232,9 @@ _ucc_soft_dependency_evidence() {
       pairs+=("${gate}=${status}")
     else
       status=$(awk -F'|' -v dep="$dep" '$1==dep {val=$2} END {print val}' "$UCC_TARGET_STATUS_FILE" 2>/dev/null || true)
+      case "$status" in
+        requires-skipped|platform-skipped|disabled|skipped) continue ;;
+      esac
       [[ -z "$status" ]] && status="unknown"
       pairs+=("${dep}=${status}")
     fi
