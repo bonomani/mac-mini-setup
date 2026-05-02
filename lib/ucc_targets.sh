@@ -300,6 +300,7 @@ _ucc_target_filtered_out() {
       _UCC_EMITTED_TARGETS="${_UCC_EMITTED_TARGETS}|${target}|"
       local display_name; display_name="$(_ucc_display_name "$target")"
       printf '      [%-8s] %-40s %s\n' "disabled" "$display_name" "disabled by policy"
+      _UCC_SKIPPED=$(( ${_UCC_SKIPPED:-0} + 1 ))
     fi
     return 0
   fi
@@ -311,6 +312,7 @@ _ucc_target_filtered_out() {
         _UCC_EMITTED_TARGETS="${_UCC_EMITTED_TARGETS}|${target}|"
         local display_name; display_name="$(_ucc_display_name "$target")"
         printf '      [%-8s] %-40s %s\n' "skip" "$display_name" "requires: ${_requires}"
+        _UCC_SKIPPED=$(( ${_UCC_SKIPPED:-0} + 1 ))
       else
         # Stash the requires: condition so flush can render the same message.
         eval "_UCC_DEFERRED_REQUIRES_$(echo "${target//[^a-zA-Z0-9]/_}")=\"\$_requires\""
@@ -365,6 +367,7 @@ _ucc_target_filtered_out() {
     else
       printf '      [%-8s] %-40s %s\n' "skip" "$display_name" "not selected"
     fi
+    _UCC_SKIPPED=$(( ${_UCC_SKIPPED:-0} + 1 ))
     return 0
   fi
   return 1
@@ -454,9 +457,20 @@ ucc_yaml_simple_target() {
 # Usage: _ucc_record_outcome <profile> <name> <COUNTER|""> <target_status> \
 #                             <summary_status> <msg_id> <started_at> <diff_json> <result_json>
 # COUNTER: CONVERGED | CHANGED | FAILED | "" (unchanged / dry-run paths)
+#
+# When COUNTER is "" we still bump a category counter based on
+# target_status so the summary's totals match the visible status lines:
+#   policy / warn → _UCC_POLICY (operator-actionable: admin required, blocked-by-policy)
+#   anything else with empty COUNTER → no bump (e.g. unchanged, dry-run paths)
 _ucc_record_outcome() {
   local _p="$1" _n="$2" _ctr="$3" _tst="$4" _sst="$5" _mid="$6" _sat="$7" _dif="$8" _res="$9"
-  [[ -n "$_ctr" ]] && eval "_UCC_${_ctr}=\$(( _UCC_${_ctr} + 1 ))"
+  if [[ -n "$_ctr" ]]; then
+    eval "_UCC_${_ctr}=\$(( _UCC_${_ctr} + 1 ))"
+  else
+    case "$_tst" in
+      policy|warn) _UCC_POLICY=$(( ${_UCC_POLICY:-0} + 1 )) ;;
+    esac
+  fi
   _ucc_record_profile_summary "$_p" "$_sst"
   _ucc_record_target_status "$_n" "$_tst"
   local _dur; _dur=$(_ucc_duration_ms "$_sat")
@@ -584,6 +598,7 @@ _ucc_check_deps_recursive() {
       # never a real failure; it simply doesn't apply on this host.
       printf '      [%-8s] %-40s dependency not applicable on %s: %s\n' \
         "skip" "$(_ucc_display_name "$origin")" "${HOST_PLATFORM:-host}" "$dep"
+      _UCC_SKIPPED=$(( ${_UCC_SKIPPED:-0} + 1 ))
       return 1
     fi
     if [[ "$status" == "policy" ]]; then
@@ -592,6 +607,7 @@ _ucc_check_deps_recursive() {
       # without the dep present. Cascade as a clean [skip], not [fail].
       printf '      [%-8s] %-40s dependency requires admin: %s\n' \
         "skip" "$(_ucc_display_name "$origin")" "$dep"
+      _UCC_SKIPPED=$(( ${_UCC_SKIPPED:-0} + 1 ))
       return 1
     fi
     if [[ -n "$status" ]]; then
@@ -605,6 +621,7 @@ _ucc_check_deps_recursive() {
       if ! eval "$oracle_cmd" 2>/dev/null; then
         printf '      [%-8s] %-40s dependency not satisfied (oracle fail): %s\n' \
           "dep-fail" "$(_ucc_display_name "$origin")" "$dep"
+        _UCC_SKIPPED=$(( ${_UCC_SKIPPED:-0} + 1 ))
         return 1
       fi
       # Oracle passed — record a synthetic status so evidence shows "oracle-pass" not "unknown"
@@ -952,6 +969,7 @@ ucc_flush_registered_targets() {
           printf '      [%-8s] %-40s %s\n' "skip" "$_dn" "not processed"
         fi
       fi
+      _UCC_SKIPPED=$(( ${_UCC_SKIPPED:-0} + 1 ))
     fi
   done
 }
@@ -1003,7 +1021,7 @@ ucc_skip_target() {
 ucc_summary() {
   local comp="${1:-}"
   if [[ -n "${UCC_SUMMARY_FILE:-}" && -n "$comp" ]]; then
-    printf '%s|%d|%d|%d|%d\n' "$comp" "$_UCC_CONVERGED" "$_UCC_CHANGED" "$_UCC_FAILED" "${_UCC_SKIPPED:-0}" \
+    printf '%s|%d|%d|%d|%d|%d\n' "$comp" "$_UCC_CONVERGED" "$_UCC_CHANGED" "$_UCC_FAILED" "${_UCC_SKIPPED:-0}" "${_UCC_POLICY:-0}" \
       >> "$UCC_SUMMARY_FILE" 2>/dev/null || true
   fi
 }

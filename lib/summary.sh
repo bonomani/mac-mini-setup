@@ -4,7 +4,7 @@
 # ── Profile counters ──────────────────────────────────────────────────────────
 
 init_summary_counters() {
-  _total_ok=0; _total_chg=0; _total_fail=0; _total_skip=0
+  _total_ok=0; _total_chg=0; _total_fail=0; _total_skip=0; _total_policy=0
   _summary_profiles=()
   local profile prefix
   for profile in "${_UCC_PROFILE_IDS[@]}"; do
@@ -72,7 +72,7 @@ print_summary_section() {
   local _printed=0
   [[ ${#_comps[@]} -eq 0 ]] && return
   [[ -f "$UCC_SUMMARY_FILE" ]] || return
-  while IFS='|' read -r _comp _a _b _c _d; do
+  while IFS='|' read -r _comp _a _b _c _d _e; do
     _comp_in_list "$_comp" "${_comps[@]}" || continue
     if [[ $_printed -eq 0 ]]; then
       echo "  ── $section_label"
@@ -88,11 +88,13 @@ print_summary_section() {
       _total_chg=$(( _total_chg + _b ))
       _total_fail=$(( _total_fail + _c ))
       _total_skip=$(( _total_skip + ${_d:-0} ))
+      _total_policy=$(( _total_policy + ${_e:-0} ))
       local _parts="" _all_zero=1
       [[ $_a -gt 0 ]]      && { _parts="${_a} ok"; _all_zero=0; }
       [[ $_b -gt 0 ]]      && { _parts="${_parts:+$_parts  }${_b} changed"; _all_zero=0; }
       [[ $_c -gt 0 ]]      && { _parts="${_parts:+$_parts  }${_c} FAILED"; _all_zero=0; }
       [[ ${_d:-0} -gt 0 ]] && { _parts="${_parts:+$_parts  }skip=${_d}"; _all_zero=0; }
+      [[ ${_e:-0} -gt 0 ]] && { _parts="${_parts:+$_parts  }policy=${_e}"; _all_zero=0; }
       # If all counters are zero, count targets as skipped
       if [[ $_all_zero -eq 1 ]]; then
         local _comp_target_count
@@ -178,7 +180,8 @@ print_final_summary() {
   echo "  ──────────────────────────────────────────────────────"
   local _total_line
   _total_line="$(_summary_line "$_total_ok" "$_total_chg" "$_total_fail")"
-  [[ $_total_skip -gt 0 ]] && _total_line="${_total_line}  skip=${_total_skip}"
+  [[ $_total_skip -gt 0 ]]   && _total_line="${_total_line}  skip=${_total_skip}"
+  [[ $_total_policy -gt 0 ]] && _total_line="${_total_line}  policy=${_total_policy}"
   printf '  %-22s  %s\n' "Total" "$_total_line"
 
   if [[ -f "$UCC_PROFILE_SUMMARY_FILE" ]]; then

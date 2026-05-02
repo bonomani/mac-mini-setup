@@ -11,6 +11,8 @@ export UCC_CORRELATION_ID=${UCC_CORRELATION_ID:-$(uuidgen 2>/dev/null || date +%
 _UCC_CONVERGED=0
 _UCC_CHANGED=0
 _UCC_FAILED=0
+_UCC_SKIPPED=0
+_UCC_POLICY=0
 
 _ts() { date '+%H:%M:%S'; }
 log_info()   { echo "  $*"; }
