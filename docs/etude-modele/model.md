@@ -19,15 +19,18 @@ for `kind: custom` it is declared explicitly.
 
 ```
 Project
-  ├── Component (n)
-  │     └── Resource (n)
-  │           ├── requires  → Capability ←──┐
-  │           ├── provides  → Capability ──┘
-  │           ├── driver { kind, params }
-  │           └── policy { ... }
-  ├── Host  (built-in; provides platform/*, arch/*, os_id/*, ...)
-  └── RunSession (n)
-        └── Operation (n)   per (resource × axis × session)
+  └── Resource (n)                              ← single element class for everything
+        ├── requires  → Capability ←──┐
+        ├── provides  → Capability ──┘
+        ├── driver { kind, params }
+        └── policy { ... }
+        ├── kind: pkg | pip | service | ...    │
+        └── kind: aggregator                    └─ "components" are aggregator-kind resources
+                                                   that group members and emit
+                                                   component-status/<id>
+  Host       (built-in Resource; provides platform/*, arch/*, os_id/*, ...)
+  RunSession (n)
+        └── Operation (n)                       per (resource × axis × session)
 ```
 
 ## Resource
@@ -204,7 +207,7 @@ vscode-settings:
       path: ~/Library/Application Support/Code/User/settings.json
       format: json
     hooks:
-      post: [{ notify_resource: vscode, signal: reload-config }]
+      - { when: after_config, notify_resource: vscode, signal: reload-config }
 ```
 
 A `configures` relation **implies** a hard `requires` of the target's
@@ -429,6 +432,7 @@ hatch.
 | `compose-apply` | run | — | `compose_file`, `services?` |
 | `docker-compose-service` | run | — | `service_name` |
 | `custom-daemon` | run | — | `pid_fn`, `start_fn`, `stop_fn` (ad-hoc daemons) |
+| `aggregator` | none (derived from members) | n/a | `parameters?`, `resource_templates?` (formerly Component fields). Auto-emits `provides: component-status/<id>`. Hooks fire once per session, after all members reach a phase. |
 | `custom` | declared | declared per-resource | `axes: { install?, config?, run? }` |
 
 ### `kind: observe` — the universal observation driver
@@ -480,10 +484,44 @@ semantic. See § Configuration for the full structural model.
 
 ```yaml
 driver:
-  hooks:
-    pre?:  [{ fn: <fn-name> }]
-    post?: [{ fn: <fn-name> } | { notify_resource: <id>, signal: reload-config | restart | daemon-reload | sighup }]
+  hooks?:
+    - when: <lifecycle-phase>          # before_install | after_install | before_config | after_config | before_run | after_run | running
+      # one of:
+      fn?:    <fn-name>
+      args?:  [<arg>, ...]
+      # OR
+      notify_resource?: <id>
+      signal?:          reload-config | restart | daemon-reload | sighup
+      # OR
+      killall?: [<process>, ...]       # OS process names to kill (auto-restart picks up new state)
 ```
+
+Hooks use the same `when:` lifecycle phase as `requires` and `provides`,
+so the same vocabulary covers all three model concepts. The
+**before/after** distinction (formerly `pre`/`post` arrays) is now
+implicit in the phase value (`before_X` = pre; `after_X` and `running`
+= post).
+
+`always` is **not valid** for hooks — hooks are point-events, not
+applies-everywhere conditions.
+
+**Action variants** per entry (exactly one):
+- `{ fn, args? }` — invoke a function
+- `{ notify_resource, signal }` — queue a reload-style signal to another resource
+- `{ killall: [<process>, ...] }` — `killall` named OS processes (they auto-restart via launchd/systemd, picking up new state)
+
+#### Firing semantics per `driver.kind`
+
+The kind owns when its hooks fire:
+
+| Kind | Hook firing |
+|---|---|
+| `pkg`, `pip`, `npm`, `git-repo`, `vscode`, `ollama`, `script-installer`, `app-bundle`, `home-artifact`, `pyenv`, `nvm`, `nvm-version`, `pyenv-brew`, `pip-bootstrap`, `brew-unlink`, `build-deps`, `corepack` | per install-axis apply (when entry's `when:` matches `before_install` or `after_install`) |
+| `setting`, `git-global`, `path-export`, `compose-file`, `swupdate-schedule`, `softwareupdate-schedule`, `zsh-config`, `json-merge`, `brew-analytics` | per config-axis apply |
+| `service`, `compose-apply`, `docker-compose-service`, `custom-daemon` | per run-axis apply (or `running` for entry into desired state) |
+| `custom` | per declared axis-apply (entries scoped by `when:`) |
+| `aggregator` (component) | once per session, after all members reach the named phase, IFF at least one member changed |
+| `observe` | hooks not meaningful (no apply phase to wrap); declaring them is invalid |
 
 ### Snapshot (rare — VM-style resources)
 
@@ -515,30 +553,50 @@ Facts come from the `Host` resource's `provides` (platform, arch, os_id,
 Predicates are evaluated at **plan time** against the live `HostContext`.
 Re-evaluation during a single run is not guaranteed.
 
-## Component
+## Component (a Resource of `kind: aggregator`)
 
-Components group resources for selection, display, and parameter
-scoping. Components form a tree under the project root.
+Components are not a separate element class — a Component **is a
+Resource** with `driver.kind: aggregator`. The aggregator kind has no
+driver functions of its own; its convergence state is derived from
+its members (resources whose `component:` field references it). It
+auto-emits a `component-status/<id>` capability when all members
+reach the corresponding lifecycle phase.
 
 ```yaml
-component:
-  id, name, display_name
-  parent?: <component-id>
+# A component, expressed as a resource
+resource:
+  id: cli-tools
+  display_name: CLI tools
+  driver:
+    kind: aggregator
+    parameters:                                # formerly Component.parameters
+      <param-name>:
+        type:        string | int | semver | port | path | url | bool | enum | list | cask-id | process-pattern
+        default:     <value>
+        source:      defaults | component-preference | resource-override | operator-cli
+        options?:    [<value>, ...]
+        rationale?:  <string>
+    resource_templates:                        # formerly Component.resource_templates
+      - id:              <template-id>
+        parametric_in:   [<param-name>, ...]
+        output_template: { ... resource shape with ${param} substitutions ... }
+        instances:       [{ <param>: <value>, ... }, ...]
+    hooks?:                                    # captures legacy `restart_processes`
+      - { when: after_config, killall: [Finder, Dock, SystemUIServer] }
+  policy?: { ... }                             # selection / admin can apply at the component level too
 
-  parameters?:
-    <param-name>:
-      type:        string | int | semver | port | path | url | bool | enum | list
-      default:     <value>
-      source:      defaults | component-preference | resource-override | operator-cli
-      options?:    [<value>, ...]
-      rationale?:  <string>
-
-  resource_templates?:
-    - id:              <template-id>
-      parametric_in:   [<param-name>, ...]
-      output_template: { ... resource shape with ${param} substitutions ... }
-      instances:       [{ <param>: <value>, ... }, ...]
+# Members reference the aggregator via `component:` (which becomes a
+# requires of the aggregator's component-status capability at the
+# `before_<axis>` phase, derived implicitly).
+resource:
+  id: cli-jq
+  component: cli-tools                          # auto-derived requires of cli-tools
+  driver: { kind: pkg, refs: { ... }, bin: jq }
 ```
+
+A nested component (formerly `parent: <component-id>`) is just an
+aggregator that references another aggregator via its `component:`
+field — same mechanism as any other resource.
 
 ### Parameter substitution
 
@@ -813,8 +871,7 @@ driver:
       apply:   { to_running: docker_start, to_stopped: docker_stop }
       evidence: { type: pid, fields: { pid: docker_desktop_pid } }
   hooks:
-    post:
-      - { notify_resource: docker-resources, signal: reload-config }
+    - { when: after_install, notify_resource: docker-resources, signal: reload-config }
 policy:
   admin: { fact: docker-first-install, eq: assisted }
   update: tool-driven
@@ -868,7 +925,7 @@ driver: { kind: observe, fn: { name: _tic_target_status_is, args: [system-compos
 
 | v3 concept | Replaced by |
 |---|---|
-| 33 `element_type` values | 4 (Project, Component, Resource, RunSession+Operation) |
+| 33 `element_type` values | 3 (Project, Resource, RunSession+Operation) — Component absorbed into Resource as `kind: aggregator` |
 | 14 `relation_type` values | 3 declarable (`requires`, `provides`, `configures`) |
 | `resource_type`, `convergence_profile_derived`, `state_model_derived` | derived from `driver.kind` and axis subscription |
 | `desired_state.{installation, runtime, health, admin, dependencies, value}` | `driver.axes.<axis>.desired` (custom only) |
@@ -880,7 +937,10 @@ driver: { kind: observe, fn: { name: _tic_target_status_is, args: [system-compos
 | `verification-test` element class | resource with `provides: verification/*` |
 | `preflight-gate` element class | resource with `provides: preflight/*` |
 | `governance-claim`, `output-contract`, `external-provider`, `compatibility-*` | dropped or reframed as `provides: <namespace>/*` |
-| `verification-suite`, `verification-context` | use `component` for grouping |
+| `verification-suite`, `verification-context` | use a `kind: aggregator` resource for grouping |
+| `Component` element class | absorbed into `Resource` with `kind: aggregator`; `parameters` and `resource_templates` become aggregator kind-specific params |
+| `driver.hooks.{pre, post}` (separate arrays) | single `hooks: [...]` list with per-entry `when:` lifecycle phase |
+| component-level `restart_processes` (legacy, unmodeled) | `aggregator` resource's `hooks: [{ when: after_X, killall: [...] }]` |
 | `layer` | not modeled (filesystem dirs only) |
 | `provider_selection` block | conditional `requires` + `priority` |
 | `driver_type`, `driver.kind` (legacy 26 values), `backend_type`, `provider_type`, `provider_name` | one `driver.kind` from a registered catalog |
@@ -891,12 +951,13 @@ driver: { kind: observe, fn: { name: _tic_target_status_is, args: [system-compos
 
 | | v3 spec | This model |
 |---|---:|---:|
-| Element classes | 33 | 4 |
-| Relation types | 14 | 2 |
+| Element classes | 33 | **3** (Project, Resource, RunSession+Operation) — Component absorbed |
+| Relation types | 14 | 3 declarable (`requires`, `provides`, `configures`) + 1 derived (`contains`) |
 | Top-level resource fields | 15+ | 4 (`requires`, `provides`, `driver`, `policy`) |
 | State axes | 6 (mixed with predicates) | 3 |
 | Consume strengths | 2 | 3 |
-| Driver kinds | ~26 + 22 tool_types | ~22 + `custom` |
+| Driver kinds | ~26 + 22 tool_types | ~33 + `custom` (incl. new `aggregator`) |
+| Hook arrays | 2 (pre + post) | 1 (`hooks: [...]` with per-entry `when:`) |
 | Policy enum/object types | mixed | uniform `Predicate | bool` |
 
 ## Open questions

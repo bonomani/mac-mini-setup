@@ -24,7 +24,7 @@ form to the new form, and what code (if any) needs to change.
 |---|---|---|
 | `project` | **kept** | top of `Project → Component → Resource` |
 | `layer` | **removed** | not declared in any YAML; software/system are filesystem buckets |
-| `component` | **kept** | `Component` element |
+| `component` | **collapsed** | `Resource` with `driver.kind: aggregator`. Aggregators carry the former `Component.parameters` and `.resource_templates` as kind-specific params, auto-emit `provides: component-status/<id>`, and have member resources reference them via the `component:` field. Hooks at the aggregator level capture legacy `restart_processes`. |
 | `resource-template` | **kept** | lives on `Component.resource_templates` |
 | `managed-resource` | **collapsed** | `Resource` (single shape for all managed/unmanaged) |
 | `capability` | **kept** | `Capability` value object (typed surface) |
@@ -61,11 +61,13 @@ form to the new form, and what code (if any) needs to change.
 | `verification-context` | **removed** | use `Component` for grouping; no separate shape needed |
 | `managed-resource-status` | **collapsed** | implicit `managed-resource-status/<id>` capability published by every managed resource |
 
-### Net: 33 → 8 element classes
+### Net: 33 → 7 element classes
 
-`Project`, `Component`, `Resource`, `Capability`, `Host`, `RunSession`,
-`Operation`, `RunArtifact`. (`Capability` is a value object, not an
-element; the others are first-class.)
+`Project`, `Resource`, `Capability`, `Host`, `RunSession`, `Operation`,
+`RunArtifact`. (`Capability` is a value object, not an element; the
+others are first-class. `Component` is no longer a separate class — a
+component is a `Resource` of `kind: aggregator`. `Host` is a built-in
+`Resource` of `kind: observe`.)
 
 ## 2. Relation types (`relation_type`, 14 → 3 declarable + 1 structural)
 
