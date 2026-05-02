@@ -580,6 +580,12 @@ _ucc_target_oracle_configured() {
 #   status empty      → dep not run this session; probe oracle.configured:
 #                         oracle fail → hard block
 #                         oracle pass or no oracle → recurse into dep's own deps
+# Return codes:
+#   0 — all deps OK (target may proceed)
+#   1 — a real dep-fail (caller should record this target as "failed")
+#   2 — cascade-skip (status already recorded as "skipped"; caller should
+#       NOT overwrite to "failed" — this is a clean propagation of an
+#       upstream policy/platform/cascade skip, not a failure of THIS target)
 _ucc_check_deps_recursive() {
   local root_target="$1" origin="${2:-$1}" visited="${3:-}" dep deps status oracle_cmd
   deps="$(_ucc_target_direct_deps "$root_target")"
@@ -601,7 +607,8 @@ _ucc_check_deps_recursive() {
       printf '      [%-8s] %-40s dependency not applicable on %s: %s\n' \
         "skip" "$(_ucc_display_name "$origin")" "${HOST_PLATFORM:-host}" "$dep"
       _UCC_SKIPPED=$(( ${_UCC_SKIPPED:-0} + 1 ))
-      return 1
+      _ucc_record_target_status "$origin" "skipped"
+      return 2
     fi
     if [[ "$status" == "policy" ]]; then
       # Dep skipped this run because admin privileges weren't available
@@ -610,7 +617,19 @@ _ucc_check_deps_recursive() {
       printf '      [%-8s] %-40s dependency requires admin: %s\n' \
         "skip" "$(_ucc_display_name "$origin")" "$dep"
       _UCC_SKIPPED=$(( ${_UCC_SKIPPED:-0} + 1 ))
-      return 1
+      _ucc_record_target_status "$origin" "skipped"
+      return 2
+    fi
+    if [[ "$status" == "skipped" ]]; then
+      # Dep was itself cascade-skipped earlier this run (its own dep was
+      # admin/platform blocked). Same root cause propagates here — the
+      # dependent should also skip cleanly, not [dep-fail]. Operator can
+      # scroll up to find the original reason on the root dep's own line.
+      printf '      [%-8s] %-40s dependency was skipped: %s\n' \
+        "skip" "$(_ucc_display_name "$origin")" "$dep"
+      _UCC_SKIPPED=$(( ${_UCC_SKIPPED:-0} + 1 ))
+      _ucc_record_target_status "$origin" "skipped"
+      return 2
     fi
     if [[ -n "$status" ]]; then
       # Dep ran this session and did not fail; its transitive deps were already
@@ -629,8 +648,12 @@ _ucc_check_deps_recursive() {
       # Oracle passed — record a synthetic status so evidence shows "oracle-pass" not "unknown"
       _ucc_record_target_status "$dep" "oracle-pass"
     fi
-    # Oracle passed (or no oracle) — recurse into this dep's own deps
-    _ucc_check_deps_recursive "$dep" "$origin" "${visited}:${dep}" || return 1
+    # Oracle passed (or no oracle) — recurse into this dep's own deps.
+    # Propagate cascade-skip (rc=2) and dep-fail (rc=1) verbatim so the
+    # original distinction reaches the top-level caller.
+    _ucc_check_deps_recursive "$dep" "$origin" "${visited}:${dep}"
+    local _rrc=$?
+    [[ $_rrc -ne 0 ]] && return $_rrc
   done <<< "$deps"
   return 0
 }
@@ -919,10 +942,19 @@ ucc_flush_registered_targets() {
     idx="$(_ucc_registered_index "$target" || true)"
     [[ -n "$idx" ]] || continue
     # Target set filter applied at entry points (ucc_yaml_*_target functions)
-    # On dep-fail: print [dep-fail], record status, continue to next target.
-    # Previously aborted the whole component — hid 11+ targets on first fail.
-    if ! _ucc_require_declared_dependencies_resolved "$target"; then
+    # Dep-check return codes:
+    #   0 — all deps OK; proceed to execute target
+    #   1 — real dep-fail; record this target as "failed", continue to next
+    #   2 — cascade-skip; status was already recorded as "skipped" by the
+    #       checker, do NOT overwrite to "failed". Otherwise downstream
+    #       dependents see fake failed status and emit [dep-fail] for
+    #       what is really a clean cascade of an upstream policy/platform skip.
+    _ucc_require_declared_dependencies_resolved "$target"
+    local _dep_rc=$?
+    if [[ $_dep_rc -eq 1 ]]; then
       _ucc_record_target_status "$target" "failed"
+      continue
+    elif [[ $_dep_rc -eq 2 ]]; then
       continue
     fi
     # On target execute failure: continue; _ucc_execute_target already
