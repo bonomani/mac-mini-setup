@@ -6,7 +6,7 @@
 
 _display_component_name() {
   case "$1" in
-    system) printf 'System' ;;
+    system) printf 'macOS system' ;;
     linux-system) printf 'Linux system' ;;
     verify) printf 'Verification' ;;
     *)      printf '%s' "$1" ;;
