@@ -535,6 +535,27 @@ specific behavior. Use a catalogued kind (e.g. `json-merge`,
 `path-export`) when you want the engine to know and enforce the
 semantic. See § Configuration for the full structural model.
 
+#### Evidence types
+
+`evidence.type` is an open enum naming the **shape** of the fields the
+observe function returns. Known values (extensible):
+
+| `type:` | Typical fields | Used by |
+|---|---|---|
+| `binary-version` | `version`, `path` | `kind: pkg` install observation |
+| `http-response` | `status_code`, `body?`, `headers?` | http endpoint probes |
+| `command-output` | `stdout`, `exit_code`, `stderr?` | generic observation via shell command |
+| `file-presence` | `path`, `exists`, `size?`, `hash?` | config writes, file-creation checks |
+| `pid` | `pid`, `started_at?` | running daemon observation |
+| `process-pattern` | `pattern`, `count`, `pids?` | process-list matching |
+| `daemon-status` | `status`, `pid?`, `restart_count?` | service-managed daemons |
+| `package-installed` | `installed: bool`, `version?`, `source?` | package-manager probes |
+| `config-value` | `value`, `source?`, `last_modified?` | config drift detection |
+
+Custom kinds may use additional `type:` values — the engine treats
+unknown types as opaque (passes the `fields` object to consumers
+verbatim). Catalogued kinds emit one of the known types from the table.
+
 ### Hooks (any kind)
 
 ```yaml
@@ -560,10 +581,18 @@ implicit in the phase value (`before_X` = pre; `after_X` and `running`
 `always` is **not valid** for hooks — hooks are point-events, not
 applies-everywhere conditions.
 
-**Action variants** per entry (exactly one):
-- `{ fn, args? }` — invoke a function
-- `{ notify_resource, signal }` — queue a reload-style signal to another resource
-- `{ killall: [<process>, ...] }` — `killall` named OS processes (they auto-restart via launchd/systemd, picking up new state)
+**Action variants** — closed enum of 3 mutually-exclusive shapes (each
+hook entry picks exactly one):
+
+| Variant | Discriminator key | Shape | Effect |
+|---|---|---|---|
+| `fn` | `fn:` (and optional `args:`) | `{ fn: <fn-name>, args?: [<arg>, ...] }` | invoke a function with optional args |
+| `notify` | `notify_resource:` (and required `signal:`) | `{ notify_resource: <id>, signal: reload-config\|restart\|daemon-reload\|sighup }` | queue a reload-style signal to another resource (delivered after this operation's `record` phase) |
+| `killall` | `killall:` | `{ killall: [<process-name>, ...] }` | invoke `killall` on named OS processes (they auto-restart via launchd/systemd, picking up new state) |
+
+The variant is identified by which discriminator key is present.
+Declaring two discriminator keys in one entry (e.g. both `fn:` and
+`killall:`) is a validation error.
 
 #### Firing semantics per `driver.kind`
 
