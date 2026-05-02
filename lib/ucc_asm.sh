@@ -206,6 +206,13 @@ _ucc_dependency_evidence() {
     # not a missing prerequisite the operator should worry about.
     case "$status" in
       requires-skipped|platform-skipped|disabled|skipped) continue ;;
+      # `warn` / `policy` statuses mean the parent target ran but had a
+      # soft-policy issue (preferred driver mismatch, transition blocked,
+      # admin not available). The dependent here clearly DID run, so the
+      # dep was functionally satisfied — propagating the parent's warn
+      # to every dependent's line just suggests the dep is degraded
+      # when it isn't. The parent's status is already on its own line.
+      warn|policy) continue ;;
     esac
     [[ -z "$status" ]] && status="unknown"
     pairs+=("${dep}=${status}")
@@ -234,6 +241,13 @@ _ucc_soft_dependency_evidence() {
       status=$(awk -F'|' -v dep="$dep" '$1==dep {val=$2} END {print val}' "$UCC_TARGET_STATUS_FILE" 2>/dev/null || true)
       case "$status" in
         requires-skipped|platform-skipped|disabled|skipped) continue ;;
+      # `warn` / `policy` statuses mean the parent target ran but had a
+      # soft-policy issue (preferred driver mismatch, transition blocked,
+      # admin not available). The dependent here clearly DID run, so the
+      # dep was functionally satisfied — propagating the parent's warn
+      # to every dependent's line just suggests the dep is degraded
+      # when it isn't. The parent's status is already on its own line.
+      warn|policy) continue ;;
       esac
       [[ -z "$status" ]] && status="unknown"
       pairs+=("${dep}=${status}")
