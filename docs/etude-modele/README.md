@@ -3,6 +3,13 @@
 Study folder for turning the conceptual model into a refactoring basis for
 the `mac-mini-setup` project.
 
+> **Start here:** [model.md](model.md) is the candidate canonical model. It
+> consolidates and supersedes the 13 numbered docs below on points where
+> they conflict (notably: 3 axes instead of 6, no `layer` element class,
+> driver-kind-implied axis subscription, unified `consumes`/`provides`
+> graph, `Host` as a built-in virtual resource). The numbered docs remain
+> as detailed reference and historical context.
+
 The core idea remains useful, but there are two levels to keep separate:
 
 > A **model element** is any named node in the system.
@@ -14,10 +21,10 @@ but only `cli-jq` is a managed resource.
 The complete model distinguishes several element classes:
 
 ```text
-layer               -> software, system, verification
+layer               -> software, system, verification     (legacy framing — see model.md)
 component           -> cli-tools, docker, ai-apps
 preflight control   -> condition before convergence
-managed resource      -> resource managed by the convergence engine
+managed resource    -> resource managed by the convergence engine
 verification test   -> post-convergence verification
 run/session         -> one invocation, selection, plan, and artifacts
 derived artifact    -> generated spec, run evidence, status files
@@ -59,6 +66,12 @@ Project
 ```
 
 ## Files
+
+| File | Topic |
+|---|---|
+| **[model.md](model.md)** | **Canonical model — single resource shape, 3 axes, consumes/provides graph, Host as built-in. Read this first.** |
+
+### Detailed reference (numbered, partially superseded by `model.md`)
 
 | # | File | Topic |
 |---|---|---|
