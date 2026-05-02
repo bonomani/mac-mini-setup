@@ -188,7 +188,7 @@ properties beyond what install/run resources have:
 |---|---|---|
 | 1 | **Configures relation** — explicit edge: "I am the configuration of `<X>`" | `Resource.configures` |
 | 2 | **Source cascade** — defaults → component-pref → resource-override → operator-cli | `component.parameters[<name>].source` |
-| 3 | **Capability scope** — `host` / `user` / `app` / `component` / `container` reach | `capability.capability_scope` |
+| 3 | **Capability scope** — `host` or `user` reach | `capability.scope` |
 | 4 | **Merge semantics** — replace / shallow-merge / deep-merge / append | implied by `driver.kind` (see catalog) |
 | 5 | **Typed reload** — explicit signal to the configured target | `driver.hooks.post.notify_resource` |
 
@@ -276,9 +276,9 @@ The only currency between resources.
 
 ```yaml
 capability:
-  capability_type:  <namespace>                         # binary, package-manager, daemon, http-endpoint, ...
+  type:  <namespace>                         # binary, package-manager, daemon, http-endpoint, ...
   name?:            <string>                            # specific identifier within the type
-  capability_scope: host | user
+  scope: host | user
   qualifiers?:      { version?, port?, scheme?, hostname?, path?, ... }
   external?:        bool                                # true = host-published / OS-shipped (not engine-managed)
 ```
@@ -289,7 +289,7 @@ binaries the engine doesn't own. See § Provider selection (rule 4)
 for how the resolver deprioritizes external candidates when an
 engine-managed alternative exists.
 
-> **Note**: v3 had a 6-value `capability_scope` enum (`host | user |
+> **Note**: v3 had a 6-value `scope` (within `capability` block) enum (`host | user |
 > component | container | service | external`). Three values
 > (`component`, `container`, `service`) were dropped because zero of
 > the 148 live resources used them — speculative scope distinctions
@@ -300,7 +300,7 @@ engine-managed alternative exists.
 
 ### Capability families and their typical lifecycle phase
 
-Each `capability_type` namespace implies the lifecycle phase at which a
+Each `type` (within `capability` block) namespace implies the lifecycle phase at which a
 provider's capability becomes available. A `provides` whose `when:`
 doesn't match its capability family is a modeling error.
 
@@ -318,9 +318,9 @@ doesn't match its capability family is a modeling error.
 
 `requires(C_req, when: Wr)` matches `provides(C_off, when: Wp)` if and only if:
 
-1. `capability_type` matches exactly.
+1. `type` (within `capability` block) matches exactly.
 2. `name` matches exactly (or both omit it).
-3. `capability_scope` matches exactly. **No wildcards.**
+3. `scope` (within `capability` block) matches exactly. **No wildcards.**
 4. For each qualifier `(k, v_req)` in `C_req.qualifiers`:
    - if `v_req` is scalar: `C_off.qualifiers[k] == v_req`
    - if `v_req` is `{ op, value }`: `C_off.qualifiers[k]` satisfies the
@@ -692,17 +692,17 @@ id: host
 component: <root>
 provides:
   # Immutable host facts — engine cannot ever influence these.
-  - { capability: { capability_type: platform,       name: macos | linux | wsl2,    capability_scope: host, external: true } }
-  - { capability: { capability_type: arch,           name: arm64 | x86_64,           capability_scope: host, external: true } }
-  - { capability: { capability_type: os_id,          name: <id>,                     capability_scope: host, external: true } }
-  - { capability: { capability_type: os_version,     name: <semver>,                 capability_scope: host, external: true } }
-  - { capability: { capability_type: hardware-accel, name: mps | cuda,               capability_scope: host, external: true } }
-  - { capability: { capability_type: init-system,    name: launchd | systemd | none, capability_scope: host, external: true } }
+  - { capability: { type: platform,       name: macos | linux | wsl2,    scope: host, external: true } }
+  - { capability: { type: arch,           name: arm64 | x86_64,           scope: host, external: true } }
+  - { capability: { type: os_id,          name: <id>,                     scope: host, external: true } }
+  - { capability: { type: os_version,     name: <semver>,                 scope: host, external: true } }
+  - { capability: { type: hardware-accel, name: mps | cuda,               scope: host, external: true } }
+  - { capability: { type: init-system,    name: launchd | systemd | none, scope: host, external: true } }
   # Host-observed state — may flip as a side-effect of other resources
   # converging (e.g. installing brew makes package-manager-available/brew
   # become true). The engine influences these indirectly, so no `external`.
-  - { capability: { capability_type: package-manager-available, name: brew | apt | dnf | pacman | winget, capability_scope: host } }
-  - { capability: { capability_type: shell,          name: zsh | bash,               capability_scope: user } }
+  - { capability: { type: package-manager-available, name: brew | apt | dnf | pacman | winget, scope: host } }
+  - { capability: { type: shell,          name: zsh | bash,               scope: user } }
 driver: { kind: observe, fn: { name: collect_host_facts } }
 ```
 
@@ -879,17 +879,17 @@ default scope?"
 id: cli-jq
 component: cli-tools
 requires:
-  - capability: { capability_type: package-manager, name: brew,      capability_scope: host }
+  - capability: { type: package-manager, name: brew,      scope: host }
     strength: hard
     condition: { fact: pm, eq: brew }
     args: { ref: jq }
     # when: defaults to before_install (kind=pkg is install-only)
-  - capability: { capability_type: package-manager, name: native-pm, capability_scope: host }
+  - capability: { type: package-manager, name: native-pm, scope: host }
     strength: hard
     condition: { fact: pm, eq: native-pm }
     args: { ref: jq }
 provides:
-  - capability: { capability_type: binary, name: jq, capability_scope: host }
+  - capability: { type: binary, name: jq, scope: host }
     # when: defaults to after_install
 driver: { kind: pkg, refs: { brew: jq, native-pm: jq } }
 ```
@@ -900,17 +900,17 @@ driver: { kind: pkg, refs: { brew: jq, native-pm: jq } }
 id: docker-desktop
 component: docker
 requires:
-  - capability: { capability_type: platform, name: macos, capability_scope: host, external: true }
+  - capability: { type: platform, name: macos, scope: host, external: true }
     strength: applicable
     when: always
-  - capability: { capability_type: package-manager, name: brew-cask, capability_scope: host }
+  - capability: { type: package-manager, name: brew-cask, scope: host }
     strength: hard
     args: { ref: docker-desktop }
     when: before_install
 provides:
-  - capability: { capability_type: app-bundle, name: docker-desktop, capability_scope: host }
+  - capability: { type: app-bundle, name: docker-desktop, scope: host }
     when: after_install                          # persistent
-  - capability: { capability_type: daemon, name: docker, capability_scope: host }
+  - capability: { type: daemon, name: docker, scope: host }
     when: running                                # ephemeral — withdrawn when stopped
 driver:
   kind: custom
@@ -938,11 +938,11 @@ policy:
 id: docker-available
 component: docker
 requires:
-  - capability: { capability_type: daemon, name: docker, capability_scope: host }
+  - capability: { type: daemon, name: docker, scope: host }
     strength: hard
     # when: defaults to always (kind=observe)
 provides:
-  - capability: { capability_type: capability, name: docker-available, capability_scope: host }
+  - capability: { type: capability, name: docker-available, scope: host }
     # when: defaults to always
 driver: { kind: observe, fn: { name: docker_daemon_is_running } }
 ```
@@ -953,7 +953,7 @@ driver: { kind: observe, fn: { name: docker_daemon_is_running } }
 id: gate-supported-platform
 component: <root>
 provides:
-  - capability: { capability_type: preflight, name: supported-platform, capability_scope: host }
+  - capability: { type: preflight, name: supported-platform, scope: host }
     # when: defaults to always
 driver:
   kind: observe
@@ -970,9 +970,9 @@ driver:
 id: tic-system-composition-converged
 component: system
 requires:
-  - capability: { capability_type: managed-resource-status, name: system-composition, capability_scope: host }
+  - capability: { type: managed-resource-status, name: system-composition, scope: host }
 provides:
-  - capability: { capability_type: verification, name: system-composition-converged, capability_scope: host }
+  - capability: { type: verification, name: system-composition-converged, scope: host }
 driver: { kind: observe, fn: { name: _tic_target_status_is, args: [system-composition, ok] } }
 ```
 
@@ -1020,7 +1020,7 @@ driver: { kind: observe, fn: { name: _tic_target_status_is, args: [system-compos
 These are intentionally not resolved by this document and are left for a
 follow-up:
 
-1. **Capability operation contracts.** Should each `capability_type`
+1. **Capability operation contracts.** Should each `type` (within `capability` block)
    declare an operation signature (the args its consumers can pass via
    `requires.args` and the operations its providers must implement)?
    Yes is cleaner; no is simpler. See "driver-as-capability-op"
