@@ -287,6 +287,35 @@ component:
       instances:       [{ <param>: <value>, ... }, ...]
 ```
 
+### Parameter substitution
+
+`${param-name}` references in any string-typed field expand at **load
+time**, in a single pre-validation pass. By the time a resource reaches
+the planner, no `${...}` tokens remain. There is no late binding.
+
+**Resolution order** (highest precedence wins):
+
+| Source | Where it comes from |
+|---|---|
+| `operator-cli` | `--set <name>=<value>` flag or `UCC_OVERRIDE__<NAME>` env var |
+| `resource-override` | `defaults/resource-overrides.yaml` |
+| `component-preference` | the component's `parameters[<name>].default`, possibly platform-filtered |
+| `defaults` | `defaults/preferences.yaml` |
+
+**Errors at validation time** (the resource is rejected):
+
+- `${var}` references a name not declared in `component.parameters`
+- the resolved value's type does not match `parameters[<name>].type`
+- the resolved value is not in `parameters[<name>].options` (if `options` is set)
+
+**Scope**: substitution sees only the parameters of the resource's own
+component (and its ancestors via `parent`). Cross-component refs are not
+allowed; for those, expose the value as a capability instead.
+
+**Determinism**: substitution depends only on host facts and operator
+input known before validation. Once a `RunSession` starts, every
+resource has a frozen, fully-substituted shape.
+
 ## Host (built-in)
 
 The engine emits a virtual `host` resource that exposes machine facts as
@@ -503,9 +532,7 @@ follow-up:
    `consumes.args` and the operations its providers must implement)?
    Yes is cleaner; no is simpler. See "driver-as-capability-op"
    discussion in design notes.
-2. **Where component-parameter substitution (`${var}`) is performed.**
-   Pre-validation pass; details unspecified here.
-3. **Operator-level provider preference** beyond per-consumer `priority`.
+2. **Operator-level provider preference** beyond per-consumer `priority`.
    May warrant a top-level `Preference` resource.
-4. **Migration / compatibility view** of v3 element_types and relation_types
+3. **Migration / compatibility view** of v3 element_types and relation_types
    over this model — needed to keep existing tooling working.
