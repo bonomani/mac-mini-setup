@@ -274,7 +274,7 @@ The only currency between resources.
 capability:
   capability_type:  <namespace>                         # binary, package-manager, daemon, http-endpoint, ...
   name?:            <string>                            # specific identifier within the type
-  capability_scope: host | user | component | container | service
+  capability_scope: host | user
   qualifiers?:      { version?, port?, scheme?, hostname?, path?, ... }
   external?:        bool                                # true = host-published / OS-shipped (not engine-managed)
 ```
@@ -285,10 +285,14 @@ binaries the engine doesn't own. See § Provider selection (rule 4)
 for how the resolver deprioritizes external candidates when an
 engine-managed alternative exists.
 
-> **Note**: v3 had `capability_scope: external` as a 6th scope value.
-> It was removed because controllability is a separate concern from
-> scope. Use `capability_scope: host` (or whichever scope applies)
-> plus `external: true`.
+> **Note**: v3 had a 6-value `capability_scope` enum (`host | user |
+> component | container | service | external`). Three values
+> (`component`, `container`, `service`) were dropped because zero of
+> the 148 live resources used them — speculative scope distinctions
+> for cloud / microservice scenarios that mac-mini-setup doesn't
+> have. The `external` value was also dropped (controllability is a
+> separate concern from scope; use the `external: true` flag instead).
+> If real demand emerges, individual values can be added back.
 
 ### Capability families and their typical lifecycle phase
 

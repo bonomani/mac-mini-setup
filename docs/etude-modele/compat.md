@@ -40,7 +40,7 @@ form to the new form, and what code (if any) needs to change.
 | `derived-artifact` | **kept** | output of the report phase (run-plane) |
 | `governance-claim` | **removed** | no consumer; no shape ever defined |
 | `output-contract` | **removed** | deferred (open Q1 in model.md) |
-| `external-provider` | **collapsed** | host-published capabilities via the `Host` virtual resource. Note: the related `capability_scope: external` enum value was also removed; use `capability_scope: host` + `external: true` flag (see `model.md` §Capability) |
+| `external-provider` | **collapsed** | host-published capabilities via the `Host` virtual resource. Note: the related `capability_scope: external` enum value was also removed; use `capability_scope: host` + `external: true` flag (see `model.md` §Capability). The whole `capability_scope` enum was further trimmed: v3's `component | container | service` values were dropped (zero usage in 148 live resources). Current closed enum: `host | user`. |
 | `compatibility-view` | **removed** | this document IS the compatibility view |
 | `compatibility-import` | **removed** | one-shot migration, not an ongoing model concept |
 | `compatibility-warning` | **removed** | runtime concern (validator finding), not an element |
