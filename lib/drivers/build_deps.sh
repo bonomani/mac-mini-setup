@@ -88,6 +88,11 @@ _ucc_driver_build_deps_evidence() {
   [[ "${HOST_PLATFORM:-macos}" != "macos" ]] || { printf 'platform=macOS (xcode-clt)'; return; }
   local family
   family="$(_build_deps_distro_family)"
-  local gcc_ver; gcc_ver="$(gcc --version 2>/dev/null | head -1 || echo 'absent')"
+  # `gcc --version` emits "gcc (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0";
+  # the leading "gcc " duplicates the field label and the parenthetical
+  # is the package-manager view, not the upstream version. Take just
+  # the trailing semver token so the line reads `gcc=11.4.0`.
+  local gcc_ver; gcc_ver="$(gcc --version 2>/dev/null | head -1 | awk '{print $NF}')"
+  [[ -n "$gcc_ver" ]] || gcc_ver="absent"
   printf 'distro=%s  gcc=%s' "$family" "$gcc_ver"
 }
