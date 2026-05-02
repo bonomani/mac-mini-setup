@@ -33,7 +33,7 @@ profiles:
     label: Parametric
     aliases: configured-value
     axes: installation_state,health_state,dependency_state,config_value
-    expected_text: installation=Configured health=Healthy dependencies=DepsReady config_value=<desired>
+    expected_text: installation=Configured health=Healthy dependencies=DepsReady config_value=<as-declared>
     installation: Configured
     runtime: Stopped
     health: Healthy
