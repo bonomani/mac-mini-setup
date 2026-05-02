@@ -51,7 +51,16 @@ _ucc_driver_docker_compose_service_observe() {
       return
     fi
   done
-  printf 'stopped'
+
+  # Container was running at Gate 1 and (typically) still is, but the HTTP
+  # probe never succeeded within the retry budget. Re-check container state
+  # so we report the truth: if it died during retries → 'stopped'; if it's
+  # still up → 'running-degraded' (process alive, health probe failing).
+  if docker ps --filter "name=${svc}" --filter "status=running" --format '{{.Names}}' 2>/dev/null | grep -q .; then
+    printf 'running-degraded'
+  else
+    printf 'stopped'
+  fi
 }
 
 # No _action hook. The apply is owned by the upstream compose-apply

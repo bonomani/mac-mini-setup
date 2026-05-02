@@ -27,6 +27,12 @@ _ucc_observe_yaml_runtime_target() {
         # which caused scheduler to trigger install action and FAIL when the
         # daemon was actually up (e.g. ollama 0.20.6 when 0.20.7 on GitHub).
         ucc_asm_state --installation Configured --runtime Running --health Outdated --admin Enabled --dependencies DepsReady ;;
+      running-degraded)
+        # Process up, health probe failing (e.g. Docker container reports
+        # unhealthy / TCP resets / app inside is wedged). Distinct from
+        # `stopped` because the runtime IS up — the report should not say
+        # the service is stopped when a process is actively serving the port.
+        ucc_asm_state --installation Configured --runtime Running --health Degraded --admin Enabled --dependencies DepsDegraded ;;
       stopped)
         local _sh _sd _v
         _v="_UCC_RT_STOPPED_HEALTH_${fn}"; _sh="${!_v:-Degraded}"
