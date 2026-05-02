@@ -476,25 +476,64 @@ fi
 # --- Interactive: sudo acquisition ---------------------------
 if [[ "${UCC_INTERACTIVE:-0}" == "1" ]] && [[ -c /dev/tty ]]; then
   if sudo_not_available; then
-    # List targets that need admin
-    echo ""
-    echo "  Targets requiring admin privileges:"
-    python3 -c "
+    # Build the candidate list (admin_required targets) with their per-target
+    # `requires:` AND their parent component's `platforms:` list, then filter
+    # so we only show targets that actually apply on THIS host. Without
+    # filtering, a WSL/Linux user would see every macOS pmset/softwareupdate
+    # target on the list — none of which would ever run on their host.
+    # Two filters apply:
+    #   1. component-level `platforms: [...]` must include the host (uses
+    #      same wsl→linux fallback as install.sh:_component_supported_for)
+    #   2. target-level `requires:` must match _ucc_eval_requires
+    # NOTE: emit order is `comp_plats <TAB> dn <TAB> req` — the often-empty
+    # `req` field MUST be last because bash `read -r` with `IFS=$'\t'`
+    # collapses consecutive tabs (a quirk of single-character whitespace
+    # IFS), which would silently shift fields if `req` were in the middle.
+    _admin_targets=""
+    while IFS=$'\t' read -r _comp_plats _dn _req; do
+      # Component-level platforms filter
+      if [[ -n "$_comp_plats" ]]; then
+        _supp=0
+        for _p in ${_comp_plats//,/ }; do
+          if [[ "$_p" == "${HOST_PLATFORM_VARIANT:-unknown}" ]] \
+             || [[ "$_p" == "$HOST_PLATFORM" ]] \
+             || [[ "$HOST_PLATFORM" == "wsl" && "$_p" == "linux" ]]; then
+            _supp=1
+            break
+          fi
+        done
+        [[ "$_supp" == "1" ]] || continue
+      fi
+      # Target-level requires filter
+      if [[ -z "$_req" ]] || _ucc_eval_requires "$_req"; then
+        _admin_targets+="    - ${_dn}"$'\n'
+      fi
+    done < <(python3 -c "
 import yaml, os
 for root, _, files in os.walk('$_MANIFEST_DIR'):
     for f in files:
         if not f.endswith('.yaml'): continue
         with open(os.path.join(root, f)) as fh:
             data = yaml.safe_load(fh) or {}
+        plats = data.get('platforms') or []
+        plats_csv = ','.join(plats) if isinstance(plats, list) else ''
         for t, td in (data.get('targets') or {}).items():
             if isinstance(td, dict) and td.get('admin_required'):
-                print(f'    - {td.get(\"display_name\", t)}')
-" 2>/dev/null
-    printf '\n  [?] Acquire sudo now?\n'
-    printf '      Options: 1=yes, *2=no  →  '
-    read -r _sudo_answer < /dev/tty
-    if [[ "$_sudo_answer" == "1" ]]; then
-      sudo -v
+                req = td.get('requires', '') or ''
+                dn = td.get('display_name', t)
+                print(f'{plats_csv}\t{dn}\t{req}')
+" 2>/dev/null)
+
+    if [[ -n "$_admin_targets" ]]; then
+      echo ""
+      echo "  Targets requiring admin privileges:"
+      printf '%s' "$_admin_targets"
+      printf '\n  [?] Acquire sudo now?\n'
+      printf '      Options: 1=yes, *2=no  →  '
+      read -r _sudo_answer < /dev/tty
+      if [[ "$_sudo_answer" == "1" ]]; then
+        sudo -v
+      fi
     fi
   fi
 fi
