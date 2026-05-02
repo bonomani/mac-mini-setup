@@ -720,7 +720,7 @@ outputs.
 | # | Phase | Input | Output | Stops the run if |
 |---|---|---|---|---|
 | 1 | **preflight** | declared `Resource`s providing `preflight/*` | for each, evaluate the resource's `driver.observe` | any blocking gate fails |
-| 2 | **selection** | full resource set + `policy.selection_default` + operator overrides | the in-scope subset | — |
+| 2 | **selection** | full resource set + `policy.selection_default` + `RunSession.selection.{include, exclude, default}` (see Selection cascade below) | the in-scope subset | — |
 | 3 | **plan** | in-scope set | resolved capability graph (requires ↔ provides matched, conditions evaluated, providers chosen by `priority`, `applicable`-skipped resources dropped, topological order computed) | a hard `requires` cannot be satisfied |
 | 4 | **observe** | planned resources × subscribed axes | one observation per (resource, axis) | — |
 | 5 | **diff** | observed × `desired` per axis | `branch_taken` per (resource, axis) | — |
