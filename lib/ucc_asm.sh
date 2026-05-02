@@ -191,6 +191,31 @@ _ucc_deps_for_target() {
   fi
 }
 
+# Statuses that should be hidden from the dependent's `deps:` evidence line.
+# Two reasons a parent's status is uninteresting for the dependent's view:
+#   - structural: dep was filtered out of this run (requires-skipped /
+#     platform-skipped / disabled / skipped). Not a missing prerequisite —
+#     just doesn't apply on this host or was opted out.
+#   - soft-policy: dep ran but had a non-blocking issue (warn / policy:
+#     preferred driver mismatch, transition blocked by policy, admin
+#     not available). The dependent demonstrably ran (otherwise it'd be
+#     [skip]/[fail] itself), so the dep was functionally satisfied —
+#     propagating the warn to every dependent just suggests the dep is
+#     degraded when it isn't. The parent's status is already on its own line.
+# Returns 0 if the status should be hidden.
+_ucc_dep_status_hidden() {
+  case "$1" in
+    requires-skipped|platform-skipped|disabled|skipped|warn|policy) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# Look up a dep's status from the target status file. Echoes the value (or "").
+_ucc_dep_status_lookup() {
+  local dep="$1"
+  awk -F'|' -v dep="$dep" '$1==dep {val=$2} END {print val}' "$UCC_TARGET_STATUS_FILE" 2>/dev/null || true
+}
+
 _ucc_dependency_evidence() {
   local target="$1" deps="" dep status pairs=()
   [[ "$target" == "system-composition" ]] && return 0
@@ -200,20 +225,8 @@ _ucc_dependency_evidence() {
   [[ -n "$deps" ]] || return 0
   while IFS= read -r dep; do
     [[ -n "$dep" ]] || continue
-    status=$(awk -F'|' -v dep="$dep" '$1==dep {val=$2} END {print val}' "$UCC_TARGET_STATUS_FILE" 2>/dev/null || true)
-    # Hide deps that are inapplicable on this host or operator-disabled.
-    # The dep was filtered out of THIS run for a structural reason; it's
-    # not a missing prerequisite the operator should worry about.
-    case "$status" in
-      requires-skipped|platform-skipped|disabled|skipped) continue ;;
-      # `warn` / `policy` statuses mean the parent target ran but had a
-      # soft-policy issue (preferred driver mismatch, transition blocked,
-      # admin not available). The dependent here clearly DID run, so the
-      # dep was functionally satisfied — propagating the parent's warn
-      # to every dependent's line just suggests the dep is degraded
-      # when it isn't. The parent's status is already on its own line.
-      warn|policy) continue ;;
-    esac
+    status="$(_ucc_dep_status_lookup "$dep")"
+    _ucc_dep_status_hidden "$status" && continue
     [[ -z "$status" ]] && status="unknown"
     pairs+=("${dep}=${status}")
   done <<< "$deps"
@@ -238,17 +251,8 @@ _ucc_soft_dependency_evidence() {
       fi
       pairs+=("${gate}=${status}")
     else
-      status=$(awk -F'|' -v dep="$dep" '$1==dep {val=$2} END {print val}' "$UCC_TARGET_STATUS_FILE" 2>/dev/null || true)
-      case "$status" in
-        requires-skipped|platform-skipped|disabled|skipped) continue ;;
-      # `warn` / `policy` statuses mean the parent target ran but had a
-      # soft-policy issue (preferred driver mismatch, transition blocked,
-      # admin not available). The dependent here clearly DID run, so the
-      # dep was functionally satisfied — propagating the parent's warn
-      # to every dependent's line just suggests the dep is degraded
-      # when it isn't. The parent's status is already on its own line.
-      warn|policy) continue ;;
-      esac
+      status="$(_ucc_dep_status_lookup "$dep")"
+      _ucc_dep_status_hidden "$status" && continue
       [[ -z "$status" ]] && status="unknown"
       pairs+=("${dep}=${status}")
     fi

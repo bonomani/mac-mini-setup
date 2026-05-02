@@ -211,6 +211,16 @@ sudo_is_available() { [[ $EUID -eq 0 ]] || [[ "${_UCC_SUDO_AVAILABLE:-}" == "1" 
 # Return 0 if elevated privileges are NOT available.
 sudo_not_available() { ! sudo_is_available; }
 
+# Emit a sudo-required log_warn ONLY when the operator might still react.
+# Under explicit --no-interactive (UCC_INTERACTIVE=0) the framework will
+# emit a per-target [policy] line carrying the same info — re-suggesting
+# 'sudo -v' on every blocked target is just noise. Default-undefined or
+# interactive mode keeps the warning.
+# Usage: sudo_warn "<message>"
+sudo_warn() {
+  [[ "${UCC_INTERACTIVE:-1}" != "0" ]] && log_warn "$1"
+}
+
 # Run a command with elevated privileges (sudo when not root, direct when root).
 # Uses sudo -n (non-interactive) to avoid password prompts in automated runs.
 # Usage: run_elevated <cmd> [args...]
@@ -628,8 +638,7 @@ brew_cask_install() {
   if [[ $rc -ne 0 ]]; then
     # If no sudo ticket and brew failed, surface a clear policy message
     if sudo_not_available; then
-      [[ "${UCC_INTERACTIVE:-1}" != "0" ]] && \
-        log_warn "Installing cask '$1' may require admin privileges; run: sudo -v and retry"
+      sudo_warn "Installing cask '$1' may require admin privileges; run: sudo -v and retry"
       return 125
     fi
     return $rc
@@ -647,8 +656,7 @@ brew_cask_upgrade() {
   fi
   if [[ $rc -ne 0 ]]; then
     if sudo_not_available; then
-      [[ "${UCC_INTERACTIVE:-1}" != "0" ]] && \
-        log_warn "Upgrading cask '$pkg' may require admin privileges; run: sudo -v and retry"
+      sudo_warn "Upgrading cask '$pkg' may require admin privileges; run: sudo -v and retry"
       return 125
     fi
     return $rc
