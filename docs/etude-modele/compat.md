@@ -204,7 +204,7 @@ Mapping:
 | `zsh-config` | `zsh-config` | params: `theme`, `installer_url`, `omz_dir` |
 | `capability` | `observe` | with `fn: { name, args }` |
 | `predicate` | `observe` | with `predicate: <Predicate>` |
-| `oracle` | `observe` | with `fn: { name, args }` |
+| `oracle` | `observe` | with `fn: { name, args }` (legacy) OR `probe: <ProbeSpec>` (typed declarative; see model.md § Probe spec vocabulary) |
 | `custom` | `custom` | declares per-axis logic in `driver.axes` |
 
 The 32-kind catalog has been validated against all 148 live resources by

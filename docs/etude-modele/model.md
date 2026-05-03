@@ -427,7 +427,7 @@ hatch.
 
 | Kind | Implied axis | Implied merge (config kinds only) | Parameters |
 |---|---|---|---|
-| `observe` | none | — | `predicate?: <Predicate>` OR `fn?: { name, args? }` |
+| `observe` | none | — | `predicate?: <Predicate>` OR `fn?: { name, args? }` OR `probe?: <ProbeSpec>` (declarative; see § Probe spec vocabulary) |
 | `pkg` | install | — | `refs: { brew?, native-pm?, brew-cask?, ... }`, `bin?` |
 | `pip` | install | — | `isolation`, `probe_pkg`, `install_packages` |
 | `npm` | install | — | `package`, `version?` |
@@ -618,6 +618,218 @@ The kind owns when its hooks fire:
 driver:
   snapshot?: { capture: <fn>, restore: <fn> }
 ```
+
+## Probe spec vocabulary
+
+A **probe spec** is the typed declarative form of `driver.observe.probe` for
+`kind: observe` resources. It generalizes the v3 `oracle: { tool_type, command }`
+shape into a small typed language any runtime can execute.
+
+> **Three forms are valid for `kind: observe`** (use exactly one per resource):
+> - `driver.fn: { name, args? }` — the legacy named-function form (runtime
+>   resolves the name in its function registry; install.sh uses bash
+>   functions in `lib/utils.sh`).
+> - `driver.predicate: <Predicate>` — a fact-based condition using the
+>   Predicate AST below. Useful for purely-host-fact gates.
+> - `driver.probe: <ProbeSpec>` — typed declarative probe (this section).
+>   Cross-runtime portable; the recommended form for new manifests.
+
+The vocabulary is layered. Lower layers are mechanical primitives; higher
+layers compose them into stricter contracts and richer evidence.
+
+### Layer 1 — Mechanical primitives
+
+Single host-state checks. Each returns `ok` (true) or `not ok` (false) and
+emits its own minimal evidence.
+
+| Type | Required fields | Returns ok when | Auto-evidence |
+|---|---|---|---|
+| `file-exists` | `path: <string>` | regular file at path | `{path}` |
+| `dir-exists` | `path: <string>` | directory at path | `{path}` |
+| `socket-exists` | `path: <string>` | UNIX socket at path | `{path}` |
+| `symlink-exists` | `path: <string>` | symlink at path | `{path, target?}` |
+| `fs-type` | `path: <string>`, `expect: <string>` | `stat -fc %T path` equals expect | `{path, fstype}` |
+| `file-contains` | `path: <string>`, `pattern: <regex>` | file contents match regex | `{path, pattern}` |
+| `command-exists` | `name: <string>` | `command -v name` exits 0 | `{command, path}` |
+| `shell-exit` | `command: [<string>, ...]`, `timeout_s?: <int>` | command exits 0 | `{command, exit_code}` |
+| `shell-output-equals` | `command: [...]`, `expect: <string>`, `timeout_s?` | trimmed stdout equals expect | `{command, output}` |
+| `shell-output-matches` | `command: [...]`, `pattern: <regex>`, `timeout_s?` | stdout matches regex | `{command, output, captured?}` |
+| `tcp-port-listening` | `port: <int>`, `host?: <string>` | `ss -ltn` reports listener | `{port, host}` |
+| `http` | `url: <string>`, `timeout_s?: <int>`, `expect_status?: <int|range>` | response status in 2xx-4xx (or expect_status) | `{url, status, duration_ms}` |
+| `http-via-socket` | `socket: <string>`, `path: <string>`, `expect_body?: <string>` | response received via UNIX socket | `{socket, path, status?, body?}` |
+| `python-import` | `module: <string>`, `python?: <string>` | `python3 -c 'import <m>'` exits 0 | `{module, python_path?}` |
+| `python-eval` | `imports?: [<string>, ...]`, `expr: <string>`, `python?: <string>` | `python3 -c 'import …; raise SystemExit(0 if (expr) else 1)'` exits 0 | `{expr, imports}` |
+| `env-equals` | `var: <string>`, `value: <string>` | `$var == value` | `{var, value}` |
+| `euid-equals` | `value: <int>` | `geteuid() == value` | `{euid}` |
+
+### Layer 2 — Logic combinators
+
+Compose Layer 1 primitives.
+
+| Type | Required fields | Returns ok when |
+|---|---|---|
+| `all_of` | `checks: [<ProbeSpec>, ...]` | every child returns ok |
+| `any_of` | `checks: [<ProbeSpec>, ...]` | at least one child returns ok |
+| `not` | `child: <ProbeSpec>` | the child returns not-ok |
+
+### Layer 3 — Cardinality contracts
+
+Strict probes that operate on the runtime's currently-delivered capability set.
+Each declares an EXPECTED cardinality and **MUST FAIL** if reality violates it
+(implementations MUST NOT silently pick a winner).
+
+| Type | Required fields | Returns ok when | Fails when |
+|---|---|---|---|
+| `exactly_one_present` | `capabilities: [<cap-id>, ...]`, `fact?: <string>` | exactly 1 of N is delivered | 0 (no match) OR ≥2 (ambiguous) |
+| `at_least_one_present` | `capabilities: [...]`, `fact?: <string>` | ≥ 1 of N is delivered | 0 |
+| `at_most_one_present` | `capabilities: [...]`, `fact?: <string>` | ≤ 1 of N is delivered | ≥ 2 (conflict) |
+| `all_present` | `capabilities: [...]` | all N are delivered | any missing |
+| `none_present` | `capabilities: [...]` | 0 of N delivered | any present (forbidden state) |
+
+When `fact: <name>` is provided AND the contract returns ok with exactly one
+match (`exactly_one_present`, `at_most_one_present` with 1 match, or
+`at_least_one_present` first match), the probe **sets the named host fact**
+to the matching capability's name. Conditional `provides` and `requires`
+later in the run can then read this fact via `{ fact: <name>, eq: <value> }`.
+
+### Layer 4 — Multi-signal probes
+
+Multiple sub-probes evaluated together; the resource state depends on
+agreement, not a single signal. Used for stateful resources where one
+signal lying is a real risk (daemons, network services, containers).
+
+| Type | Required fields | Behavior |
+|---|---|---|
+| `multi_signal_must_agree` | `signals: { <name>: <ProbeSpec> }`, `require: 'all' \| { quorum: <int> } \| { majority: true }`, `on_partial_agreement?: 'failed' \| 'degraded' \| 'warn'` | Runs all signals. Returns ok if `require` is met. Otherwise emits the configured partial-agreement outcome. |
+
+Each signal MAY also declare `weight: 'informational'` to be excluded from
+the `require` count (captured for evidence only). The probe records all
+signal outcomes in `signals_evaluated` for the RunArtifact step.
+
+### Layer 5 — Evidence-capture extractors
+
+Run AFTER the probe succeeds (or on `warn`/`degraded`) to gather rich
+evidence beyond the probe's auto-evidence. Declared at the resource level
+in a `capture_evidence:` block.
+
+| Type | Required fields | Captures |
+|---|---|---|
+| `shell-output` | `command: [...]`, `timeout_s?` | first line of stdout (trimmed) |
+| `shell-output-line` | `command: [...]`, `line: <int>` | Nth line of stdout |
+| `shell-output-regex` | `command: [...]`, `pattern: <regex>`, `group?: <int>` | regex capture group from stdout |
+| `file-line` | `path: <string>`, `line: <int>` | Nth line of file |
+| `file-key-value` | `path: <string>`, `key: <string>`, `delimiter?: <string>` | value of `KEY=VALUE` line (default `=`) |
+| `file-sha256` / `file-md5` | `path: <string>` | hex digest of file contents |
+| `file-mtime` | `path: <string>`, `format?: 'epoch' \| 'iso8601'` | file modification time |
+| `python-import` | `module: <string>` | boolean (true if importable) — also usable as a Layer-1 probe |
+| `env-var` | `var: <string>` | env var value |
+| `regex-extract` | `from: <evidence-field>`, `pattern: <regex>`, `group?: <int>` | extract from another evidence field |
+| `static` | `value: <any>` | literal value (for stable labels) |
+
+Evidence fields are accessible by name in assertions (Layer 6) and
+cross-evidence rules (Layer 7).
+
+### Layer 6 — Evidence assertions
+
+Tighten the resource's contract beyond what the probe alone decides. Each
+assertion compares an evidence field against a constraint; on violation,
+the configured `on_fail` outcome is emitted (default `failed`).
+
+| Comparator | Form | Example |
+|---|---|---|
+| equality | `eq: <value>` / `ne: <value>` | `{ evidence: version, eq: '3.12.3' }` |
+| ordering | `lt`, `le`, `gt`, `ge: <value>` (semver-aware) | `{ evidence: version, ge: '3.11.0' }` |
+| set membership | `in: [<v>, ...]` / `not_in: [<v>, ...]` | `{ evidence: detected_arch, in: [x86_64, arm64] }` |
+| regex | `matches: <regex>` / `not_matches: <regex>` | `{ evidence: version, not_matches: 'rc\|alpha\|beta\|dev' }` |
+| range | `between: [<lo>, <hi>]` (inclusive) | `{ evidence: ram_gb, between: [8, 128] }` |
+| length | `length_eq` / `length_ge` / `length_le: <int>` | `{ evidence: hostname, length_le: 64 }` |
+| presence | `present: true` / `absent: true` | `{ evidence: pip_present, present: true }` |
+
+Assertion shape:
+```yaml
+assertions:
+  - name: "<short-id>"             # for diagnostics
+    evidence: <field-name>          # which capture_evidence field
+    <comparator>: <value>
+    on_fail?: 'failed' | 'warn'    # default 'failed'
+```
+
+### Layer 7 — Cross-evidence consistency rules
+
+A separate `kind: observe` resource of type
+`probe.type: cross_evidence_consistency` queries OTHER resources' evidence
+and asserts invariants between them. Catches probe-system-level
+inconsistencies (e.g. "platform says wsl2 but arch says aarch64 — WSL2 is
+x86_64-only").
+
+```yaml
+driver:
+  kind: observe
+  probe:
+    type: cross_evidence_consistency
+    rules:
+      - name: "<short-id>"
+        if:   { resource: <id>, evidence: <field>, <comparator>: <value> }
+        then: { resource: <id>, evidence: <field>, <comparator>: <value> }
+        on_violation: 'failed' | 'warn'
+```
+
+Rules MAY use any Layer-6 comparator on either side. The cross-evidence
+resource SHOULD soft-require every resource it inspects so the topo sort
+runs them first.
+
+### How the layers compose at runtime
+
+```
+probe runs (Layer 1-4)        → ok / not-ok / degraded
+       ↓
+capture_evidence runs (L5)    → only on ok / warn / degraded
+       ↓
+assertions evaluate (L6)      → MAY downgrade outcome to failed / warn
+       ↓
+result recorded in RunArtifact step
+       ↓
+cross_evidence rules (L7)     → separate resources, run later in topo order
+```
+
+### Migration from v3 `oracle:` field
+
+The v3 form `oracle: { tool_type: <kind>, command: <cmd> }` (used by
+preflight gates and verification tests) was a single-shape proto-version
+of this vocabulary. v4 generalizes it: each tool_type becomes one of
+the Layer-1 primitives (`shell-exit` for command runners, `command-exists`
+for tool detection, etc.) wrapped by Layer-2 logic when needed.
+
+| v3 form | v4 equivalent |
+|---|---|
+| `oracle: { tool_type: <bash-fn>, command: <args> }` | `driver.fn: { name: <bash-fn>, args: [<args>] }` (legacy) |
+| `oracle: { tool_type: native-pm, command: --version }` | `driver.probe: { type: shell-exit, command: [<bash-fn>, --version] }` |
+
+Both forms are valid in v4. New manifests SHOULD prefer `driver.probe`;
+existing v3 manifests can be migrated incrementally.
+
+### Recommended pattern: per-platform resources + meta detector
+
+For "exactly one of N variants is true" detection (host platform, host
+arch, host package manager, init system), the recommended pattern is:
+
+1. **N per-platform resources** — each with its own probe, mutually
+   exclusive (use `not` clauses to exclude overlapping cases).
+2. **One meta resource** — uses `exactly_one_present` over the N
+   capabilities; FAILS if 0 or ≥2 match. Sets a host fact via
+   `fact: <name>`.
+
+This keeps each probe inspectable as its own manifest, while the meta
+provides a single sentinel ("platform was identified") and a host fact
+for downstream conditional provides. The mutual-exclusion design means
+ambiguity becomes a loud bug signal, not silent recovery.
+
+### Required runtime support
+
+A runtime claiming v4 conformance MUST implement Layer 1-2 primitives
+and the `exactly_one_present` cardinality type. Layers 4-7 are optional
+extensions; manifests using them MUST validate but MAY be skipped on
+runtimes that don't support them (with a clear inhibitor).
 
 ## Predicate
 
